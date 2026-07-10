@@ -241,30 +241,39 @@ class BatchEngine {
   }
 
   // ============================================================
-  // 步骤5: 装备所有已学习的技能
+  // 步骤5: 装备初始 3 个技能（重击/火球术/治疗术）
   // ============================================================
+  // 初始创建角色后自动解锁以下 3 个技能：
+  //   id=1  重击    active  physical（物理伤害）
+  //   id=2  火球术  active  magic（法术伤害）
+  //   id=3  治疗术  active  heal（回血）
+  // 每个技能各自占用一个技能栏位，分别调用 equip_skill 装备
+  // 最大技能栏位 = 5（MAX_EQUIPPED_SKILLS）
   async stepEquipSkills(acc) {
-    info(acc.username, '正在装备技能...');
-    // /game-data 返回 { ok: true, data: { skills, techniques, ... } }
-    let gameData;
-    try { gameData = await apiRequest('GET', '/game-data', ''); } catch (e) { warn(acc.username, '获取技能数据失败: ' + e.message); return; }
-    const dataObj = gameData && gameData.data ? gameData.data : gameData;
-    const skills = dataObj && dataObj.skills ? dataObj.skills : [];
-    const unlockedSkills = skills.filter(s => s && s.unlocked);
-    if (unlockedSkills.length === 0) { warn(acc.username, '未找到可装备的技能'); return; }
+    info(acc.username, '正在装备初始 3 技能（重击/火球术/治疗术）...');
+    const starterSkillIds = [1, 2, 3];
+    const starterNames = { 1: '重击', 2: '火球术', 3: '治疗术' };
     let equippedCount = 0;
-    for (const skill of unlockedSkills) {
+    for (const skillId of starterSkillIds) {
       if (this.shouldStop) return;
       try {
-        await apiRequest('POST', '/player/equip_skill', acc.token, { skill_id: int(skill.id, 0) });
+        await apiRequest('POST', '/player/equip_skill', acc.token, { skill_id: skillId });
         equippedCount++;
+        ok(acc.username, starterNames[skillId] + ' 装备成功');
         await sleep(200);
       } catch (e) {
-        // equip_skill 满6个后服务端返回错误，直接跳出循环
-        if (e.message && (e.message.includes('位置') || e.message.includes('已满'))) break;
+        // 如果已装备或栏位满了，不算失败
+        if (e.message && (e.message.includes('已装备'))) {
+          equippedCount++;
+          info(acc.username, starterNames[skillId] + ' 已装备，跳过');
+        } else if (e.message && (e.message.includes('位置') || e.message.includes('已满'))) {
+          warn(acc.username, starterNames[skillId] + ' 装备失败（栏位已满）');
+        } else {
+          warn(acc.username, starterNames[skillId] + ' 装备失败: ' + e.message);
+        }
       }
     }
-    ok(acc.username, '装备了 ' + equippedCount + '/' + unlockedSkills.length + ' 个技能');
+    ok(acc.username, '技能装备完成: ' + equippedCount + '/' + starterSkillIds.length);
   }
 
   // ============================================================

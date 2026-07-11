@@ -1,0 +1,88 @@
+name: AI Planner - 智能规划批量操作
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_prompt:
+        description: 'AI规划提示（自然语言描述任务）'
+        required: true
+        default: '自动战斗30分钟，然后卖出所有材料'
+        type: string
+      max_accounts:
+        description: '处理的账号数量（默认全部）'
+        required: false
+        default: ''
+        type: string
+      accounts_data:
+        description: '账号数据（格式: username,password，每行一个）'
+        required: true
+        type: string
+      deepseek_api_key:
+        description: 'DeepSeek API Key'
+        required: true
+        type: string
+  schedule:
+    - cron: '0 */6 * * *'  # 每6小时运行一次
+  push:
+    branches: [ main ]
+    paths:
+      - '批量注册工具/ai_planner.js'
+      - '批量注册工具/_anti_detect_shared.js'
+
+jobs:
+  ai-plan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: '批量注册工具/package-lock.json'
+
+    - name: 安装依赖
+      run: |
+        cd 批量注册工具
+        npm install
+
+    - name: 准备账号文件
+      run: |
+        cd 批量注册工具
+        echo "${{ github.event.inputs.accounts_data || secrets.ACCOUNTS_DATA || '' }}" > planner_accounts.txt
+        echo "📋 账号文件内容:"
+        cat planner_accounts.txt
+
+    - name: 运行 AI 规划器
+      run: |
+        cd 批量注册工具
+        export DEEPSEEK_API_KEY="${{ github.event.inputs.deepseek_api_key || secrets.DEEPSEEK_API_KEY }}"
+        export PLAN_PROMPT="${{ github.event.inputs.plan_prompt || '自动战斗30分钟，然后卖出所有材料' }}"
+        export MAX_ACCOUNTS="${{ github.event.inputs.max_accounts || '' }}"
+        export CI=true
+        export ACCOUNTS_DATA="${{ github.event.inputs.accounts_data || secrets.ACCOUNTS_DATA || '' }}"
+        
+        echo "🧠 运行 AI 规划器..."
+        echo "📝 提示: $PLAN_PROMPT"
+        node ai_planner.js
+
+    - name: 上传结果
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-plan-result
+        path: 批量注册工具/ai_plan_result_*.json
+        retention-days: 7
+
+    - name: 输出结果摘要
+      if: always()
+      run: |
+        cd 批量注册工具
+        echo "📊 执行结果:"
+        ls -la ai_plan_result_*.json 2>/dev/null || echo "无结果文件"
+        echo ""
+        echo "📋 最新结果预览:"
+        cat ai_plan_result_*.json 2>/dev/null | head -100 || echo "无结果内容"

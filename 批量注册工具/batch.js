@@ -1,10 +1,18 @@
 /**
- * 艾德尔修仙传 - 批量注册自动化工具
- * 
+ * 艾德尔修仙传 - 批量注册自动化工具 v2.1 🛡️
+ *
  * 功能：
  *   批量注册账号 → 创建角色（金灵根100） → 绑定邀请码
  *   → 装备所有技能 → 装备铁剑 → 设置主功法吐纳 → 切换荒石村 → 自动战斗
- * 
+ *
+ * 🛡️ 反封号机制 v3.0（集成自「艾德尔账号切换·防IP检测」核心策略）：
+ *   - 每账号独立伪造 IP（通过 X-Forwarded-For / X-Real-IP 等）
+ *   - 每账号独立 machine_id（格式多样防浏览器指纹检测）
+ *   - 完整浏览器指纹轮换（UA / Sec-CH-UA / Accept-Language）
+ *   - CDN代理链模拟（Via / X-Cache）
+ *   - 操作间随机延迟（防频率分析）
+ *   - 智能分段暂停（每3个账号休息20-40秒）
+ *
  * 使用：
  *   编辑 accounts.txt 填入账号信息，然后运行 start.bat
  */
@@ -13,6 +21,7 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const antiDetect = require('./_anti_detect_shared');
 
 // ============================================================
 // 常量
@@ -22,8 +31,13 @@ const CLIENT_VERSION = '1.2.4';
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 
 // ============================================================
-// 签名 & API
+// 签名 & API（带 🛡️ 反检测头注入）
 // ============================================================
+let _apiAccountIndex = 0;
+let _apiCallCounter = 0;
+
+function setApiAccountIndex(idx) { _apiAccountIndex = idx; _apiCallCounter = 0; }
+
 function makeSign(method, path, timestamp, bodyStr) {
   const data = method + '\n' + path + '\n' + timestamp + '\n' + bodyStr;
   const hmac = crypto.createHmac('sha256', SIGN_KEY);
@@ -31,9 +45,10 @@ function makeSign(method, path, timestamp, bodyStr) {
   return hmac.digest('hex');
 }
 
-async function apiRequest(method, path, token, body) {
+async function apiRequest(method, path, token, body, extraHeaders) {
   if (token === undefined) token = '';
   if (body === undefined) body = null;
+  if (extraHeaders === undefined) extraHeaders = {};
   const timestamp = Math.floor(Date.now() / 1000);
   const bodyStr = body ? JSON.stringify(body) : '';
   const sign = makeSign(method, path, timestamp, bodyStr);
@@ -44,6 +59,16 @@ async function apiRequest(method, path, token, body) {
     'X-Sign': sign
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  // 🛡️ 注入反检测头（每账号独立IP + 浏览器指纹）
+  // 参照篡改猴脚本的防IP检测核心策略
+  const antiHeaders = antiDetect.buildAntiDetectHeaders(_apiAccountIndex + (_apiCallCounter % 100));
+  Object.assign(headers, antiHeaders);
+  _apiCallCounter++;
+
+  // 混入额外头（用于自定义覆盖）
+  Object.assign(headers, extraHeaders);
+
   const url = API_BASE + path;
   const opts = { method, headers, timeout: 30000 };
   if (bodyStr) opts.body = bodyStr;
@@ -144,13 +169,18 @@ class BatchEngine {
       techniqueId: 1,                // 吐纳法
       autoBattle: true,
       autoRestart: true,
-      delayBetweenAccounts: 3000,    // 账号间隔(ms)
-      delayBetweenSteps: 800,        // 步骤间隔(ms)
+      delayBetweenAccounts: 5000,    // 🛡️ 账号间隔增大到5s防频率检测
+      delayBetweenSteps: 1200,       // 🛡️ 步骤间隔增大到1.2s
       spiritRoots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
       machineId: 'batch-tool-nodejs'
     }, options || {});
     this.stats = { success: 0, fail: 0, skip: 0 };
     this.shouldStop = false;
+  }
+
+  /** 🛡️ 获取当前账号关联的 antiDetect 索引（用于独立IP分配） */
+  getAntiDetectIndex(acc) {
+    return acc._lineIndex !== undefined ? acc._lineIndex : (this.stats.success + this.stats.fail);
   }
 
   stop() { this.shouldStop = true; }
@@ -192,11 +222,14 @@ class BatchEngine {
   // ============================================================
   async stepRegister(acc) {
     info(acc.username, '正在注册账号...');
-    const body = { username: acc.username, password: acc.password, machine_id: this.options.machineId };
+    // 🛡️ 为每个账号生成独立 machine_id（参照篡改猴脚本的设计）
+    const idx = this.getAntiDetectIndex(acc);
+    const machineId = antiDetect.generateMachineId(idx);
+    const body = { username: acc.username, password: acc.password, machine_id: machineId };
     const data = await apiRequest('POST', '/auth/register', '', body);
     acc.token = data.token;
     acc.accountId = int(data.accountId, 0);
-    ok(acc.username, '注册成功, accountId=' + acc.accountId);
+    ok(acc.username, '注册成功, accountId=' + acc.accountId + ' 🛡️machine=' + machineId.slice(0, 12) + '...');
   }
 
   // ============================================================
@@ -204,7 +237,9 @@ class BatchEngine {
   // ============================================================
   async stepLogin(acc) {
     info(acc.username, '正在登录...');
-    const body = { username: acc.username, password: acc.password, machine_id: this.options.machineId };
+    // 🛡️ 每账号独立 machine_id
+    const machineId = antiDetect.generateMachineId(this.getAntiDetectIndex(acc));
+    const body = { username: acc.username, password: acc.password, machine_id: machineId };
     const data = await apiRequest('POST', '/auth/login', '', body);
     acc.token = data.token;
     acc.accountId = int(data.accountId, 0);
@@ -354,7 +389,7 @@ class BatchEngine {
   }
 
   // ============================================================
-  // 处理单个账号
+  // 处理单个账号（含 🛡️ 反封号设置）
   // ============================================================
   async processAccount(acc) {
     const sep = '─── ' + acc.username + ' ───';
@@ -362,34 +397,43 @@ class BatchEngine {
     info(acc.username, sep);
     info(acc.username, '═'.repeat(sep.length));
 
+    // 🛡️ 设置API索引，使此账号所有请求使用独立IP和浏览器指纹
+    const antiIdx = this.getAntiDetectIndex(acc);
+    setApiAccountIndex(antiIdx);
+    const ipInfo = antiDetect.getIpInfo(antiIdx);
+    info(acc.username, `🛡️ 伪装IP: ${ipInfo.ip} (${ipInfo.isp}·${ipInfo.province})`);
+
     try {
+      // 🛡️ 步骤间随机延迟（防频率检测，参照篡改猴脚本的 randomInt 实现）
+      const stepDelay = () => antiDetect.randomDelay(800, 2000);
+
       // 第1步：注册
       await this.stepRegister(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第2步：创建角色（金灵根100）
       await this.stepCreateCharacter(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第3步：绑定邀请码
       await this.stepBindInvite(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第4步：装备技能
       await this.stepEquipSkills(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第5步：装备铁剑
       await this.stepEquipIronSword(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第6步：设置主功法
       await this.stepSetTechnique(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第7步：切换地图
       await this.stepSetMap(acc);
-      await this.delay(this.options.delayBetweenSteps);
+      await stepDelay();
 
       // 第8步：开始战斗
       await this.stepStartBattle(acc);
@@ -412,15 +456,16 @@ class BatchEngine {
     const accounts = this.accounts;
 
     info('引擎', '========================================');
-    info('引擎', '批量注册自动化开始');
+    info('引擎', '批量注册自动化开始 🛡️ 反封号已激活');
     info('引擎', '共 ' + accounts.length + ' 个账号');
     info('引擎', '选项: ' + JSON.stringify({
       地图ID: this.options.mapId,
       功法ID: this.options.techniqueId,
       自动战斗: this.options.autoBattle,
       自动刷怪: this.options.autoRestart,
-      账号间隔: this.options.delayBetweenAccounts + 'ms'
+      账号间隔: this.options.delayBetweenAccounts + 'ms',
     }));
+    info('引擎', '🛡️ 反检测: 独立IP+机器码+浏览器指纹+随机延迟+智能分段');
     info('引擎', '========================================');
 
     for (let i = 0; i < accounts.length; i++) {
@@ -439,10 +484,23 @@ class BatchEngine {
       } else {
         this.stats.fail++;
       }
-      // 账号间延迟
+      // 账号间随机延迟（防频率检测）
       if (i < accounts.length - 1 && !this.shouldStop) {
-        info('引擎', '等待 ' + this.options.delayBetweenAccounts + 'ms 后处理下一个账号...');
-        await this.delay(this.options.delayBetweenAccounts);
+        const waitMs = this.options.delayBetweenAccounts;
+        info('引擎', '等待 ' + waitMs + 'ms 后处理下一个账号...');
+        await this.delay(waitMs);
+      }
+
+      // 🛡️ 智能分段：每3个账号暂停20-40秒（参照 batch_reregister.js）
+      if ((i + 1) % 3 === 0 && i < accounts.length - 1) {
+        const pauseMs = Math.floor(Math.random() * 21000) + 20000;
+        console.log('');
+        info('🛡️ 智能暂停', `已完成 ${i + 1}/${accounts.length} 个，休息 ${(pauseMs / 1000).toFixed(0)} 秒防检测...`);
+        console.log('');
+        // 分段暂停使用逐秒计数，避免整段 sleep 被中断
+        for (let s = 0; s < pauseMs / 1000 && !this.shouldStop; s++) {
+          await sleep(1000);
+        }
       }
     }
 
@@ -501,9 +559,12 @@ function ask(question) {
 function showBanner() {
   console.log('');
   console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║   艾德尔修仙传 - 批量注册自动化工具 v2.0       ║');
+  console.log('║   艾德尔修仙传 - 批量注册自动化工具 v2.1 🛡️    ║');
   console.log('║   功能: 注册 → 创角(金灵根100) → 绑定邀请码   ║');
   console.log('║        → 全技能 → 铁剑 → 吐纳 → 荒石村→战斗  ║');
+  console.log('╠══════════════════════════════════════════════════╣');
+  console.log('║   🛡️ 反封号: 独立IP+机器码+浏览器指纹+随机延迟 ║');
+  console.log('║   🛡️         智能分段暂停（每3个休息20-40秒）  ║');
   console.log('╚══════════════════════════════════════════════════╝');
   console.log('');
 }

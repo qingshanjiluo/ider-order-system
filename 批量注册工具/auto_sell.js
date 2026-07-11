@@ -36,6 +36,18 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const antiDetect = require('./_anti_detect_shared');
+
+// ============================================================
+// 🛡️ 反检测全局索引（每账号独立IP/浏览器指纹）
+// ============================================================
+let _apiAccountIndex = 0;
+let _apiCallCounter = 0;
+
+function setApiAccountIndex(idx) {
+  _apiAccountIndex = idx;
+  _apiCallCounter = 0;
+}
 
 // ============================================================
 // 常量
@@ -73,7 +85,7 @@ function makeSign(method, path, timestamp, bodyStr) {
   return hmac.digest('hex');
 }
 
-async function apiRequest(method, path, token, body) {
+async function apiRequest(method, path, token, body, extraHeaders) {
   if (token === undefined) token = '';
   if (body === undefined) body = null;
   const timestamp = Math.floor(Date.now() / 1000);
@@ -86,6 +98,8 @@ async function apiRequest(method, path, token, body) {
     'X-Sign': sign
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
+  // 🛡️ 注入反检测头（IP伪装/浏览器指纹/CDN链）
+  if (extraHeaders) Object.assign(headers, extraHeaders);
   const url = API_BASE + path;
   const opts = { method, headers, timeout: 30000 };
   if (bodyStr) opts.body = bodyStr;
@@ -344,8 +358,11 @@ class AutoSellEngine {
    */
   async login() {
     info(this.account.username, '正在登录...');
-    const body = { username: this.account.username, password: this.account.password, machine_id: 'auto-sell-tool' };
-    const data = await apiRequest('POST', '/auth/login', '', body);
+    const idx = _apiAccountIndex || this.account._antiIdx || 0;
+    const loginBody = antiDetect.buildLoginBody(this.account.username, this.account.password, idx);
+    const antiHeaders = antiDetect.buildAntiDetectHeaders(idx);
+    info(this.account.username, `  [🛡️ 反检测] IP已分配, machine_id=${(loginBody.machine_id || '').slice(0, 20)}...`);
+    const data = await apiRequest('POST', '/auth/login', '', loginBody, antiHeaders);
     this.account.token = data.token;
     this.account.accountId = int(data.accountId, 0);
     ok(this.account.username, '登录成功, accountId=' + this.account.accountId);
@@ -356,7 +373,9 @@ class AutoSellEngine {
    */
   async getInventory() {
     info(this.account.username, '正在获取背包数据...');
-    const data = await apiRequest('GET', '/player/sync', this.account.token);
+    const idx = this.account._antiIdx || 0;
+    const antiHeaders = antiDetect.buildAntiDetectHeaders(idx);
+    const data = await apiRequest('GET', '/player/sync', this.account.token, null, antiHeaders);
     const player = data && data.player ? data.player : data;
     const inventory = player.inventory || [];
     const items = flattenInventory(inventory);
@@ -395,7 +414,9 @@ class AutoSellEngine {
       const qs = '?side=sell&unit_price=' + unitPrice + '&quantity=' + quantity
         + '&page=' + page + '&slot_index=' + slotIndex
         + '&item_id=' + int(item.id, 0);
-      const data = await apiRequest('GET', '/exchange/quote' + qs, this.account.token);
+      const idx = this.account._antiIdx || 0;
+      const antiHeaders = antiDetect.buildAntiDetectHeaders(idx);
+      const data = await apiRequest('GET', '/exchange/quote' + qs, this.account.token, null, antiHeaders);
       return data;
     } catch (e) {
       return null;
@@ -415,7 +436,9 @@ class AutoSellEngine {
         quantity,
         unit_price: unitPrice
       };
-      const data = await apiRequest('POST', '/exchange/listings', this.account.token, body);
+      const idx = this.account._antiIdx || 0;
+      const antiHeaders = antiDetect.buildAntiDetectHeaders(idx);
+      const data = await apiRequest('POST', '/exchange/listings', this.account.token, body, antiHeaders);
       ok(this.account.username, '上架成功: ' + item.name + ' x' + quantity + ' @ ' + unitPrice + '灵石/个');
       this.stats.listedOnMarket++;
       this.stats.marketListings.push({
@@ -445,7 +468,9 @@ class AutoSellEngine {
         count,
         expect_item_id: int(item.id, 0)
       };
-      const data = await apiRequest('POST', '/player/sell_item', this.account.token, body);
+      const idx = this.account._antiIdx || 0;
+      const antiHeaders = antiDetect.buildAntiDetectHeaders(idx);
+      const data = await apiRequest('POST', '/player/sell_item', this.account.token, body, antiHeaders);
       const stones = data && data.spirit_stones ? data.spirit_stones : 0;
       ok(this.account.username, '回收成功: ' + item.name + ' x' + count + ' 获得 ' + stones + ' 灵石');
       this.stats.soldToSystem++;
@@ -492,9 +517,14 @@ class AutoSellEngine {
     }));
     info('引擎', '========================================');
 
+    // 🛡️ 反检测日志
+    const antiIdx = acc._antiIdx || 0;
+    const ipInfo = antiDetect.getIpInfo(antiIdx);
+    info('🛡️', `反检测: IP=${ipInfo.ip} (${ipInfo.isp}·${ipInfo.province}), machine_id已分配`);
+
     // 1. 登录
     await this.login();
-    await this.delay(500);
+    await antiDetect.randomDelay(800, 1500);
 
     // 2. 获取背包
     const { items, player } = await this.getInventory();
@@ -544,7 +574,8 @@ class AutoSellEngine {
 
     // 先查已有挂单数
     try {
-      const myListings = await apiRequest('GET', '/exchange/my-listings', this.account.token);
+      const myHeaders = antiDetect.buildAntiDetectHeaders(antiIdx);
+      const myListings = await apiRequest('GET', '/exchange/my-listings', this.account.token, null, myHeaders);
       const openSells = (Array.isArray(myListings.listings) ? myListings.listings : [])
         .filter(l => l.side === 'sell' && (l.status === 'open' || l.status === 'partial'));
       activeListings = openSells.length;
@@ -573,7 +604,8 @@ class AutoSellEngine {
         const success = await this.sellToSystem(c.item, c.page, c.slotIndex, sellCount);
       }
 
-      await this.delay(800);
+      // 🛡️ 操作间随机延迟（防频率分析）
+      await antiDetect.randomDelay(1200, 2500);
     }
 
     info('引擎', '========================================');
@@ -600,7 +632,8 @@ function ask(question) {
 function showBanner() {
   console.log('');
   console.log('╔══════════════════════════════════════════════════════════╗');
-  console.log('║         艾德尔修仙传 - 自动卖出工具 v1.0               ║');
+  console.log('║         艾德尔修仙传 - 自动卖出工具 v1.1               ║');
+  console.log('║         🛡️ 已集成反封号检测 v3.0                       ║');
   console.log('╠══════════════════════════════════════════════════════════╣');
   console.log('║  📂 账号文件：./sell_accounts.txt                      ║');
   console.log('║     格式：每行 username,password                       ║');
@@ -608,6 +641,9 @@ function showBanner() {
   console.log('║                                                         ║');
   console.log('║  🔧 功能：按条件筛选背包物品 → 自动卖出               ║');
   console.log('║     支持：按类型/品质/数量过滤，交易所/系统回收        ║');
+  console.log('║                                                         ║');
+  console.log('║  🛡️ 反检测：IP伪装(31段运营商)/独立machine_id         ║');
+  console.log('║     浏览器指纹轮换/随机延迟/智能分段暂停               ║');
   console.log('╚══════════════════════════════════════════════════════════╝');
   console.log('');
 }
@@ -698,8 +734,14 @@ async function main() {
 
     for (let i = 0; i < accounts.length; i++) {
       const acc = accounts[i];
+      // 🛡️ 每账号分配独立IP/指纹索引
+      acc._antiIdx = i;
+      setApiAccountIndex(i);
+
+      const ipInfo = antiDetect.getIpInfo(i);
       console.log('');
       console.log('═══ 处理账号 [' + (i + 1) + '/' + accounts.length + ']: ' + acc.username + ' ═══');
+      console.log(`  🛡️ 反检测: IP=${ipInfo.ip} (${ipInfo.isp}·${ipInfo.province})`);
 
       const engine = new AutoSellEngine(acc, {
         types,
@@ -723,10 +765,17 @@ async function main() {
         hasError = true;
       }
 
+      // 🛡️ 智能分段暂停（每3个账号休息20-40秒）
+      await antiDetect.smartPause(i, accounts.length, {
+        batchSize: 3,
+        pauseMin: 20000,
+        pauseMax: 40000
+      });
+
       if (i < accounts.length - 1) {
         console.log('');
-        info('引擎', '等待 3 秒后处理下一个账号...');
-        await sleep(3000);
+        info('引擎', '等待下一个账号...');
+        await antiDetect.randomDelay(3000, 5000);
       }
     }
 
@@ -806,8 +855,14 @@ async function main() {
 
   for (let i = 0; i < accounts.length; i++) {
     const acc = accounts[i];
+    // 🛡️ 每账号分配独立IP/指纹索引
+    acc._antiIdx = i;
+    setApiAccountIndex(i);
+
+    const ipInfo = antiDetect.getIpInfo(i);
     console.log('');
     console.log('═══ 处理账号 [' + (i + 1) + '/' + accounts.length + ']: ' + acc.username + ' ═══');
+    console.log(`  🛡️ 反检测: IP=${ipInfo.ip} (${ipInfo.isp}·${ipInfo.province})`);
 
     const engine = new AutoSellEngine(acc, {
       types,
@@ -829,10 +884,17 @@ async function main() {
       overallStats.accounts.push({ username: acc.username, error: e.message });
     }
 
+    // 🛡️ 智能分段暂停（每3个账号休息20-40秒）
+    await antiDetect.smartPause(i, accounts.length, {
+      batchSize: 3,
+      pauseMin: 20000,
+      pauseMax: 40000
+    });
+
     if (i < accounts.length - 1) {
       console.log('');
-      info('引擎', '等待 3 秒后处理下一个账号...');
-      await sleep(3000);
+      info('引擎', '等待下一个账号...');
+      await antiDetect.randomDelay(3000, 5000);
     }
   }
 

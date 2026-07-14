@@ -40,12 +40,23 @@ jobs:
         cd 批量注册工具
         npm install
 
-    - name: 准备账号文件
+    - name: 准备账号文件（有手动输入则优先覆盖）
       run: |
         cd 批量注册工具
-        echo "${{ github.event.inputs.accounts_data || secrets.ACCOUNTS_DATA || '' }}" > alchemy_accounts.txt
+        # 如果有手动触发输入的账号数据或 secrets，则覆盖文件
+        if [ -n "${{ github.event.inputs.accounts_data }}" ]; then
+          echo "${{ github.event.inputs.accounts_data }}" > alchemy_accounts.txt
+          echo "✅ 使用手动输入的账号数据"
+        elif [ -n "${{ secrets.ACCOUNTS_DATA }}" ]; then
+          echo "${{ secrets.ACCOUNTS_DATA }}" > alchemy_accounts.txt
+          echo "✅ 使用 Secrets 中的账号数据"
+        else
+          echo "✅ 使用仓库中的 alchemy_accounts.txt（schedule/push 触发）"
+        fi
         echo "📋 账号文件内容:"
-        cat alchemy_accounts.txt
+        cat alchemy_accounts.txt || echo "(文件为空)"
+        echo ""
+        echo "📊 账号数量: $(wc -l < alchemy_accounts.txt)"
 
     - name: 运行升级突破
       run: |

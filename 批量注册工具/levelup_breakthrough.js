@@ -225,13 +225,16 @@ class LevelUpEngine {
       warn(this.account.username, '突破返回异常: ' + JSON.stringify(data));
       return false;
     } catch (e) {
-      if (e.message.includes('无法突破') || e.message.includes('条件不足') || e.message.includes('请先突破')) {
+      // 经验不足/条件不足 → 暂时无法突破，调用方应停止该账号
+      if (e.message.includes('无法突破') || e.message.includes('条件不足') || e.message.includes('请先突破') || e.message.includes('经验不足')) {
         warn(this.account.username, '突破条件不满足: ' + e.message);
         this.stats.breakthroughFailed++;
+        this.stats.breakthroughFailReason = e.message;
         return false;
       }
       warn(this.account.username, '突破请求失败: ' + e.message);
       this.stats.breakthroughFailed++;
+      this.stats.breakthroughFailReason = e.message;
       return false;
     }
   }
@@ -299,55 +302,32 @@ class LevelUpEngine {
           info(acc.username, '突破后等级: ' + currentLevel);
           continue;
         } else {
-          // 突破失败，记录并尝试继续（可能条件不足）
-          // 突破失败不影响升级循环
-          this.stats.errors.push('突破失败 @等级' + currentLevel);
+          // 突破失败
+          const failReason = this.stats.breakthroughFailReason || '未知';
+          warn(acc.username, '突破失败 @等级' + currentLevel + ': ' + failReason);
+          this.stats.errors.push('突破失败 @等级' + currentLevel + ': ' + failReason);
+          // 如果突破失败原因是经验不足等硬性条件，直接停止该账号
+          // 因为升到突破节点后必须突破才能继续升级（"请先突破"），但条件不够时会死循环
+          if (failReason.includes('经验不足') || failReason.includes('条件不足') || failReason.includes('资源不足')) {
+            warn(acc.username, '突破条件不足，停止升级: ' + failReason);
+            this.stats.stuckReason = '突破条件不足（' + failReason + '）';
+            break;
+          }
         }
       }
 
       // 执行升级
       try {
+        // apiRequest 在 ok===false 时会抛异常，所以成功时才走到这里
         const result = await this.levelUpOnce();
-        currentLevel++;
 
-        // 检查错误信息（如果返回有error）
-        if (result.error) {
-          if (result.error.includes('灵石不足') || result.error.includes('资源不足') || result.error.includes('灵气不足')) {
-            warn(acc.username, '升级停止: ' + result.error);
-            this.stats.stuckReason = result.error;
-            break;
-          }
-          if (result.error.includes('已达到大乘大圆满') || result.error.includes('封顶')) {
-            ok(acc.username, '已达到封顶等级');
-            this.stats.stuckReason = '封顶';
-            break;
-          }
-          if (result.error.includes('请先突破')) {
-            warn(acc.username, '需要先突破: ' + result.error);
-            // 尝试突破一次
-            await antiDetect.randomDelay(1000, 1500);
-            await this.doBreakthrough();
-            await this.delay(1000);
-            // 重新获取等级看看突破是否成功
-            const checkLevel = await this.getLevel();
-            if (checkLevel !== currentLevel) {
-              currentLevel = checkLevel;
-              continue;
-            }
-            // 如果突破没成功，继续升不动则停止
-          }
-        }
+        // 升级成功才累加等级
+        currentLevel++;
+        lastLevel = currentLevel;
+        stuckCount = 0;
 
         if (currentLevel % 10 === 0) {
           info(acc.username, '当前等级: ' + currentLevel);
-        }
-
-        // 跟踪卡住检测
-        if (currentLevel === lastLevel) {
-          stuckCount++;
-        } else {
-          stuckCount = 0;
-          lastLevel = currentLevel;
         }
 
         // 随机延迟 — 反检测
@@ -355,8 +335,14 @@ class LevelUpEngine {
       } catch (e) {
         const msg = e.message;
 
-        if (msg.includes('灵石不足') || msg.includes('资源不足') || msg.includes('灵气不足')) {
+        // ⚠️ 经验不足 → 灵石不够升级了，停止
+        if (msg.includes('经验不足') || msg.includes('灵气不足') || msg.includes('灵石不足') || msg.includes('资源不足')) {
           warn(acc.username, '升级停止: ' + msg);
+          this.stats.stuckReason = msg;
+          break;
+        }
+        if (msg.includes('已达上限') || msg.includes('大圆满') || msg.includes('瓶颈')) {
+          warn(acc.username, '已达瓶颈: ' + msg);
           this.stats.stuckReason = msg;
           break;
         }
@@ -368,12 +354,21 @@ class LevelUpEngine {
         if (msg.includes('请先突破')) {
           warn(acc.username, '需要先突破: ' + msg);
           await antiDetect.randomDelay(1000, 2000);
-          await this.doBreakthrough();
+          const btOk = await this.doBreakthrough();
           await this.delay(1000);
-          continue;
+          if (btOk) {
+            currentLevel = await this.getLevel();
+            continue;
+          } else {
+            // 突破也失败（经验不足/条件不够）→ 停止该账号，避免死循环
+            const failReason = this.stats.breakthroughFailReason || '未知突破失败';
+            warn(acc.username, '突破条件不满足，停止升级: ' + failReason);
+            this.stats.stuckReason = '突破条件不满足（' + failReason + '）';
+            break;
+          }
         }
 
-        // 其他异常
+        // 其他异常 → 卡住计数
         stuckCount++;
         warn(acc.username, '升级异常(' + attempts + '): ' + msg);
         await this.delay(2000);

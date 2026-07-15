@@ -25,6 +25,16 @@ const API_BASE = 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = '1.2.4';
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 
+// CI 检测（GitHub Actions 自动模式）
+const IS_CI = process.env.CI === 'true' || process.env.CI === '1';
+
+function getEnvInt(name, def) {
+  const v = process.env[name];
+  if (v === undefined || v === '') return def;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : def;
+}
+
 // ============================================================
 // 🛡️ 反检测全局索引
 // ============================================================
@@ -390,6 +400,23 @@ async function main() {
 
   console.log('📁 账号文件: ' + filepath);
   console.log('📋 共 ' + accounts.length + ' 个账号');
+
+  // CI 模式（GitHub Actions），用环境变量控制，跳过交互
+  if (IS_CI) {
+    const maxAccounts = getEnvInt('MAX_ACCOUNTS', accounts.length);
+    const rangeEnv = process.env.RANGE || '';
+    let selected = accounts.slice(0, maxAccounts);
+    if (rangeEnv) {
+      const parts = rangeEnv.split('-').map(s => parseInt(s.trim()));
+      if (parts.length === 2 && parts[0] > 0 && parts[1] <= selected.length)
+        selected = selected.slice(parts[0] - 1, parts[1]);
+    }
+    console.log('✅ CI模式，自动处理 ' + selected.length + ' 个账号');
+    await processAccounts(selected);
+    process.exit(0);
+  }
+
+  // 交互模式
   for (const acc of accounts) console.log('   [' + acc.username + ']');
 
   console.log('');
@@ -410,7 +437,17 @@ async function main() {
     process.exit(0);
   }
 
-  // 执行
+  await processAccounts(selected);
+
+  // 退出等待
+  const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl2.question('按回车退出...', () => { rl2.close(); });
+}
+
+/**
+ * 处理账号列表（登录 → 升级 → 汇总）
+ */
+async function processAccounts(selected) {
   const results = [];
   for (let i = 0; i < selected.length; i++) {
     const acc = selected[i];
@@ -444,10 +481,7 @@ async function main() {
 
   // 汇总
   printSummary(results);
-
-  // 退出
-  const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout });
-  rl2.question('按回车退出...', () => { rl2.close(); });
 }
 
+// 入口
 main().catch(e => { console.error('异常:', e.message); process.exit(1); });

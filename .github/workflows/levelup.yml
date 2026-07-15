@@ -1,0 +1,83 @@
+name: ⬆️ 一键升级 - Level Up
+
+on:
+  workflow_dispatch:
+    inputs:
+      accounts_data:
+        description: '账号数据（格式: username,password，每行一个）'
+        required: false
+        type: string
+      max_accounts:
+        description: '处理的账号数量（留空=全部）'
+        required: false
+        default: ''
+        type: string
+      range:
+        description: '账号范围（如 1-10，留空=全部）'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  levelup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: '批量注册工具/package-lock.json'
+
+    - name: 安装依赖
+      run: |
+        cd 批量注册工具
+        npm install
+
+    - name: 准备账号文件
+      run: |
+        cd 批量注册工具
+        # 手动输入 > Secrets > 仓库已有文件
+        if [ -n "${{ github.event.inputs.accounts_data }}" ]; then
+          echo "${{ github.event.inputs.accounts_data }}" > alchemy_accounts.txt
+          echo "✅ 使用手动输入的账号数据"
+        elif [ -n "${{ secrets.ACCOUNTS_DATA }}" ]; then
+          echo "${{ secrets.ACCOUNTS_DATA }}" > alchemy_accounts.txt
+          echo "✅ 使用 Secrets 中的账号数据"
+        else
+          echo "✅ 使用仓库中的 alchemy_accounts.txt"
+        fi
+        echo "📋 账号文件内容:"
+        cat alchemy_accounts.txt || echo "(空)"
+        echo ""
+        echo "📊 账号数量: $(wc -l < alchemy_accounts.txt)"
+
+    - name: 运行一键升级
+      run: |
+        cd 批量注册工具
+        export CI=true
+        export MAX_ACCOUNTS="${{ github.event.inputs.max_accounts || '' }}"
+        echo "⬆️ 运行一键升级脚本..."
+        node levelup.js
+
+    - name: 上传结果
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: levelup-result
+        path: 批量注册工具/levelup_result_*.json
+        retention-days: 7
+
+    - name: 输出结果摘要
+      if: always()
+      run: |
+        cd 批量注册工具
+        echo "📊 执行结果:"
+        ls -la levelup_result_*.json 2>/dev/null || echo "无结果文件"
+        echo ""
+        echo "📋 最新结果预览:"
+        cat levelup_result_*.json 2>/dev/null | head -200 || echo "无结果内容"

@@ -1,0 +1,19 @@
+{
+  "run_time": "2026-07-18T04:51:45.603Z",
+  "total": 1,
+  "success": 1,
+  "failed": 0,
+  "duration_seconds": 7,
+  "results": [
+    {
+      "username": "狂蛮仙尊",
+      "status": "success",
+      "done": [
+        "bathe",
+        "garden_pick",
+        "meditate"
+      ],
+      "error": ""
+    }
+  ]
+}

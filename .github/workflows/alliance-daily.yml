@@ -1,0 +1,175 @@
+# ════════════════════════════════════════════════════════════
+#  艾德尔修仙传 - 仙盟日常 + 洞府采集 🏯
+# ════════════════════════════════════════════════════════════
+#  🛡️ 防封号特性：
+#     - 每账号独立伪造IP（31段真实中国运营商IP轮换）
+#     - 独立 machine_id（6种格式防指纹）
+#     - 完整浏览器指纹轮换（UA/Sec-CH-UA/Accept-Language）
+#     - CDN代理链模拟 + 操作间随机延迟 + 智能分段暂停
+# ════════════════════════════════════════════════════════════
+#  功能：
+#    1. 登录账号
+#    2. 检查/加入仙盟（自动搜索可加入的仙盟）
+#    3. 灵池沐浴（每日1次，6小时属性增益）
+#    4. 仙园采摘（每日1次，获得材料）
+#    5. 悟道树冥想（每日1次，1小时经验加成）
+#    6. 开启洞府采集（灵田/灵矿自动产出材料）
+# ════════════════════════════════════════════════════════════
+#  输入方式（优先级由低到高）：
+#    1. 仓库账号文件 accounts_email.txt / accounts.txt
+#    2. workflow_dispatch 的 accounts 参数（分号格式）
+#    3. workflow_dispatch 的 accounts_file 参数（文件路径）
+#    4. GitHub Secrets: ACCOUNTS_DATA / ACCOUNTS_BASE64
+# ════════════════════════════════════════════════════════════
+
+name: 🏯 仙盟日常 + 洞府采集
+
+on:
+  workflow_dispatch:
+    inputs:
+      accounts:
+        description: '📂 账号列表（格式: user1,pass1;user2,pass2），留空则用文件'
+        required: false
+        default: ''
+      accounts_file:
+        description: '📄 仓库账号文件路径'
+        required: false
+        default: ''
+      cave_type:
+        description: '⛏️ 采集类型'
+        required: false
+        default: 'field'
+        type: choice
+        options:
+          - field
+          - mine
+      auto_join_alliance:
+        description: '🏯 自动加入仙盟'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      alliance_name:
+        description: '🏛️ 目标仙盟名称（未加入时自动申请）'
+        required: false
+        default: '天地一家大爱盟'
+
+  schedule:
+    - cron: '0 2 * * *'
+
+jobs:
+  alliance-daily:
+    name: 🏯 执行仙盟日常
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: 批量注册工具
+
+    steps:
+      - name: 🔄 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ⚙️ 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 批量注册工具/package-lock.json
+
+      - name: 📦 安装依赖
+        run: npm install
+        env:
+          NODE_ENV: production
+
+      - name: 📝 准备账号数据
+        run: |
+          echo "═══════════════════════════════════════════════"
+          echo "  准备账号数据"
+          echo "═══════════════════════════════════════════════"
+
+          ACCOUNTS_FILE_INPUT="${{ github.event.inputs.accounts_file }}"
+          ACCOUNTS_MANUAL="${{ github.event.inputs.accounts }}"
+
+          if [ -n "$ACCOUNTS_FILE_INPUT" ]; then
+            if [ -f "$ACCOUNTS_FILE_INPUT" ]; then
+              echo "📄 使用仓库账号文件: $ACCOUNTS_FILE_INPUT"
+              cp "$ACCOUNTS_FILE_INPUT" accounts_email.txt
+            elif [ -f "../$ACCOUNTS_FILE_INPUT" ]; then
+              echo "📄 使用仓库根目录账号文件: ../$ACCOUNTS_FILE_INPUT"
+              cp "../$ACCOUNTS_FILE_INPUT" accounts_email.txt
+            fi
+          fi
+
+          if [ -n "$ACCOUNTS_MANUAL" ]; then
+            echo "📄 使用 workflow_dispatch 传入的账号数据"
+            echo "$ACCOUNTS_MANUAL" | tr ';' '\n' > accounts_email.txt
+          fi
+
+          if [ -n "${{ secrets.ACCOUNTS_DATA }}" ]; then
+            echo "${{ secrets.ACCOUNTS_DATA }}" > accounts_email.txt
+          fi
+
+          if [ -n "${{ secrets.ACCOUNTS_BASE64 }}" ]; then
+            echo "${{ secrets.ACCOUNTS_BASE64 }}" | base64 -d > accounts_email.txt
+          fi
+
+          if [ ! -f accounts_email.txt ] && [ -f ../accounts_email.txt ]; then
+            cp ../accounts_email.txt accounts_email.txt
+          fi
+
+          if [ ! -f accounts_email.txt ]; then
+            echo "❌ 未找到账号文件"
+            exit 1
+          fi
+
+          echo "✅ 账号就绪: $(grep -cE '^[^#,/]' accounts_email.txt 2>/dev/null || echo 0) 个有效账号"
+
+      - name: 🚀 执行仙盟日常
+        run: |
+          echo "═══════════════════════════════════════════════"
+          echo "  ⏱️  开始时间: $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "  采集类型: ${{ github.event.inputs.cave_type || 'field' }}"
+          echo "  自动加仙盟: ${{ github.event.inputs.auto_join_alliance || 'true' }}"
+          echo "═══════════════════════════════════════════════"
+
+          CAVE_TYPE="${{ github.event.inputs.cave_type || 'field' }}" \
+          AUTO_JOIN_ALLIANCE="${{ github.event.inputs.auto_join_alliance || 'true' }}" \
+          ALLIANCE_NAME="${{ github.event.inputs.alliance_name || '天地一家大爱盟' }}" \
+          ACCOUNTS_FILE="${{ github.event.inputs.accounts_file }}" \
+          CI=true \
+          node batch_alliance_daily.js
+        env:
+          CI: true
+          NODE_ENV: production
+
+      - name: 📤 上传结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alliance-daily-results-${{ github.run_id }}
+          path: 批量注册工具/alliance_daily_*.json
+          compression-level: 6
+          retention-days: 7
+
+      - name: 📊 输出摘要
+        if: always()
+        run: |
+          LATEST_JSON=$(ls -t alliance_daily_*.json 2>/dev/null | head -1)
+          if [ -n "$LATEST_JSON" ]; then
+            echo "结果文件: $LATEST_JSON"
+            node -e "
+              const d=require('./$LATEST_JSON');
+              console.log('成功: ' + d.success + ' / 失败: ' + d.failed + ' (共 ' + d.total + ')');
+              (d.results||[]).forEach(r=>{
+                const icon=r.status==='success'?'✅':'❌';
+                console.log('  '+icon+' ['+r.username+'] ' + ((r.done||[]).join(', ') || r.error));
+              });
+            "
+          fi

@@ -1,0 +1,112 @@
+{
+  "run_time": "2026-07-18T04:11:09.832Z",
+  "total": 17,
+  "success": 0,
+  "skipped": 16,
+  "failed": 1,
+  "duration_seconds": 405,
+  "results": [
+    {
+      "username": "古月方想",
+      "status": "skipped",
+      "email": "z***x@beeinbox.edu.pl",
+      "error": ""
+    },
+    {
+      "username": "星宿仙尊",
+      "status": "skipped",
+      "email": "u***t@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "元始仙尊",
+      "status": "skipped",
+      "email": "u***7@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "战渡奴",
+      "status": "skipped",
+      "email": "u***6@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "柳贯一",
+      "status": "skipped",
+      "email": "u***s@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "影无邪",
+      "status": "skipped",
+      "email": "u***1@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "凤金煌",
+      "status": "skipped",
+      "email": "u***b@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "龙公",
+      "status": "skipped",
+      "email": "u***p@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "凤九歌",
+      "status": "skipped",
+      "email": "u***a@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "马鸿运",
+      "status": "skipped",
+      "email": "u***x@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "赵怜云",
+      "status": "skipped",
+      "email": "u***n@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "李甲",
+      "status": "error",
+      "email": "",
+      "error": "用户名或密码错误"
+    },
+    {
+      "username": "紫山真君",
+      "status": "skipped",
+      "email": "u***7@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "太白云生",
+      "status": "skipped",
+      "email": "u***b@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "青仇",
+      "status": "skipped",
+      "email": "u***0@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "蛊真人",
+      "status": "skipped",
+      "email": "u***d@web-library.net",
+      "error": ""
+    },
+    {
+      "username": "狂蛮仙尊",
+      "status": "skipped",
+      "email": "u***h@web-library.net",
+      "error": ""
+    }
+  ]
+}

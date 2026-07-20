@@ -11,7 +11,7 @@ const C = `/* ═══ Cyberpunk Ultimate Theme ═══ */
   --cyan: #00f0ff; --magenta: #ff00aa; --yellow: #ffe600;
   --green: #00ff88; --red: #ff3344; --purple: #7c3aed;
   --bg-deep: #03030a; --bg-dark: #070714; --bg-card: rgba(14,14,36,0.85);
-  --bg-input: rgba(20,20,48,0.9); --text: #c8d0e8; --text-dim: #5a6090;
+  --bg-input: rgba(20,20,48,0.9); --text: #d0d8ee; --text-dim: #7880a8;
   --text-bright: #eef2ff; --border: rgba(0,240,255,0.12);
   --border-m: rgba(255,0,170,0.15); --shadow-c: 0 0 20px rgba(0,240,255,0.12);
   --shadow-m: 0 0 20px rgba(255,0,170,0.12);
@@ -112,6 +112,7 @@ nav .nav-links a {
 }
 nav .nav-links a:hover { color:var(--cyan); background:rgba(0,240,255,0.05); }
 nav .nav-links .btn-link { border-radius:0; padding:7px 18px; }
+.nav-toggle { display:none; background:none; border:none; color:var(--cyan); font-size:1.5em; cursor:pointer; padding:4px 10px; line-height:1; }
 .nav-badge {
   display:inline-flex; align-items:center; justify-content:center;
   background:var(--magenta); color:#fff; font-size:0.6em;
@@ -422,21 +423,55 @@ tr:last-child td { border-bottom:none; }
 .animate-in { animation:fadeUp .5s ease; }
 @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
 
+/* ─── Page Loading ─────────────────── */
+.page-loading { position:fixed; top:0; left:0; right:0; bottom:0; z-index:9997; display:flex; flex-direction:column; align-items:center; justify-content:center; background:var(--bg-deep); transition:opacity .4s; }
+.page-loading.fade-out { opacity:0; pointer-events:none; }
+.page-loading .bar { width:60px; height:3px; background:linear-gradient(90deg, var(--cyan), var(--magenta)); border-radius:2px; animation:loadPulse 1s ease-in-out infinite; }
+@keyframes loadPulse { 0%,100% { transform:scaleX(0.6); opacity:0.4; } 50% { transform:scaleX(1); opacity:1; } }
+
+/* ─── Typing Indicator ─────────────── */
+.typing-dots { display:inline-flex; gap:3px; padding:4px 0; }
+.typing-dots span { width:6px; height:6px; border-radius:50%; background:var(--magenta); animation:dotBounce 1.2s ease-in-out infinite; }
+.typing-dots span:nth-child(2) { animation-delay:0.2s; }
+.typing-dots span:nth-child(3) { animation-delay:0.4s; }
+@keyframes dotBounce { 0%,60%,100% { transform:translateY(0); opacity:0.3; } 30% { transform:translateY(-6px); opacity:1; } }
+
+/* ─── Table Scroll Hint ────────────── */
+.table-wrap { position:relative; }
+.table-wrap::after { content:'↔ 左右滑动'; position:absolute; bottom:4px; right:8px; font-size:0.65em; color:var(--text-dim); opacity:0; transition:opacity .5s; pointer-events:none; }
+.table-wrap:hover::after, .table-scroll::after { opacity:1; }
+
 /* ─── Responsive ───────────────────── */
 @media (max-width:900px) {
   .grid-4 { grid-template-columns:1fr 1fr; }
   .grid-3 { grid-template-columns:1fr 1fr; }
 }
-@media (max-width:768px) {
-  nav { flex-direction:column; gap:12px; padding:12px 16px; }
-  nav .nav-links { flex-wrap:wrap; justify-content:center; gap:4px; }
+@media (max-width:820px) {
+  nav { flex-direction:row; flex-wrap:wrap; padding:10px 16px; }
+  nav .nav-links {
+    display:none; width:100%; flex-direction:column; gap:2px;
+    padding:8px 0; border-top:1px solid var(--border); margin-top:8px;
+  }
+  nav .nav-links.open { display:flex; }
+  nav .nav-links a { width:100%; padding:10px 14px; }
+  nav .nav-links .btn-link { width:100%; justify-content:center; }
+  .nav-toggle { display:block; }
   .hero h1 { font-size:1.5em; }
-  .hero { padding:70px 16px 40px; }
+  .hero { padding:60px 16px 36px; }
   .form-row { flex-direction:column; gap:0; }
   .grid-2, .grid-3, .grid-4 { grid-template-columns:1fr; }
-  .hero-stats { gap:24px; }
-  .toast-container { left:16px; right:16px; }
-  .page-title { font-size:1em; letter-spacing:2px; }
+  .hero-stats { gap:20px; }
+  .toast-container { left:16px; right:16px; top:72px; }
+  .page-title { font-size:0.95em; letter-spacing:2px; }
+  .table-wrap { margin:0 -12px; padding:0 12px; }
+  .table-wrap::after { opacity:1; }
+}
+@media (max-width:480px) {
+  .hero h1 { font-size:1.2em; }
+  .hero { padding:40px 12px 28px; }
+  .hero-stat .num { font-size:1.6em; }
+  .container { padding:16px 12px; }
+  .card { padding:16px; }
 }`;
 
 const HTML = `<!DOCTYPE html>
@@ -453,10 +488,12 @@ const HTML = `<!DOCTYPE html>
 <div class="bg-glow-2"></div>
 <div class="particles" id="particles"></div>
 <div class="scanline"></div>
+<div id="page-loading" class="page-loading"><div class="bar"></div></div>
 <div id="toast-container" class="toast-container"></div>
 
 <nav id="nav">
   <div class="logo">NEON<span class="dot">⚡</span>IDER</div>
+  <button class="nav-toggle" id="nav-toggle" onclick="toggleNav()">☰</button>
   <div class="nav-links" id="nav-links">
     <a href="#" data-page="landing">首页</a>
     <a href="#" data-page="control">功能</a>
@@ -503,6 +540,26 @@ function sb(s) {
   const m = { pending:'⏳审核中', approved:'✅已通过', rejected:'❌已拒绝', completed:'🎉已完成',
     registering:'📝注册中', creating:'📝创建中', farming:'⚔️挂机中', active:'⚔️活跃', failed:'❌失败', error:'⚠️异常' };
   return '<span class="badge badge-' + s + '">' + (m[s] || s) + '</span>';
+}
+
+// ─── Nav Toggle (Mobile) ────────────────────
+function toggleNav() {
+  document.getElementById('nav-links').classList.toggle('open');
+}
+function closeNav() { document.getElementById('nav-links').classList.remove('open'); }
+
+// ─── Page Loading ───────────────────────────
+let pageLoadTimer = null;
+function showLoading() {
+  const el = document.getElementById('page-loading');
+  if (el) { el.classList.remove('fade-out'); el.style.display = 'flex'; }
+}
+function hideLoading() {
+  const el = document.getElementById('page-loading');
+  if (el) {
+    el.classList.add('fade-out');
+    setTimeout(() => { el.style.display = 'none'; el.classList.remove('fade-out'); }, 400);
+  }
 }
 
 // ─── Particles ──────────────────────────────
@@ -819,10 +876,13 @@ P.appeals = () => \`
 
 // ─── Router ────────────────────────────────
 function showPage(name) {
+  closeNav();
   const app = document.getElementById('app');
   if (P[name]) {
+    showLoading();
     app.innerHTML = P[name]();
     window.scrollTo(0, 0);
+    setTimeout(hideLoading, 100);
     if (name === 'landing') loadStats();
     if (name === 'dashboard' && TOKEN) refreshDashboard();
     if (name === 'admin' && TOKEN) refreshAdmin();
@@ -1277,8 +1337,17 @@ async function askBot() {
   const q = input.value.trim();
   box.innerHTML += '<div class="chat-msg"><div class="sender">👤 我</div><div class="text">' + esc(q) + '</div></div>';
   input.value = ''; box.scrollTop = box.scrollHeight;
+
+  // Show typing indicator
+  const typingId = 'typing-' + Date.now();
+  box.innerHTML += '<div class="chat-msg" id="' + typingId + '"><div class="sender sender-bot">🤖 助手</div><div class="text"><div class="typing-dots"><span></span><span></span><span></span></div></div></div>';
+  box.scrollTop = box.scrollHeight;
+
   const r = await api('POST', '/api/bot/ask', { question: q });
-  box.innerHTML += '<div class="chat-msg"><div class="sender sender-bot">🤖 助手</div><div class="text">' + esc(r.answer || '抱歉，我不太理解') + '</div></div>';
+  const typingEl = document.getElementById(typingId);
+  if (typingEl) {
+    typingEl.outerHTML = '<div class="chat-msg"><div class="sender sender-bot">🤖 助手</div><div class="text">' + esc(r.answer || '抱歉，我不太理解') + '</div></div>';
+  }
   box.scrollTop = box.scrollHeight;
 }
 
@@ -1308,8 +1377,9 @@ async function loadStats() {
 
 // ─── Init ───────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  hideLoading();
   if (!TOKEN) { showPage('landing'); updateNav(false); }
-  else checkAuth();
+  else { showLoading(); checkAuth(); setTimeout(hideLoading, 300); }
 });
 <\/script>
 </body>

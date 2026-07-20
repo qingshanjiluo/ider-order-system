@@ -1096,7 +1096,6 @@ function updateNav(loggedIn, isAdmin) {
   document.getElementById('nav-login').classList.toggle('hidden', loggedIn);
   document.getElementById('nav-register').classList.toggle('hidden', loggedIn);
   document.getElementById('nav-dashboard').classList.toggle('hidden', !loggedIn);
-  document.getElementById('nav-logout').classList.toggle('hidden', !loggedIn);
   document.getElementById('nav-invite').classList.toggle('hidden', !loggedIn);
   document.getElementById('nav-settings').classList.toggle('hidden', !loggedIn);
   document.getElementById('nav-after-sales').classList.toggle('hidden', !loggedIn);

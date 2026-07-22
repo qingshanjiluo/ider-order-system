@@ -354,37 +354,6 @@ async function showNewOrderModal() {
       <div>价格: <strong>${priceText}</strong>${discountText}</div>
       <div style="color:var(--text-tertiary);font-size:var(--text-xs);margin-top:4px;">审核通过后自动注册账号并挂机到120级</div>
     `;
-    const method = document.querySelector('input[name="payment-method"]:checked')?.value;
-    if (pts < 10) {
-      el.innerHTML = '<span style="color:var(--text-muted)">请填写积分数量</span>';
-      return;
-    }
-
-    const accounts = Math.ceil(pts / 10);
-    let priceText = '';
-    if (method === 'wechat') {
-      priceText = `¥${(pts / 120).toFixed(2)}`;
-    } else if (method === 'coin') {
-      priceText = `${pts} 修仙币`;
-    } else if (method === 'spirit_stone') {
-      const spiritPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
-      priceText = `${spiritPrice.toLocaleString()} 万灵石`;
-    }
-
-    let discountText = '';
-    const couponInfo = document.getElementById('coupon-info');
-    if (couponInfo?.dataset?.couponType) {
-      if (couponInfo.dataset.couponType === 'percent') {
-        discountText = ` (优惠 ${couponInfo.dataset.discountPercent}%)`;
-      } else {
-        discountText = ` (减免 ¥${couponInfo.dataset.fixedAmount})`;
-      }
-    }
-
-    el.innerHTML = `
-      <div>积分: <strong>${pts}</strong> | 账号数: <strong>${accounts}</strong></div>
-      <div>价格: <strong>${priceText}</strong>${discountText}</div>
-    `;
   }
 
   // 绑定事件

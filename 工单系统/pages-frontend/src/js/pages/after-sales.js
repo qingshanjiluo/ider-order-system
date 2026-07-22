@@ -73,6 +73,10 @@ function showNewAfterSaleModal() {
   body.innerHTML = `
     <form id="new-after-sale-form">
       <div class="form-group">
+        <label class="form-label">售后标题</label>
+        <input type="text" class="form-input" id="as-title" placeholder="简要描述问题（如：订单未到账）" required>
+      </div>
+      <div class="form-group">
         <label class="form-label">订单号</label>
         <input type="text" class="form-input" id="as-order-id" placeholder="输入关联订单号" required>
       </div>
@@ -96,15 +100,16 @@ function showNewAfterSaleModal() {
     body,
     confirmText: '提交',
     onConfirm: async () => {
+      const title = document.getElementById('as-title').value.trim();
       const order_id = document.getElementById('as-order-id').value.trim();
       const type = document.getElementById('as-type').value;
       const content = document.getElementById('as-content').value.trim();
-      if (!order_id || !content) {
+      if (!title || !order_id || !content) {
         toast.error('请填写完整信息');
         return;
       }
       try {
-        await api.createAfterSales({ order_id, type, content });
+        await api.createAfterSales({ order_id, title, type, content });
         toast.success('售后申请已提交');
         modal.close();
         loadAfterSales();

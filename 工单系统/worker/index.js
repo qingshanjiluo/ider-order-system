@@ -771,6 +771,24 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, message: '提现申请已提交，请联系管理员处理' });
   }
 
+  // ── Invite Convert ─────────────────────────────
+  if (path === '/api/invite/convert' && method === 'POST') {
+    const user = await authenticate(request, env);
+    if (!user) return json({ error: '未登录' }, 401);
+    const { points } = body;
+    if (!points || points < 10) return json({ error: '最少转换10积分' }, 400);
+    if ((user.invite_points || 0) < points) return json({ error: '邀请积分不足' }, 400);
+    const coinsToAdd = Math.floor(points / 120);
+    if (coinsToAdd < 1) return json({ error: '积分太少，至少需要120积分' }, 400);
+    await env.DB.prepare(
+      'UPDATE users SET invite_points = invite_points - ?, bonus_points = bonus_points + ? WHERE id = ?'
+    ).bind(points, coinsToAdd, user.id).run();
+    await env.DB.prepare(
+      "INSERT INTO notifications (user_id, title, content, type) VALUES (?, ?, ?, 'convert')"
+    ).bind(user.id, '积分转换成功', '已将 ' + points + ' 邀请积分转换为 ' + coinsToAdd + ' 修仙币（120:1）').run();
+    return json({ ok: true, message: '成功将 ' + points + ' 邀请积分转换为 ' + coinsToAdd + ' 修仙币', converted: coinsToAdd, deducted: points });
+  }
+
   // ── Bot ───────────────────────────────────────────
   if (path === '/api/bot/ask' && method === 'POST') {
     const user = await authenticate(request, env);

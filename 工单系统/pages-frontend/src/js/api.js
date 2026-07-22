@@ -86,6 +86,7 @@ class ApiClient {
   getInvitePackages() { return this.get('/invite/packages'); }
   purchaseInvitePackage(data) { return this.post('/invite/purchase', data); }
   withdrawInvitePoints(points) { return this.post('/invite/withdraw', { points }); }
+  convertInvitePoints(points) { return this.post('/invite/convert', { points }); }
 
   // ── Notifications ─────────────────────
   getNotifications(type) {

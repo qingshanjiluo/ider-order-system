@@ -59,7 +59,10 @@ export async function renderOrderDetail({ container, params }) {
             <h2>工单 #${order.id}</h2>
             <p>${order.order_type || '购买邀请积分'} · ${status.label}</p>
           </div>
-          <a href="#/orders" class="btn btn-secondary">← 返回列表</a>
+          <div class="flex gap-2">
+            ${order.status === 'pending' ? `<button class="btn btn-ghost btn-sm" style="color:var(--accent-red);" id="cancel-order-btn">撤回工单</button>` : ''}
+            <a href="#/orders" class="btn btn-secondary">← 返回列表</a>
+          </div>
         </div>
       </div>
 
@@ -111,6 +114,21 @@ export async function renderOrderDetail({ container, params }) {
 
     // 加载关联账号
     loadOrderAccounts(orderId);
+
+    // 撤回工单
+    const cancelBtn = document.getElementById('cancel-order-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', async () => {
+        if (!confirm('确定要撤回此工单吗？退款将即时到账。')) return;
+        try {
+          await api.cancelOrder(orderId);
+          toast.success('工单已撤回，退款已到账');
+          location.hash = '#/orders';
+        } catch (err) {
+          toast.error(err.message || '撤回失败');
+        }
+      });
+    }
   } catch (err) {
     container.innerHTML = `
       <div class="empty-state">

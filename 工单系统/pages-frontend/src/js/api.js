@@ -69,6 +69,7 @@ class ApiClient {
   getOrder(id) { return this.get(`/orders/${id}`); }
 
   createOrder(data) { return this.post('/orders', data); }
+  cancelOrder(id) { return this.post(`/orders/${id}/cancel`); }
 
   getOrderActivities(id) { return this.get(`/orders/${id}/activities`); }
 

@@ -85,24 +85,41 @@ async function loadOrders(status = '') {
           </thead>
           <tbody>
             ${orders.map(o => `
-              <tr style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">
-                <td class="font-mono text-xs">#${o.id}</td>
-                <td>${o.order_type || '购买邀请积分'}</td>
+              <tr>
+                <td class="font-mono text-xs" style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">#${o.id}</td>
+                <td style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">${o.order_type || '购买邀请积分'}</td>
                 <td><span class="badge ${STATUS_MAP[o.status]?.class || ''}">${STATUS_MAP[o.status]?.label || o.status}</span></td>
                 <td>${o.account_count || o.quantity || 0}</td>
                 <td class="font-semibold">${o.bonus_points || o.amount || 0}</td>
                 <td>${PAYMENT_METHODS[o.payment_method]?.label || o.payment_method || '-'}</td>
                 <td class="font-semibold">${formatPrice(o)}</td>
                 <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
+                <td>${o.status === 'pending' ? `<button class="btn btn-ghost btn-xs" style="color:var(--accent-red);font-size:0.75em;" data-cancel-id="${o.id}">撤回</button>` : ''}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
       </div>`;
-  } catch (err) {
-    el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
+  
+      // 绑定撤回按钮
+      el.querySelectorAll('[data-cancel-id]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const id = btn.dataset.cancelId;
+          if (!confirm('确定要撤回此工单吗？退款将即时到账。')) return;
+          try {
+            await api.cancelOrder(id);
+            toast.success('工单已撤回，退款已到账');
+            loadOrders(status);
+          } catch (err) {
+            toast.error(err.message || '撤回失败');
+          }
+        });
+      });
+    } catch (err) {
+      el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
+    }
   }
-}
 
 function formatPrice(order) {
   const method = PAYMENT_METHODS[order.payment_method];

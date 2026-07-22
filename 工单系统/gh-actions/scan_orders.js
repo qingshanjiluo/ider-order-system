@@ -379,19 +379,99 @@ async function dispatchOrder(order, orderIdx) {
   }
 }
 
+// ── 健康检查 ──
+async function healthCheck() {
+  console.log('[健康检查] 验证 Worker API 可用性...');
+  try {
+    const data = await workerApi('/api/gh/approved-orders');
+    if (data.ok !== undefined) {
+      console.log('[健康检查] ✅ Worker API 正常');
+      return true;
+    }
+    console.log('[健康检查] ⚠️ Worker API 响应异常: ' + JSON.stringify(data).slice(0, 100));
+    return false;
+  } catch (e) {
+    console.error('[健康检查] ❌ Worker API 不可用: ' + e.message);
+    return false;
+  }
+}
+
+// ── 检查订阅类工单是否今日已执行 ──
+function shouldSkipSubscription(order) {
+  const orderType = order.order_type || '';
+  if (!['仙盟采集', '每日试炼'].includes(orderType)) return false;
+
+  // 检查 order 的 updated_at 是否是今天
+  const updatedAt = order.updated_at || '';
+  const today = new Date().toISOString().slice(0, 10);
+  if (updatedAt.includes(today)) {
+    console.log('  ⏭️ 订阅类工单今日已执行，跳过');
+    return true;
+  }
+  return false;
+}
+
+// ── 生成扫描报告 ──
+function generateReport(stats) {
+  const fs = require('fs');
+  const report = {
+    timestamp: new Date().toISOString(),
+    duration_ms: Date.now() - stats.startTime,
+    summary: {
+      total: stats.total,
+      success: stats.success,
+      failed: stats.failed,
+      skipped: stats.skipped,
+      subscription_skipped: stats.subscriptionSkipped,
+      success_rate: stats.total > 0 ? ((stats.success / stats.total) * 100).toFixed(1) + '%' : 'N/A',
+    },
+    details: stats.details,
+  };
+
+  try {
+    fs.writeFileSync('gh-actions/scan_report.json', JSON.stringify(report, null, 2));
+    console.log('\n[报告] 已保存扫描报告到 scan_report.json');
+  } catch (e) {
+    console.log('[报告] 保存失败: ' + e.message);
+  }
+
+  return report;
+}
+
 async function main() {
+  const startTime = Date.now();
   console.log('═══════════════════════════════════════');
-  console.log('  艾德尔工单系统 - 订单扫描器 v3.0');
+  console.log('  艾德尔工单系统 - 订单扫描器 v4.0');
   console.log('  时间: ' + new Date().toISOString());
+  console.log('  模式: ' + (process.env.FORCE_SCAN === 'true' ? '强制扫描' : '常规扫描'));
   console.log('═══════════════════════════════════════');
 
   if (!API_KEY) { console.error('错误: 未设置 API_KEY'); process.exit(1); }
   if (!WORKER_URL) { console.error('错误: 未设置 WORKER_URL'); process.exit(1); }
 
+  // 健康检查
+  const healthy = await healthCheck();
+  if (!healthy) {
+    console.error('\n❌ Worker API 不可用，终止扫描');
+    process.exit(1);
+  }
+
+  // 统计
+  const stats = {
+    startTime,
+    total: 0,
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    subscriptionSkipped: 0,
+    details: [],
+  };
+
   console.log('\n[扫描] 获取已审核通过的工单...');
   const data = await workerApi('/api/gh/approved-orders');
   if (!data.ok || !data.orders || !data.orders.length) {
     console.log('[结果] 没有待处理的工单');
+    generateReport(stats);
     return;
   }
 
@@ -399,25 +479,46 @@ async function main() {
 
   for (let i = 0; i < data.orders.length; i++) {
     const order = data.orders[i];
+    const orderType = order.order_type || '购买邀请积分';
     console.log('──── 工单 #' + order.id + ' [' + (i + 1) + '/' + data.orders.length + '] ────');
-    console.log('  类型: ' + (order.order_type || '购买邀请积分') + ', 邀请码: ' + (order.invite_code || '-'));
+    console.log('  类型: ' + orderType + ', 邀请码: ' + (order.invite_code || '-'));
 
+    // 订阅类工单防重复执行
+    if (shouldSkipSubscription(order)) {
+      stats.subscriptionSkipped++;
+      stats.details.push({ order_id: order.id, type: orderType, result: 'subscription_skipped' });
+      continue;
+    }
+
+    stats.total++;
     const success = await dispatchOrder(order, i);
 
     // 订阅类工单（仙盟采集/每日试炼）不标记为完成，保持 approved 状态以便每日执行
-    const isSubscription = ['仙盟采集', '每日试炼'].includes(order.order_type);
+    const isSubscription = ['仙盟采集', '每日试炼'].includes(orderType);
     if (success && !isSubscription) {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
       console.log('  工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
+      stats.success++;
+      stats.details.push({ order_id: order.id, type: orderType, result: 'completed' });
     } else if (success && isSubscription) {
       console.log('  工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
+      stats.success++;
+      stats.details.push({ order_id: order.id, type: orderType, result: 'subscription_completed' });
     } else {
       console.log('  工单 #' + order.id + ' 处理失败');
+      stats.failed++;
+      stats.details.push({ order_id: order.id, type: orderType, result: 'failed' });
     }
   }
 
+  // 生成报告
+  const report = generateReport(stats);
+
   console.log('\n═══════════════════════════════════════');
-  console.log('  全部完成 ✓');
+  console.log('  扫描完成');
+  console.log('  总计: ' + stats.total + ' | 成功: ' + stats.success + ' | 失败: ' + stats.failed);
+  console.log('  成功率: ' + report.summary.success_rate);
+  console.log('  耗时: ' + ((Date.now() - startTime) / 1000).toFixed(1) + 's');
   console.log('═══════════════════════════════════════');
 }
 

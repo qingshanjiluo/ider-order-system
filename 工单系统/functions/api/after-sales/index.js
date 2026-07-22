@@ -9,7 +9,7 @@ export async function onRequest(context) {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
     const items = await env.DB.prepare(
-      "SELECT a.*, o.invite_code as order_invite_code FROM appeals a LEFT JOIN orders o ON a.order_id = o.id WHERE a.user_id = ? AND a.type IN ('after_sales','appeal') ORDER BY a.created_at DESC"
+      "SELECT a.*, o.invite_code as order_invite_code FROM appeals a LEFT JOIN orders o ON a.order_id = o.id WHERE a.user_id = ? AND a.type = 'after_sales' ORDER BY a.created_at DESC"
     ).bind(user.id).all();
     return json({ ok: true, items: items.results });
   }

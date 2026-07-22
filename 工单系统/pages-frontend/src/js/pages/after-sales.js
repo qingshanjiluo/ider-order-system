@@ -35,7 +35,7 @@ async function loadAfterSales() {
   if (!el) return;
   try {
     const res = await api.getAfterSales();
-    const items = res.after_sales || res || [];
+    const items = res.items || [];
 
     if (!items.length) {
       el.innerHTML = `<div class="empty-state"><p>暂无售后记录</p></div>`;

@@ -9,7 +9,7 @@ export async function onRequest(context) {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
     const appeals = await env.DB.prepare(
-      'SELECT * FROM appeals WHERE user_id = ? ORDER BY created_at DESC'
+      "SELECT * FROM appeals WHERE user_id = ? AND type != 'after_sales' ORDER BY created_at DESC"
     ).bind(user.id).all();
     return json({ ok: true, appeals: appeals.results });
   }

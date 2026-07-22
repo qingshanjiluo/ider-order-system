@@ -75,10 +75,10 @@ export async function renderAbout({ container }) {
         <div style="padding:0 var(--space-4) var(--space-4);">
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-3);">
             ${[
-              { key: 'bot_enabled', label: 'AI 客服', icon: '🤖' },
-              { key: 'free_trial_enabled', label: '免费试用', icon: '🎁', extra: freeTrialBalance !== null ? `余额: ${freeTrialBalance} 修仙币` : null },
-              { key: 'ai_enabled', label: 'AI 智能回复', icon: '🧠' },
-              { key: 'withdraw_enabled', label: '积分提现', icon: '💰' },
+              { key: 'bot_enabled', label: 'AI 客服', icon: '[AI]' },
+              { key: 'free_trial_enabled', label: '免费试用', icon: '[赠]', extra: freeTrialBalance !== null ? `余额: ${freeTrialBalance} 修仙币` : null },
+              { key: 'ai_enabled', label: 'AI 智能回复', icon: '[智]' },
+              { key: 'withdraw_enabled', label: '积分提现', icon: '[币]' },
             ].map(f => {
               const enabled = config[f.key] !== '0';
               return `
@@ -87,7 +87,7 @@ export async function renderAbout({ container }) {
                   <div>
                     <div class="text-sm font-semibold">${f.label}</div>
                     <div class="text-xs" style="color:${enabled ? 'var(--accent-green)' : 'var(--text-muted)'};">
-                      ${enabled ? '✅ 已开启' : '⬜ 已关闭'}
+                      ${enabled ? '[√] 已开启' : '[×] 已关闭'}
                     </div>
                     ${f.extra && enabled ? `<div class="text-xs" style="color:var(--accent-amber);margin-top:2px;">${f.extra}</div>` : ''}
                   </div>

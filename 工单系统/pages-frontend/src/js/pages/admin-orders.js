@@ -23,7 +23,7 @@ function formatAdminPrice(order) {
   // 免费试用抵扣
   const freeTrialUsed = order.free_trial_used || 0;
   if (freeTrialUsed > 0) {
-    display += ` 🎁试用-${freeTrialUsed}`;
+    display += ` [赠]试用-${freeTrialUsed}`;
   }
   return display;
 }

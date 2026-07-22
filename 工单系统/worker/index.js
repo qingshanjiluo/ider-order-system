@@ -1,12 +1,12 @@
 /**
- * ⚠️ 本 Worker 已废弃，请使用 Pages Functions (functions/) 替代
+ * [!] 本 Worker 已废弃，请使用 Pages Functions (functions/) 替代
  *
  * 此文件保留仅用于兼容旧部署，所有新路由应在 functions/api/ 下创建
  * 请参考 wrangler.pages.toml 使用 Pages 方式部署
  *
  * 待迁移路线图:
- * - functions/api/auth/forgot-password.js   ✅ 已创建 (使用 D1 存储)
- * - functions/api/auth/reset-password.js    ✅ 已创建 (使用 D1 存储)
+ * - functions/api/auth/forgot-password.js   [√] 已创建 (使用 D1 存储)
+ * - functions/api/auth/reset-password.js    [√] 已创建 (使用 D1 存储)
  * - worker/static.js → pages-frontend/      进行中
  */
 
@@ -273,7 +273,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // 🚀 重定向到 Pages 新前端（瑞典极简风格）
+    // [>>] 重定向到 Pages 新前端（瑞典极简风格）
     // 保留 API 路径在 Worker 中作为备选
     const PAGES_URL = 'https://ider-order-system.pages.dev';
 
@@ -315,7 +315,7 @@ function getContentType(path) {
 
 async function handleRoute(method, path, request, env, url) {
   // ╔════════════════════════════════════════════════════╗
-  // ║  ⚠️ 废弃通知 — 此 Worker 路由已全部被迁移          ║
+  // ║  [!] 废弃通知 — 此 Worker 路由已全部被迁移          ║
   // ║  请使用 Pages Functions: functions/api/**/*.js    ║
   // ║  旧路径                    →  新路径                ║
   // ║  api/auth/register         →  api/auth/register    ║
@@ -1185,7 +1185,7 @@ async function handleRoute(method, path, request, env, url) {
   }
 
   // ── User Settings ────────────────────────────────────
-  // ⚠️ [已废弃] 请使用 functions/api/user/change-password.js
+  // [!] [已废弃] 请使用 functions/api/user/change-password.js
   // 旧版 worker 路径已同步 verifyPassword，但仍建议切换到 Pages Functions
   if (path === '/api/user/change-password' && method === 'POST') {
     const user = await authenticate(request, env);
@@ -1658,7 +1658,7 @@ async function handleRoute(method, path, request, env, url) {
   }
 
   // ── Admin: Full User Management ────────────────
-  // ⚠️ [已废弃] admin reset-password — 请使用 functions/api/admin/users/[id]/reset-password.js
+  // [!] [已废弃] admin reset-password — 请使用 functions/api/admin/users/[id]/reset-password.js
   if (path.match(/^\/api\/admin\/users\/(\d+)\/reset-password$/) && method === 'POST') {
     const admin = await authenticate(request, env);
     if (!admin || !admin.is_admin) return json({ error: '无权限' }, 403);
@@ -1792,7 +1792,7 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, config: cfg, announcement: ann || null, ads: adsData });
   }
 
-  // ⚠️ [已废弃] 密码重置相关路由已迁移到 functions/api/auth/
+  // [!] [已废弃] 密码重置相关路由已迁移到 functions/api/auth/
   // 请使用 Pages Functions 路径：/api/auth/forgot-password 和 /api/auth/reset-password
   // 旧版使用 globalThis.__resetTokens (in-memory Map) 存在 Worker 冷启动丢失问题
 
@@ -1887,13 +1887,13 @@ async function getBotAnswer(question, env, user) {
 
   if (q.includes('订单') || q.includes('工单') || q.includes('状态') || q.includes('审核')) {
     if (!orderInfo.results.length) return '您还没有提交过工单哦~\n前往控制台提交工单即可开始。';
-    let reply = '📋 您的工单状态：\n';
+    let reply = '[单] 您的工单状态：\n';
     for (const o of orderInfo.results) {
-      const statusMap = { pending: '⏳ 审核中', approved: '✅ 已通过', rejected: '❌ 已拒绝', completed: '🎉 已完成' };
+      const statusMap = { pending: '[..] 审核中', approved: '[√] 已通过', rejected: '[×] 已拒绝', completed: '[完] 已完成' };
       const estMap = { pending: '等待审核', approved: '处理中', rejected: '已拒绝', completed: '已完成' };
       reply += `  #${o.id} ${statusMap[o.status] || o.status} (${estMap[o.status] || ''})\n`;
     }
-    return reply + '\n💡 发送 "订单 #编号" 查看详情';
+    return reply + '\n[提示] 发送 "订单 #编号" 查看详情';
   }
 
   if (/订单\s*#?\d+/.test(q)) {
@@ -1903,7 +1903,7 @@ async function getBotAnswer(question, env, user) {
         'SELECT * FROM orders WHERE id = ? AND user_id = ?'
       ).bind(match[1], user.id).first();
       if (detail) {
-        return `📦 工单 #${detail.id}\n邀请码: ${detail.invite_code}\n金额: ¥${detail.price}\n支付: ${detail.payment_method === 'wechat' ? '微信' : '灵石'}\n状态: ${detail.status}\n优惠: ${detail.discount}%\n预计完成: ${detail.est_complete_date || '审核中'}\n创建: ${detail.created_at}`;
+        return `[工] 工单 #${detail.id}\n邀请码: ${detail.invite_code}\n金额: ¥${detail.price}\n支付: ${detail.payment_method === 'wechat' ? '微信' : '灵石'}\n状态: ${detail.status}\n优惠: ${detail.discount}%\n预计完成: ${detail.est_complete_date || '审核中'}\n创建: ${detail.created_at}`;
       }
       return '未找到该工单';
     }
@@ -1914,24 +1914,24 @@ async function getBotAnswer(question, env, user) {
     if (orderInfo.results.length > 0) {
       const pendingCount = orderInfo.results.filter(o => o.status === 'pending' || o.status === 'approved').length;
       if (pendingCount > 0) {
-        return `⏱ 预计 ${estDays} 天内完成处理。\n您有 ${pendingCount} 个进行中的工单，审核通过后自动进入处理流程。`;
+        return `[时] 预计 ${estDays} 天内完成处理。\n您有 ${pendingCount} 个进行中的工单，审核通过后自动进入处理流程。`;
       }
     }
-    return `⏱ 工单审核通过后，预计 ${estDays} 天内完成账号注册和升级。如果超过时间请联系管理员。`;
+    return `[时] 工单审核通过后，预计 ${estDays} 天内完成账号注册和升级。如果超过时间请联系管理员。`;
   }
 
   if (q.includes('价格') || q.includes('多少钱') || q.includes('积分') || q.includes('收费')) {
-    let reply = '💰 价格说明：\n';
+    let reply = '[币] 价格说明：\n';
     reply += '▸ 微信支付：1元 = 120邀请积分\n';
     reply += '▸ 灵石支付：100万灵石 = 10邀请积分\n';
     reply += '▸ 等级折扣：最高Lv.10 享70%优惠\n';
     reply += '▸ 优惠码可叠加使用\n';
-    reply += '\n💡 等级越高越优惠，快去完成工单提升等级吧！';
+    reply += '\n[提示] 等级越高越优惠，快去完成工单提升等级吧！';
     return reply;
   }
 
   if (q.includes('优惠') || q.includes('折扣') || q.includes('等级') || q.includes('会员')) {
-    return '📊 用户等级权益：\n' +
+    return '[榜] 用户等级权益：\n' +
       'Lv.1 基础价格\n' +
       'Lv.2 解锁邀请系统\n' +
       'Lv.3 享10%优惠\n' +
@@ -1947,7 +1947,7 @@ async function getBotAnswer(question, env, user) {
   }
 
   if (q.includes('邀请') || q.includes('分成') || q.includes('佣金') || q.includes('推广')) {
-    return '🤝 邀请系统：\n' +
+    return '[邀] 邀请系统：\n' +
       '▸ 在邀请页面生成你的专属邀请码\n' +
       '▸ 分享给好友注册时填写\n' +
       '▸ 好友订单审核通过后，你获得订单金额30%邀请积分\n' +
@@ -1976,7 +1976,7 @@ async function getBotAnswer(question, env, user) {
 
   if (q.includes('你好') || q.includes('嗨') || q.includes('在吗') || q.includes('hello')) {
     let name = user.username || '道友';
-    return `你好 ${name}！我是艾德尔工单助手 🤖\n` +
+    return `你好 ${name}！我是艾德尔工单助手 [AI]\n` +
       '你可以问我：\n' +
       '▸ "我的订单状态" - 查看工单\n' +
       '▸ "价格说明" - 了解收费\n' +
@@ -1988,7 +1988,7 @@ async function getBotAnswer(question, env, user) {
   }
 
   if (q.includes('帮助') || q.includes('功能') || q.includes('能做什么')) {
-    return '🤖 我可以回答这些问题：\n' +
+    return '[AI] 我可以回答这些问题：\n' +
       '1. 查看工单状态\n' +
       '2. 查询价格和积分\n' +
       '3. 了解等级折扣\n' +
@@ -2001,7 +2001,7 @@ async function getBotAnswer(question, env, user) {
 
   const orderCount = orderInfo.results.length;
   const pendingOrders = orderInfo.results.filter(o => o.status === 'pending').length;
-  return '抱歉，不太理解您的问题 🤔\n\n' +
+  return '抱歉，不太理解您的问题 [..]\n\n' +
     `您有 ${orderCount} 个工单，其中 ${pendingOrders} 个待审核。\n\n` +
     '试试问：\n- "我的订单状态"\n- "价格说明"\n- "优惠折扣"\n- "邀请分成"\n- "预计多久到账"';
 }

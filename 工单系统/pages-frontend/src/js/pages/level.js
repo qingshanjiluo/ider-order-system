@@ -85,7 +85,7 @@ export async function renderLevel({ container }) {
               <div style="width:${progressPercent}%;height:100%;background:linear-gradient(90deg,var(--accent-blue),var(--accent-purple,#9333ea));border-radius:6px;transition:width 0.5s;"></div>
             </div>
           </div>` : `
-          <div class="text-sm" style="color:var(--accent-green);font-weight:600;">🎉 已达最高境界！</div>`}
+          <div class="text-sm" style="color:var(--accent-green);font-weight:600;">[达] 已达最高境界！</div>`}
         </div>
       </div>
 
@@ -131,19 +131,19 @@ export async function renderLevel({ container }) {
         <div style="padding:0 var(--space-4) var(--space-4);">
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:var(--space-3);">
             <div style="padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-md);">
-              <div class="font-semibold" style="color:var(--accent-blue);">🏷️ 称号</div>
+              <div class="font-semibold" style="color:var(--accent-blue);">[称] 称号</div>
               <div class="text-sm text-muted mt-1">每个等级拥有独特称号</div>
             </div>
             <div style="padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-md);">
-              <div class="font-semibold" style="color:var(--accent-green);">📊 排行榜</div>
+              <div class="font-semibold" style="color:var(--accent-green);">[榜] 排行榜</div>
               <div class="text-sm text-muted mt-1">等级越高排名越靠前</div>
             </div>
             <div style="padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-md);">
-              <div class="font-semibold" style="color:var(--accent-amber);">💰 返利倍率</div>
+              <div class="font-semibold" style="color:var(--accent-amber);">[币] 返利倍率</div>
               <div class="text-sm text-muted mt-1">高等级用户享受更高返利</div>
             </div>
             <div style="padding:var(--space-3);border:1px solid var(--border-light);border-radius:var(--radius-md);">
-              <div class="font-semibold" style="color:var(--accent-purple,#9333ea);">🔓 专属功能</div>
+              <div class="font-semibold" style="color:var(--accent-purple,#9333ea);">[锁] 专属功能</div>
               <div class="text-sm text-muted mt-1">解锁更多平台功能</div>
             </div>
           </div>

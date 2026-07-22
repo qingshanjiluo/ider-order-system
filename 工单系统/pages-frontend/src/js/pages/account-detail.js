@@ -70,7 +70,7 @@ export async function renderAccountDetail({ container, params }) {
           <span class="text-muted">服务器</span><span>${account.server_username || '-'}</span>
           <span class="text-muted">境界</span><span>${account.realm || '-'}</span>
           <span class="text-muted">地图</span><span>${account.map_name || '-'}</span>
-          <span class="text-muted">挂机状态</span><span>${account.is_online ? '🟢 在线' : '⚫ 离线'}</span>
+          <span class="text-muted">挂机状态</span><span>${account.is_online ? '[●] 在线' : '[○] 离线'}</span>
           <span class="text-muted">健康状态</span><span>${account.health_status || 'ok'}</span>
           <span class="text-muted">创建时间</span><span>${account.created_at ? new Date(account.created_at).toLocaleString('zh-CN') : '-'}</span>
         </div>

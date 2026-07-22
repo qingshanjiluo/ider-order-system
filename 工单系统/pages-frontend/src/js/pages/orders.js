@@ -154,10 +154,10 @@ async function showNewOrderModal() {
       <div class="form-group">
         <label class="form-label">工单类型 <span style="color:var(--accent-red)">*</span></label>
         <select class="form-select" id="order-type">
-        <option value="购买邀请积分">💰 购买邀请积分（自动注册+挂机到120级）</option>
-        <option value="仙盟采集">🏯 仙盟采集（1修仙币/月）</option>
-        <option value="试炼测试">⚔️ 试炼测试（0.5修仙币/次）</option>
-        <option value="每日试炼">🗡️ 每日试炼（2修仙币/月）</option>
+        <option value="购买邀请积分">[币] 购买邀请积分（自动注册+挂机到120级）</option>
+        <option value="仙盟采集">[盟] 仙盟采集（1修仙币/月）</option>
+        <option value="试炼测试">[战] 试炼测试（0.5修仙币/次）</option>
+        <option value="每日试炼">[剑] 每日试炼（2修仙币/月）</option>
       </select>
         <div id="order-type-desc" style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;"></div>
       </div>
@@ -175,7 +175,7 @@ async function showNewOrderModal() {
             <input type="radio" name="payment-method" value="coin" style="display:none;">
             <div style="font-size:var(--text-lg);font-weight:600;">B</div>
             <div style="font-size:var(--text-xs);color:var(--text-secondary);">修仙币 (余: ${userBalance})</div>
-            ${freeTrialBalance > 0 ? `<div style="font-size:var(--text-xs);color:var(--accent-green);margin-top:2px;">🎁 试用: ${freeTrialBalance}</div>` : ''}
+            ${freeTrialBalance > 0 ? `<div style="font-size:var(--text-xs);color:var(--accent-green);margin-top:2px;">[赠] 试用: ${freeTrialBalance}</div>` : ''}
           </label>
           <label class="radio-card" style="flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:var(--radius-md);cursor:pointer;text-align:center;transition:all 0.2s;">
             <input type="radio" name="payment-method" value="spirit_stone" style="display:none;">
@@ -338,7 +338,7 @@ async function showNewOrderModal() {
         const trialDeduct = Math.min(freeTrialBalance, fixedPrice);
         const realCost = fixedPrice - trialDeduct;
         if (trialDeduct > 0) {
-          trialInfo = `<div style="color:var(--accent-green);font-size:var(--text-xs);margin-top:4px;">🎁 免费试用抵扣 ${trialDeduct} 修仙币${realCost > 0 ? `，实际扣 ${realCost} 修仙币` : '，免费！'}</div>`;
+          trialInfo = `<div style="color:var(--accent-green);font-size:var(--text-xs);margin-top:4px;">[赠] 免费试用抵扣 ${trialDeduct} 修仙币${realCost > 0 ? `，实际扣 ${realCost} 修仙币` : '，免费！'}</div>`;
         }
       }
       el.innerHTML = `
@@ -416,7 +416,7 @@ async function showNewOrderModal() {
       const trialDeduct = Math.min(freeTrialBalance, Math.round(finalPrice));
       if (trialDeduct > 0) {
         const realCost = Math.round(finalPrice) - trialDeduct;
-        trialInfo = `<div style="color:var(--accent-green);font-size:var(--text-xs);margin-top:4px;">🎁 免费试用抵扣 ${trialDeduct} 修仙币${realCost > 0 ? `，实际扣 ${realCost} 修仙币` : '，免费！'}</div>`;
+        trialInfo = `<div style="color:var(--accent-green);font-size:var(--text-xs);margin-top:4px;">[赠] 免费试用抵扣 ${trialDeduct} 修仙币${realCost > 0 ? `，实际扣 ${realCost} 修仙币` : '，免费！'}</div>`;
       }
     }
     

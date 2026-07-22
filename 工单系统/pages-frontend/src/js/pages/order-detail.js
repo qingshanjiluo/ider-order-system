@@ -52,7 +52,7 @@ export async function renderOrderDetail({ container, params }) {
         <div class="flex justify-between items-center">
           <div>
             <h2>工单 #${order.id}</h2>
-            <p>${order.order_type || '代练'} · ${status.label}</p>
+            <p>${order.order_type || '购买邀请积分'} · ${status.label}</p>
           </div>
           <a href="#/orders" class="btn btn-secondary">← 返回列表</a>
         </div>

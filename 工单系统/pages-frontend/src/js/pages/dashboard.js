@@ -158,7 +158,7 @@ async function loadRecentOrders() {
             ${orders.map(o => `
               <tr style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">
                 <td class="font-mono text-xs">#${o.id}</td>
-                <td>${o.order_type || '代练'}</td>
+                <td>${o.order_type || '购买邀请积分'}</td>
                 <td><span class="badge badge-${o.status}">${statusMap[o.status] || o.status}</span></td>
                 <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
               </tr>

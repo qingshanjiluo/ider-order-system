@@ -25,7 +25,7 @@ export async function renderOrders({ container, query }) {
       <div class="flex justify-between items-center">
         <div>
           <h2>我的工单</h2>
-          <p>管理你的代练工单</p>
+          <p>管理你的服务工单</p>
         </div>
         <button class="btn btn-primary" id="new-order-btn">+ 新建工单</button>
       </div>
@@ -87,7 +87,7 @@ async function loadOrders(status = '') {
             ${orders.map(o => `
               <tr style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">
                 <td class="font-mono text-xs">#${o.id}</td>
-                <td>${o.order_type || '代练'}</td>
+                <td>${o.order_type || '购买邀请积分'}</td>
                 <td><span class="badge ${STATUS_MAP[o.status]?.class || ''}">${STATUS_MAP[o.status]?.label || o.status}</span></td>
                 <td>${o.account_count || o.quantity || 0}</td>
                 <td class="font-semibold">${o.bonus_points || o.amount || 0}</td>
@@ -123,11 +123,9 @@ async function showNewOrderModal() {
 
   // 工单类型配置
   const ORDER_TYPES = {
-    '代练': { label: '代练', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
-    '代打': { label: '代打', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
-    '托管': { label: '托管', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
+    '购买邀请积分': { label: '购买邀请积分', priceUnit: 'auto', needsInvite: true, needsAccount: false, fixedPrice: null, desc: '自动注册账号并挂机到120级（需填写邀请码）' },
     '仙盟采集': { label: '仙盟采集', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动领取仙盟并开启采集（1修仙币/月）' },
-    '试炼测试': { label: '试炼测试', priceUnit: '修仙币', needsInvite: false, needsAccount: false, needsAccountName: true, fixedPrice: 0.5, fixedMethod: 'coin', desc: '测试并记录最佳配置（0.5修仙币/次）' },
+    '试炼测试': { label: '试炼测试', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 0.5, fixedMethod: 'coin', desc: '测试并记录最佳试炼配置（0.5修仙币/次）' },
     '每日试炼': { label: '每日试炼', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 2, fixedMethod: 'coin', desc: '每日自动完成试炼挑战（2修仙币/月）' },
   };
 
@@ -137,17 +135,15 @@ async function showNewOrderModal() {
       <div class="form-group">
         <label class="form-label">工单类型 <span style="color:var(--accent-red)">*</span></label>
         <select class="form-select" id="order-type">
-          <option value="代练">代练</option>
-          <option value="代打">代打</option>
-          <option value="托管">托管</option>
-          <option value="仙盟采集">🏯 仙盟采集（1修仙币/月）</option>
-          <option value="试炼测试">⚔️ 试炼测试（0.5修仙币/次）</option>
-          <option value="每日试炼">🗡️ 每日试炼（2修仙币/月）</option>
-        </select>
+        <option value="购买邀请积分">💰 购买邀请积分（自动注册+挂机到120级）</option>
+        <option value="仙盟采集">🏯 仙盟采集（1修仙币/月）</option>
+        <option value="试炼测试">⚔️ 试炼测试（0.5修仙币/次）</option>
+        <option value="每日试炼">🗡️ 每日试炼（2修仙币/月）</option>
+      </select>
         <div id="order-type-desc" style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;"></div>
       </div>
 
-      <!-- 付款方式（代练/代打/托管时显示） -->
+      <!-- 付款方式（购买邀请积分时显示） -->
       <div class="form-group" id="payment-method-group-wrap">
         <label class="form-label">付款方式 <span style="color:var(--accent-red)">*</span></label>
         <div class="radio-group" id="payment-method-group" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -169,20 +165,20 @@ async function showNewOrderModal() {
         </div>
       </div>
 
-      <!-- 邀请码 + 积分（代练/代打/托管时显示） -->
+      <!-- 购买邀请积分：邀请码 + 积分数量 -->
       <div id="invite-fields-wrap">
         <div class="form-group">
           <label class="form-label">邀请码 <span style="color:var(--accent-red)">*</span></label>
           <input type="text" class="form-input" id="order-invite-code" placeholder="输入邀请码">
         </div>
         <div class="form-group">
-          <label class="form-label">邀请积分数量 <span style="color:var(--accent-red)">*</span></label>
-          <input type="number" class="form-input" id="order-points" value="10" min="10" step="10">
+          <label class="form-label">购买积分数量 <span style="color:var(--accent-red)">*</span></label>
+          <input type="number" class="form-input" id="order-points" value="100" min="10" step="10">
           <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;">每10积分 = 1个120级账号，必须是10的倍数</div>
         </div>
       </div>
 
-      <!-- 游戏账号信息（仙盟采集/每日试炼时显示） -->
+      <!-- 游戏账号信息（仙盟采集/试炼测试/每日试炼时显示） -->
       <div id="game-account-fields-wrap" style="display:none;">
         <div class="form-group">
           <label class="form-label">游戏账号名 <span style="color:var(--accent-red)">*</span></label>
@@ -191,14 +187,6 @@ async function showNewOrderModal() {
         <div class="form-group">
           <label class="form-label">游戏账号密码 <span style="color:var(--accent-red)">*</span></label>
           <input type="password" class="form-input" id="order-game-password" placeholder="输入游戏账号密码">
-        </div>
-      </div>
-
-      <!-- 仅账号名（试炼测试时显示） -->
-      <div id="account-name-only-wrap" style="display:none;">
-        <div class="form-group">
-          <label class="form-label">游戏账号名 <span style="color:var(--accent-red)">*</span></label>
-          <input type="text" class="form-input" id="order-game-account-name" placeholder="输入已注册的游戏账号名">
         </div>
       </div>
 
@@ -230,15 +218,13 @@ async function showNewOrderModal() {
     const paymentWrap = document.getElementById('payment-method-group-wrap');
     const inviteWrap = document.getElementById('invite-fields-wrap');
     const gameAccWrap = document.getElementById('game-account-fields-wrap');
-    const accNameWrap = document.getElementById('account-name-only-wrap');
 
     descEl.textContent = cfg.desc || '';
     paymentWrap.style.display = cfg.needsInvite ? '' : 'none';
     inviteWrap.style.display = cfg.needsInvite ? '' : 'none';
     gameAccWrap.style.display = cfg.needsAccount ? '' : 'none';
-    accNameWrap.style.display = cfg.needsAccountName ? '' : 'none';
 
-    // 自动设置付款方式和价格
+    // 自动设置付款方式
     if (cfg.fixedMethod) {
       const radio = body.querySelector(`input[name="payment-method"][value="${cfg.fixedMethod}"]`);
       if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
@@ -259,7 +245,7 @@ async function showNewOrderModal() {
       let payment_method, invite_code, points, game_account_name, game_account_password;
 
       if (cfg.needsInvite) {
-        // 代练/代打/托管
+        // 购买邀请积分：用户选择付款方式和数量
         payment_method = document.querySelector('input[name="payment-method"]:checked')?.value;
         invite_code = document.getElementById('order-invite-code').value.trim();
         points = parseInt(document.getElementById('order-points').value) || 0;
@@ -267,14 +253,14 @@ async function showNewOrderModal() {
         if (!invite_code) { toast.error('请输入邀请码'); return; }
         if (points < 10 || points % 10 !== 0) { toast.error('积分数量必须是10的倍数'); return; }
       } else {
-        // 新工单类型：固定修仙币支付
+        // 仙盟采集/试炼测试/每日试炼：固定修仙币支付
         payment_method = cfg.fixedMethod || 'coin';
         invite_code = '';
         points = Math.round((cfg.fixedPrice || 0) * 100); // 转为整数存储
-        game_account_name = (document.getElementById('order-game-account') || document.getElementById('order-game-account-name'))?.value?.trim() || '';
+        game_account_name = document.getElementById('order-game-account')?.value?.trim() || '';
         game_account_password = document.getElementById('order-game-password')?.value?.trim() || '';
         if (!game_account_name) { toast.error('请输入游戏账号名'); return; }
-        if (cfg.needsAccount && !game_account_password) { toast.error('请输入游戏账号密码'); return; }
+        if (!game_account_password) { toast.error('请输入游戏账号密码'); return; }
       }
 
       try {
@@ -322,8 +308,8 @@ async function showNewOrderModal() {
     const orderType = document.getElementById('order-type').value;
     const cfg = ORDER_TYPES[orderType] || {};
 
-    // 新工单类型：固定价格预览
-    if (!cfg.needsInvite) {
+    // 固定价格预览（仙盟采集/试炼测试/每日试炼）
+    if (cfg.fixedPrice !== null && cfg.fixedPrice !== undefined) {
       const fixedPrice = cfg.fixedPrice || 0;
       const desc = cfg.desc || '';
       el.innerHTML = `
@@ -334,8 +320,40 @@ async function showNewOrderModal() {
       return;
     }
 
-    // 代练/代打/托管：积分制预览
+    // 购买邀请积分：积分制预览
     const pts = parseInt(document.getElementById('order-points')?.value) || 0;
+    const method = document.querySelector('input[name="payment-method"]:checked')?.value;
+    if (pts < 10) {
+      el.innerHTML = '<span style="color:var(--text-muted)">请填写积分数量</span>';
+      return;
+    }
+
+    const accounts = Math.ceil(pts / 10);
+    let priceText = '';
+    if (method === 'wechat') {
+      priceText = `¥${(pts / 120).toFixed(2)}`;
+    } else if (method === 'coin') {
+      priceText = `${pts} 修仙币`;
+    } else if (method === 'spirit_stone') {
+      const spiritPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
+      priceText = `${spiritPrice.toLocaleString()} 万灵石`;
+    }
+
+    let discountText = '';
+    const couponInfo = document.getElementById('coupon-info');
+    if (couponInfo?.dataset?.couponType) {
+      if (couponInfo.dataset.couponType === 'percent') {
+        discountText = ` (优惠 ${couponInfo.dataset.discountPercent}%)`;
+      } else {
+        discountText = ` (减免 ¥${couponInfo.dataset.fixedAmount})`;
+      }
+    }
+
+    el.innerHTML = `
+      <div>积分: <strong>${pts}</strong> | 账号数: <strong>${accounts}</strong></div>
+      <div>价格: <strong>${priceText}</strong>${discountText}</div>
+      <div style="color:var(--text-tertiary);font-size:var(--text-xs);margin-top:4px;">审核通过后自动注册账号并挂机到120级</div>
+    `;
     const method = document.querySelector('input[name="payment-method"]:checked')?.value;
     if (pts < 10) {
       el.innerHTML = '<span style="color:var(--text-muted)">请填写积分数量</span>';

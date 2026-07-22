@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS orders (
   coupon_code TEXT DEFAULT '',
   discount REAL DEFAULT 0,
   bonus_points INTEGER DEFAULT 0,
-  order_type TEXT DEFAULT '代练',
+  order_type TEXT DEFAULT '购买邀请积分',
   quantity INTEGER DEFAULT 1,
   status TEXT DEFAULT 'pending',
   bind_account_name TEXT DEFAULT '',

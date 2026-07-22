@@ -49,22 +49,24 @@ export async function onRequest(context) {
     if (game_account_name && game_account_name.length > 100) return json({ error: '账号名最多100字符' }, 400);
     if (game_account_password && game_account_password.length > 200) return json({ error: '密码最多200字符' }, 400);
 
-    // ── 0.1 新工单类型特殊验证 ──
-    const NEW_ORDER_TYPES = ['仙盟采集', '试炼测试', '每日试炼'];
-    if (NEW_ORDER_TYPES.includes(order_type)) {
+    // ── 0.1 工单类型特殊验证 ──
+    const GAME_ORDER_TYPES = ['仙盟采集', '试炼测试', '每日试炼'];
+    const BUY_POINTS_TYPE = '购买邀请积分';
+    if (GAME_ORDER_TYPES.includes(order_type)) {
+      // 游戏工单类型：需要账号+密码
       if (!game_account_name) return json({ error: '请输入游戏账号名' }, 400);
-      if ((order_type === '仙盟采集' || order_type === '每日试炼') && !game_account_password) {
-        return json({ error: '请输入游戏账号密码' }, 400);
+      if (!game_account_password) return json({ error: '请输入游戏账号密码' }, 400);
+    }
+    if (order_type === BUY_POINTS_TYPE) {
+      // 购买邀请积分：需要邀请码+积分数量
+      if (!invite_code) return json({ error: '请输入邀请码' }, 400);
+      if (!points || points < 10 || points % 10 !== 0) {
+        return json({ error: '积分数量必须是10的倍数（最少10）' }, 400);
       }
     }
 
     // ── 1. 验证积分数量 ──
-    // 新工单类型使用固定价格（points 由前端计算），跳过积分倍数验证
-    if (!NEW_ORDER_TYPES.includes(order_type)) {
-      if (!points || points < 10 || points % 10 !== 0) {
-        return json({ error: '邀请积分数量必须是10的倍数（最少10）' }, 400);
-      }
-    }
+    // 购买邀请积分在上面已验证，游戏工单类型使用固定价格跳过
 
     // ── 2. 验证付款方式 ──
     const validMethods = ['coin', 'wechat', 'spirit_stone'];
@@ -165,10 +167,10 @@ export async function onRequest(context) {
     const finalInviteCode = invite_code || user.invite_code || '';
     // payment_account: 微信支付需要用户提供账号，其他方式用默认值
     const paymentAccountLabel = payment_method === 'wechat' ? '微信' : payment_method === 'coin' ? '修仙币' : '灵石';
-    // 新工单类型：计算订阅时间
+    // 游戏工单类型：计算订阅时间
     let subscriptionStart = '';
     let subscriptionEnd = '';
-    if (NEW_ORDER_TYPES.includes(order_type)) {
+    if (GAME_ORDER_TYPES.includes(order_type)) {
       subscriptionStart = new Date().toISOString();
       if (order_type === '仙盟采集' || order_type === '每日试炼') {
         // 月度订阅：30天
@@ -189,7 +191,7 @@ export async function onRequest(context) {
       coupon_code || '',
       discount,
       bonusPoints,      // bonus_points: 获得的积分
-      order_type || '代练',
+      order_type || '仙盟采集',
       accCount,         // quantity: 账号数
       frozenPoints,     // frozen_points: 冻结的修仙币
       finalInviteCode,  // invite_code_used

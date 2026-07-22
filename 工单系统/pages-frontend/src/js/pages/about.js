@@ -95,7 +95,7 @@ export async function renderAbout({ container }) {
           <h3>关于</h3>
         </div>
         <div style="padding:0 var(--space-4) var(--space-4);font-size:var(--text-sm);line-height:1.8;">
-          <p>艾德尔修仙工单平台是一个基于修仙主题的游戏代练工单管理系统。</p>
+          <p>艾德尔修仙工单平台是一个基于修仙主题的游戏自动化服务平台。</p>
           <p>支持工单提交、挂机账号管理、邀请返利、修仙坊市、积分兑换等功能。</p>
           <p class="text-muted mt-2">© 2026 艾德尔修仙工单平台 · Powered by Cloudflare</p>
         </div>

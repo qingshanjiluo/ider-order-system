@@ -272,17 +272,19 @@ async function processAllianceDaily(order, orderIdx) {
 // ── 试炼测试处理 ──
 async function processTrialTest(order, orderIdx) {
   const username = order.game_account_name;
-  if (!username) {
-    console.log('  ❌ 缺少游戏账号名');
+  const password = order.game_account_password;
+  if (!username || !password) {
+    console.log('  ❌ 缺少游戏账号信息');
     return false;
   }
 
   setApiIdx(orderIdx * 20);
   try {
-    // 试炼测试需要通过 Worker API 触发
+    // 试炼测试：使用账号密码登录后触发
     const result = await workerApi('/api/gh/process-trial-test', 'POST', {
       order_id: order.id,
       game_account_name: username,
+      game_account_password: password,
     });
     if (result.ok) {
       console.log('  ✅ 试炼测试已触发');
@@ -346,31 +348,33 @@ async function processDailyTrial(order, orderIdx) {
 
 // ── 工单类型分发 ──
 async function dispatchOrder(order, orderIdx) {
-  const orderType = order.order_type || '代练';
+  const orderType = order.order_type || '购买邀请积分';
 
   switch (orderType) {
+    case '购买邀请积分':
+      // 注册新账号并挂机到120级
+      {
+        const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
+        const maxAccounts = Math.min(accountsToCreate, 10);
+        console.log('  类型: 购买邀请积分, 需创建账号: ' + maxAccounts + ' 个');
+
+        for (let a = 0; a < maxAccounts; a++) {
+          await antiDetect.randomDelay(5000);
+          const r = await registerAndSetup(order, orderIdx * 10 + a);
+          console.log('  结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
+          await antiDetect.smartPause(a, 3, 30);
+        }
+        return true;
+      }
     case '仙盟采集':
       return processAllianceDaily(order, orderIdx);
     case '试炼测试':
       return processTrialTest(order, orderIdx);
     case '每日试炼':
       return processDailyTrial(order, orderIdx);
-    case '代练':
-    case '代打':
-    case '托管':
     default: {
-      // 原有逻辑：注册新账号
-      const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 120)) : 1);
-      const maxAccounts = Math.min(accountsToCreate, 10);
-      console.log('  类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
-
-      for (let a = 0; a < maxAccounts; a++) {
-        await antiDetect.randomDelay(5000);
-        const r = await registerAndSetup(order, orderIdx * 10 + a);
-        console.log('  结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
-        await antiDetect.smartPause(a, 3, 30);
-      }
-      return true;
+      console.log('  ⚠️ 未知工单类型: ' + orderType + '，跳过');
+      return false;
     }
   }
 }
@@ -396,7 +400,7 @@ async function main() {
   for (let i = 0; i < data.orders.length; i++) {
     const order = data.orders[i];
     console.log('──── 工单 #' + order.id + ' [' + (i + 1) + '/' + data.orders.length + '] ────');
-    console.log('  类型: ' + (order.order_type || '代练') + ', 邀请码: ' + (order.invite_code || '-'));
+    console.log('  类型: ' + (order.order_type || '购买邀请积分') + ', 邀请码: ' + (order.invite_code || '-'));
 
     const success = await dispatchOrder(order, i);
 

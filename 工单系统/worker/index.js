@@ -571,7 +571,7 @@ async function handleRoute(method, path, request, env, url) {
       coupon_code || '',
       discount,
       bonusPoints,
-      order_type || '代练',
+      order_type || '购买邀请积分',
       accCount,
       frozenPoints,
       finalInviteCode,

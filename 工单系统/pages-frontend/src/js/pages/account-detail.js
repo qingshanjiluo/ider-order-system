@@ -47,7 +47,7 @@ export async function renderAccountDetail({ container, params }) {
         </div>
         <div class="stat-card">
           <div class="stat-label">更新时间</div>
-          <div class="stat-value text-sm">${new Date(account.updated_at).toLocaleString('zh-CN')}</div>
+          <div class="stat-value text-sm">${account.updated_at ? new Date(account.updated_at).toLocaleString('zh-CN') : '-'}</div>
         </div>
       </div>
 

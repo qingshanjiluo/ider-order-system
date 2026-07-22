@@ -46,7 +46,7 @@ export async function renderAccounts({ container }) {
                   <td><span class="badge ${st.class}">${st.label}</span></td>
                   <td>Lv.${a.level || '-'}</td>
                   <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
-                  <td class="text-sm text-muted">${new Date(a.updated_at).toLocaleDateString('zh-CN')}</td>
+                  <td class="text-sm text-muted">${a.updated_at ? new Date(a.updated_at).toLocaleDateString('zh-CN') : '-'}</td>
                   <td>
                     <button class="btn btn-ghost btn-sm" onclick="location.hash='#/accounts/${a.id}'">详情</button>
                   </td>

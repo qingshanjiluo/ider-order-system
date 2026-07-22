@@ -140,7 +140,7 @@ async function loadOrderAccounts(orderId) {
                 <td class="font-mono text-xs">${a.game_username || a.username || a.id}</td>
                 <td><span class="badge badge-${a.status === 'completed' ? 'completed' : a.status === 'farming' ? 'approved' : 'pending'}">${a.status || '未知'}</span></td>
                 <td>Lv.${a.level || '-'}</td>
-                <td class="text-sm text-muted">${new Date(a.updated_at).toLocaleDateString('zh-CN')}</td>
+                <td class="text-sm text-muted">${a.updated_at ? new Date(a.updated_at).toLocaleDateString('zh-CN') : '-'}</td>
               </tr>
             `).join('')}
           </tbody>

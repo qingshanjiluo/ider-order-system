@@ -24,6 +24,10 @@ const NAV_ITEMS = [
     { id: 'help', label: '帮助文档', icon: 'question', hash: '#/help' },
     { id: 'contact', label: '联系站长', icon: 'mail', hash: '#/contact' },
   ]},
+  { section: '关于', items: [
+    { id: 'changelog', label: '更新日志', icon: 'star', hash: '#/changelog' },
+    { id: 'about', label: '站点信息', icon: 'diamondOutline', hash: '#/about' },
+  ]},
 ];
 
 export function getAdminItems() {

@@ -45,6 +45,8 @@ import { renderAdminAiConfig } from './pages/admin-ai-config.js';
 import { renderAdminMarketOrders } from './pages/admin-market-orders.js';
 import { renderAdminWithdrawals } from './pages/admin-withdrawals.js';
 import { renderLevel } from './pages/level.js';
+import { renderChangelog } from './pages/changelog.js';
+import { renderAbout } from './pages/about.js';
 
 // ── 全局 DOM ──────────────────────────
 const appEl = document.getElementById('app');
@@ -98,7 +100,7 @@ function renderFullPage(renderFn, opts = {}) {
 }
 
 // ── 路由守卫 ──────────────────────────
-const PUBLIC_ROUTES = ['/', '/landing', '/login', '/register', '/forgot-password', '/help', '/contact'];
+const PUBLIC_ROUTES = ['/', '/landing', '/login', '/register', '/forgot-password', '/help', '/contact', '/changelog', '/about'];
 
 router.beforeEach = (path, params) => {
   const isPublic = PUBLIC_ROUTES.includes(path);
@@ -141,6 +143,8 @@ router.register('/settings', (ctx) => renderLayout('/settings', renderSettings))
 router.register('/level', (ctx) => renderLayout('/level', renderLevel));
 router.register('/appeals', (ctx) => renderLayout('/appeals', renderAppeals));
 router.register('/after-sales', (ctx) => renderLayout('/after-sales', renderAfterSales));
+router.register('/changelog', (ctx) => renderFullPage(renderChangelog));
+router.register('/about', (ctx) => renderFullPage(renderAbout));
 
 // Admin pages
 router.register('/admin/stats', (ctx) => renderLayout('/admin/stats', renderAdminStats));

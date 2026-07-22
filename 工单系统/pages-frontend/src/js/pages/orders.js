@@ -329,29 +329,60 @@ async function showNewOrderModal() {
     }
 
     const accounts = Math.ceil(pts / 10);
+    let originalPrice = 0;
+    let priceUnit = '';
     let priceText = '';
+    
     if (method === 'wechat') {
-      priceText = `¥${(pts / 120).toFixed(2)}`;
+      originalPrice = pts / 120;
+      priceUnit = '元';
+      priceText = `¥${originalPrice.toFixed(2)}`;
     } else if (method === 'coin') {
+      originalPrice = pts;
+      priceUnit = '修仙币';
       priceText = `${pts} 修仙币`;
     } else if (method === 'spirit_stone') {
-      const spiritPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
-      priceText = `${spiritPrice.toLocaleString()} 万灵石`;
+      originalPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
+      priceUnit = '万灵石';
+      priceText = `${originalPrice.toLocaleString()} 万灵石`;
     }
 
-    let discountText = '';
+    // 计算优惠后的价格
     const couponInfo = document.getElementById('coupon-info');
+    let finalPrice = originalPrice;
+    let discountText = '';
+    let hasDiscount = false;
+    
     if (couponInfo?.dataset?.couponType) {
+      hasDiscount = true;
       if (couponInfo.dataset.couponType === 'percent') {
-        discountText = ` (优惠 ${couponInfo.dataset.discountPercent}%)`;
+        const pct = parseFloat(couponInfo.dataset.discountPercent) || 0;
+        finalPrice = originalPrice * (1 - pct / 100);
+        discountText = `(优惠 ${pct}%)`;
       } else {
-        discountText = ` (减免 ¥${couponInfo.dataset.fixedAmount})`;
+        const fixedAmt = parseFloat(couponInfo.dataset.fixedAmount) || 0;
+        finalPrice = Math.max(0, originalPrice - fixedAmt);
+        discountText = `(减免 ${fixedAmt} ${priceUnit})`;
       }
+    }
+
+    // 构建价格显示
+    let priceDisplay = `<strong>${priceText}</strong>`;
+    if (hasDiscount) {
+      let finalText = '';
+      if (method === 'wechat') {
+        finalText = `¥${finalPrice.toFixed(2)}`;
+      } else if (method === 'coin') {
+        finalText = `${Math.round(finalPrice)} 修仙币`;
+      } else if (method === 'spirit_stone') {
+        finalText = `${Math.round(finalPrice).toLocaleString()} 万灵石`;
+      }
+      priceDisplay = `<s style="color:var(--text-muted)">${priceText}</s> <strong style="color:var(--accent-green)">${finalText}</strong> ${discountText}`;
     }
 
     el.innerHTML = `
       <div>积分: <strong>${pts}</strong> | 账号数: <strong>${accounts}</strong></div>
-      <div>价格: <strong>${priceText}</strong>${discountText}</div>
+      <div>价格: ${priceDisplay}</div>
       <div style="color:var(--text-tertiary);font-size:var(--text-xs);margin-top:4px;">审核通过后自动注册账号并挂机到120级</div>
     `;
   }

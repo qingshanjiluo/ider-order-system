@@ -20,6 +20,11 @@ function formatAdminPrice(order) {
   if (discount > 0) {
     display += ` (优惠${discount}%)`;
   }
+  // 免费试用抵扣
+  const freeTrialUsed = order.free_trial_used || 0;
+  if (freeTrialUsed > 0) {
+    display += ` 🎁试用-${freeTrialUsed}`;
+  }
   return display;
 }
 

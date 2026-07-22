@@ -6,6 +6,8 @@ export async function renderChangelog({ container }) {
       version: 'v3.2',
       date: '2026-07-22',
       changes: [
+        { type: 'feat', text: '新用户注册赠送10修仙币免费试用额度，可抵扣工单费用' },
+        { type: 'feat', text: '管理后台可配置免费试用开关和额度' },
         { type: 'fix', text: '修复账号详情页状态/等级/订单号显示 undefined 的问题' },
         { type: 'feat', text: '新增提现审核系统：管理员可审核/拒绝提现申请，拒绝自动退还积分' },
         { type: 'feat', text: '新增系统配置「积分提现」开关，管理员可控制提现功能是否可见' },

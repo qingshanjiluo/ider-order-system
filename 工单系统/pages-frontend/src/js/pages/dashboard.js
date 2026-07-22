@@ -54,6 +54,11 @@ export async function renderDashboard({ container }) {
           <div class="stat-change">坊市流通货币 · 可充值获取</div>
         </div>
         <div class="stat-card">
+          <div class="stat-label">🎁 免费试用</div>
+          <div class="stat-value" style="color:var(--accent-green)">${user?.free_trial_balance || 0}</div>
+          <div class="stat-change">可用于抵扣工单费用</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-label">邀请分</div>
           <div class="stat-value" style="color:var(--accent-green)">${(user?.invite_points || 0).toFixed(1)}</div>
           <div class="stat-change">邀请返利所得</div>

@@ -22,7 +22,7 @@ export async function renderAdminUsers({ container }) {
       <div class="table-wrap" id="users-table">
         <table>
           <thead>
-            <tr><th>ID</th><th>用户名</th><th>等级</th><th>角色</th><th>修仙分</th><th>状态</th><th>注册时间</th><th>操作</th></tr>
+            <tr><th>ID</th><th>用户名</th><th>等级</th><th>角色</th><th>修仙分</th><th>试用额度</th><th>状态</th><th>注册时间</th><th>操作</th></tr>
           </thead>
           <tbody id="users-tbody">
             ${users.map(u => renderUserRow(u)).join('')}
@@ -59,6 +59,7 @@ function renderUserRow(u) {
       <td>Lv.${u.level || 1}</td>
       <td>${roleLabel}</td>
       <td class="font-semibold" style="color:var(--accent-amber)">${u.bonus_points || 0}</td>
+      <td class="font-semibold" style="color:var(--accent-green)">${u.free_trial_balance || 0}</td>
       <td>${statusLabel}</td>
       <td class="text-sm text-muted">${new Date(u.created_at).toLocaleDateString('zh-CN')}</td>
       <td>

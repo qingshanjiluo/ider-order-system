@@ -39,10 +39,13 @@ export async function onRequest(context) {
       'game_account_password TEXT DEFAULT ""',
       'subscription_start TEXT DEFAULT ""',
       'subscription_end TEXT DEFAULT ""',
+      'free_trial_used INTEGER DEFAULT 0',
     ];
     for (const col of ADD_COLUMNS) {
       try { await env.DB.prepare(`ALTER TABLE orders ADD COLUMN ${col}`).run(); } catch (e) { /* 列已存在 */ }
     }
+    // 动态迁移：确保 users 表包含免费试用余额列
+    try { await env.DB.prepare('ALTER TABLE users ADD COLUMN free_trial_balance INTEGER DEFAULT 10').run(); } catch (e) { /* 列已存在 */ }
 
     const body = await request.json().catch(() => ({}));
     const {
@@ -152,20 +155,41 @@ export async function onRequest(context) {
       discount = maxDiscount;
     }
 
-    // ── 7. 修仙币支付：验证余额并冻结（使用优惠后的价格） ──
+    // ── 7. 修仙币支付：免费试用 + 余额验证并冻结 ──
     let frozenPoints = 0;
+    let freeTrialUsed = 0;
     if (payment_method === 'coin') {
-      const userInfo = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(user.id).first();
+      // 查询免费试用开关和余额
+      const freeTrialCfg = await env.DB.prepare("SELECT value FROM config WHERE key='free_trial_enabled'").first();
+      const freeTrialEnabled = freeTrialCfg?.value === '1';
+      
+      const userInfo = await env.DB.prepare('SELECT bonus_points, free_trial_balance FROM users WHERE id = ?').bind(user.id).first();
       const currentBalance = userInfo?.bonus_points || 0;
-      if (currentBalance < finalPrice) {
+      const trialBalance = freeTrialEnabled ? (userInfo?.free_trial_balance || 0) : 0;
+      
+      // 优先使用免费试用额度，不足部分从真实余额扣
+      freeTrialUsed = Math.min(trialBalance, finalPrice);
+      const realBalanceNeeded = finalPrice - freeTrialUsed;
+      
+      if (currentBalance < realBalanceNeeded) {
+        const totalAvailable = currentBalance + trialBalance;
         return json({
-          error: `修仙币余额不足，当前余额: ${currentBalance}，需要: ${Math.round(finalPrice)}（优惠后）`
+          error: `余额不足，当前余额: ${currentBalance}修仙币${trialBalance > 0 ? ` + 试用额度: ${trialBalance}修仙币` : ''}，需要: ${Math.round(finalPrice)}修仙币（优惠后）`
         }, 400);
       }
-      // 冻结积分：从余额中扣除优惠后的价格
-      await env.DB.prepare(
-        'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
-      ).bind(finalPrice, user.id).run();
+      
+      // 扣减免费试用额度
+      if (freeTrialUsed > 0) {
+        await env.DB.prepare(
+          'UPDATE users SET free_trial_balance = free_trial_balance - ? WHERE id = ?'
+        ).bind(freeTrialUsed, user.id).run();
+      }
+      // 扣减真实余额
+      if (realBalanceNeeded > 0) {
+        await env.DB.prepare(
+          'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
+        ).bind(realBalanceNeeded, user.id).run();
+      }
       frozenPoints = finalPrice;
     }
 
@@ -192,8 +216,8 @@ export async function onRequest(context) {
     }
 
     const result = await env.DB.prepare(
-      `INSERT INTO orders (user_id, invite_code, payment_method, payment_account, amount, price, coupon_code, discount, bonus_points, order_type, quantity, frozen_points, invite_code_used, status, created_at, est_complete_date, game_account_name, game_account_password, subscription_start, subscription_end)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), ?, ?, ?, ?, ?)`
+      `INSERT INTO orders (user_id, invite_code, payment_method, payment_account, amount, price, coupon_code, discount, bonus_points, order_type, quantity, frozen_points, invite_code_used, status, created_at, est_complete_date, game_account_name, game_account_password, subscription_start, subscription_end, free_trial_used)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), ?, ?, ?, ?, ?, ?)`
     ).bind(
       user.id,
       finalInviteCode,
@@ -212,7 +236,8 @@ export async function onRequest(context) {
       game_account_name || '',
       game_account_password || '',
       subscriptionStart,
-      subscriptionEnd
+      subscriptionEnd,
+      freeTrialUsed     // free_trial_used: 使用的免费试用额度
     ).run();
 
     const orderId = result.meta.last_row_id;
@@ -224,12 +249,13 @@ export async function onRequest(context) {
 
     // ── 12. 记录活动日志 ──
     const paymentLabel = payment_method === 'coin' ? '修仙币' : payment_method === 'wechat' ? '现金' : '灵石';
-    await logActivity(env, orderId, user.id, 'created', 
-      `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分`);
+    const trialLog = freeTrialUsed > 0 ? `, 免费试用抵扣${freeTrialUsed}` : '';
+    await logActivity(env, orderId, user.id, 'created',
+      `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分${trialLog}`);
 
-    return json({ 
-      ok: true, 
-      message: '工单已提交，等待审核', 
+    return json({
+      ok: true,
+      message: '工单已提交，等待审核',
       order_id: orderId,
       price_info: {
         points,
@@ -237,7 +263,8 @@ export async function onRequest(context) {
         price: finalPrice,
         unit: priceUnit,
         accounts: accCount,
-        frozen_points: frozenPoints
+        frozen_points: frozenPoints,
+        free_trial_used: freeTrialUsed
       }
     });
   }

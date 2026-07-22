@@ -6,12 +6,12 @@
 import { json } from '../../_utils.js';
 import { authenticateAdmin } from '../../_auth.js';
 
-// 辅助函数：将 price 按支付方式转换为人民币
+// 辅助函数：将 price 按支付方式转换为人民币（扣除免费试用部分）
 // SQLite CASE 表达式模板（需与 spirit_stone_per_10_points 配置配合）
 const REVENUE_TO_RMB = `
   CASE
     WHEN payment_method = 'wechat' THEN price
-    WHEN payment_method = 'coin' THEN price / 120.0
+    WHEN payment_method = 'coin' THEN (price - COALESCE(free_trial_used, 0)) / 120.0
     WHEN payment_method = 'spirit_stone' THEN price * 120.0 * 10000.0 / (
       SELECT CAST(value AS REAL) FROM config WHERE key = 'spirit_stone_per_10_points' LIMIT 1
     )

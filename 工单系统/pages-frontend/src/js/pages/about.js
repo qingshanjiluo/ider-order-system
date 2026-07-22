@@ -13,6 +13,13 @@ export async function renderAbout({ container }) {
 
     const config = configRes.config || {};
     const rawStats = statsRes.stats || statsRes || {};
+    
+    // 获取用户免费试用余额（需登录）
+    let freeTrialBalance = null;
+    try {
+      const info = await api.getUserInfo();
+      freeTrialBalance = info.user?.free_trial_balance || 0;
+    } catch (e) { /* 未登录 */ }
 
     container.innerHTML = `
       <div class="page-header">
@@ -69,7 +76,7 @@ export async function renderAbout({ container }) {
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-3);">
             ${[
               { key: 'bot_enabled', label: 'AI 客服', icon: '🤖' },
-              { key: 'free_trial_enabled', label: '免费试用', icon: '🎁' },
+              { key: 'free_trial_enabled', label: '免费试用', icon: '🎁', extra: freeTrialBalance !== null ? `余额: ${freeTrialBalance} 修仙币` : null },
               { key: 'ai_enabled', label: 'AI 智能回复', icon: '🧠' },
               { key: 'withdraw_enabled', label: '积分提现', icon: '💰' },
             ].map(f => {
@@ -82,6 +89,7 @@ export async function renderAbout({ container }) {
                     <div class="text-xs" style="color:${enabled ? 'var(--accent-green)' : 'var(--text-muted)'};">
                       ${enabled ? '✅ 已开启' : '⬜ 已关闭'}
                     </div>
+                    ${f.extra && enabled ? `<div class="text-xs" style="color:var(--accent-amber);margin-top:2px;">${f.extra}</div>` : ''}
                   </div>
                 </div>`;
             }).join('')}

@@ -114,11 +114,13 @@ function formatPrice(order) {
 }
 
 async function showNewOrderModal() {
-  // 获取用户信息（余额）
+  // 获取用户信息（余额 + 免费试用额度）
   let userBalance = 0;
+  let freeTrialBalance = 0;
   try {
     const info = await api.getUserInfo();
     userBalance = info.user?.bonus_points || info.bonus_points || 0;
+    freeTrialBalance = info.user?.free_trial_balance || 0;
   } catch (e) { /* ignore */ }
 
   // 工单类型配置
@@ -156,6 +158,7 @@ async function showNewOrderModal() {
             <input type="radio" name="payment-method" value="coin" style="display:none;">
             <div style="font-size:var(--text-lg);font-weight:600;">B</div>
             <div style="font-size:var(--text-xs);color:var(--text-secondary);">修仙币 (余: ${userBalance})</div>
+            ${freeTrialBalance > 0 ? `<div style="font-size:var(--text-xs);color:var(--accent-green);margin-top:2px;">🎁 试用: ${freeTrialBalance}</div>` : ''}
           </label>
           <label class="radio-card" style="flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:var(--radius-md);cursor:pointer;text-align:center;transition:all 0.2s;">
             <input type="radio" name="payment-method" value="spirit_stone" style="display:none;">
@@ -312,9 +315,19 @@ async function showNewOrderModal() {
     if (cfg.fixedPrice !== null && cfg.fixedPrice !== undefined) {
       const fixedPrice = cfg.fixedPrice || 0;
       const desc = cfg.desc || '';
+      // 免费试用抵扣预览
+      let trialInfo = '';
+      if (freeTrialBalance > 0 && cfg.fixedMethod === 'coin') {
+        const trialDeduct = Math.min(freeTrialBalance, fixedPrice);
+        const realCost = fixedPrice - trialDeduct;
+        if (trialDeduct > 0) {
+          trialInfo = `<div style="color:var(--accent-green);font-size:var(--text-xs);margin-top:4px;">🎁 免费试用抵扣 ${trialDeduct} 修仙币${realCost > 0 ? `，实际扣 ${realCost} 修仙币` : '，免费！'}</div>`;
+        }
+      }
       el.innerHTML = `
         <div>类型: <strong>${cfg.label}</strong></div>
         <div>价格: <strong>${fixedPrice} 修仙币</strong>${cfg.needsAccount ? '（月付）' : '（单次）'}</div>
+        ${trialInfo}
         ${desc ? `<div style="color:var(--text-tertiary);font-size:var(--text-xs);margin-top:4px;">${desc}</div>` : ''}
       `;
       return;
@@ -380,9 +393,20 @@ async function showNewOrderModal() {
       priceDisplay = `<s style="color:var(--text-muted)">${priceText}</s> <strong style="color:var(--accent-green)">${finalText}</strong> ${discountText}`;
     }
 
+    // 免费试用抵扣预览（仅修仙币支付）
+    let trialInfo = '';
+    if (method === 'coin' && freeTrialBalance > 0) {
+      const trialDeduct = Math.min(freeTrialBalance, Math.round(finalPrice));
+      if (trialDeduct > 0) {
+        const realCost = Math.round(finalPrice) - trialDeduct;
+        trialInfo = `<div style="color:var(--accent-green);font-size:var(--text-xs);margin-top:4px;">🎁 免费试用抵扣 ${trialDeduct} 修仙币${realCost > 0 ? `，实际扣 ${realCost} 修仙币` : '，免费！'}</div>`;
+      }
+    }
+    
     el.innerHTML = `
       <div>积分: <strong>${pts}</strong> | 账号数: <strong>${accounts}</strong></div>
       <div>价格: ${priceDisplay}</div>
+      ${trialInfo}
       <div style="color:var(--text-tertiary);font-size:var(--text-xs);margin-top:4px;">审核通过后自动注册账号并挂机到120级</div>
     `;
   }

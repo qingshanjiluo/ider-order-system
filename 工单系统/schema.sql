@@ -57,6 +57,12 @@ CREATE TABLE IF NOT EXISTS orders (
   updated_at TEXT DEFAULT (datetime('now')),
   completed_at TEXT,
   est_complete_date TEXT,
+  frozen_points INTEGER DEFAULT 0,
+  invite_code_used TEXT DEFAULT '',
+  game_account_name TEXT DEFAULT '',
+  game_account_password TEXT DEFAULT '',
+  subscription_start TEXT DEFAULT '',
+  subscription_end TEXT DEFAULT '',
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -195,6 +201,7 @@ CREATE TABLE IF NOT EXISTS redeem_log (
   user_id INTEGER NOT NULL,
   code TEXT NOT NULL,
   xp INTEGER NOT NULL DEFAULT 0,
+  coins INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );

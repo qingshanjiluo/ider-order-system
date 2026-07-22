@@ -31,6 +31,19 @@ export async function onRequest(context) {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
 
+    // 动态迁移：确保 orders 表包含所有需要的列（兼容旧数据库）
+    const ADD_COLUMNS = [
+      'frozen_points INTEGER DEFAULT 0',
+      'invite_code_used TEXT DEFAULT ""',
+      'game_account_name TEXT DEFAULT ""',
+      'game_account_password TEXT DEFAULT ""',
+      'subscription_start TEXT DEFAULT ""',
+      'subscription_end TEXT DEFAULT ""',
+    ];
+    for (const col of ADD_COLUMNS) {
+      try { await env.DB.prepare(`ALTER TABLE orders ADD COLUMN ${col}`).run(); } catch (e) { /* 列已存在 */ }
+    }
+
     const body = await request.json().catch(() => ({}));
     const {
       order_type,

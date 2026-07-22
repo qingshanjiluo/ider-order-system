@@ -25,12 +25,16 @@ export async function onRequest(context) {
     if (rc) {
       // 修仙币兑换码处理 — 支持多次使用，但一个账号只能用一次
       
-      // 确保 redeem_log 表存在（用于追踪每个用户的兑换记录）
+      // 确保 redeem_log 表存在且包含 coins 列（用于追踪每个用户的兑换记录）
       try {
         await env.DB.prepare(
           "CREATE TABLE IF NOT EXISTS redeem_log (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, code TEXT NOT NULL, xp INTEGER DEFAULT 0, coins INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))"
         ).run();
       } catch (e) { /* 表已存在 */ }
+      // 兼容旧表：如果 redeem_log 已存在但缺少 coins 列，动态添加
+      try {
+        await env.DB.prepare("ALTER TABLE redeem_log ADD COLUMN coins INTEGER DEFAULT 0").run();
+      } catch (e) { /* 列已存在 */ }
       
       // 检查当前用户是否已使用过此兑换码
       const alreadyUsed = await env.DB.prepare(

@@ -33,10 +33,21 @@ export async function onRequest(context) {
 
   // ── approved: 审核通过 ──────────────────────────────
   if (status === 'approved') {
-    // 更新用户统计（total_spent 使用 bonus_points 统一单位）
+    // 更新用户统计 — total_spent 使用人民币单位
+    // wechat: price 已是人民币 | coin: price/120 转人民币 | spirit_stone: 按配置比例转换
+    let spentRMB = 0;
+    if (order.payment_method === 'wechat') {
+      spentRMB = order.price || 0;
+    } else if (order.payment_method === 'coin') {
+      spentRMB = (order.price || 0) / 120;
+    } else if (order.payment_method === 'spirit_stone') {
+      const spiritCfg = await env.DB.prepare("SELECT value FROM config WHERE key='spirit_stone_per_10_points'").first();
+      const spiritPer10 = parseFloat(spiritCfg?.value || '1000000');
+      spentRMB = (order.price || 0) * 120 * 10000 / spiritPer10;
+    }
     await env.DB.prepare(
       'UPDATE users SET total_orders = total_orders + 1, total_spent = total_spent + ? WHERE id = ?'
-    ).bind(order.bonus_points, order.user_id).run();
+    ).bind(spentRMB, order.user_id).run();
 
     // 处理邀请套餐订单
     const isPackage = order.invite_code && order.invite_code.startsWith('PKG:');

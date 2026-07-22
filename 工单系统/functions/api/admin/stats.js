@@ -68,9 +68,9 @@ export async function onRequest(context) {
       "SELECT id, username, display_name, total_spent, total_orders, level FROM users WHERE total_spent > 0 ORDER BY total_spent DESC LIMIT 5"
     ).all();
 
-    // Recent 7-day order trend（营收统一转换为人民币）
+    // Recent 7-day order trend（营收统一转换为人民币，排除rejected）
     const dailyTrend = await env.DB.prepare(
-      `SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(${REVENUE_TO_RMB}), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') GROUP BY date(created_at) ORDER BY day`
+      `SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(${REVENUE_TO_RMB}), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') AND status IN ('approved','completed','active') GROUP BY date(created_at) ORDER BY day`
     ).all();
 
     return json({

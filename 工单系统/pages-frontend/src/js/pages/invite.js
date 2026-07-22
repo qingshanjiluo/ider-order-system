@@ -9,10 +9,14 @@ export async function renderInvite({ container }) {
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const [info, packages] = await Promise.all([
+    const [info, packages, cfgRes] = await Promise.all([
       api.getInviteInfo(),
       api.getInvitePackages(),
+      api.getConfig(),
     ]);
+
+    const config = cfgRes.config || {};
+    const withdrawEnabled = config.withdraw_enabled !== '0'; // 默认开启
 
     const user = store.getUser();
     const inviteCode = info.invite_code || user?.invite_code || '';
@@ -129,6 +133,7 @@ export async function renderInvite({ container }) {
       </div>
 
       <!-- 提现 -->
+      ${withdrawEnabled ? `
       <div class="card">
         <div class="card-header">
           <h3>积分提现</h3>
@@ -138,7 +143,13 @@ export async function renderInvite({ container }) {
           <button class="btn btn-primary btn-sm" id="withdraw-btn">提现</button>
         </div>
         <p class="text-sm text-muted mt-2">120积分 = 1元（微信）/ 100万灵石 = 10积分</p>
-      </div>`;
+      </div>` : `
+      <div class="card">
+        <div class="card-header">
+          <h3>积分提现</h3>
+        </div>
+        <p class="text-sm text-muted" style="padding:var(--space-4);">提现功能暂未开放，请联系管理员</p>
+      </div>`}`;
 
     // 复制邀请码
     document.getElementById('copy-invite').addEventListener('click', () => {
@@ -157,20 +168,23 @@ export async function renderInvite({ container }) {
     });
 
     // 提现
-    document.getElementById('withdraw-btn').addEventListener('click', async () => {
-      const points = parseInt(document.getElementById('withdraw-points').value);
-      if (!points || points <= 0) {
-        toast.error('请输入有效积分数量');
-        return;
-      }
-      try {
-        await api.withdrawInvitePoints(points);
-        toast.success('提现申请已提交');
-        document.getElementById('withdraw-points').value = '';
-      } catch (err) {
-        toast.error(err.message || '提现失败');
-      }
-    });
+    const withdrawBtn = document.getElementById('withdraw-btn');
+    if (withdrawBtn) {
+      withdrawBtn.addEventListener('click', async () => {
+        const points = parseInt(document.getElementById('withdraw-points').value);
+        if (!points || points <= 0) {
+          toast.error('请输入有效积分数量');
+          return;
+        }
+        try {
+          await api.withdrawInvitePoints(points);
+          toast.success('提现申请已提交，等待管理员审核');
+          document.getElementById('withdraw-points').value = '';
+        } catch (err) {
+          toast.error(err.message || '提现失败');
+        }
+      });
+    }
   } catch (err) {
     container.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }

@@ -8,6 +8,7 @@ const NAV_ITEMS = [
     { id: 'dashboard', label: '控制台', icon: 'diamond', hash: '#/dashboard' },
     { id: 'orders', label: '我的工单', icon: 'diamondSolid', hash: '#/orders' },
     { id: 'accounts', label: '我的账号', icon: 'diamondOutline', hash: '#/accounts' },
+    { id: 'level', label: '修仙等级', icon: 'triangleUp', hash: '#/level' },
   ]},
   { section: '社交', items: [
     { id: 'invite', label: '邀请返利', icon: 'star', hash: '#/invite' },
@@ -43,6 +44,7 @@ export function getAdminItems() {
       { id: 'admin-market-orders', label: '黑市订单', icon: 'diamondOutline', hash: '#/admin/market-orders' },
       { id: 'admin-recharge', label: '充值审核', icon: 'diamondSolid', hash: '#/admin/recharge' },
       { id: 'admin-recharge-codes', label: '兑换码管理', icon: 'star', hash: '#/admin/recharge-codes' },
+      { id: 'admin-withdrawals', label: '提现审核', icon: 'diamondSolid', hash: '#/admin/withdrawals' },
       { id: 'admin-ai-config', label: 'AI 设置', icon: 'robot', hash: '#/admin/ai-config' },
       { id: 'admin-announcements', label: '公告管理', icon: 'triangleUp', hash: '#/admin/announcements' },
       { id: 'admin-ads', label: '广告管理', icon: 'arrowRight', hash: '#/admin/ads' },

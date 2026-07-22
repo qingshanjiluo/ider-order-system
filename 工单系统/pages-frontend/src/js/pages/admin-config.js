@@ -45,6 +45,7 @@ export async function renderAdminConfig({ container }) {
           { key: 'bot_enabled', label: '客服机器人', type: 'toggle' },
           { key: 'free_trial_enabled', label: '免费试用', type: 'toggle' },
           { key: 'ai_enabled', label: 'AI 智能回复', type: 'toggle' },
+          { key: 'withdraw_enabled', label: '积分提现', type: 'toggle' },
         ]
       },
     ];

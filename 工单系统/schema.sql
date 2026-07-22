@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS game_accounts (
   status TEXT DEFAULT 'pending',
   error_msg TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (order_id) REFERENCES orders(id)
+  FOREIGN KEY (order_id) REFERENCES orders(id),
+  updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS coupons (
@@ -256,6 +257,21 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 
 -- 迁移 v4.0: 旧管理员 is_admin=1 自动升级为 admin 角色
 UPDATE users SET role = 'admin' WHERE is_admin = 1 AND role = 'user';
+
+-- v10: 提现审核
+CREATE TABLE IF NOT EXISTS withdrawals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  points REAL NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+  admin_reply TEXT DEFAULT '',
+  processed_by INTEGER DEFAULT 0,
+  processed_at TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status);
 
 -- Seed admin user (最中幻想 / Pipi20100817)
 INSERT OR IGNORE INTO users (username, password_hash, display_name, invite_code, is_admin, role, level, xp, created_at)

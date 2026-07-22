@@ -246,6 +246,15 @@ class ApiClient {
   adminGetAiConfig() { return this.get('/admin/ai-config'); }
   adminSetAiConfig(data) { return this.post('/admin/ai-config', data); }
   adminTestAiConnection() { return this.post('/admin/ai-test', {}); }
+
+  // ── Admin: Withdrawals ───────────────────
+  adminGetWithdrawals(status) {
+    const q = status ? `?status=${status}` : '';
+    return this.get(`/admin/withdrawals${q}`);
+  }
+  adminProcessWithdrawal(id, action, reply) {
+    return this.post('/admin/withdrawals', { id, action, reply });
+  }
 }
 
 class ApiError extends Error {

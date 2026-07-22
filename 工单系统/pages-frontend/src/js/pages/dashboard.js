@@ -9,11 +9,13 @@ export async function renderDashboard({ container }) {
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const [stats, config] = await Promise.all([
+    const [rawStats, config] = await Promise.all([
       api.getStats(),
       api.getConfig(),
     ]);
     store.set('config', config);
+    // API 返回 { ok: true, stats: { ... } }，解包内层 stats
+    const stats = rawStats.stats || rawStats;
 
     const user = store.getUser();
     const levelTitle = user?.level_title || '';
@@ -33,7 +35,7 @@ export async function renderDashboard({ container }) {
         </div>
         <div class="stat-card">
           <div class="stat-label">进行中</div>
-          <div class="stat-value" style="color:var(--accent-amber)">${stats.active_orders || stats.approved_orders || 0}</div>
+          <div class="stat-value" style="color:var(--accent-amber)">${stats.approved_orders || 0}</div>
           <div class="stat-change">正在挂机</div>
         </div>
         <div class="stat-card">

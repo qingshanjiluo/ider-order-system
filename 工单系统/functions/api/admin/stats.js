@@ -10,6 +10,7 @@ export async function onRequest(context) {
     if (error) return json({ error }, 403);
 
     const [totalUsers, totalOrders, approvedOrders, completedOrders, rejectedOrders, pendingOrders,
+           activeOrders,
            totalAccounts, onlineAccounts, completedAccounts, errorAccounts,
            totalRevenue, todayOrders, todayRevenue, weeklyOrders] = await Promise.all([
       env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first(),
@@ -18,13 +19,14 @@ export async function onRequest(context) {
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='rejected'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='pending'").first(),
+      env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='active'").first(),
       env.DB.prepare('SELECT COUNT(*) as cnt FROM game_accounts').first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('farming','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('error','failed')").first(),
-      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed')").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-1 day')").first(),
-      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed')").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-7 days')").first(),
     ]);
 
@@ -62,6 +64,7 @@ export async function onRequest(context) {
         completed_orders: completedOrders.cnt,
         rejected_orders: rejectedOrders.cnt,
         pending_orders: pendingOrders.cnt,
+        active_orders: activeOrders.cnt,
         total_accounts: totalAccounts.cnt,
         online_accounts: onlineAccounts.cnt,
         completed_accounts: completedAccounts.cnt,

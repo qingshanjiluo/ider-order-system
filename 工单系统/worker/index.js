@@ -1784,6 +1784,7 @@ async function handleRoute(method, path, request, env, url) {
     if (!admin || !admin.is_admin) return json({ error: '无权限' }, 403);
 
     const [totalUsers, totalOrders, approvedOrders, completedOrders, rejectedOrders, pendingOrders,
+           activeOrders,
            totalAccounts, onlineAccounts, completedAccounts, errorAccounts,
            totalRevenue, todayOrders, todayRevenue, weeklyOrders] = await Promise.all([
       env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first(),
@@ -1792,13 +1793,14 @@ async function handleRoute(method, path, request, env, url) {
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='rejected'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='pending'").first(),
+      env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='active'").first(),
       env.DB.prepare('SELECT COUNT(*) as cnt FROM game_accounts').first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('farming','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('error','failed')").first(),
-      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed')").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-1 day')").first(),
-      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed')").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-7 days')").first(),
     ]);
 
@@ -1824,7 +1826,7 @@ async function handleRoute(method, path, request, env, url) {
 
     // Recent 7-day order trend
     const dailyTrend = await env.DB.prepare(
-      "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(price), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') GROUP BY date(created_at) ORDER BY day"
+      "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(bonus_points), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') GROUP BY date(created_at) ORDER BY day"
     ).all();
 
     return json({
@@ -1836,6 +1838,7 @@ async function handleRoute(method, path, request, env, url) {
         completed_orders: completedOrders.cnt,
         rejected_orders: rejectedOrders.cnt,
         pending_orders: pendingOrders.cnt,
+        active_orders: activeOrders.cnt,
         total_accounts: totalAccounts.cnt,
         online_accounts: onlineAccounts.cnt,
         completed_accounts: completedAccounts.cnt,

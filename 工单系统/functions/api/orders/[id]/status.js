@@ -94,13 +94,22 @@ export async function onRequest(context) {
 
   // ── rejected: 拒绝 ─────────────────────────────────
   else if (status === 'rejected') {
-    // 修仙币支付：退还冻结的积分
+    // 修仙币支付：退还冻结的积分（区分真实余额和试用额度）
     if (order.payment_method === 'coin' && order.frozen_points > 0) {
-      await env.DB.prepare(
-        'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
-      ).bind(order.frozen_points, order.user_id).run();
+      const refundTrial = order.free_trial_used || 0;
+      const refundReal = order.frozen_points - refundTrial;
+      if (refundReal > 0) {
+        await env.DB.prepare(
+          'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
+        ).bind(refundReal, order.user_id).run();
+      }
+      if (refundTrial > 0) {
+        await env.DB.prepare(
+          'UPDATE users SET free_trial_balance = free_trial_balance + ? WHERE id = ?'
+        ).bind(refundTrial, order.user_id).run();
+      }
       await logActivity(env, orderId, order.user_id, 'refund',
-        '工单拒绝，退还冻结修仙币 ' + order.frozen_points + ' 个');
+        `工单拒绝，退还: ${refundReal > 0 ? refundReal + '修仙币' : ''}${refundReal > 0 && refundTrial > 0 ? ' + ' : ''}${refundTrial > 0 ? refundTrial + '试用额度' : ''}`);
     }
     await env.DB.prepare(
       "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单被拒绝', '工单 #' || ? || ' 被拒绝: ' || ?, 'order')"

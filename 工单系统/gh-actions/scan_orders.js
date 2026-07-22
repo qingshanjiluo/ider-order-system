@@ -2,9 +2,10 @@
  * 艾德尔工单系统 - GitHub Actions 订单扫描器
  * 扫描已审核通过的工单，自动注册账号并开始刷怪
  * 内置防封检测：独立IP/机器码/指纹轮换/随机延迟
+ * 完整流程：注册→创建角色(金灵根100)→绑定邀请码→装备技能/功法/武器→战斗+自动刷怪
  */
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+// Node.js 20+ 内置 fetch，无需 node-fetch
 const antiDetect = require('./_anti_detect');
 
 const WORKER_URL = process.env.WORKER_URL || 'https://ider-order-system.sifangzhiji.workers.dev';
@@ -46,7 +47,7 @@ async function apiRequest(method, path, token, body) {
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
   Object.assign(headers, antiDetect.buildAntiDetectHeaders(_apiIdx++));
-  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, timeout: 30000 });
+  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, signal: AbortSignal.timeout(30000) });
   const text = await r.text();
   let data;
   try { data = JSON.parse(text); } catch (e) { throw new Error('非JSON(' + r.status + '): ' + text.slice(0, 200)); }
@@ -59,106 +60,161 @@ function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function workerApi(path, method = 'GET', body = null) {
   const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
   const url = WORKER_URL.replace(/\/+$/, '') + path;
-  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, timeout: 30000 });
+  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
   return r.json();
 }
 
+/**
+ * 完整注册+配置流程（参照 batch.js 的 BatchEngine.processAccount）
+ * 1) 注册 → 2) 创建角色(金灵根100) → 3) 绑定邀请码 →
+ * 4) 装备技能(重击/火球术/治疗术) → 5) 装备铁剑 →
+ * 6) 设置功法(吐纳法) → 7) 切换地图(荒石村) → 8) 开始战斗+自动刷怪
+ */
 async function registerAndSetup(workerOrder, orderIdx) {
   const apiIdx = orderIdx * 30;
   setApiIdx(apiIdx);
 
   const username = antiDetect.randomUsername();
   const password = antiDetect.randomPassword();
-  const invite_code = workerOrder.invite_code;
+  const inviteCode = workerOrder.invite_code || '';
 
-  console.log('[' + username + '] 开始注册 (邀请码: ' + invite_code + ')');
+  console.log('[' + username + '] 开始注册' + (inviteCode ? ' (邀请码: ' + inviteCode + ')' : ''));
 
   try {
     const machineId = antiDetect.generateMachineId(apiIdx);
-    await antiDetect.randomDelay(1500);
+    const stepDelay = () => antiDetect.randomDelay(1200, 2500);
 
-    // 1) Register
+    // ── 1) 注册账号 ──
     const regData = await apiRequest('POST', '/auth/register', '', {
-      username, password,
-      invite_code,
-      spirit_root: 'gold',
-      machine_id: machineId,
+      username, password, machine_id: machineId,
     });
-    console.log('[' + username + '] ✅ 注册成功');
-    await antiDetect.randomDelay(2000);
+    const token = regData.token;
+    console.log('[' + username + '] ✅ 注册成功 (accountId=' + regData.accountId + ')');
+    await stepDelay();
 
+    // 上报 Worker：账号已创建
     await workerApi('/api/gh/report-account', 'POST', {
       order_id: workerOrder.id, username, password,
       server_username: username, server_password: password,
       status: 'creating',
     });
 
-    // 2) Login
-    const loginData = await apiRequest('POST', '/auth/login', '', {
-      username, password, machine_id: machineId,
+    // ── 2) 创建角色（金灵根100） ──
+    // 注册只创建账号，不创建角色；必须调用 /player/create
+    const playerName = username.slice(0, 8);
+    const createData = await apiRequest('POST', '/player/create', token, {
+      name: playerName,
+      spirit_roots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
     });
-    const token = loginData.token;
-    console.log('[' + username + '] ✅ 登录成功');
-    await antiDetect.randomDelay(1500);
+    console.log('[' + username + '] ✅ 角色创建成功: ' + (createData.player?.name || playerName) + ' (金灵根100)');
+    await stepDelay();
 
-    // 3) Equip iron sword (item_id=11)
-    try {
-      await apiRequest('POST', '/player/use_item', token, {
-        page: 0, slot_index: 0, count: 1, expect_item_id: 11
-      });
-      console.log('[' + username + '] ✅ 装备铁剑');
-      await antiDetect.randomDelay(1000);
-    } catch (e) {
-      console.log('[' + username + '] 装备铁剑跳过: ' + e.message);
+    // ── 3) 绑定邀请码 ──
+    if (inviteCode) {
+      try {
+        const inviteData = await apiRequest('POST', '/invite/bind', token, { invite_code: inviteCode });
+        console.log('[' + username + '] ✅ 邀请码绑定成功, 邀请人: ' + (inviteData.inviter_name || '?'));
+      } catch (e) {
+        console.log('[' + username + '] ⚠️ 邀请码绑定失败(可能已超12h或已绑定): ' + e.message);
+      }
+      await stepDelay();
     }
 
-    // 4) Learn skills
-    try {
-      await apiRequest('POST', '/player/skill/learn', token, { skill_id: 1 });
-      await antiDetect.randomDelay(800);
-      await apiRequest('POST', '/player/skill/learn', token, { skill_id: 2 });
-      console.log('[' + username + '] ✅ 学习技能(重击+火球术)');
-      await antiDetect.randomDelay(800);
-    } catch (e) {
-      console.log('[' + username + '] 技能跳过: ' + e.message);
+    // ── 4) 装备初始3个技能（重击/火球术/治疗术） ──
+    const starterSkills = [
+      { id: 1, name: '重击' },
+      { id: 2, name: '火球术' },
+      { id: 3, name: '治疗术' },
+    ];
+    let equippedSkills = 0;
+    for (const sk of starterSkills) {
+      try {
+        await apiRequest('POST', '/player/equip_skill', token, { skill_id: sk.id });
+        equippedSkills++;
+        console.log('[' + username + '] ✅ 技能装备: ' + sk.name);
+      } catch (e) {
+        if (e.message && e.message.includes('已装备')) {
+          equippedSkills++;
+          console.log('[' + username + '] ✅ 技能已装备: ' + sk.name);
+        } else {
+          console.log('[' + username + '] ⚠️ 技能跳过(' + sk.name + '): ' + e.message);
+        }
+      }
+      await sleep(300);
     }
+    console.log('[' + username + '] 技能装备完成: ' + equippedSkills + '/' + starterSkills.length);
+    await stepDelay();
 
-    // 5) Equip technique
+    // ── 5) 装备铁剑（从背包查找） ──
+    // 使用 /player/sync 获取完整玩家数据（包含 inventory）
     try {
-      await apiRequest('POST', '/player/technique/equip', token, { technique_id: 1 });
-      console.log('[' + username + '] ✅ 装备功法(吐纳法)');
-      await antiDetect.randomDelay(1000);
+      const sync = await apiRequest('GET', '/player/sync', token);
+      const inv = sync?.player?.inventory || [];
+      let swordFound = false;
+      for (let p = 0; p < inv.length && !swordFound; p++) {
+        if (!inv[p]) continue;
+        for (let s = 0; s < inv[p].length; s++) {
+          const slot = inv[p][s];
+          if (slot?.item && String(slot.item.name || '').includes('铁剑')) {
+            await apiRequest('POST', '/player/equip', token, {
+              page: p, slot_index: s, expect_item_id: Number(slot.item.id) || 0,
+            });
+            swordFound = true;
+            console.log('[' + username + '] ✅ 铁剑装备成功');
+            break;
+          }
+        }
+      }
+      if (!swordFound) {
+        console.log('[' + username + '] ⚠️ 背包中未找到铁剑');
+      }
     } catch (e) {
-      console.log('[' + username + '] 功法跳过: ' + e.message);
+      console.log('[' + username + '] ⚠️ 装备铁剑失败: ' + e.message);
     }
+    await stepDelay();
 
-    // 6) Switch to 荒石村 (map_id=1)
+    // ── 6) 设置主功法（吐纳法 id=1） ──
     try {
-      await apiRequest('POST', '/player/map/switch', token, { map_id: 1 });
+      await apiRequest('POST', '/player/set_technique', token, { slot: 'main', technique_id: 1 });
+      console.log('[' + username + '] ✅ 功法设置: 吐纳法');
+    } catch (e) {
+      console.log('[' + username + '] ⚠️ 功法跳过: ' + e.message);
+    }
+    await stepDelay();
+
+    // ── 7) 切换地图到荒石村 (map_id=1) ──
+    try {
+      await apiRequest('POST', '/player/set_map', token, { map_id: 1 });
       console.log('[' + username + '] ✅ 切换至荒石村');
-      await antiDetect.randomDelay(1500);
     } catch (e) {
-      console.log('[' + username + '] 地图切换跳过: ' + e.message);
+      console.log('[' + username + '] ⚠️ 地图切换跳过: ' + e.message);
     }
+    await stepDelay();
 
-    // 7) Start auto battle
+    // ── 8) 开始战斗 + 自动刷怪 ──
     try {
-      await apiRequest('POST', '/battle/start', token, {});
-      console.log('[' + username + '] ✅ 开始刷怪');
-      await antiDetect.randomDelay(500);
+      await apiRequest('POST', '/battle/start', token, { mapId: 1, poll_mode: false, auto_restart: false });
+      console.log('[' + username + '] ✅ 战斗已启动');
     } catch (e) {
-      console.log('[' + username + '] 刷怪跳过: ' + e.message);
+      console.log('[' + username + '] ⚠️ 战斗启动跳过: ' + e.message);
+    }
+    await sleep(500);
+    try {
+      await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: 1 });
+      console.log('[' + username + '] ✅ 自动刷怪已开启');
+    } catch (e) {
+      console.log('[' + username + '] ⚠️ 自动刷怪跳过: ' + e.message);
     }
 
-    // Report success
+    // 上报 Worker：配置完成
     await workerApi('/api/gh/report-account', 'POST', {
       order_id: workerOrder.id, username, password,
       server_username: username, server_password: password,
       status: 'farming', level: 1,
       map_id: 1, map_name: '荒石村',
-      skills: [{ id: 1, name: '重击' }, { id: 2, name: '火球术' }],
+      skills: starterSkills.map(s => ({ id: s.id, name: s.name })),
       techniques: [{ id: 1, name: '吐纳法' }],
-      equipment: [{ id: 11, name: '铁剑' }],
+      equipment: [{ name: '铁剑' }],
     });
 
     return { username, password, ok: true };

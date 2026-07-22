@@ -1,10 +1,12 @@
 /**
- * 艾德尔工单系统 - 账号健康检测
- * 每日扫描所有进行中的账号，自动升级到最高级(120)
- * 到达120级后2天停止监控
+ * 艾德尔工单系统 - 账号健康检测 + 自动维护
+ * 扫描所有进行中的账号：
+ *   - 自动升级到最高级(120)
+ *   - 检查并修复技能/装备/功法/战斗状态
+ *   - 到达120级后2天停止监控
  */
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+// Node.js 20+ 内置 fetch，无需 node-fetch
 const antiDetect = require('./_anti_detect');
 
 const WORKER_URL = process.env.WORKER_URL || 'https://ider-order-system.sifangzhiji.workers.dev';
@@ -47,7 +49,7 @@ async function apiRequest(method, path, token, body) {
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
   Object.assign(headers, antiDetect.buildAntiDetectHeaders(_apiIdx++));
-  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, timeout: 30000 });
+  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, signal: AbortSignal.timeout(30000) });
   const text = await r.text();
   let data;
   try { data = JSON.parse(text); } catch (e) { throw new Error('非JSON(' + r.status + '): ' + text.slice(0, 200)); }
@@ -57,10 +59,96 @@ async function apiRequest(method, path, token, body) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+/**
+ * 自动维护：检查并修复账号的技能/装备/功法/战斗状态
+ * 参照 batch.js 的完整配置流程
+ */
+async function autoMaintain(username, token, player) {
+  const fixes = [];
+
+  // ── 检查技能装备 ──
+  const equippedSkills = player?.equipped_skills || [];
+  if (equippedSkills.length < 3) {
+    console.log('  [' + username + '] 🔧 技能不足(' + equippedSkills.length + '/3)，尝试补装...');
+    const starterSkills = [
+      { id: 1, name: '重击' },
+      { id: 2, name: '火球术' },
+      { id: 3, name: '治疗术' },
+    ];
+    for (const sk of starterSkills) {
+      try {
+        await apiRequest('POST', '/player/equip_skill', token, { skill_id: sk.id });
+        fixes.push('技能+' + sk.name);
+        await sleep(300);
+      } catch (e) {
+        // 已装备或不可用，忽略
+      }
+    }
+  }
+
+  // ── 检查功法 ──
+  const equippedTechnique = player?.equipped_technique || player?.technique;
+  if (!equippedTechnique) {
+    console.log('  [' + username + '] 🔧 功法未设置，尝试装备吐纳法...');
+    try {
+      await apiRequest('POST', '/player/set_technique', token, { slot: 'main', technique_id: 1 });
+      fixes.push('功法+吐纳法');
+    } catch (e) {
+      // 忽略
+    }
+  }
+
+  // ── 检查铁剑 ──
+  const equippedWeapon = player?.equipment?.weapon || player?.equipment?.['0'];
+  if (!equippedWeapon) {
+    console.log('  [' + username + '] 🔧 武器栏为空，尝试装备铁剑...');
+    try {
+      const sync = await apiRequest('GET', '/player/sync', token);
+      const inv = sync?.player?.inventory || [];
+      for (let p = 0; p < inv.length; p++) {
+        if (!inv[p]) continue;
+        for (let s = 0; s < inv[p].length; s++) {
+          const slot = inv[p][s];
+          if (slot?.item && String(slot.item.name || '').includes('铁剑')) {
+            await apiRequest('POST', '/player/equip', token, {
+              page: p, slot_index: s, expect_item_id: Number(slot.item.id) || 0,
+            });
+            fixes.push('装备+铁剑');
+            break;
+          }
+        }
+        if (fixes.some(f => f.includes('铁剑'))) break;
+      }
+    } catch (e) {
+      // 忽略
+    }
+  }
+
+  // ── 检查战斗状态 ──
+  const isBattling = player?.is_battling || player?.battle_active || false;
+  if (!isBattling) {
+    console.log('  [' + username + '] 🔧 未在战斗，尝试启动...');
+    try {
+      const mapId = player?.map_id || 1;
+      await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
+      await sleep(500);
+      await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
+      fixes.push('战斗+自动刷怪');
+    } catch (e) {
+      // 忽略
+    }
+  }
+
+  if (fixes.length > 0) {
+    console.log('  [' + username + '] ✅ 自动修复: ' + fixes.join(', '));
+  }
+  return fixes;
+}
+
 async function workerApi(path, method = 'GET', body = null) {
   const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
   const url = WORKER_URL.replace(/\/+$/, '') + path;
-  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, timeout: 30000 });
+  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
   return r.json();
 }
 
@@ -98,6 +186,11 @@ async function checkAndLevelUp(account, idx) {
     const token = loginData.token;
     console.log('  [' + server_username + '] ✅ 登录成功');
     await antiDetect.randomDelay(1500);
+
+    // 自动维护：检查技能/装备/功法/战斗状态
+    const syncResult = await apiRequest('GET', '/player/sync', token);
+    const syncPlayer = syncResult?.player || {};
+    await autoMaintain(server_username, token, syncPlayer);
 
     // Get player state
     const state = await apiRequest('GET', '/player/state', token);

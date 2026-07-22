@@ -4,20 +4,18 @@ import { api } from '../api.js';
 import { icon } from '../icons.js';
 import { store } from '../store.js';
 
-// 等级名称和所需经验值
+// 等级名称和所需经验值（与后端 _xp.js XP_LEVELS 保持一致）
 const LEVEL_DATA = [
-  { level: 1, title: '凡人', xp_needed: 0, desc: '初入修仙界' },
-  { level: 2, title: '练气', xp_needed: 100, desc: '感应天地灵气' },
-  { level: 3, title: '筑基', xp_needed: 300, desc: '奠定修仙根基' },
-  { level: 4, title: '金丹', xp_needed: 600, desc: '凝聚金丹大道' },
-  { level: 5, title: '元婴', xp_needed: 1000, desc: '元婴出窍' },
-  { level: 6, title: '化神', xp_needed: 1500, desc: '化凡为神' },
-  { level: 7, title: '炼虚', xp_needed: 2200, desc: '炼虚合道' },
-  { level: 8, title: '合体', xp_needed: 3000, desc: '天人合一' },
-  { level: 9, title: '大乘', xp_needed: 4000, desc: '大乘圆满' },
-  { level: 10, title: '渡劫', xp_needed: 5500, desc: '渡劫飞升' },
-  { level: 11, title: '真仙', xp_needed: 7500, desc: '位列仙班' },
-  { level: 12, title: '金仙', xp_needed: 10000, desc: '金身不灭' },
+  { level: 1, title: '仙友', xp_needed: 0, desc: '初入修仙界' },
+  { level: 2, title: '仙长', xp_needed: 100, desc: '感应天地灵气' },
+  { level: 3, title: '仙师', xp_needed: 300, desc: '奠定修仙根基' },
+  { level: 4, title: '宗师', xp_needed: 700, desc: '凝聚金丹大道' },
+  { level: 5, title: '大宗师', xp_needed: 1500, desc: '元婴出窍' },
+  { level: 6, title: '仙王', xp_needed: 3100, desc: '化凡为神' },
+  { level: 7, title: '尊者', xp_needed: 6300, desc: '炼虚合道' },
+  { level: 8, title: '道主', xp_needed: 12700, desc: '天人合一' },
+  { level: 9, title: '至尊', xp_needed: 25500, desc: '大乘圆满' },
+  { level: 10, title: '仙尊', xp_needed: 51100, desc: '渡劫飞升' },
 ];
 
 function getLevelInfo(level) {

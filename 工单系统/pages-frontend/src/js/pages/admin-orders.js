@@ -1,5 +1,6 @@
 // pages/admin-orders.js — 管理后台 - 工单管理（含审批操作）
 import { api } from '../api.js';
+import { icon } from '../icons.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 
@@ -23,7 +24,7 @@ function formatAdminPrice(order) {
   // 免费试用抵扣
   const freeTrialUsed = order.free_trial_used || 0;
   if (freeTrialUsed > 0) {
-    display += ` [赠]试用-${freeTrialUsed}`;
+    display += ` ${icon('gift', 14)}试用-${freeTrialUsed}`;
   }
   return display;
 }

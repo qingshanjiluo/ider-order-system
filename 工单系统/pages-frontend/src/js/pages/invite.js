@@ -1,6 +1,7 @@
 // pages/invite.js — 邀请返利页
 
 import { api } from '../api.js';
+import { icon } from '../icons.js';
 import { store } from '../store.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
@@ -135,7 +136,7 @@ export async function renderInvite({ container }) {
       <!-- 一键提取到修仙币 -->
       <div class="card mb-6">
         <div class="card-header">
-          <h3>[钻] 一键提取到修仙币</h3>
+          <h3>${icon('gem', 14)} 一键提取到修仙币</h3>
           <span class="badge badge-approved">即时到账</span>
         </div>
         <p class="text-sm text-muted mb-4">将邀请积分转换为修仙币，比例 120:1，转换后可直接用于提交工单</p>
@@ -144,14 +145,14 @@ export async function renderInvite({ container }) {
           <button class="btn btn-green btn-sm" id="convert-all-btn" ${(!info.invite_points || info.invite_points < 10) ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>全部转换</button>
           <button class="btn btn-primary btn-sm" id="convert-btn" ${(!info.invite_points || info.invite_points < 10) ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>转换为修仙币</button>
         </div>
-        <p class="text-sm mt-2" style="color:var(--accent-green);">[提示] 120 邀请积分 = 1 修仙币，当前可转换: ${info.invite_points || 0} 积分 → ${Math.floor((info.invite_points || 0) / 120)} 修仙币</p>
+        <p class="text-sm mt-2" style="color:var(--accent-green);">${icon('bulb', 14)} 120 邀请积分 = 1 修仙币，当前可转换: ${info.invite_points || 0} 积分 → ${Math.floor((info.invite_points || 0) / 120)} 修仙币</p>
       </div>
 
       <!-- 提现 -->
       ${withdrawEnabled ? `
       <div class="card">
         <div class="card-header">
-          <h3>[币] 积分提现</h3>
+          <h3>${icon('money', 14)} 积分提现</h3>
         </div>
         <div class="flex items-center gap-3">
           <input type="number" class="form-input" id="withdraw-points" placeholder="输入积分数量" style="max-width:200px;">
@@ -161,7 +162,7 @@ export async function renderInvite({ container }) {
       </div>` : `
       <div class="card">
         <div class="card-header">
-          <h3>[币] 积分提现</h3>
+          <h3>${icon('money', 14)} 积分提现</h3>
         </div>
         <p class="text-sm text-muted" style="padding:var(--space-4);">提现功能暂未开放，请联系管理员</p>
       </div>`}`;

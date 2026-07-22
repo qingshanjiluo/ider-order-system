@@ -1,6 +1,7 @@
 // pages/about.js — 站点信息页
 
 import { api } from '../api.js';
+import { icon } from '../icons.js';
 
 export async function renderAbout({ container }) {
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
@@ -75,10 +76,10 @@ export async function renderAbout({ container }) {
         <div style="padding:0 var(--space-4) var(--space-4);">
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-3);">
             ${[
-              { key: 'bot_enabled', label: 'AI 客服', icon: '[AI]' },
-              { key: 'free_trial_enabled', label: '免费试用', icon: '[赠]', extra: freeTrialBalance !== null ? `余额: ${freeTrialBalance} 修仙币` : null },
-              { key: 'ai_enabled', label: 'AI 智能回复', icon: '[智]' },
-              { key: 'withdraw_enabled', label: '积分提现', icon: '[币]' },
+              { key: 'bot_enabled', label: 'AI 客服', icon: icon('robot') },
+              { key: 'free_trial_enabled', label: '免费试用', icon: icon('gift'), extra: freeTrialBalance !== null ? `余额: ${freeTrialBalance} 修仙币` : null },
+              { key: 'ai_enabled', label: 'AI 智能回复', icon: icon('bulb') },
+              { key: 'withdraw_enabled', label: '积分提现', icon: icon('money') },
             ].map(f => {
               const enabled = config[f.key] !== '0';
               return `
@@ -87,7 +88,7 @@ export async function renderAbout({ container }) {
                   <div>
                     <div class="text-sm font-semibold">${f.label}</div>
                     <div class="text-xs" style="color:${enabled ? 'var(--accent-green)' : 'var(--text-muted)'};">
-                      ${enabled ? '[√] 已开启' : '[×] 已关闭'}
+                      ${enabled ? `${icon('check', 14)} 已开启` : `${icon('xmark', 14)} 已关闭`}
                     </div>
                     ${f.extra && enabled ? `<div class="text-xs" style="color:var(--accent-amber);margin-top:2px;">${f.extra}</div>` : ''}
                   </div>

@@ -1,6 +1,7 @@
 // pages/order-detail.js — 工单详情页
 
 import { api } from '../api.js';
+import { icon } from '../icons.js';
 import { toast } from '../components/toast.js';
 
 const STATUS_MAP = {
@@ -31,7 +32,7 @@ function formatDetailPrice(order) {
   // 免费试用抵扣
   const freeTrialUsed = order.free_trial_used || 0;
   if (freeTrialUsed > 0) {
-    display += ` [赠]试用-${freeTrialUsed}`;
+    display += ` ${icon('gift', 14)}试用-${freeTrialUsed}`;
   }
   return display;
 }

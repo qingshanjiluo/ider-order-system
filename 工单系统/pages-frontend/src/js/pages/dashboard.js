@@ -54,7 +54,7 @@ export async function renderDashboard({ container }) {
           <div class="stat-change">坊市流通货币 · 可充值获取</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">[赠] 免费试用</div>
+          <div class="stat-label">${icon('gift', 14)} 免费试用</div>
           <div class="stat-value" style="color:var(--accent-green)">${user?.free_trial_balance || 0}</div>
           <div class="stat-change">可用于抵扣工单费用</div>
         </div>

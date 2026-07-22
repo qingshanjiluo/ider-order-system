@@ -4,7 +4,7 @@
  * 内置防封检测：独立IP/机器码/指纹轮换/随机延迟
  */
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+// Node.js 20+ 内置 fetch，无需 node-fetch
 const antiDetect = require('./_anti_detect');
 
 const WORKER_URL = process.env.WORKER_URL || 'https://ider-order-system.sifangzhiji.workers.dev';

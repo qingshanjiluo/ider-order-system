@@ -3,7 +3,6 @@
  * 输出格式: username,password (每行一个)
  * 用于 auto-levelup 工作流动态获取账号
  */
-const fetch = require('node-fetch');
 const fs = require('fs');
 
 const WORKER_URL = process.env.WORKER_URL || 'https://ider-order-system.sifangzhiji.workers.dev';

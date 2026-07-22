@@ -3,7 +3,7 @@
  * 用于 GitHub Actions pre-check job
  */
 const crypto = require('crypto');
-const fetch = require('node-fetch');
+// Node.js 20+ 内置 fetch，无需 node-fetch
 const fs = require('fs');
 
 const WORKER_URL = process.env.WORKER_URL;

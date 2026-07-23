@@ -18,53 +18,53 @@ export async function renderAdminStats({ container }) {
       <div class="stats-grid mb-6">
         <div class="stat-card">
           <div class="stat-label">总用户</div>
-          <div class="stat-value">${stats.total_users || 0}</div>
+          <div class="stat-value">${(stats.total_users || 0).toLocaleString()} <span class="text-xs text-muted">人</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">总工单</div>
-          <div class="stat-value">${stats.total_orders || 0}</div>
+          <div class="stat-value">${(stats.total_orders || 0).toLocaleString()} <span class="text-xs text-muted">单</span></div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">总营收</div>
-          <div class="stat-value">¥${(stats.total_revenue || 0).toFixed(2)}</div>
+          <div class="stat-label">总修仙分</div>
+          <div class="stat-value">${(stats.total_bonus_points || 0).toLocaleString()} <span class="text-xs text-muted">分</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">今日工单</div>
-          <div class="stat-value" style="color:var(--accent-green)">${stats.today_orders || 0}</div>
+          <div class="stat-value" style="color:var(--accent-green)">${stats.today_orders || 0} <span class="text-xs text-muted">单</span></div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">今日营收</div>
-          <div class="stat-value" style="color:var(--accent-green)">¥${(stats.today_revenue || 0).toFixed(2)}</div>
+          <div class="stat-label">今日修仙分</div>
+          <div class="stat-value" style="color:var(--accent-green)">${(stats.today_bonus_points || 0).toLocaleString()} <span class="text-xs text-muted">分</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">本周工单</div>
-          <div class="stat-value">${stats.weekly_orders || 0}</div>
+          <div class="stat-value">${stats.weekly_orders || 0} <span class="text-xs text-muted">单</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">待审批</div>
-          <div class="stat-value" style="color:var(--accent-amber)">${stats.pending_orders || 0}</div>
+          <div class="stat-value" style="color:var(--accent-amber)">${stats.pending_orders || 0} <span class="text-xs text-muted">单</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">进行中</div>
-          <div class="stat-value" style="color:var(--accent-blue)">${stats.active_orders || 0}</div>
+          <div class="stat-value" style="color:var(--accent-blue)">${stats.active_orders || 0} <span class="text-xs text-muted">单</span></div>
         </div>
       </div>
 
-      <!-- 收入趋势 -->
-      ${stats.daily_revenue ? `
+      <!-- 修仙分趋势 -->
+      ${stats.daily_trend && stats.daily_trend.length ? `
       <div class="card">
         <div class="card-header">
-          <h3>近7日收入</h3>
+          <h3>近7日趋势</h3>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>日期</th><th>工单数</th><th>收入</th></tr></thead>
+            <thead><tr><th>日期</th><th>工单数</th><th>修仙分</th></tr></thead>
             <tbody>
-              ${Object.entries(stats.daily_revenue).map(([date, data]) => `
+              ${stats.daily_trend.map(d => `
                 <tr>
-                  <td>${date}</td>
-                  <td>${data.orders || 0}</td>
-                  <td class="font-semibold">¥${(data.revenue || 0).toFixed(2)}</td>
+                  <td>${d.day}</td>
+                  <td>${d.cnt || 0} <span class="text-xs text-muted">单</span></td>
+                  <td class="font-semibold">${(d.revenue || 0).toLocaleString()} <span class="text-xs text-muted">分</span></td>
                 </tr>
               `).join('')}
             </tbody>

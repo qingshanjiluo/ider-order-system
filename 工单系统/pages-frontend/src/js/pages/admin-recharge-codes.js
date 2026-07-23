@@ -148,7 +148,7 @@ function renderCodesTable(codes) {
               return `
                 <tr>
                   <td><code style="background:var(--bg-base);padding:2px 8px;border-radius:4px;font-size:13px;letter-spacing:1.5px;font-weight:600;">${c.code}</code></td>
-                  <td style="color:var(--accent-amber);font-weight:600;">${c.coins}</td>
+                  <td style="color:var(--accent-amber);font-weight:600;">${c.coins} <span class="text-xs text-muted">修仙币</span></td>
                   <td>
                     ${usesDisplay}
                     ${c.status === 'pending' && maxUses > 1 ? `<button class="btn btn-xs btn-ghost" style="font-size:11px;margin-left:4px;" data-edit-max-uses="${c.id}" data-current-max="${maxUses}">编辑</button>` : ''}

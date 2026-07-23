@@ -95,7 +95,7 @@ function renderOrdersTable(orders, showActions) {
                 <td>${o.username || '用户#' + o.user_id}</td>
                 <td>${typeLabel}</td>
                 <td>${amountLabel}</td>
-                <td style="color:var(--accent-amber);">+${o.coins}</td>
+                <td style="color:var(--accent-amber);">+${o.coins} <span class="text-xs text-muted">修仙币</span></td>
                 <td class="text-sm">${o.payment_account || '-'}</td>
                 <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                 <td class="text-sm">${o.redeem_code ? `<code style="background:var(--bg-base);padding:2px 6px;border-radius:4px;font-size:12px;letter-spacing:1px;">${o.redeem_code}</code>` : (o.status === 'completed' ? '已生成' : '-')}</td>

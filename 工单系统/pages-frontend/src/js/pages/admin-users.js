@@ -58,7 +58,7 @@ function renderUserRow(u) {
       <td class="font-semibold">${u.username}</td>
       <td>Lv.${u.level || 1}</td>
       <td>${roleLabel}</td>
-      <td class="font-semibold" style="color:var(--accent-amber)">${u.bonus_points || 0}</td>
+      <td class="font-semibold" style="color:var(--accent-amber)">${(u.bonus_points || 0).toLocaleString()} <span class="text-xs text-muted">分</span></td>
       <td>${statusLabel}</td>
       <td class="text-sm text-muted">${new Date(u.created_at).toLocaleDateString('zh-CN')}</td>
       <td>

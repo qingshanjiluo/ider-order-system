@@ -274,6 +274,18 @@ async function checkAndLevelUp(account, idx) {
     const nextLevelExp = player.next_level_exp || 1;
     const expPercent = Math.floor((exp / nextLevelExp) * 100);
 
+    // DEBUG: dump raw state keys
+    tsLog('[' + server_username + '] 🔍 state顶层: ' + Object.keys(state).join(','));
+    tsLog('[' + server_username + '] 🔍 player键: ' + Object.keys(player).join(','));
+    tsLog('[' + server_username + '] 🔍 can_level_up原文=' + JSON.stringify(state.can_level_up) + ' player.can=' + JSON.stringify(player.can_level_up));
+    // 即使can_level_up=false也强制试一次level_up，看服务端返回什么错误
+    try {
+      const forcedUp = await apiRequest('POST', '/player/level_up', token, {});
+      tsLog('[' + server_username + '] ⬆️ 强制升级成功: ' + JSON.stringify(forcedUp).slice(0,200));
+    } catch (e) {
+      tsLog('[' + server_username + '] 🔍 升级被拒: ' + (e.message || '').slice(0,300));
+    }
+
     tsLog('[' + server_username + '] 📊 等级=' + level + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
 
     // 上报登录日志

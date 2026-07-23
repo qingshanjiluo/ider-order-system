@@ -77,6 +77,23 @@ function randomUA(idx) {
   return USER_AGENTS[idx % USER_AGENTS.length];
 }
 
+// ─── 14种 Sec-CH-UA 轮换 ──────────────────
+const SEC_CH_UA_PLATFORMS = [
+  '"Android"', '"Android"', '"Android"', '"Android"',
+  '"Windows"', '"macOS"', '"iOS"', '"Linux"',
+  '"Android"', '"Android"', '"Windows"', '"macOS"',
+  '"Chrome OS"', '"Unknown"',
+];
+const SEC_CH_UA = [
+  '"Google Chrome";v="120", "Chromium";v="120", "Not?A_Brand";v="99"',
+  '"Google Chrome";v="121", "Chromium";v="121", "Not?A_Brand";v="99"',
+  '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="99"',
+  '"Google Chrome";v="122", "Chromium";v="122", "Not?A_Brand";v="99"',
+  '"Google Chrome";v="123", "Chromium";v="123", "Not?A_Brand";v="99"',
+  '"Microsoft Edge";v="120", "Chromium";v="120", "Not?A_Brand";v="99"',
+  '"Google Chrome";v="118", "Chromium";v="118", "Not?A_Brand";v="99"',
+];
+
 // ─── Accept-Language 轮换 ──────────────────
 const LANGUAGES = [
   'zh-CN,zh;q=0.9,en;q=0.8',
@@ -91,12 +108,22 @@ function buildAntiDetectHeaders(idx) {
   const ip = randomIP();
   const ua = randomUA(idx);
   const lang = LANGUAGES[idx % LANGUAGES.length];
+  const secChUa = SEC_CH_UA[idx % SEC_CH_UA.length];
+  const platform = SEC_CH_UA_PLATFORMS[idx % SEC_CH_UA_PLATFORMS.length];
+  const viewportW = 360 + Math.floor(Math.random() * 600);
+  const viewportH = 640 + Math.floor(Math.random() * 400);
 
   return {
     'User-Agent': ua,
     'Accept': 'application/json, text/plain, */*',
     'Accept-Language': lang,
     'Accept-Encoding': 'gzip, deflate, br',
+    'Sec-CH-UA': secChUa,
+    'Sec-CH-UA-Mobile': Math.random() > 0.3 ? '?1' : '?0',
+    'Sec-CH-UA-Platform': platform,
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site',
     'X-Forwarded-For': ip,
     'X-Real-IP': ip,
     'X-Client-IP': ip,
@@ -104,8 +131,11 @@ function buildAntiDetectHeaders(idx) {
     'X-Originating-IP': ip,
     'REMOTE_ADDR': ip,
     'X-Request-ID': crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2, 15),
-    'Cache-Control': 'no-cache',
+    'X-Viewport-Width': String(viewportW),
+    'X-Viewport-Height': String(viewportH),
+    'Cache-Control': Math.random() > 0.5 ? 'no-cache' : 'max-age=0',
     'Pragma': 'no-cache',
+    'DNT': Math.random() > 0.8 ? '1' : '0',
   };
 }
 
@@ -114,22 +144,63 @@ function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
-async function randomDelay(base = 2000) {
-  const jitter = Math.floor(Math.random() * base * 0.5);
-  await sleep(base + jitter);
+async function randomDelay(minOrBase = 2000, max = null) {
+  if (max === null) {
+    // 单参数：base + jitter (0~50%)
+    const jitter = Math.floor(Math.random() * minOrBase * 0.5);
+    await sleep(minOrBase + jitter);
+  } else {
+    // 双参数：min ~ max 均匀分布
+    const delay = minOrBase + Math.floor(Math.random() * (max - minOrBase));
+    await sleep(delay);
+  }
+}
+
+// ─── 人类行为模拟（点击/输入等操作的间隔） ─
+async function humanTypingDelay(charCount = 1) {
+  // 模拟打字速度：每字 80~250ms
+  const perChar = 80 + Math.floor(Math.random() * 170);
+  await sleep(perChar * Math.max(1, charCount));
+}
+
+// ─── 随机失败模拟（让行为更像真人） ──────
+function shouldRandomFail(failRate = 0.03) {
+  // 3% 概率模拟"第一次失败后重试"的行为
+  return Math.random() < failRate;
 }
 
 // ─── 智能暂停（每N个账号后暂停） ─────────
 async function smartPause(current, every = 3, baseSeconds = 30) {
   if ((current + 1) % every === 0) {
     const pause = baseSeconds + Math.floor(Math.random() * baseSeconds);
+    const jitter = Math.floor(Math.random() * 10);
     console.log(`  智能暂停 ${pause}s (第 ${current + 1} 个)...`);
-    await sleep(pause * 1000);
+    await sleep((pause + jitter) * 1000);
   }
 }
 
+// ─── 每个账号独立的行为指纹 ──────────────
+function accountProfile(idx) {
+  // 为每个账号生成固定但唯一的行为参数
+  const seed = (idx * 9973 + 7919) % 100000;
+  const rng = () => { const x = Math.sin(seed + _rngCounter++) * 10000; return x - Math.floor(x); };
+  let _rngCounter = 0;
+  return {
+    // 操作速度: 0=快 1=中 2=慢
+    speed: Math.floor(rng() * 3),
+    // 延迟倍数: 慢账号延迟x2
+    delayMultiplier: [1.0, 1.5, 2.5][Math.floor(rng() * 3)],
+    // 失败率偏移
+    failBias: rng() * 0.05,
+    // 活跃时段偏好
+    activeHour: Math.floor(rng() * 24),
+    // 账号ID hash
+    profileId: 'ap_' + seed.toString(16),
+  };
+}
+
 // ─── 生成随机用户名 ────────────────────────
-function randomUsername() {
+function randomUsername(maxLen = 20, usedNames = null) {
   const adj = ['Celestial', 'Mystic', 'Shadow', 'Phoenix', 'Dragon', 'Thunder', 'Crystal', 'Iron',
     'Jade', 'Silver', 'Golden', 'Dark', 'Light', 'Storm', 'Wind', 'Fire', 'Water', 'Earth',
     'Star', 'Moon', 'Sun', 'Cloud', 'Rain', 'Snow', 'Frost', 'Flame', 'Night', 'Ghost',
@@ -137,8 +208,19 @@ function randomUsername() {
   const noun = ['Fox', 'Wolf', 'Tiger', 'Eagle', 'Lion', 'Bear', 'Falcon', 'Serpent', 'Dragon',
     'Owl', 'Crane', 'Deer', 'Knight', 'Blade', 'Soul', 'Spirit', 'Monk', 'Sage', 'Lord',
     'King', 'Saint', 'Master', 'Hunter', 'Warrior', 'Mage', 'Rogue', 'Berserker', 'Paladin'];
-  const num = Math.floor(Math.random() * 9999) + 1;
-  return adj[Math.floor(Math.random() * adj.length)] + noun[Math.floor(Math.random() * noun.length)] + num;
+  const usedSet = usedNames ? new Set(usedNames) : null;
+  let attempts = 0;
+  const maxAttempts = 100;
+  let name;
+  do {
+    const a = adj[Math.floor(Math.random() * adj.length)];
+    const n = noun[Math.floor(Math.random() * noun.length)];
+    const num = Math.floor(Math.random() * 9999) + 1;
+    name = a + n + num;
+    attempts++;
+    if (attempts > maxAttempts) break;
+  } while (name.length > maxLen || (usedSet && usedSet.has(name)));
+  return name;
 }
 
 function randomPassword() {
@@ -157,5 +239,8 @@ module.exports = {
   randomPassword,
   sleep,
   randomDelay,
+  humanTypingDelay,
+  shouldRandomFail,
   smartPause,
+  accountProfile,
 };

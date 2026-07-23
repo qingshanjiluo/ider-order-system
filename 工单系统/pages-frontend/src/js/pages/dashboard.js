@@ -5,7 +5,19 @@ import { icon } from '../icons.js';
 import { store } from '../store.js';
 import { toast } from '../components/toast.js';
 
+let _pollTimer = null;
+
+function fmtDateTime(d) {
+  if (!d) return '-';
+  const dt = typeof d === 'string' ? d.replace(' ', 'T') : d;
+  const date = new Date(dt);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
 export async function renderDashboard({ container }) {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
@@ -21,11 +33,13 @@ export async function renderDashboard({ container }) {
     container.innerHTML = `
       <div class="page-header">
         <h2>控制台</h2>
-        <p>欢迎回来，${user?.username || '用户'}</p>
+        <p>欢迎回来，${user?.username || '用户'} · 数据实时更新</p>
       </div>
 
+      <div class="text-xs text-muted mb-2" style="text-align:right;">上次更新: ${fmtDateTime(new Date().toISOString())} <span id="dashboard-update-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent-green);margin-left:4px;"></span></div>
+
       <!-- 统计卡片 -->
-      <div class="stats-grid mb-6">
+      <div class="stats-grid mb-6" id="dashboard-stats">
         <div class="stat-card">
           <div class="stat-label">总工单</div>
           <div class="stat-value">${stats.total_orders || 0}</div>
@@ -84,10 +98,22 @@ export async function renderDashboard({ container }) {
         </div>
       </div>`;
 
-    // 加载公告
     loadAnnouncement();
-    // 加载最近工单
     loadRecentOrders();
+
+    // 每 15 秒自动刷新统计+工单
+    _pollTimer = setInterval(async () => {
+      try {
+        const [freshStats, freshOrders] = await Promise.all([
+          api.getStats(),
+          api.getOrders(),
+        ]);
+        updateStats(freshStats);
+        updateRecentOrders(freshOrders);
+        const dot = document.getElementById('dashboard-update-dot');
+        if (dot) dot.style.backgroundColor = 'var(--accent-green)';
+      } catch { /* 静默失败，下次重试 */ }
+    }, 15000);
   } catch (err) {
     container.innerHTML = `
       <div class="empty-state">
@@ -167,4 +193,45 @@ async function loadRecentOrders() {
   } catch {
     el.innerHTML = `<p class="text-muted text-sm">暂无工单数据</p>`;
   }
+}
+
+function updateStats(stats) {
+  const el = document.getElementById('dashboard-stats');
+  if (!el) return;
+  const cards = el.querySelectorAll('.stat-card');
+  if (cards.length >= 3) {
+    cards[0].querySelector('.stat-value').textContent = stats.total_orders || 0;
+    cards[1].querySelector('.stat-value').textContent = stats.active_orders || stats.approved_orders || 0;
+    cards[2].querySelector('.stat-value').textContent = stats.completed_orders || 0;
+  }
+  const dot = document.getElementById('dashboard-update-dot');
+  if (dot) dot.style.backgroundColor = 'var(--accent-green)';
+  const updateText = document.querySelector('.page-header p');
+  if (updateText) {
+    const base = updateText.textContent.replace(/·.*/, '').trim();
+    updateText.textContent = base + ' · ' + fmtDateTime(new Date().toISOString());
+  }
+}
+
+function updateRecentOrders(res) {
+  const el = document.getElementById('recent-orders');
+  if (!el) return;
+  const orders = (res.orders || res || []).slice(0, 5);
+  const statusMap = { pending: '待审批', approved: '进行中', completed: '已完成', rejected: '已拒绝', cancelled: '已取消' };
+  if (!orders.length) { el.innerHTML = `<div class="empty-state"><p>暂无工单</p></div>`; return; }
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>订单号</th><th>类型</th><th>状态</th><th>创建时间</th></tr></thead>
+        <tbody>
+          ${orders.map(o => `
+            <tr style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">
+              <td class="font-mono text-xs">#${o.id}</td>
+              <td>${o.order_type || '代练'}</td>
+              <td><span class="badge badge-${o.status}">${statusMap[o.status] || o.status}</span></td>
+              <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }

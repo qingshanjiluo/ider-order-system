@@ -1356,9 +1356,17 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, orders: orders.results });
   }
 
+  if (path === '/api/gh/check-username' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { username } = body;
+    if (!username) return json({ error: '缺少username' }, 400);
+    const existing = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ?').bind(username).first();
+    return json({ ok: true, exists: !!existing });
+  }
+
   if (path === '/api/gh/report-account' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, username, password, status, level, map_id, map_name, skills, techniques, equipment, error_msg, server_username, server_password } = body;
+    const { order_id, username, password, status, level, map_id, map_name, skills, techniques, equipment, error_msg, server_username, server_password, character_name, spirit_roots, setup_status, created_result } = body;
 
     if (status === 'creating') {
       const existing = await env.DB.prepare(
@@ -1371,14 +1379,22 @@ async function handleRoute(method, path, request, env, url) {
         const ord = await env.DB.prepare('SELECT user_id FROM orders WHERE id = ?').bind(order_id).first();
         await logActivity(env, order_id, ord?.user_id || 0, 'account_created', '创建账号: ' + username);
       }
-    } else if (status === 'farming' || status === 'active') {
+    } else if (status === 'character_created') {
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok' WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), username, order_id).run();
+        "UPDATE game_accounts SET status = 'created', character_name = ?, spirit_roots = ?, setup_status = 'character_created', last_check_at = datetime('now'), health_status = 'ok', created_result = ? WHERE username = ? AND order_id = ?"
+      ).bind(character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
+      await env.DB.prepare(
+        "UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed')) WHERE id = ?"
+      ).bind(order_id, order_id).run();
+    } else if (status === 'farming' || status === 'active') {
+      const ss = setup_status || 'farming';
+      await env.DB.prepare(
+        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = ?, spirit_roots = ?, created_result = ? WHERE username = ? AND order_id = ?"
+      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
     } else if (status === 'completed') {
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, username, order_id).run();
+        "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
+      ).bind(status, level || 0, character_name || '', spirit_roots || '{}', username, order_id).run();
     } else if (status === 'error' || status === 'failed') {
       await env.DB.prepare(
         "UPDATE game_accounts SET status = ?, level = ?, error_msg = ?, last_check_at = datetime('now'), health_status = 'error' WHERE username = ? AND order_id = ?"
@@ -1401,15 +1417,32 @@ async function handleRoute(method, path, request, env, url) {
 
   if (path === '/api/gh/report-health' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, username, level, status, map_id, map_name, error_msg } = body;
+    const { order_id, username, level, status, map_id, map_name, error_msg, character_name, spirit_roots, skills, techniques, equipment, exp, exp_percent, health_status, setup_status } = body;
     const isCompleted = level >= 120;
     const reportStatus = isCompleted ? 'completed' : (status || 'farming');
 
     await env.DB.prepare(
-      "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, last_check_at = datetime('now'), error_msg = ?, reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END, stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END WHERE username = ? AND order_id = ?"
-    ).bind(reportStatus, level || 0, map_id || 0, map_name || '', error_msg || '', level || 0, level || 0, username, order_id).run();
+      `UPDATE game_accounts SET
+        status = ?, level = ?, map_id = ?, map_name = ?,
+        character_name = COALESCE(NULLIF(?, ''), character_name),
+        spirit_roots = COALESCE(NULLIF(?, ''), spirit_roots),
+        skills = ?, techniques = ?, equipment = ?,
+        last_check_at = datetime('now'),
+        error_msg = ?,
+        health_status = ?,
+        setup_status = COALESCE(NULLIF(?, ''), setup_status),
+        reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END,
+        stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END
+      WHERE username = ? AND order_id = ?`
+    ).bind(
+      reportStatus, level || 0, map_id || 0, map_name || '',
+      character_name || '', spirit_roots || '{}',
+      JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []),
+      error_msg || '', health_status || 'ok', setup_status || 'farming',
+      level || 0, level || 0, username, order_id
+    ).run();
 
-    return json({ ok: true, completed: isCompleted });
+    return json({ ok: true, completed: isCompleted, level: level || 0 });
   }
 
   if (path === '/api/gh/complete-order' && method === 'POST') {

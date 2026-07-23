@@ -8,7 +8,7 @@ export async function onRequest(context) {
   if (request.method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const body = await request.json().catch(() => ({}));
-    const { order_id, username, password, status, level, map_id, map_name, skills, techniques, equipment, error_msg, server_username, server_password, character_name, spirit_roots, setup_status } = body;
+    const { order_id, username, password, status, level, map_id, map_name, skills, techniques, equipment, error_msg, server_username, server_password, character_name, spirit_roots, setup_status, created_result } = body;
 
     if (status === 'creating') {
       const existing = await env.DB.prepare(
@@ -22,18 +22,17 @@ export async function onRequest(context) {
         await logActivity(env, order_id, ord?.user_id || null, 'account_created', '创建账号: ' + username);
       }
     } else if (status === 'character_created') {
-      // 角色创建后上报角色名/灵根
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = 'created', character_name = ?, spirit_roots = ?, setup_status = 'character_created', last_check_at = datetime('now'), health_status = 'ok' WHERE username = ? AND order_id = ?"
-      ).bind(character_name || '', spirit_roots || '{}', username, order_id).run();
+        "UPDATE game_accounts SET status = 'created', character_name = ?, spirit_roots = ?, setup_status = 'character_created', last_check_at = datetime('now'), health_status = 'ok', created_result = ? WHERE username = ? AND order_id = ?"
+      ).bind(character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
       await env.DB.prepare(
         "UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed')) WHERE id = ?"
       ).bind(order_id, order_id).run();
     } else if (status === 'farming' || status === 'active') {
       const ss = setup_status || 'farming';
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ? WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, username, order_id).run();
+        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = ?, spirit_roots = ?, created_result = ? WHERE username = ? AND order_id = ?"
+      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
     } else if (status === 'completed') {
       await env.DB.prepare(
         "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"

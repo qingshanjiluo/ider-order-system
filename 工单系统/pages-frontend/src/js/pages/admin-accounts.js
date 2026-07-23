@@ -1,6 +1,15 @@
-// pages/admin-accounts.js — 管理后台 - 账号管理（含角色/灵根/Setup状态）
 import { api } from '../api.js';
 import { toast } from '../components/toast.js';
+
+let _pollTimer = null;
+
+function fmtDate(d) {
+  if (!d) return '-';
+  const dt = typeof d === 'string' ? d.replace(' ', 'T') : d;
+  const date = new Date(dt);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
 
 const STATUS_MAP = {
   creating: { label: '注册中', class: 'badge-pending' },
@@ -8,6 +17,7 @@ const STATUS_MAP = {
   completed: { label: '已完成', class: 'badge-completed' },
   error: { label: '异常', class: 'badge-rejected' },
   banned: { label: '封禁', class: 'badge-rejected' },
+  failed: { label: '失败', class: 'badge-rejected' },
 };
 
 const SETUP_MAP = {
@@ -24,11 +34,14 @@ const SETUP_MAP = {
 };
 
 export async function renderAdminAccounts({ container }) {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+
   container.innerHTML = `
     <div class="page-header">
       <h2>账号管理</h2>
-      <p>查看所有挂机账号状态（含角色名/灵根/Setup状态）</p>
+      <p>所有账号实时状态（自动刷新）</p>
     </div>
+    <div class="text-xs text-muted mb-2" style="text-align:right;">上次更新: ${fmtDate(new Date().toISOString())}</div>
     <div class="filter-bar">
       <select class="form-select" id="admin-account-status">
         <option value="">全部状态</option>
@@ -37,6 +50,7 @@ export async function renderAdminAccounts({ container }) {
         <option value="completed">已完成</option>
         <option value="error">异常</option>
         <option value="banned">封禁</option>
+        <option value="failed">失败</option>
       </select>
       <select class="form-select" id="admin-account-setup">
         <option value="">全部Setup</option>
@@ -53,7 +67,9 @@ export async function renderAdminAccounts({ container }) {
 
   document.getElementById('admin-account-status').addEventListener('change', () => loadAccounts());
   document.getElementById('admin-account-setup').addEventListener('change', () => loadAccounts());
-  loadAccounts();
+  await loadAccounts();
+
+  _pollTimer = setInterval(loadAccounts, 20000);
 }
 
 async function loadAccounts() {
@@ -65,7 +81,6 @@ async function loadAccounts() {
     const res = await api.adminGetAccounts();
     let accounts = res.accounts || res || [];
 
-    // 客户端过滤
     const statusFilter = document.getElementById('admin-account-status')?.value || '';
     const setupFilter = document.getElementById('admin-account-setup')?.value || '';
     if (statusFilter) accounts = accounts.filter(a => a.status === statusFilter);
@@ -91,6 +106,7 @@ async function loadAccounts() {
               <th>用户</th>
               <th>操作人</th>
               <th>订单号</th>
+              <th>错误信息</th>
               <th>更新时间</th>
             </tr>
           </thead>
@@ -115,7 +131,8 @@ async function loadAccounts() {
                   <td class="text-xs">${a.user_name || a.user_id || '-'}</td>
                   <td class="text-xs text-muted">${a.operator_name || '-'}</td>
                   <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
-                  <td class="text-sm text-muted">${a.updated_at ? new Date(a.updated_at).toLocaleDateString('zh-CN') : new Date(a.created_at).toLocaleDateString('zh-CN')}</td>
+                  <td class="text-xs" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
+                  <td class="text-sm text-muted">${fmtDate(a.last_check_at || a.created_at)}</td>
                 </tr>`;
             }).join('')}
           </tbody>

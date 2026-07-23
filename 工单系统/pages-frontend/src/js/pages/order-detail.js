@@ -86,7 +86,7 @@ export async function renderOrderDetail({ container, params }) {
         </div>
         <div class="stat-card">
           <div class="stat-label">创建时间</div>
-          <div class="stat-value text-sm">${new Date(order.created_at).toLocaleString('zh-CN')}</div>
+          <div class="stat-value text-sm">${fmtDateTime(order.created_at)}</div>
         </div>
       </div>
 
@@ -111,18 +111,28 @@ export async function renderOrderDetail({ container, params }) {
 
       <div class="card">
         <div class="card-header">
-          <h3>操作日志</h3>
+          <h3>操作日志 (${activitiesList.length})</h3>
         </div>
         <div id="order-activities">
-          ${activitiesList.map(a => `
+          ${activitiesList.map(a => {
+            const hasRaw = a.raw_output && a.raw_output !== '{}' && a.raw_output !== '[]';
+            const actionColors = {
+              account_created: 'var(--accent-green)', status_change: 'var(--accent-blue)',
+              order_approved: 'var(--accent-green)', order_completed: 'var(--accent-green)',
+              order_rejected: 'var(--accent-red)', order_cancelled: 'var(--accent-amber)',
+              error: 'var(--accent-red)', retry: 'var(--accent-amber)',
+            };
+            const color = actionColors[a.action] || 'var(--text-primary)';
+            return `
             <div style="padding:var(--space-3) 0;border-bottom:1px solid var(--border-light);">
               <div class="flex justify-between items-center">
-                <span class="text-sm font-semibold">${a.action || a.type || '操作'}</span>
-                <span class="text-xs text-muted">${new Date(a.created_at).toLocaleString('zh-CN')}</span>
+                <span class="text-sm font-semibold" style="color:${color}">${a.action || a.type || '操作'}</span>
+                <span class="text-xs text-muted">${fmtDateTime(a.created_at)}</span>
               </div>
-              <p class="text-sm text-muted mt-1">${a.detail || a.description || ''}</p>
-            </div>
-          `).join('') || '<div class="empty-state"><p>暂无日志</p></div>'}
+              <p class="text-sm mt-1">${a.detail || a.description || ''}</p>
+              ${hasRaw ? `<details style="margin-top:4px;"><summary style="font-size:var(--text-xs);cursor:pointer;color:var(--accent-primary);">查看详细</summary><pre style="background:var(--bg-elevated);padding:6px;border-radius:4px;font-size:var(--text-xs);margin-top:4px;overflow-x:auto;max-height:120px;">${formatJson(a.raw_output)}</pre></details>` : ''}
+            </div>`;
+          }).join('') || '<div class="empty-state"><p>暂无日志</p></div>'}
         </div>
       </div>`;
 
@@ -273,6 +283,14 @@ async function loadOrderAccounts(orderId, isAdmin) {
   }
 }
 
+function fmtDate(d) {
+  if (!d) return '-';
+  const dt = typeof d === 'string' ? d.replace(' ', 'T') : d;
+  const date = new Date(dt);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('zh-CN');
+}
+
 function renderAccountsTable(el, accounts, isAdmin) {
   if (!accounts.length) {
     el.innerHTML = `
@@ -300,6 +318,7 @@ function renderAccountsTable(el, accounts, isAdmin) {
             <th>等级</th>
             <th>操作人</th>
             <th>更新时间</th>
+            <th>错误信息</th>
           </tr>
         </thead>
         <tbody>
@@ -320,7 +339,8 @@ function renderAccountsTable(el, accounts, isAdmin) {
               <td><span class="badge ${setupLabel.class}">${setupLabel.label}</span></td>
               <td>Lv.${a.level || '-'}</td>
               <td class="text-xs text-muted">${a.operator_name || '-'}</td>
-              <td class="text-sm text-muted">${a.updated_at ? new Date(a.updated_at).toLocaleDateString('zh-CN') : new Date(a.created_at).toLocaleDateString('zh-CN')}</td>
+              <td class="text-sm text-muted">${fmtDate(a.last_check_at || a.created_at)}</td>
+              <td class="text-xs" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -351,4 +371,20 @@ function getSetupLabel(setupStatus) {
     error: { label: '异常', class: 'badge-rejected' },
   };
   return map[setupStatus] || { label: setupStatus || '-', class: '' };
+}
+
+function fmtDateTime(d) {
+  if (!d) return '-';
+  const dt = typeof d === 'string' ? d.replace(' ', 'T') : d;
+  const date = new Date(dt);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function formatJson(str) {
+  if (!str) return '-';
+  try {
+    const parsed = typeof str === 'string' ? JSON.parse(str) : str;
+    return JSON.stringify(parsed, null, 2);
+  } catch { return str; }
 }

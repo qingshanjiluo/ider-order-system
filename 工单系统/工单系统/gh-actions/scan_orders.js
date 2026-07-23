@@ -57,6 +57,12 @@ async function apiRequest(method, path, token, body) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function tsLog(msg) {
+  const now = new Date();
+  const t = now.toLocaleString('zh-CN', { hour12: false });
+  console.log(`[${t}] ${msg}`);
+}
+
 async function workerApi(path, method = 'GET', body = null) {
   const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
   const url = WORKER_URL.replace(/\/+$/, '') + path;
@@ -69,167 +75,256 @@ async function workerApi(path, method = 'GET', body = null) {
  * 1) 注册 → 2) 创建角色(金灵根100) → 3) 绑定邀请码 →
  * 4) 装备技能(重击/火球术/治疗术) → 5) 装备铁剑 →
  * 6) 设置功法(吐纳法) → 7) 切换地图(荒石村) → 8) 开始战斗+自动刷怪
+ * 含重试机制：如果用户名重复自动重试，最多5次
  */
 async function registerAndSetup(workerOrder, orderIdx) {
-  const apiIdx = orderIdx * 30;
-  setApiIdx(apiIdx);
-
-  const username = antiDetect.randomUsername();
-  const password = antiDetect.randomPassword();
   const inviteCode = workerOrder.invite_code || '';
+  const usedNames = new Set();
 
-  console.log('[' + username + '] 开始注册' + (inviteCode ? ' (邀请码: ' + inviteCode + ')' : ''));
+  for (let retry = 0; retry < 5; retry++) {
+    const apiIdx = orderIdx * 30 + retry * 5;
+    setApiIdx(apiIdx);
 
-  try {
-    const machineId = antiDetect.generateMachineId(apiIdx);
-    const stepDelay = () => antiDetect.randomDelay(1200, 2500);
+    const username = antiDetect.randomUsername(16, [...usedNames]);
+    const password = antiDetect.randomPassword();
 
-    // ── 1) 注册账号 ──
-    const regData = await apiRequest('POST', '/auth/register', '', {
-      username, password, machine_id: machineId,
-    });
-    const token = regData.token;
-    console.log('[' + username + '] ✅ 注册成功 (accountId=' + regData.accountId + ')');
-    await stepDelay();
-
-    // 上报 Worker：账号已创建
-    await workerApi('/api/gh/report-account', 'POST', {
-      order_id: workerOrder.id, username, password,
-      server_username: username, server_password: password,
-      status: 'creating',
-    });
-
-    // ── 2) 创建角色（金灵根100） ──
-    // 注册只创建账号，不创建角色；必须调用 /player/create
-    const playerName = username.slice(0, 8); // 角色名取用户名前8字符
-    const createData = await apiRequest('POST', '/player/create', token, {
-      name: playerName,
-      spirit_roots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
-    });
-    console.log('[' + username + '] ✅ 角色创建成功: ' + (createData.player?.name || playerName) + ' (金灵根100)');
-    await stepDelay();
-
-    // ── 3) 绑定邀请码 ──
-    if (inviteCode) {
-      try {
-        const inviteData = await apiRequest('POST', '/invite/bind', token, { invite_code: inviteCode });
-        console.log('[' + username + '] ✅ 邀请码绑定成功, 邀请人: ' + (inviteData.inviter_name || '?'));
-      } catch (e) {
-        console.log('[' + username + '] ⚠️ 邀请码绑定失败(可能已超12h或已绑定): ' + e.message);
-      }
-      await stepDelay();
+    if (retry > 0) {
+      tsLog('[' + username + '] 重试第 ' + (retry + 1) + ' 次' + (inviteCode ? ' (邀请码: ' + inviteCode + ')' : ''));
+    } else {
+      tsLog('[' + username + '] 开始注册' + (inviteCode ? ' (邀请码: ' + inviteCode + ')' : ''));
     }
 
-    // ── 4) 装备初始3个技能（重击/火球术/治疗术） ──
-    const starterSkills = [
-      { id: 1, name: '重击' },
-      { id: 2, name: '火球术' },
-      { id: 3, name: '治疗术' },
-    ];
-    let equippedSkills = 0;
-    for (const sk of starterSkills) {
-      try {
-        await apiRequest('POST', '/player/equip_skill', token, { skill_id: sk.id });
-        equippedSkills++;
-        console.log('[' + username + '] ✅ 技能装备: ' + sk.name);
-      } catch (e) {
-        if (e.message && e.message.includes('已装备')) {
-          equippedSkills++;
-          console.log('[' + username + '] ✅ 技能已装备: ' + sk.name);
-        } else {
-          console.log('[' + username + '] ⚠️ 技能跳过(' + sk.name + '): ' + e.message);
-        }
-      }
-      await sleep(300);
-    }
-    console.log('[' + username + '] 技能装备完成: ' + equippedSkills + '/' + starterSkills.length);
-    await stepDelay();
-
-    // ── 5) 装备铁剑（从背包查找） ──
-    // 使用 /player/sync 获取完整玩家数据（包含 inventory）
-    // /player/state 不返回背包，必须用 sync
     try {
-      const sync = await apiRequest('GET', '/player/sync', token);
-      const inv = sync?.player?.inventory || [];
-      let swordFound = false;
-      // 遍历背包查找铁剑
-      for (let p = 0; p < inv.length && !swordFound; p++) {
-        if (!inv[p]) continue;
-        for (let s = 0; s < inv[p].length; s++) {
-          const slot = inv[p][s];
-          if (slot?.item && String(slot.item.name || '').includes('铁剑')) {
-            await apiRequest('POST', '/player/equip', token, {
-              page: p, slot_index: s, expect_item_id: Number(slot.item.id) || 0,
-            });
-            swordFound = true;
-            console.log('[' + username + '] ✅ 铁剑装备成功');
-            break;
+      const checkRes = await workerApi('/api/gh/check-username', 'POST', { username });
+      if (checkRes.exists) {
+        tsLog('[' + username + '] ⚠️ 用户名已被占用，重新生成...');
+        usedNames.add(username);
+        continue;
+      }
+    } catch (e) {}
+
+    try {
+      const machineId = antiDetect.generateMachineId(apiIdx);
+      const stepDelay = () => antiDetect.randomDelay(1200, 2500);
+
+      // ── 1) 注册账号 ──
+      const regData = await apiRequest('POST', '/auth/register', '', {
+        username, password, machine_id: machineId,
+      });
+      const token = regData.token;
+      tsLog('[' + username + '] ✅ 注册成功 (accountId=' + regData.accountId + ')');
+      await stepDelay();
+
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: workerOrder.id, username, password,
+        server_username: username, server_password: password,
+        status: 'creating',
+      });
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: workerOrder.id, account_id: 0,
+        log_type: 'register', message: '注册账号: ' + username,
+        raw_output: JSON.stringify({ accountId: regData.accountId }),
+      });
+
+      // ── 2) 创建角色（金灵根100） ──
+      const playerName = username.slice(0, 8);
+      const createData = await apiRequest('POST', '/player/create', token, {
+        name: playerName,
+        spirit_roots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
+      });
+      tsLog('[' + username + '] ✅ 角色创建成功: ' + (createData.player?.name || playerName) + ' (金灵根100)');
+      const characterName = createData.player?.name || playerName;
+      const createdResultData = {
+        character_name: characterName,
+        spirit_roots: createData.player?.spirit_roots || { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
+      };
+      const spiritRoots = JSON.stringify(createdResultData.spirit_roots);
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: workerOrder.id, username, password,
+        status: 'character_created',
+        character_name: characterName,
+        spirit_roots: spiritRoots,
+        created_result: JSON.stringify(createdResultData),
+      });
+      await stepDelay();
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: workerOrder.id, log_type: 'character',
+        message: '创建角色: ' + characterName + ' (金灵根100)',
+        raw_output: JSON.stringify(createdResultData),
+      });
+
+      // ── 3) 绑定邀请码 ──
+      if (inviteCode) {
+        try {
+          const inviteData = await apiRequest('POST', '/invite/bind', token, { invite_code: inviteCode });
+          tsLog('[' + username + '] ✅ 邀请码绑定成功, 邀请人: ' + (inviteData.inviter_name || '?'));
+          await workerApi('/api/gh/report-log', 'POST', {
+            order_id: workerOrder.id, log_type: 'invite',
+            message: '邀请码绑定成功: ' + inviteCode + ', 邀请人: ' + (inviteData.inviter_name || '?'),
+          });
+        } catch (e) {
+          tsLog('[' + username + '] ⚠️ 邀请码绑定失败: ' + e.message);
+        }
+        await stepDelay();
+      }
+
+      // ── 4) 装备初始3个技能 ──
+      const starterSkills = [
+        { id: 1, name: '重击' },
+        { id: 2, name: '火球术' },
+        { id: 3, name: '治疗术' },
+      ];
+      let equippedSkills = 0;
+      const equippedSkillNames = [];
+      for (const sk of starterSkills) {
+        try {
+          await apiRequest('POST', '/player/equip_skill', token, { skill_id: sk.id });
+          equippedSkills++;
+          equippedSkillNames.push(sk.name);
+          tsLog('[' + username + '] ✅ 技能装备: ' + sk.name);
+        } catch (e) {
+          if (e.message && e.message.includes('已装备')) {
+            equippedSkills++;
+            equippedSkillNames.push(sk.name);
+            tsLog('[' + username + '] ✅ 技能已装备: ' + sk.name);
+          } else {
+            tsLog('[' + username + '] ⚠️ 技能跳过(' + sk.name + '): ' + e.message);
           }
         }
+        await sleep(300);
       }
-      if (!swordFound) {
-        console.log('[' + username + '] ⚠️ 背包中未找到铁剑');
+      tsLog('[' + username + '] 技能装备完成: ' + equippedSkills + '/' + starterSkills.length);
+      await stepDelay();
+
+      // ── 5) 装备铁剑 ──
+      let swordEquipped = false;
+      try {
+        const sync = await apiRequest('GET', '/player/sync', token);
+        const inv = sync?.player?.inventory || [];
+        for (let p = 0; p < inv.length && !swordEquipped; p++) {
+          if (!inv[p]) continue;
+          for (let s = 0; s < inv[p].length; s++) {
+            const slot = inv[p][s];
+            if (slot?.item && String(slot.item.name || '').includes('铁剑')) {
+              await apiRequest('POST', '/player/equip', token, {
+                page: p, slot_index: s, expect_item_id: Number(slot.item.id) || 0,
+              });
+              swordEquipped = true;
+              tsLog('[' + username + '] ✅ 铁剑装备成功');
+              break;
+            }
+          }
+        }
+        if (!swordEquipped) tsLog('[' + username + '] ⚠️ 背包中未找到铁剑');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 装备铁剑失败: ' + e.message);
       }
-    } catch (e) {
-      console.log('[' + username + '] ⚠️ 装备铁剑失败: ' + e.message);
-    }
-    await stepDelay();
+      await stepDelay();
 
-    // ── 6) 设置主功法（吐纳法 id=1） ──
-    try {
-      await apiRequest('POST', '/player/set_technique', token, { slot: 'main', technique_id: 1 });
-      console.log('[' + username + '] ✅ 功法设置: 吐纳法');
-    } catch (e) {
-      console.log('[' + username + '] ⚠️ 功法跳过: ' + e.message);
-    }
-    await stepDelay();
+      // ── 6) 设置主功法（吐纳法 id=1） ──
+      let techniqueSet = false;
+      try {
+        await apiRequest('POST', '/player/set_technique', token, { slot: 'main', technique_id: 1 });
+        techniqueSet = true;
+        tsLog('[' + username + '] ✅ 功法设置: 吐纳法');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 功法跳过: ' + e.message);
+      }
+      await stepDelay();
 
-    // ── 7) 切换地图到荒石村 (map_id=1) ──
-    try {
-      await apiRequest('POST', '/player/set_map', token, { map_id: 1 });
-      console.log('[' + username + '] ✅ 切换至荒石村');
-    } catch (e) {
-      console.log('[' + username + '] ⚠️ 地图切换跳过: ' + e.message);
-    }
-    await stepDelay();
+      // ── 7) 切换地图到荒石村 ──
+      let mapChanged = false;
+      try {
+        await apiRequest('POST', '/player/set_map', token, { map_id: 1 });
+        mapChanged = true;
+        tsLog('[' + username + '] ✅ 切换至荒石村');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 地图切换跳过: ' + e.message);
+      }
+      await stepDelay();
 
-    // ── 8) 开始战斗 + 自动刷怪 ──
-    try {
-      await apiRequest('POST', '/battle/start', token, { mapId: 1, poll_mode: false, auto_restart: false });
-      console.log('[' + username + '] ✅ 战斗已启动');
-    } catch (e) {
-      console.log('[' + username + '] ⚠️ 战斗启动跳过: ' + e.message);
-    }
-    await sleep(500);
-    try {
-      await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: 1 });
-      console.log('[' + username + '] ✅ 自动刷怪已开启');
-    } catch (e) {
-      console.log('[' + username + '] ⚠️ 自动刷怪跳过: ' + e.message);
-    }
+      // ── 8) 战斗 + 自动刷怪 ──
+      let battleStarted = false;
+      try {
+        await apiRequest('POST', '/battle/start', token, { mapId: 1, poll_mode: false, auto_restart: false });
+        battleStarted = true;
+        tsLog('[' + username + '] ✅ 战斗已启动');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 战斗启动跳过: ' + e.message);
+      }
+      await sleep(500);
+      let autoRestartSet = false;
+      try {
+        await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: 1 });
+        autoRestartSet = true;
+        tsLog('[' + username + '] ✅ 自动刷怪已开启');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 自动刷怪跳过: ' + e.message);
+      }
 
-    // 上报 Worker：配置完成
-    await workerApi('/api/gh/report-account', 'POST', {
-      order_id: workerOrder.id, username, password,
-      server_username: username, server_password: password,
-      status: 'farming', level: 1,
-      map_id: 1, map_name: '荒石村',
-      skills: starterSkills.map(s => ({ id: s.id, name: s.name })),
-      techniques: [{ id: 1, name: '吐纳法' }],
-      equipment: [{ name: '铁剑' }],
-    });
+      const setupLog = {
+        registered: true, character_created: true,
+        skills: equippedSkillNames, iron_sword: swordEquipped,
+        technique: techniqueSet, map: mapChanged,
+        battle: battleStarted, auto_restart: autoRestartSet,
+      };
 
-    return { username, password, ok: true };
-  } catch (e) {
-    console.log('[' + username + '] ❌ 失败: ' + e.message);
-    try {
       await workerApi('/api/gh/report-account', 'POST', {
-        order_id: workerOrder.id, username, password: '',
-        status: 'failed', error_msg: e.message,
+        order_id: workerOrder.id, username, password,
+        server_username: username, server_password: password,
+        status: 'farming', level: 1,
+        map_id: 1, map_name: '荒石村',
+        character_name: characterName,
+        spirit_roots: spiritRoots,
+        skills: starterSkills.map(s => ({ id: s.id, name: s.name })),
+        techniques: techniqueSet ? [{ id: 1, name: '吐纳法' }] : [],
+        equipment: swordEquipped ? [{ name: '铁剑' }] : [],
+        setup_status: 'farming',
+        created_result: JSON.stringify(setupLog),
       });
-    } catch (e2) {}
-    return { username, ok: false, error: e.message };
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: workerOrder.id, log_type: 'setup_complete',
+        message: '账号配置完成: ' + JSON.stringify(setupLog),
+      });
+
+      return { username, password, ok: true };
+    } catch (e) {
+      const errMsg = e.message || '';
+      tsLog('[' + username + '] ❌ 失败: ' + errMsg);
+
+      const isDuplicate = /已存在|已注册|重复|exists|already|taken/i.test(errMsg);
+      if (isDuplicate && retry < 4) {
+        tsLog('[' + username + '] ⚠️ 用户名重复，重新生成并重试...');
+        usedNames.add(username);
+        try {
+          await workerApi('/api/gh/report-log', 'POST', {
+            order_id: workerOrder.id, log_type: 'retry',
+            message: '用户名重复，重试 #' + (retry + 1) + ': ' + errMsg,
+          });
+        } catch (e2) {}
+        continue;
+      }
+
+      try {
+        await workerApi('/api/gh/report-account', 'POST', {
+          order_id: workerOrder.id, username, password: '',
+          status: 'failed', error_msg: errMsg,
+        });
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: workerOrder.id, log_type: 'error',
+          message: '注册失败: ' + errMsg,
+          raw_output: errMsg,
+        });
+      } catch (e2) {}
+      return { username, ok: false, error: errMsg };
+    }
   }
+
+  tsLog('❌ 用户名生成重试耗尽（5次），跳过该账号');
+  return { username: '', ok: false, error: '重试耗尽' };
 }
 
 // ── 仙盟采集处理 ──
@@ -417,15 +512,19 @@ async function dispatchOrder(order, orderIdx) {
     case '代打':
     case '托管':
     default: {
-      // 原有逻辑：注册新账号
+      const existingAccounts = order.total_accounts_created || 0;
+      if (existingAccounts > 0) {
+        tsLog('已有 ' + existingAccounts + ' 个账号，跳过注册');
+        return true;
+      }
       const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 120)) : 1);
       const maxAccounts = Math.min(accountsToCreate, 10);
-      console.log('  类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
+      tsLog('类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
 
       for (let a = 0; a < maxAccounts; a++) {
         await antiDetect.randomDelay(5000);
         const r = await registerAndSetup(order, orderIdx * 10 + a);
-        console.log('  结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
+        tsLog('结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
         await antiDetect.smartPause(a, 3, 30);
       }
       return true;
@@ -442,14 +541,14 @@ async function main() {
   if (!API_KEY) { console.error('错误: 未设置 API_KEY'); process.exit(1); }
   if (!WORKER_URL) { console.error('错误: 未设置 WORKER_URL'); process.exit(1); }
 
-  console.log('\n[扫描] 获取已审核通过的工单...');
+  tsLog('获取已审核通过的工单...');
   const data = await workerApi('/api/gh/approved-orders');
   if (!data.ok || !data.orders || !data.orders.length) {
-    console.log('[结果] 没有待处理的工单');
+    tsLog('没有待处理的工单');
     return;
   }
 
-  console.log('[结果] 找到 ' + data.orders.length + ' 个待处理工单\n');
+  tsLog('找到 ' + data.orders.length + ' 个待处理工单\n');
 
   for (let i = 0; i < data.orders.length; i++) {
     const order = data.orders[i];
@@ -458,15 +557,14 @@ async function main() {
 
     const success = await dispatchOrder(order, i);
 
-    // 订阅类工单（仙盟采集/每日试炼）不标记为完成，保持 approved 状态以便每日执行
     const isSubscription = ['仙盟采集', '每日试炼'].includes(order.order_type);
     if (success && !isSubscription) {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
-      console.log('  工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
+      tsLog('工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
     } else if (success && isSubscription) {
-      console.log('  工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
+      tsLog('工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
     } else {
-      console.log('  工单 #' + order.id + ' 处理失败');
+      tsLog('工单 #' + order.id + ' 处理失败');
     }
   }
 
@@ -476,6 +574,6 @@ async function main() {
 }
 
 main().catch(e => {
-  console.error('\n❌ 致命错误:', e.message);
+  tsLog('❌ 致命错误: ' + e.message);
   process.exit(1);
 });

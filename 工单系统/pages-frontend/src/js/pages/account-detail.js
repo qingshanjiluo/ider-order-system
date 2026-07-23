@@ -2,6 +2,14 @@
 import { api } from '../api.js';
 import { toast } from '../components/toast.js';
 
+function fmtDateTime(d) {
+  if (!d) return '-';
+  const dt = typeof d === 'string' ? d.replace(' ', 'T') : d;
+  const date = new Date(dt);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleString('zh-CN', { hour12: false });
+}
+
 export async function renderAccountDetail({ container, params }) {
   const accountId = params.id;
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
@@ -21,6 +29,7 @@ export async function renderAccountDetail({ container, params }) {
       completed: { label: '已完成', class: 'badge-completed' },
       error: { label: '异常', class: 'badge-rejected' },
       banned: { label: '封禁', class: 'badge-rejected' },
+      failed: { label: '失败', class: 'badge-rejected' },
     };
     const st = STATUS_MAP[account.status] || { label: account.status, class: '' };
 
@@ -55,6 +64,10 @@ export async function renderAccountDetail({ container, params }) {
           <div class="stat-label">订单号</div>
           <div class="stat-value font-mono text-sm">#${account.order_id || '-'}</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-label">最后检查</div>
+          <div class="stat-value text-sm">${fmtDateTime(account.last_check_at)}</div>
+        </div>
       </div>
 
       <div class="card mb-6">
@@ -64,6 +77,12 @@ export async function renderAccountDetail({ container, params }) {
             <div><span class="text-muted text-sm">游戏账号:</span> <span class="font-mono">${account.username || '-'}</span></div>
             <div><span class="text-muted text-sm">角色名:</span> <span class="font-semibold">${account.character_name || '-'}</span></div>
             <div><span class="text-muted text-sm">操作人:</span> <span>${account.operator_name || '-'}</span></div>
+            <div><span class="text-muted text-sm">创建时间:</span> <span>${fmtDateTime(account.created_at)}</span></div>
+            ${account.error_msg ? `
+            <div style="grid-column:1/-1;">
+              <span class="text-muted text-sm" style="color:var(--accent-red);">错误信息:</span>
+              <div style="background:var(--bg-elevated);padding:8px;border-radius:4px;font-size:var(--text-xs);margin-top:4px;color:var(--accent-red);">${account.error_msg}</div>
+            </div>` : ''}
             ${roots ? `
             <div style="grid-column:1/-1;">
               <span class="text-muted text-sm">灵根配置:</span>
@@ -79,8 +98,8 @@ export async function renderAccountDetail({ container, params }) {
             </div>` : ''}
             ${account.created_result ? `
             <div style="grid-column:1/-1;">
-              <span class="text-muted text-sm">创建结果:</span>
-              <pre style="background:var(--bg-elevated);padding:8px;border-radius:4px;font-size:var(--text-xs);margin-top:4px;overflow-x:auto;">${formatResult(account.created_result)}</pre>
+              <span class="text-muted text-sm">创建结果 / Setup详情:</span>
+              <pre style="background:var(--bg-elevated);padding:8px;border-radius:4px;font-size:var(--text-xs);margin-top:4px;overflow-x:auto;max-height:200px;">${formatResult(account.created_result)}</pre>
             </div>` : ''}
           </div>
         </div>
@@ -88,18 +107,28 @@ export async function renderAccountDetail({ container, params }) {
 
       <div class="card">
         <div class="card-header">
-          <h3>操作日志</h3>
+          <h3>操作日志 (${logsList.length})</h3>
         </div>
         <div id="account-logs">
-          ${logsList.map(l => `
+          ${logsList.map(l => {
+            const hasRaw = l.raw_output && l.raw_output !== '{}' && l.raw_output !== '[]';
+            const logTypeColors = {
+              register: 'var(--accent-green)', character: 'var(--accent-blue)',
+              invite: 'var(--accent-amber)', setup_complete: 'var(--accent-green)',
+              error: 'var(--accent-red)', retry: 'var(--accent-amber)',
+              info: 'var(--text-primary)',
+            };
+            const color = logTypeColors[l.log_type] || 'var(--text-primary)';
+            return `
             <div style="padding:var(--space-3) 0;border-bottom:1px solid var(--border-light);">
               <div class="flex justify-between items-center">
-                <span class="text-sm font-semibold">${l.log_type || l.action || '操作'}</span>
-                <span class="text-xs text-muted">${new Date(l.created_at).toLocaleString('zh-CN')}</span>
+                <span class="text-sm font-semibold" style="color:${color}">${l.log_type || l.action || '操作'}</span>
+                <span class="text-xs text-muted">${fmtDateTime(l.created_at)}</span>
               </div>
-              <p class="text-sm text-muted mt-1">${l.message || l.detail || l.description || ''}</p>
-            </div>
-          `).join('') || '<div class="empty-state"><p>暂无日志</p></div>'}
+              <p class="text-sm mt-1">${l.message || l.detail || l.description || ''}</p>
+              ${hasRaw ? `<details style="margin-top:4px;"><summary style="font-size:var(--text-xs);cursor:pointer;color:var(--accent-primary);">查看原始数据</summary><pre style="background:var(--bg-elevated);padding:6px;border-radius:4px;font-size:var(--text-xs);margin-top:4px;overflow-x:auto;max-height:120px;">${formatResult(l.raw_output)}</pre></details>` : ''}
+            </div>`;
+          }).join('') || '<div class="empty-state"><p>暂无日志</p></div>'}
         </div>
       </div>`;
   } catch (err) {

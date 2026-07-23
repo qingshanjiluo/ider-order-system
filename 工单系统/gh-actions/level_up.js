@@ -52,6 +52,12 @@ async function apiRequest(method, path, token, body) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function tsLog(msg) {
+  const now = new Date();
+  const t = now.toLocaleString('zh-CN', { hour12: false });
+  console.log(`[${t}] ${msg}`);
+}
+
 async function workerApi(path, method, body) {
   const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
   const url = WORKER_URL.replace(/\/+$/, '') + path;
@@ -64,18 +70,17 @@ async function levelUpAccount(account, idx) {
 
   const { server_username, server_password, order_id, username } = account;
   if (!server_username || !server_password) {
-    console.log('  [' + (username || '?') + '] ⏭️ 无账号密码，跳过');
+    tsLog('[' + (username || '?') + '] ⏭️ 无账号密码，跳过');
     return { ok: false, skipped: true };
   }
 
-  console.log('  [' + server_username + '] 检查中...');
+  tsLog('[' + server_username + '] 检查中...');
 
   try {
-    // 检查是否已过监控期
     if (account.stop_monitor_at) {
       const stopTime = new Date(account.stop_monitor_at).getTime();
       if (Date.now() > stopTime) {
-        console.log('  [' + server_username + '] ⏹️ 超过监控期，标记完成');
+        tsLog('[' + server_username + '] ⏹️ 超过监控期，标记完成');
         await workerApi('/api/gh/report-account', 'POST', {
           order_id, username, status: 'completed', level: account.level || 0,
         });
@@ -85,16 +90,14 @@ async function levelUpAccount(account, idx) {
 
     await antiDetect.randomDelay(2000);
 
-    // 登录
     const machineId = 'levelup_' + idx + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const loginData = await apiRequest('POST', '/auth/login', '', {
       username: server_username, password: server_password, machine_id: machineId,
     });
     const token = loginData.token;
-    console.log('  [' + server_username + '] ✅ 登录成功');
+    tsLog('[' + server_username + '] ✅ 登录成功');
     await antiDetect.randomDelay(1500);
 
-    // 获取当前状态
     const state = await apiRequest('GET', '/player/state', token);
     const player = state.player || {};
     const currentLevel = player.level || 0;
@@ -103,92 +106,135 @@ async function levelUpAccount(account, idx) {
     const nextLevelExp = player.next_level_exp || 1;
     const expPercent = Math.floor((exp / nextLevelExp) * 100);
 
-    console.log('  [' + server_username + '] 📊 等级=' + currentLevel + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
+    tsLog('[' + server_username + '] 📊 等级=' + currentLevel + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
 
-    // 如果已满级，直接上报完成
+    // 获取玩家名、灵根
+    let playerName = '';
+    let playerRoots = {};
+    try {
+      const syncResult = await apiRequest('GET', '/player/sync', token);
+      const sp = syncResult?.player || {};
+      playerName = sp.name || sp.nickname || '';
+      playerRoots = sp.spirit_roots || {};
+    } catch (e) {}
+
     if (currentLevel >= MAX_LEVEL) {
-      console.log('  [' + server_username + '] 🏆 已达满级');
+      tsLog('[' + server_username + '] 🏆 已达满级');
       await workerApi('/api/gh/report-health', 'POST', {
         order_id, username, status: 'completed', level: MAX_LEVEL,
         map_id: player.map_id || 0, map_name: player.map_name || '',
+        character_name: playerName, spirit_roots: JSON.stringify(playerRoots),
+        health_status: 'completed',
       });
       return { ok: true, level: MAX_LEVEL, completed: true };
     }
 
-    // 循环升级
     let newLevel = currentLevel;
+    let levelsGained = 0;
     if (canLevelUp) {
       for (let i = 0; i < 50; i++) {
         try {
           await apiRequest('POST', '/player/level_up', token, {});
           newLevel++;
-          console.log('  [' + server_username + '] ⬆️ 升级! Lv.' + newLevel);
+          levelsGained++;
+          tsLog('[' + server_username + '] ⬆️ 升级! Lv.' + newLevel);
           await antiDetect.randomDelay(600);
 
           if (newLevel >= MAX_LEVEL) {
-            console.log('  [' + server_username + '] 🏆 到达满级 120!');
+            tsLog('[' + server_username + '] 🏆 到达满级 120!');
             break;
           }
 
-          // 每 5 级检查一次是否还能继续
           if (i % 5 === 4 || i === 0) {
             const st2 = await apiRequest('GET', '/player/state', token);
             if (!st2.player?.can_level_up) {
-              console.log('  [' + server_username + '] 经验不足，暂停升级');
+              tsLog('[' + server_username + '] 经验不足，暂停升级');
               break;
             }
           }
         } catch (e) {
-          console.log('  [' + server_username + '] 升级中断: ' + e.message);
+          tsLog('[' + server_username + '] 升级中断: ' + e.message);
           break;
         }
       }
     } else {
-      console.log('  [' + server_username + '] 经验不足(' + expPercent + '%)，无法升级');
+      tsLog('[' + server_username + '] 经验不足(' + expPercent + '%)，无法升级');
     }
 
-    // 等级 ≥ 100 时尝试突破
     if (newLevel >= 100 && newLevel < MAX_LEVEL) {
       try {
         await apiRequest('POST', '/player/breakthrough', token, {});
-        console.log('  [' + server_username + '] 🔓 突破尝试');
+        tsLog('[' + server_username + '] 🔓 突破尝试');
         await antiDetect.randomDelay(1500);
       } catch (e) {
-        console.log('  [' + server_username + '] 突破跳过: ' + e.message);
+        tsLog('[' + server_username + '] 突破跳过: ' + e.message);
       }
     }
 
-    // 重新获取最终等级
     let finalLevel = newLevel;
+    let finalPlayer = player;
     try {
       const st3 = await apiRequest('GET', '/player/state', token);
       finalLevel = st3.player?.level || newLevel;
+      finalPlayer = st3.player || player;
     } catch (e) {}
 
     const isCompleted = finalLevel >= MAX_LEVEL;
     const reportStatus = isCompleted ? 'completed' : 'farming';
 
+    // 收集完整数据
+    const equippedSkills = finalPlayer.equipped_skills || [];
+    const equippedWeapon = finalPlayer.equipment?.weapon || null;
+    const equippedTechnique = finalPlayer.equipped_technique || null;
+    const skillList = Array.isArray(equippedSkills) ? equippedSkills.map(s =>
+      typeof s === 'object' ? { id: s.id, name: s.name } : { id: s, name: String(s) }
+    ) : [];
+    const techList = equippedTechnique ? [{ id: equippedTechnique.id || 1, name: equippedTechnique.name || '吐纳法' }] : [];
+    const equipList = equippedWeapon ? [{ name: equippedWeapon.name || '铁剑' }] : [];
+    const charName = playerName || account.character_name || server_username;
+
     await workerApi('/api/gh/report-health', 'POST', {
       order_id, username, status: reportStatus, level: finalLevel,
-      map_id: player.map_id || 0, map_name: player.map_name || '',
+      map_id: finalPlayer.map_id || player.map_id || 0,
+      map_name: finalPlayer.map_name || player.map_name || '荒石村',
+      character_name: charName,
+      spirit_roots: JSON.stringify(playerRoots),
+      skills: skillList, techniques: techList, equipment: equipList,
+      exp: finalPlayer.exp || 0, exp_percent: expPercent,
+      health_status: isCompleted ? 'completed' : 'ok',
+      setup_status: account.setup_status || 'farming',
+    });
+
+    await workerApi('/api/gh/report-log', 'POST', {
+      order_id, log_type: isCompleted ? 'levelup_completed' : 'levelup_report',
+      message: isCompleted
+        ? '🎉 满级120! 升级' + levelsGained + '级'
+        : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' (+' + levelsGained + ')',
+      raw_output: JSON.stringify({ level: finalLevel, levelsGained, expPercent }),
     });
 
     if (isCompleted) {
-      console.log('  [' + server_username + '] 🎉 已满级，2 天后停止监控');
+      tsLog('[' + server_username + '] 🎉 已满级，2 天后停止监控');
     } else {
-      const pct = finalLevel > 0 ? Math.floor(finalLevel / MAX_LEVEL * 100) : 0;
-      console.log('  [' + server_username + '] 📈 当前等级=' + finalLevel + '/' + MAX_LEVEL + ' (' + pct + '%)');
+      tsLog('[' + server_username + '] 📈 当前等级=' + finalLevel + '/' + MAX_LEVEL + (levelsGained > 0 ? ' (+' + levelsGained + ')' : ''));
     }
 
     return { ok: true, level: finalLevel, completed: isCompleted };
   } catch (e) {
-    console.log('  [' + (server_username || '?') + '] ❌ 失败: ' + e.message);
+    const errMsg = e.message || '';
+    tsLog('[' + (server_username || '?') + '] ❌ 失败: ' + errMsg);
     try {
       await workerApi('/api/gh/report-health', 'POST', {
-        order_id, username, status: 'error', level: account.level || 0, error_msg: e.message,
+        order_id, username, status: 'error', level: account.level || 0,
+        error_msg: errMsg, health_status: 'error',
+      });
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id, log_type: 'levelup_error',
+        message: '升级失败: ' + errMsg,
+        raw_output: errMsg,
       });
     } catch (e2) {}
-    return { ok: false, error: e.message };
+    return { ok: false, error: errMsg };
   }
 }
 
@@ -199,15 +245,15 @@ async function main() {
   console.log('  目标等级: ' + MAX_LEVEL);
   console.log('═══════════════════════════════════════');
 
-  console.log('\n[扫描] 获取 farming 账号列表...');
+  tsLog('获取 farming 账号列表...');
   const data = await workerApi('/api/gh/active-accounts');
   if (!data.ok || !data.accounts || !data.accounts.length) {
-    console.log('[结果] 没有活跃账号');
+    tsLog('没有活跃账号');
     return;
   }
 
   const accounts = data.accounts;
-  console.log('[结果] 找到 ' + accounts.length + ' 个活跃账号\n');
+  tsLog('找到 ' + accounts.length + ' 个活跃账号\n');
 
   let leveled = 0;
   let completed = 0;
@@ -230,21 +276,20 @@ async function main() {
     await antiDetect.randomDelay(3000);
   }
 
-  // 推进已处理工单的状态
   if (processedOrders.size > 0) {
-    console.log('\n[推进] 检查 ' + processedOrders.size + ' 个工单完成状态...');
+    tsLog('检查 ' + processedOrders.size + ' 个工单完成状态...');
     for (const oid of processedOrders) {
       try {
         const res = await workerApi('/api/gh/complete-order', 'POST', { order_id: oid });
         if (res.ok && res.status === 'completed') {
-          console.log('  ✅ 工单 #' + oid + ' 已完成');
+          tsLog('✅ 工单 #' + oid + ' 已完成');
         } else if (res.ok && res.status === 'processing') {
-          console.log('  ▶️ 工单 #' + oid + ' 已进入挂机阶段');
+          tsLog('▶️ 工单 #' + oid + ' 已进入挂机阶段');
         } else {
-          console.log('  ⏳ 工单 #' + oid + ': ' + (res.message || '等待中'));
+          tsLog('⏳ 工单 #' + oid + ': ' + (res.message || '等待中'));
         }
       } catch (e) {
-        console.log('  ⚠️ 工单 #' + oid + ' 推进失败: ' + e.message);
+        tsLog('⚠️ 工单 #' + oid + ' 推进失败: ' + e.message);
       }
     }
   }
@@ -256,6 +301,6 @@ async function main() {
 }
 
 main().catch(e => {
-  console.error('\n❌ 致命错误:', e.message);
+  tsLog('❌ 致命错误: ' + e.message);
   process.exit(1);
 });

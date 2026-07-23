@@ -18,9 +18,10 @@ export async function onRequest(context) {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
     const body = await request.json().catch(() => ({}));
-    const { order_id, title, content } = body;
-    if (!title || !content) return json({ error: '请填写标题和内容' }, 400);
+    let { order_id, title, content, type } = body;
+    if (!content) return json({ error: '请填写内容' }, 400);
     if (!order_id) return json({ error: '请选择相关工单' }, 400);
+    if (!title) title = type || '售后';
     await env.DB.prepare(
       "INSERT INTO appeals (user_id, order_id, title, content, type, status, created_at) VALUES (?, ?, ?, ?, 'after_sales', 'pending', datetime('now'))"
     ).bind(user.id, order_id, title, content).run();

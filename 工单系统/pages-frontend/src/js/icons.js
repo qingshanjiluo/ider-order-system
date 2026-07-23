@@ -38,19 +38,7 @@ export const ICONS = {
   medal3: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="5" r="4"/><path d="M8 9l-2 6 2-2 2 2-2-6z"/></svg>',
   arrowSm: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6,4 10,8 6,12"/></svg>',
 
-  // ── 功能替代图标 ──
-  gift: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="6" width="12" height="9" rx="1"/><line x1="8" y1="6" x2="8" y2="15"/><path d="M8 6C8 6 5 4 3 6"/><path d="M8 6C8 6 11 4 13 6"/><line x1="1" y1="9" x2="15" y2="9"/></svg>',
-  check: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,8 7,12 13,4"/></svg>',
-  xmark: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>',
-  clock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><polyline points="8,4 8,8 11,10"/></svg>',
-  onlineDot: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="5"/></svg>',
-  offlineDot: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5"/></svg>',
-  tag: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8.5V2h6.5L14.5 9 8 15.5z"/><circle cx="4.5" cy="4.5" r="1" fill="currentColor"/></svg>',
-  unlock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="7" width="10" height="8" rx="1"/><path d="M5 7V5a3 3 0 0 1 6 0"/></svg>',
-  castle: '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 14V6l2-2V2h2v2l2-2 2 2V2h2v2l2-2v8l-2 2v2H4v-2L2 14z"/></svg>',
-  swords: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><line x1="2" y1="14" x2="14" y2="2"/><line x1="6" y1="2" x2="14" y2="2"/><line x1="14" y1="6" x2="14" y2="2"/><line x1="2" y1="14" x2="2" y2="10"/><line x1="2" y1="14" x2="6" y2="14"/></svg>',
-  sword: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="14" x2="13" y2="3"/><line x1="10" y1="2" x2="14" y2="6"/><line x1="6" y1="8" x2="10" y2="12"/></svg>',
-  chart: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="11" width="3" height="4"/><rect x="6" y="7" width="3" height="8"/><rect x="11" y="3" width="3" height="12"/></svg>',
+  // ── 特殊符号替代 ──
   asterisk: '<svg viewBox="0 0 16 16" fill="currentColor"><polygon points="8,1 9.5,6 14.5,4 11,8 14.5,12 9.5,10 8,15 6.5,10 1.5,12 5,8 1.5,4 6.5,6"/></svg>',
   dot: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="3"/></svg>',
 };

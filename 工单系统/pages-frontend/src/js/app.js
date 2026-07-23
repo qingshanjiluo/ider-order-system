@@ -43,6 +43,7 @@ import { renderAdminRecharge } from './pages/admin-recharge.js';
 import { renderAdminRechargeCodes } from './pages/admin-recharge-codes.js';
 import { renderAdminAiConfig } from './pages/admin-ai-config.js';
 import { renderAdminMarketOrders } from './pages/admin-market-orders.js';
+import { renderAdminMarketPurchases } from './pages/admin-market-purchases.js';
 import { renderAdminWithdrawals } from './pages/admin-withdrawals.js';
 import { renderLevel } from './pages/level.js';
 import { renderChangelog } from './pages/changelog.js';
@@ -163,6 +164,7 @@ router.register('/admin/ai-config', (ctx) => renderLayout('/admin/ai-config', re
 router.register('/admin/ads', (ctx) => renderLayout('/admin/ads', renderAdminAds));
 router.register('/admin/market-orders', (ctx) => renderLayout('/admin/market-orders', renderAdminMarketOrders));
 router.register('/admin/withdrawals', (ctx) => renderLayout('/admin/withdrawals', renderAdminWithdrawals));
+router.register('/admin/market-purchases', (ctx) => renderLayout('/admin/market-purchases', renderAdminMarketPurchases));
 
 // ── 初始化 ──────────────────────────
 // 尝试从 localStorage 恢复登录状态

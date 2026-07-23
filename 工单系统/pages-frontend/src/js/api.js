@@ -188,8 +188,12 @@ class ApiClient {
 
   // ── Market (Official) ───────────────────
   getMarketItems() { return this.get('/market/items'); }
-  purchaseMarketItem(item_id, quantity) {
-    return this.post('/market/purchase', { item_id, quantity });
+  purchaseMarketItem(data) {
+    return this.post('/market/purchase', data);
+  }
+  getMyPurchases() { return this.get('/market/purchases'); }
+  markPurchasePanelRead(purchase_id) {
+    return this.post('/market/purchases', { purchase_id });
   }
 
   // ── Market (Black Market Orders) ────────
@@ -206,6 +210,15 @@ class ApiClient {
   adminUpdateMarketItem(id, data) { return this.put(`/admin/market/${id}`, data); }
   adminDeleteMarketItem(id) { return this.del(`/admin/market/${id}`); }
 
+  // ── Admin: Market Purchases (Review) ──────
+  adminGetMarketPurchases(status) {
+    const q = status ? `?status=${status}` : '';
+    return this.get(`/admin/market-purchases${q}`);
+  }
+  adminReviewPurchase(purchase_id, action, admin_notes) {
+    return this.post('/admin/market-purchases', { purchase_id, action, admin_notes });
+  }
+
   // ── Admin: Market Orders ──────────────────
   adminGetMarketOrders(status, page) {
     const params = [];
@@ -219,6 +232,14 @@ class ApiClient {
   }
   adminDeleteMarketOrder(order_id) {
     return this.post('/admin/market-orders', { order_id, action: 'admin-delete' });
+  }
+
+  // ── Admin: 角色创建（工单系统角色创建流程） ──
+  adminCreateOrderAccount(orderId, data) {
+    return this.post(`/admin/orders/${orderId}/create-account`, data);
+  }
+  adminSetupAccount(accountId, data) {
+    return this.post(`/admin/accounts/${accountId}/setup`, data);
   }
 
   // ── Admin: Recharge ─────────────────────

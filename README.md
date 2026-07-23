@@ -1,66 +1,85 @@
-# 艾德尔修仙传 — 自动化工具集
+# 艾德尔修仙传 — 工单系统
 
-基于 ESP32-S3 (ESP-IDF) 后端 + Web 前端的修仙游戏项目，附带完整批量自动化工具链。
+赛博朋克风格的邀请积分购买工单平台，配合 GitHub Actions 实现全自动账号注册、刷怪、升级。
 
-## 目录结构
+## 架构
 
 ```
-艾德尔机器人/
-├── 源代码/                    # 游戏服务端源码（ESP-IDF + C/JS）
-│   └── server/               # Express 游戏服务器
-│       ├── routes/           # API 路由（auth, player, alliance, cave...）
-│       ├── game/             # 游戏逻辑（战斗/洞府/炼丹/装备...）
-│       └── data/             # 游戏数据（items/skills/maps...）
-├── 批量注册工具/               # # 批量自动化工具（Node.js）
-│   ├── batch.js              # 批量注册
-│   ├── batch_email_bind.js   # 邮箱绑定（交互式）
-│   ├── batch_email_bind_ci.js# 邮箱绑定（CI/命令行）
-│   ├── batch_alliance_daily.js# 仙盟日常 + 洞府采集
-│   ├── auto_farm.js          # 自动刷怪
-│   ├── auto_alchemy.js       # 自动炼丹
-│   ├── _anti_detect_shared.js# 反检测核心模块
-│   └── README.md             # 工具集说明
-├── .github/workflows/        # GitHub Actions 自动化工作流
-│   ├── email-bind.yml        # 邮箱绑定
-│   ├── alliance-daily.yml    # 仙盟日常
-│   ├── auto-farm.yml         # 自动刷怪
-│   ├── auto-alchemy.yml      # 自动炼丹
-│   ├── batch-register.yml    # 批量注册
-│   └── ...
-└── README.md                 # 本文件
+┌─────────────┐     ┌──────────────┐     ┌───────────────┐
+│  Cloudflare  │     │  Cloudflare  │     │  GitHub       │
+│  Pages       │────▶│  Workers     │────▶│  Actions      │
+│  (前端界面)   │     │  (API+D1数据库) │     │  (自动注册/刷怪) │
+└─────────────┘     └──────────────┘     └───────────────┘
 ```
 
-## GitHub Actions 使用
+## 核心功能
 
-### 邮箱绑定
-仓库 → Actions → **📧 一键邮箱绑定** → Run workflow
+| 模块 | 说明 |
+|------|------|
+| 用户系统 | 注册/登录（单IP限制）、等级体系（最高10级70%折扣） |
+| 工单系统 | 提交购买工单（邀请码+支付信息+优惠码）→ 管理员审核 → 自动处理 |
+| 邀请系统 | 生成邀请码、30%分成、邀请积分提现 |
+| 客服机器人 | 工单状态查询、价格说明、常见问题 |
+| 账号监控 | 实时显示账号等级、地图、技能、装备信息 |
+| 自动注册 | GH Actions 定时扫描工单，自动注册账号（全金灵根） |
+| 自动升级 | 每日健康检测，自动点击升级，120级停号 |
+| 防封号 | 独立IP伪装、指纹轮换、智能分段暂停 |
 
-提供账号方式：
-- 文本框填入：`user1,pass1;user2,pass2`
-- 或预先提交 `accounts_email.txt` 到仓库
-- 或设置 Secrets: `ACCOUNTS_DATA`
+## 部署
 
-### 仙盟日常
-仓库 → Actions → **🏯 仙盟日常 + 洞府采集** → Run workflow
-
-自动执行：沐浴 → 采摘 → 悟道 → 开启洞府采集
-未加入仙盟时自动申请「天地一家大爱盟」。
-
-### 防封号
-所有工具内置独立IP伪造、浏览器指纹轮换、随机延迟、智能分段暂停。
-
-## 本地运行
+### 1. Cloudflare D1 数据库
 
 ```bash
-cd 批量注册工具
 npm install
-node batch_alliance_daily.js        # 交互模式
-CI=true node batch_email_bind_ci.js  # CI模式
+npx wrangler d1 create ider-orders
+npx wrangler d1 execute ider-orders --file=schema.sql
 ```
 
-## 技术栈
+### 2. 部署 Worker
 
-- **后端**: Node.js + Express + MySQL
-- **自动化**: Node.js + GitHub Actions
-- **反检测**: IP伪造 / 指纹轮换 / 随机延迟
-- **临时邮箱**: Mail.tm / Tempy.email API
+```bash
+npx wrangler deploy
+```
+
+### 3. 配置 Secrets
+
+在 GitHub 仓库设置 Secrets：
+- `WORKER_URL` — 你的 Worker 地址（如 `https://ider-order.xxx.workers.dev`）
+- `API_KEY` — Worker 中设置的 API_KEY
+
+### 4. 初始化管理员
+
+```sql
+-- 在 D1 中设置管理员（level >= 99）
+UPDATE users SET level = 99 WHERE username = 'admin';
+```
+
+## GitHub Actions
+
+| 工作流 | 触发 | 功能 |
+|--------|------|------|
+| `order-scan.yml` | 每6小时 / 手动 | 扫描审核通过的工单，自动注册账号 |
+| `health-check.yml` | 每天2次 / 手动 | 检测账号状态，自动升级 |
+
+## 定价
+
+- 微信支付：1 元 = 120 邀请积分
+- 灵石支付：100 万灵石 = 10 邀请积分
+- 优惠码 + 等级折扣（最高70%）
+
+## 用户等级
+
+| 等级 | 条件 | 权益 |
+|------|------|------|
+| Lv.1 | 注册 | 基础价 |
+| Lv.2 | 1单 | 解锁邀请系统 |
+| Lv.3 | 3单 | 10%优惠 |
+| Lv.4 | 5单 | 20%优惠 |
+| Lv.5 | 10单 | 30%优惠 |
+| Lv.10 | 100单 | 70%优惠 |
+
+## 邀请分成
+
+- 分享邀请码给好友注册
+- 好友成交后获得该订单金额 **30%** 的邀请积分
+- 邀请积分可提现或消费

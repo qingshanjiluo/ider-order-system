@@ -1,0 +1,41 @@
+# 每日日常维护 — 每天早上 8 点执行
+# 功能：仙盟日常（沐浴/采摘/悟道）+ 洞府采集
+name: Daily Maintenance
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      cave_type:
+        description: '采集类型 field(灵田) / mine(灵矿)'
+        required: false
+        default: 'field'
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: gh-actions
+
+      - name: Run daily maintenance
+        run: node daily_maintenance.js
+        working-directory: gh-actions
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          API_BASE: ${{ secrets.API_BASE }}
+          CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}
+          ALLIANCE_NAME: 天地一家大爱盟
+          CAVE_TYPE: ${{ github.event.inputs.cave_type || 'field' }}

@@ -106,6 +106,13 @@ async function levelUpAccount(account, idx) {
     const nextLevelExp = player.next_level_exp || 1;
     const expPercent = Math.floor((exp / nextLevelExp) * 100);
 
+    // DEBUG: dump raw state keys for debugging
+    const stateTopKeys = Object.keys(state).join(',');
+    const playerKeys = Object.keys(player).join(',');
+    tsLog('[' + server_username + '] 🔍 state顶层字段: ' + stateTopKeys.slice(0,200));
+    tsLog('[' + server_username + '] 🔍 player字段: ' + playerKeys.slice(0,200));
+    tsLog('[' + server_username + '] 🔍 can_level_up原文: ' + JSON.stringify(state.can_level_up) + ' / player.can_level_up: ' + JSON.stringify(player.can_level_up));
+
     tsLog('[' + server_username + '] 📊 等级=' + currentLevel + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
 
     // 获取玩家名、灵根

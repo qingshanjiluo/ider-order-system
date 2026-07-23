@@ -72,6 +72,10 @@ function showNewAppealModal() {
   body.innerHTML = `
     <form id="new-appeal-form">
       <div class="form-group">
+        <label class="form-label">申诉标题</label>
+        <input type="text" class="form-input" id="appeal-title" placeholder="请输入申诉标题" required maxlength="100">
+      </div>
+      <div class="form-group">
         <label class="form-label">申诉类型</label>
         <select class="form-select" id="appeal-type">
           <option value="账号封禁">账号封禁</option>
@@ -82,7 +86,7 @@ function showNewAppealModal() {
       </div>
       <div class="form-group">
         <label class="form-label">详细描述</label>
-        <textarea class="form-textarea" id="appeal-content" placeholder="请详细描述你遇到的问题..." required></textarea>
+        <textarea class="form-textarea" id="appeal-content" placeholder="请详细描述你遇到的问题..." required maxlength="2000"></textarea>
       </div>
     </form>`;
 
@@ -91,19 +95,18 @@ function showNewAppealModal() {
     body,
     confirmText: '提交',
     onConfirm: async () => {
+      const title = document.getElementById('appeal-title').value.trim();
       const type = document.getElementById('appeal-type').value;
       const content = document.getElementById('appeal-content').value.trim();
-      if (!content) {
-        toast.error('请填写申诉内容');
-        return;
-      }
+      if (!title) { toast.error('请填写申诉标题'); return; }
+      if (!content) { toast.error('请填写申诉内容'); return; }
       try {
-        await api.createAppeal({ type, content });
+        await api.createAppeal({ type, title, content });
         toast.success('申诉已提交');
         modal.close();
         loadAppeals();
       } catch (err) {
-        toast.error(err.message || '提交失败');
+        toast.error(err.message || '提交失败，请检查网络连接后重试');
       }
     },
   });

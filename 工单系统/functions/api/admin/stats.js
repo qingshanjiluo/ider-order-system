@@ -11,7 +11,8 @@ export async function onRequest(context) {
 
     const [totalUsers, totalOrders, approvedOrders, completedOrders, rejectedOrders, pendingOrders,
            totalAccounts, onlineAccounts, completedAccounts, errorAccounts,
-           totalRevenue, todayOrders, todayRevenue, weeklyOrders] = await Promise.all([
+           totalRevenue, todayOrders, todayRevenue, weeklyOrders,
+           pendingAppeals, pendingRecharge, pendingMarketPurchases, pendingWithdrawals] = await Promise.all([
       env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first(),
       env.DB.prepare('SELECT COUNT(*) as cnt FROM orders').first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='approved'").first(),
@@ -26,6 +27,10 @@ export async function onRequest(context) {
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-1 day')").first(),
       env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-7 days')").first(),
+      env.DB.prepare("SELECT COUNT(*) as cnt FROM appeals WHERE status='pending'").first(),
+      env.DB.prepare("SELECT COUNT(*) as cnt FROM recharge_orders WHERE status='pending'").first(),
+      env.DB.prepare("SELECT COUNT(*) as cnt FROM market_purchases WHERE status='pending'").first(),
+      env.DB.prepare("SELECT COUNT(*) as cnt FROM withdrawals WHERE status='pending'").first(),
     ]);
 
     // Level distribution
@@ -70,6 +75,10 @@ export async function onRequest(context) {
         today_orders: todayOrders.cnt,
         today_revenue: todayRevenue.total || 0,
         weekly_orders: weeklyOrders.cnt,
+        pending_appeals: pendingAppeals.cnt,
+        pending_recharge: pendingRecharge.cnt,
+        pending_market_purchases: pendingMarketPurchases.cnt,
+        pending_withdrawals: pendingWithdrawals.cnt,
         level_distribution: levelDist.results,
         order_status_distribution: orderStatusDist.results,
         account_status_distribution: accountStatusDist.results,

@@ -73,6 +73,10 @@ function showNewAfterSaleModal() {
   body.innerHTML = `
     <form id="new-after-sale-form">
       <div class="form-group">
+        <label class="form-label">售后标题</label>
+        <input type="text" class="form-input" id="as-title" placeholder="请输入售后标题" required maxlength="100">
+      </div>
+      <div class="form-group">
         <label class="form-label">订单号</label>
         <input type="text" class="form-input" id="as-order-id" placeholder="输入关联订单号" required>
       </div>
@@ -87,7 +91,7 @@ function showNewAfterSaleModal() {
       </div>
       <div class="form-group">
         <label class="form-label">详细描述</label>
-        <textarea class="form-textarea" id="as-content" placeholder="请详细描述售后问题..." required></textarea>
+        <textarea class="form-textarea" id="as-content" placeholder="请详细描述售后问题..." required maxlength="2000"></textarea>
       </div>
     </form>`;
 
@@ -96,20 +100,20 @@ function showNewAfterSaleModal() {
     body,
     confirmText: '提交',
     onConfirm: async () => {
+      const title = document.getElementById('as-title').value.trim();
       const order_id = document.getElementById('as-order-id').value.trim();
       const type = document.getElementById('as-type').value;
       const content = document.getElementById('as-content').value.trim();
-      if (!order_id || !content) {
-        toast.error('请填写完整信息');
-        return;
-      }
+      if (!title) { toast.error('请填写售后标题'); return; }
+      if (!order_id) { toast.error('请填写关联订单号'); return; }
+      if (!content) { toast.error('请填写售后描述'); return; }
       try {
-        await api.createAfterSales({ order_id, type, content });
+        await api.createAfterSales({ order_id, type, title, content });
         toast.success('售后申请已提交');
         modal.close();
         loadAfterSales();
       } catch (err) {
-        toast.error(err.message || '提交失败');
+        toast.error(err.message || '提交失败，请检查网络连接后重试');
       }
     },
   });

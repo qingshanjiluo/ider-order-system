@@ -50,6 +50,36 @@ export async function renderAdminStats({ container }) {
         </div>
       </div>
 
+      <!-- 待处理快速导航 -->
+      <div class="card mb-6">
+        <div class="card-header">
+          <h3>待处理事项</h3>
+          <a href="#/admin/orders?status=pending" class="text-sm" style="color:var(--accent);">查看全部</a>
+        </div>
+        <div class="pending-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;padding:16px;">
+          <a href="#/admin/orders?status=pending" class="pending-item" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;transition:all .15s;">
+            <span style="font-size:28px;font-weight:700;color:var(--accent-amber);">${stats.pending_orders || 0}</span>
+            <span style="font-size:13px;color:var(--text-muted);">待审批工单</span>
+          </a>
+          <a href="#/admin/appeals" class="pending-item" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;transition:all .15s;">
+            <span style="font-size:28px;font-weight:700;color:var(--accent-orange);">${stats.pending_appeals || 0}</span>
+            <span style="font-size:13px;color:var(--text-muted);">待处理申诉</span>
+          </a>
+          <a href="#/admin/recharge" class="pending-item" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;transition:all .15s;">
+            <span style="font-size:28px;font-weight:700;color:var(--accent-blue);">${stats.pending_recharge || 0}</span>
+            <span style="font-size:13px;color:var(--text-muted);">待审核充值</span>
+          </a>
+          <a href="#/admin/market-purchases" class="pending-item" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;transition:all .15s;">
+            <span style="font-size:28px;font-weight:700;color:var(--accent-purple);">${stats.pending_market_purchases || 0}</span>
+            <span style="font-size:13px;color:var(--text-muted);">待审核购买</span>
+          </a>
+          <a href="#/admin/withdrawals" class="pending-item" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border-radius:8px;background:var(--bg-card);border:1px solid var(--border);text-decoration:none;transition:all .15s;">
+            <span style="font-size:28px;font-weight:700;color:#e91e63;">${stats.pending_withdrawals || 0}</span>
+            <span style="font-size:13px;color:var(--text-muted);">待处理提现</span>
+          </a>
+        </div>
+      </div>
+
       <!-- 收入趋势 -->
       ${stats.daily_revenue ? `
       <div class="card">

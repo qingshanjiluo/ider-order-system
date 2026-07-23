@@ -23,7 +23,7 @@ async function fetchAccounts() {
         'X-API-Key': API_KEY,
         'Content-Type': 'application/json',
       },
-      timeout: 15000,
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {

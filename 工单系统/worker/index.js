@@ -1,12 +1,12 @@
 /**
- * [!] 本 Worker 已废弃，请使用 Pages Functions (functions/) 替代
+ * ⚠️ 本 Worker 已废弃，请使用 Pages Functions (functions/) 替代
  *
  * 此文件保留仅用于兼容旧部署，所有新路由应在 functions/api/ 下创建
  * 请参考 wrangler.pages.toml 使用 Pages 方式部署
  *
  * 待迁移路线图:
- * - functions/api/auth/forgot-password.js   [√] 已创建 (使用 D1 存储)
- * - functions/api/auth/reset-password.js    [√] 已创建 (使用 D1 存储)
+ * - functions/api/auth/forgot-password.js   ✅ 已创建 (使用 D1 存储)
+ * - functions/api/auth/reset-password.js    ✅ 已创建 (使用 D1 存储)
  * - worker/static.js → pages-frontend/      进行中
  */
 
@@ -273,7 +273,7 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // [>>] 重定向到 Pages 新前端（瑞典极简风格）
+    // 🚀 重定向到 Pages 新前端（瑞典极简风格）
     // 保留 API 路径在 Worker 中作为备选
     const PAGES_URL = 'https://ider-order-system.pages.dev';
 
@@ -315,7 +315,7 @@ function getContentType(path) {
 
 async function handleRoute(method, path, request, env, url) {
   // ╔════════════════════════════════════════════════════╗
-  // ║  [!] 废弃通知 — 此 Worker 路由已全部被迁移          ║
+  // ║  ⚠️ 废弃通知 — 此 Worker 路由已全部被迁移          ║
   // ║  请使用 Pages Functions: functions/api/**/*.js    ║
   // ║  旧路径                    →  新路径                ║
   // ║  api/auth/register         →  api/auth/register    ║
@@ -571,7 +571,7 @@ async function handleRoute(method, path, request, env, url) {
       coupon_code || '',
       discount,
       bonusPoints,
-      order_type || '购买邀请积分',
+      order_type || '代练',
       accCount,
       frozenPoints,
       finalInviteCode,
@@ -771,24 +771,6 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, message: '提现申请已提交，请联系管理员处理' });
   }
 
-  // ── Invite Convert ─────────────────────────────
-  if (path === '/api/invite/convert' && method === 'POST') {
-    const user = await authenticate(request, env);
-    if (!user) return json({ error: '未登录' }, 401);
-    const { points } = body;
-    if (!points || points < 10) return json({ error: '最少转换10积分' }, 400);
-    if ((user.invite_points || 0) < points) return json({ error: '邀请积分不足' }, 400);
-    const coinsToAdd = Math.floor(points / 120);
-    if (coinsToAdd < 1) return json({ error: '积分太少，至少需要120积分' }, 400);
-    await env.DB.prepare(
-      'UPDATE users SET invite_points = invite_points - ?, bonus_points = bonus_points + ? WHERE id = ?'
-    ).bind(points, coinsToAdd, user.id).run();
-    await env.DB.prepare(
-      "INSERT INTO notifications (user_id, title, content, type) VALUES (?, ?, ?, 'convert')"
-    ).bind(user.id, '积分转换成功', '已将 ' + points + ' 邀请积分转换为 ' + coinsToAdd + ' 修仙币（120:1）').run();
-    return json({ ok: true, message: '成功将 ' + points + ' 邀请积分转换为 ' + coinsToAdd + ' 修仙币', converted: coinsToAdd, deducted: points });
-  }
-
   // ── Bot ───────────────────────────────────────────
   if (path === '/api/bot/ask' && method === 'POST') {
     const user = await authenticate(request, env);
@@ -875,22 +857,13 @@ async function handleRoute(method, path, request, env, url) {
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已通过', '工单 #' || ? || ' 已审核通过，正在处理中', 'order')"
       ).bind(order.user_id, orderId).run();
     } else if (status === 'rejected') {
-      // 修仙币支付：退还冻结的积分（区分真实余额和试用额度）
+      // 修仙币支付：退还冻结的积分
       if (order.payment_method === 'coin' && order.frozen_points > 0) {
-        const refundTrial = order.free_trial_used || 0;
-        const refundReal = order.frozen_points - refundTrial;
-        if (refundReal > 0) {
-          await env.DB.prepare(
-            'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
-          ).bind(refundReal, order.user_id).run();
-        }
-        if (refundTrial > 0) {
-          await env.DB.prepare(
-            'UPDATE users SET free_trial_balance = free_trial_balance + ? WHERE id = ?'
-          ).bind(refundTrial, order.user_id).run();
-        }
+        await env.DB.prepare(
+          'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
+        ).bind(order.frozen_points, order.user_id).run();
         await logActivity(env, orderId, order.user_id, 'refund',
-          `工单拒绝，退还: ${refundReal > 0 ? refundReal + '修仙币' : ''}${refundReal > 0 && refundTrial > 0 ? ' + ' : ''}${refundTrial > 0 ? refundTrial + '试用额度' : ''}`);
+          '工单拒绝，退还冻结修仙币 ' + order.frozen_points + ' 个');
       }
       await env.DB.prepare(
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单被拒绝', '工单 #' || ? || ' 被拒绝: ' || ?, 'order')"
@@ -1194,7 +1167,7 @@ async function handleRoute(method, path, request, env, url) {
   }
 
   // ── User Settings ────────────────────────────────────
-  // [!] [已废弃] 请使用 functions/api/user/change-password.js
+  // ⚠️ [已废弃] 请使用 functions/api/user/change-password.js
   // 旧版 worker 路径已同步 verifyPassword，但仍建议切换到 Pages Functions
   if (path === '/api/user/change-password' && method === 'POST') {
     const user = await authenticate(request, env);
@@ -1383,9 +1356,17 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, orders: orders.results });
   }
 
+  if (path === '/api/gh/check-username' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { username } = body;
+    if (!username) return json({ error: '缺少username' }, 400);
+    const existing = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ?').bind(username).first();
+    return json({ ok: true, exists: !!existing });
+  }
+
   if (path === '/api/gh/report-account' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, username, password, status, level, map_id, map_name, skills, techniques, equipment, error_msg, server_username, server_password } = body;
+    const { order_id, username, password, status, level, map_id, map_name, skills, techniques, equipment, error_msg, server_username, server_password, character_name, spirit_roots, setup_status, created_result } = body;
 
     if (status === 'creating') {
       const existing = await env.DB.prepare(
@@ -1398,14 +1379,22 @@ async function handleRoute(method, path, request, env, url) {
         const ord = await env.DB.prepare('SELECT user_id FROM orders WHERE id = ?').bind(order_id).first();
         await logActivity(env, order_id, ord?.user_id || 0, 'account_created', '创建账号: ' + username);
       }
-    } else if (status === 'farming' || status === 'active') {
+    } else if (status === 'character_created') {
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok' WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), username, order_id).run();
+        "UPDATE game_accounts SET status = 'created', character_name = ?, spirit_roots = ?, setup_status = 'character_created', last_check_at = datetime('now'), health_status = 'ok', created_result = ? WHERE username = ? AND order_id = ?"
+      ).bind(character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
+      await env.DB.prepare(
+        "UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed')) WHERE id = ?"
+      ).bind(order_id, order_id).run();
+    } else if (status === 'farming' || status === 'active') {
+      const ss = setup_status || 'farming';
+      await env.DB.prepare(
+        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = ?, spirit_roots = ?, created_result = ? WHERE username = ? AND order_id = ?"
+      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
     } else if (status === 'completed') {
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, username, order_id).run();
+        "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
+      ).bind(status, level || 0, character_name || '', spirit_roots || '{}', username, order_id).run();
     } else if (status === 'error' || status === 'failed') {
       await env.DB.prepare(
         "UPDATE game_accounts SET status = ?, level = ?, error_msg = ?, last_check_at = datetime('now'), health_status = 'error' WHERE username = ? AND order_id = ?"
@@ -1428,15 +1417,32 @@ async function handleRoute(method, path, request, env, url) {
 
   if (path === '/api/gh/report-health' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, username, level, status, map_id, map_name, error_msg } = body;
+    const { order_id, username, level, status, map_id, map_name, error_msg, character_name, spirit_roots, skills, techniques, equipment, exp, exp_percent, health_status, setup_status } = body;
     const isCompleted = level >= 120;
     const reportStatus = isCompleted ? 'completed' : (status || 'farming');
 
     await env.DB.prepare(
-      "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, last_check_at = datetime('now'), error_msg = ?, reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END, stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END WHERE username = ? AND order_id = ?"
-    ).bind(reportStatus, level || 0, map_id || 0, map_name || '', error_msg || '', level || 0, level || 0, username, order_id).run();
+      `UPDATE game_accounts SET
+        status = ?, level = ?, map_id = ?, map_name = ?,
+        character_name = COALESCE(NULLIF(?, ''), character_name),
+        spirit_roots = COALESCE(NULLIF(?, ''), spirit_roots),
+        skills = ?, techniques = ?, equipment = ?,
+        last_check_at = datetime('now'),
+        error_msg = ?,
+        health_status = ?,
+        setup_status = COALESCE(NULLIF(?, ''), setup_status),
+        reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END,
+        stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END
+      WHERE username = ? AND order_id = ?`
+    ).bind(
+      reportStatus, level || 0, map_id || 0, map_name || '',
+      character_name || '', spirit_roots || '{}',
+      JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []),
+      error_msg || '', health_status || 'ok', setup_status || 'farming',
+      level || 0, level || 0, username, order_id
+    ).run();
 
-    return json({ ok: true, completed: isCompleted });
+    return json({ ok: true, completed: isCompleted, level: level || 0 });
   }
 
   if (path === '/api/gh/complete-order' && method === 'POST') {
@@ -1667,7 +1673,7 @@ async function handleRoute(method, path, request, env, url) {
   }
 
   // ── Admin: Full User Management ────────────────
-  // [!] [已废弃] admin reset-password — 请使用 functions/api/admin/users/[id]/reset-password.js
+  // ⚠️ [已废弃] admin reset-password — 请使用 functions/api/admin/users/[id]/reset-password.js
   if (path.match(/^\/api\/admin\/users\/(\d+)\/reset-password$/) && method === 'POST') {
     const admin = await authenticate(request, env);
     if (!admin || !admin.is_admin) return json({ error: '无权限' }, 403);
@@ -1801,7 +1807,7 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, config: cfg, announcement: ann || null, ads: adsData });
   }
 
-  // [!] [已废弃] 密码重置相关路由已迁移到 functions/api/auth/
+  // ⚠️ [已废弃] 密码重置相关路由已迁移到 functions/api/auth/
   // 请使用 Pages Functions 路径：/api/auth/forgot-password 和 /api/auth/reset-password
   // 旧版使用 globalThis.__resetTokens (in-memory Map) 存在 Worker 冷启动丢失问题
 
@@ -1811,7 +1817,6 @@ async function handleRoute(method, path, request, env, url) {
     if (!admin || !admin.is_admin) return json({ error: '无权限' }, 403);
 
     const [totalUsers, totalOrders, approvedOrders, completedOrders, rejectedOrders, pendingOrders,
-           activeOrders,
            totalAccounts, onlineAccounts, completedAccounts, errorAccounts,
            totalRevenue, todayOrders, todayRevenue, weeklyOrders] = await Promise.all([
       env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first(),
@@ -1820,14 +1825,13 @@ async function handleRoute(method, path, request, env, url) {
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='rejected'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='pending'").first(),
-      env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='active'").first(),
       env.DB.prepare('SELECT COUNT(*) as cnt FROM game_accounts').first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('farming','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('error','failed')").first(),
-      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed','active')").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-1 day')").first(),
-      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed','active')").first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-7 days')").first(),
     ]);
 
@@ -1853,7 +1857,7 @@ async function handleRoute(method, path, request, env, url) {
 
     // Recent 7-day order trend
     const dailyTrend = await env.DB.prepare(
-      "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(bonus_points), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') GROUP BY date(created_at) ORDER BY day"
+      "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(price), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') GROUP BY date(created_at) ORDER BY day"
     ).all();
 
     return json({
@@ -1865,7 +1869,6 @@ async function handleRoute(method, path, request, env, url) {
         completed_orders: completedOrders.cnt,
         rejected_orders: rejectedOrders.cnt,
         pending_orders: pendingOrders.cnt,
-        active_orders: activeOrders.cnt,
         total_accounts: totalAccounts.cnt,
         online_accounts: onlineAccounts.cnt,
         completed_accounts: completedAccounts.cnt,
@@ -1896,13 +1899,13 @@ async function getBotAnswer(question, env, user) {
 
   if (q.includes('订单') || q.includes('工单') || q.includes('状态') || q.includes('审核')) {
     if (!orderInfo.results.length) return '您还没有提交过工单哦~\n前往控制台提交工单即可开始。';
-    let reply = '您的工单状态：\n';
+    let reply = '📋 您的工单状态：\n';
     for (const o of orderInfo.results) {
-      const statusMap = { pending: '审核中', approved: '已通过', rejected: '已拒绝', completed: '已完成' };
+      const statusMap = { pending: '⏳ 审核中', approved: '✅ 已通过', rejected: '❌ 已拒绝', completed: '🎉 已完成' };
       const estMap = { pending: '等待审核', approved: '处理中', rejected: '已拒绝', completed: '已完成' };
       reply += `  #${o.id} ${statusMap[o.status] || o.status} (${estMap[o.status] || ''})\n`;
     }
-    return reply + '\n提示：发送 "订单 #编号" 查看详情';
+    return reply + '\n💡 发送 "订单 #编号" 查看详情';
   }
 
   if (/订单\s*#?\d+/.test(q)) {
@@ -1912,7 +1915,7 @@ async function getBotAnswer(question, env, user) {
         'SELECT * FROM orders WHERE id = ? AND user_id = ?'
       ).bind(match[1], user.id).first();
       if (detail) {
-        return `工单 #${detail.id}\n邀请码: ${detail.invite_code}\n金额: ¥${detail.price}\n支付: ${detail.payment_method === 'wechat' ? '微信' : '灵石'}\n状态: ${detail.status}\n优惠: ${detail.discount}%\n预计完成: ${detail.est_complete_date || '审核中'}\n创建: ${detail.created_at}`;
+        return `📦 工单 #${detail.id}\n邀请码: ${detail.invite_code}\n金额: ¥${detail.price}\n支付: ${detail.payment_method === 'wechat' ? '微信' : '灵石'}\n状态: ${detail.status}\n优惠: ${detail.discount}%\n预计完成: ${detail.est_complete_date || '审核中'}\n创建: ${detail.created_at}`;
       }
       return '未找到该工单';
     }
@@ -1923,24 +1926,24 @@ async function getBotAnswer(question, env, user) {
     if (orderInfo.results.length > 0) {
       const pendingCount = orderInfo.results.filter(o => o.status === 'pending' || o.status === 'approved').length;
       if (pendingCount > 0) {
-        return `预计 ${estDays} 天内完成处理。\n您有 ${pendingCount} 个进行中的工单，审核通过后自动进入处理流程。`;
+        return `⏱ 预计 ${estDays} 天内完成处理。\n您有 ${pendingCount} 个进行中的工单，审核通过后自动进入处理流程。`;
       }
     }
-    return `工单审核通过后，预计 ${estDays} 天内完成账号注册和升级。如果超过时间请联系管理员。`;
+    return `⏱ 工单审核通过后，预计 ${estDays} 天内完成账号注册和升级。如果超过时间请联系管理员。`;
   }
 
   if (q.includes('价格') || q.includes('多少钱') || q.includes('积分') || q.includes('收费')) {
-    let reply = '价格说明：\n';
+    let reply = '💰 价格说明：\n';
     reply += '▸ 微信支付：1元 = 120邀请积分\n';
     reply += '▸ 灵石支付：100万灵石 = 10邀请积分\n';
     reply += '▸ 等级折扣：最高Lv.10 享70%优惠\n';
     reply += '▸ 优惠码可叠加使用\n';
-    reply += '\n提示：等级越高越优惠，快去完成工单提升等级吧！';
+    reply += '\n💡 等级越高越优惠，快去完成工单提升等级吧！';
     return reply;
   }
 
   if (q.includes('优惠') || q.includes('折扣') || q.includes('等级') || q.includes('会员')) {
-    return '用户等级权益：\n' +
+    return '📊 用户等级权益：\n' +
       'Lv.1 基础价格\n' +
       'Lv.2 解锁邀请系统\n' +
       'Lv.3 享10%优惠\n' +
@@ -1956,7 +1959,7 @@ async function getBotAnswer(question, env, user) {
   }
 
   if (q.includes('邀请') || q.includes('分成') || q.includes('佣金') || q.includes('推广')) {
-    return '邀请系统：\n' +
+    return '🤝 邀请系统：\n' +
       '▸ 在邀请页面生成你的专属邀请码\n' +
       '▸ 分享给好友注册时填写\n' +
       '▸ 好友订单审核通过后，你获得订单金额30%邀请积分\n' +
@@ -1985,7 +1988,7 @@ async function getBotAnswer(question, env, user) {
 
   if (q.includes('你好') || q.includes('嗨') || q.includes('在吗') || q.includes('hello')) {
     let name = user.username || '道友';
-    return `你好 ${name}！我是艾德尔工单助手\n` +
+    return `你好 ${name}！我是艾德尔工单助手 🤖\n` +
       '你可以问我：\n' +
       '▸ "我的订单状态" - 查看工单\n' +
       '▸ "价格说明" - 了解收费\n' +
@@ -1997,7 +2000,7 @@ async function getBotAnswer(question, env, user) {
   }
 
   if (q.includes('帮助') || q.includes('功能') || q.includes('能做什么')) {
-    return '我可以回答这些问题：\n' +
+    return '🤖 我可以回答这些问题：\n' +
       '1. 查看工单状态\n' +
       '2. 查询价格和积分\n' +
       '3. 了解等级折扣\n' +
@@ -2010,7 +2013,7 @@ async function getBotAnswer(question, env, user) {
 
   const orderCount = orderInfo.results.length;
   const pendingOrders = orderInfo.results.filter(o => o.status === 'pending').length;
-  return '抱歉，不太理解您的问题\n\n' +
+  return '抱歉，不太理解您的问题 🤔\n\n' +
     `您有 ${orderCount} 个工单，其中 ${pendingOrders} 个待审核。\n\n` +
     '试试问：\n- "我的订单状态"\n- "价格说明"\n- "优惠折扣"\n- "邀请分成"\n- "预计多久到账"';
 }

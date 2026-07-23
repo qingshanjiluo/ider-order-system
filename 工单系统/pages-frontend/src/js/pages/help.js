@@ -107,10 +107,8 @@ export function renderHelp({ container }) {
         <div class="help-section-body">
           <p><strong>1. 注册账号</strong></p>
           <p>访问注册页面，填写用户名、密码和邀请码即可完成注册。如无邀请码可联系站长获取。</p>
-          <p style="margin-top:12px;"><strong>${icon('gift', 14)} 新用户免费试用</strong></p>
-          <p>每位新用户注册后可获得<strong style="color:var(--accent-green);">10修仙币免费试用额度</strong>，用于抵扣工单费用。试用额度优先于真实余额使用，用完为止。</p>
           <p style="margin-top:12px;"><strong>2. 提交工单</strong></p>
-          <p>登录后在控制台点击「提交新工单」。修仙币支付时会自动优先使用免费试用额度。</p>
+          <p>登录后在控制台点击「提交新工单」。</p>
           <p style="margin-top:12px;"><strong>3. 充值修仙币</strong></p>
           <p>在充值页面选择套餐 → 查看注意事项 → 扫码支付 → 提交申请 → 管理员审核后自动生成兑换码 → 在坊市或充值页输入兑换码激活修仙币。</p>
           <p style="margin-top:12px;"><strong>4. 使用坊市</strong></p>

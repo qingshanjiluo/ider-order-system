@@ -34,10 +34,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 安装依赖
-        working-directory: 工单系统
-        run: npm install
-
       - name: 检查 API 可用性
         id: check
         working-directory: 工单系统

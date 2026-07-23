@@ -1,7 +1,6 @@
 // pages/invite.js — 邀请返利页
 
 import { api } from '../api.js';
-import { icon } from '../icons.js';
 import { store } from '../store.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
@@ -10,14 +9,10 @@ export async function renderInvite({ container }) {
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const [info, packages, cfgRes] = await Promise.all([
+    const [info, packages] = await Promise.all([
       api.getInviteInfo(),
       api.getInvitePackages(),
-      api.getConfig(),
     ]);
-
-    const config = cfgRes.config || {};
-    const withdrawEnabled = config.withdraw_enabled !== '0'; // 默认开启
 
     const user = store.getUser();
     const inviteCode = info.invite_code || user?.invite_code || '';
@@ -53,11 +48,11 @@ export async function renderInvite({ container }) {
         </div>
         <div class="stat-card">
           <div class="stat-label">邀请积分</div>
-          <div class="stat-value" style="color:var(--accent-amber)">${info.invite_points || 0}</div>
+          <div class="stat-value">${info.invite_points || 0}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">可兑换修仙币</div>
-          <div class="stat-value" style="color:var(--accent-green)">${Math.floor((info.invite_points || 0) / 120)}</div>
+          <div class="stat-label">已购买积分</div>
+          <div class="stat-value">${info.purchased_points || 0}</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">当前倍率</div>
@@ -133,39 +128,17 @@ export async function renderInvite({ container }) {
         </div>
       </div>
 
-      <!-- 一键提取到修仙币 -->
-      <div class="card mb-6">
-        <div class="card-header">
-          <h3>${icon('gem', 14)} 一键提取到修仙币</h3>
-          <span class="badge badge-approved">即时到账</span>
-        </div>
-        <p class="text-sm text-muted mb-4">将邀请积分转换为修仙币，比例 120:1，转换后可直接用于提交工单</p>
-        <div class="flex items-center gap-3" style="flex-wrap:wrap;">
-          <input type="number" class="form-input" id="convert-points" placeholder="输入积分数量" style="max-width:200px;" value="${Math.floor((info.invite_points || 0) / 120) * 120 || ''}">
-          <button class="btn btn-green btn-sm" id="convert-all-btn" ${(!info.invite_points || info.invite_points < 10) ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>全部转换</button>
-          <button class="btn btn-primary btn-sm" id="convert-btn" ${(!info.invite_points || info.invite_points < 10) ? 'disabled style="opacity:0.5;cursor:not-allowed;"' : ''}>转换为修仙币</button>
-        </div>
-        <p class="text-sm mt-2" style="color:var(--accent-green);">${icon('bulb', 14)} 120 邀请积分 = 1 修仙币，当前可转换: ${info.invite_points || 0} 积分 → ${Math.floor((info.invite_points || 0) / 120)} 修仙币</p>
-      </div>
-
       <!-- 提现 -->
-      ${withdrawEnabled ? `
       <div class="card">
         <div class="card-header">
-          <h3>${icon('money', 14)} 积分提现</h3>
+          <h3>积分提现</h3>
         </div>
         <div class="flex items-center gap-3">
           <input type="number" class="form-input" id="withdraw-points" placeholder="输入积分数量" style="max-width:200px;">
-          <button class="btn btn-primary btn-sm" id="withdraw-btn">提现申请</button>
+          <button class="btn btn-primary btn-sm" id="withdraw-btn">提现</button>
         </div>
-        <p class="text-sm text-muted mt-2">120积分 = 1元（微信）/ 100万灵石 = 10积分，提现需管理员审核</p>
-      </div>` : `
-      <div class="card">
-        <div class="card-header">
-          <h3>${icon('money', 14)} 积分提现</h3>
-        </div>
-        <p class="text-sm text-muted" style="padding:var(--space-4);">提现功能暂未开放，请联系管理员</p>
-      </div>`}`;
+        <p class="text-sm text-muted mt-2">120积分 = 1元（微信）/ 100万灵石 = 10积分</p>
+      </div>`;
 
     // 复制邀请码
     document.getElementById('copy-invite').addEventListener('click', () => {
@@ -184,60 +157,20 @@ export async function renderInvite({ container }) {
     });
 
     // 提现
-    const withdrawBtn = document.getElementById('withdraw-btn');
-    if (withdrawBtn) {
-      withdrawBtn.addEventListener('click', async () => {
-        const points = parseInt(document.getElementById('withdraw-points').value);
-        if (!points || points <= 0) {
-          toast.error('请输入有效积分数量');
-          return;
-        }
-        try {
-          await api.withdrawInvitePoints(points);
-          toast.success('提现申请已提交，等待管理员审核');
-          document.getElementById('withdraw-points').value = '';
-        } catch (err) {
-          toast.error(err.message || '提现失败');
-        }
-      });
-    }
-
-    // 一键提取到修仙币
-    const convertBtn = document.getElementById('convert-btn');
-    const convertAllBtn = document.getElementById('convert-all-btn');
-    if (convertAllBtn) {
-      convertAllBtn.addEventListener('click', () => {
-        const maxCoins = Math.floor((info.invite_points || 0) / 120) * 120;
-        document.getElementById('convert-points').value = maxCoins;
-      });
-    }
-    if (convertBtn) {
-      convertBtn.addEventListener('click', async () => {
-        const points = parseInt(document.getElementById('convert-points').value);
-        if (!points || points <= 0) {
-          toast.error('请输入有效积分数量');
-          return;
-        }
-        if (points < 10) {
-          toast.error('最少转换10积分');
-          return;
-        }
-        const coins = Math.floor(points / 120);
-        if (coins < 1) {
-          toast.error('积分太少，至少需要120积分');
-          return;
-        }
-        try {
-          const result = await api.convertInvitePoints(points);
-          toast.success(result.message || `成功将 ${points} 积分转换为 ${coins} 修仙币`);
-          document.getElementById('convert-points').value = '';
-          // 刷新页面数据
-          renderInvite({ container });
-        } catch (err) {
-          toast.error(err.message || '转换失败');
-        }
-      });
-    }
+    document.getElementById('withdraw-btn').addEventListener('click', async () => {
+      const points = parseInt(document.getElementById('withdraw-points').value);
+      if (!points || points <= 0) {
+        toast.error('请输入有效积分数量');
+        return;
+      }
+      try {
+        await api.withdrawInvitePoints(points);
+        toast.success('提现申请已提交');
+        document.getElementById('withdraw-points').value = '';
+      } catch (err) {
+        toast.error(err.message || '提现失败');
+      }
+    });
   } catch (err) {
     container.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }

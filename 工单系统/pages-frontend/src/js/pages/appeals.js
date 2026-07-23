@@ -45,7 +45,7 @@ async function loadAppeals() {
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>ID</th><th>标题</th><th>类型</th><th>状态</th><th>管理员回复</th><th>创建时间</th></tr>
+            <tr><th>ID</th><th>类型</th><th>状态</th><th>内容</th><th>创建时间</th></tr>
           </thead>
           <tbody>
             ${appeals.map(a => {
@@ -53,10 +53,9 @@ async function loadAppeals() {
               return `
                 <tr>
                   <td class="font-mono text-xs">#${a.id}</td>
-                  <td class="text-sm font-semibold" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.title || '-'}</td>
                   <td>${a.type || '账号问题'}</td>
                   <td><span class="badge ${st.class}">${st.label}</span></td>
-                  <td class="text-sm" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.admin_reply || '-'}</td>
+                  <td class="text-sm" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.content || ''}</td>
                   <td class="text-sm text-muted">${new Date(a.created_at).toLocaleDateString('zh-CN')}</td>
                 </tr>`;
             }).join('')}
@@ -73,10 +72,6 @@ function showNewAppealModal() {
   body.innerHTML = `
     <form id="new-appeal-form">
       <div class="form-group">
-        <label class="form-label">申诉标题</label>
-        <input type="text" class="form-input" id="appeal-title" placeholder="简要描述问题（如：账号被封无法登录）" required>
-      </div>
-      <div class="form-group">
         <label class="form-label">申诉类型</label>
         <select class="form-select" id="appeal-type">
           <option value="账号封禁">账号封禁</option>
@@ -87,7 +82,7 @@ function showNewAppealModal() {
       </div>
       <div class="form-group">
         <label class="form-label">详细描述</label>
-        <textarea class="form-textarea" id="appeal-content" placeholder="请详细描述你遇到的问题..." rows="5" required></textarea>
+        <textarea class="form-textarea" id="appeal-content" placeholder="请详细描述你遇到的问题..." required></textarea>
       </div>
     </form>`;
 
@@ -96,19 +91,14 @@ function showNewAppealModal() {
     body,
     confirmText: '提交',
     onConfirm: async () => {
-      const title = document.getElementById('appeal-title').value.trim();
       const type = document.getElementById('appeal-type').value;
       const content = document.getElementById('appeal-content').value.trim();
-      if (!title) {
-        toast.error('请填写申诉标题');
-        return;
-      }
       if (!content) {
         toast.error('请填写申诉内容');
         return;
       }
       try {
-        await api.createAppeal({ title, type, content });
+        await api.createAppeal({ type, content });
         toast.success('申诉已提交');
         modal.close();
         loadAppeals();

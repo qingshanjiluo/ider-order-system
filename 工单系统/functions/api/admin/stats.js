@@ -1,22 +1,6 @@
 // functions/api/admin/stats.js — GET /api/admin/stats
-// 营收统一转换为人民币（RMB）：
-//   wechat: price 已是人民币
-//   coin:   price 是修仙币，120积分=1元 → RMB = price / 120
-//   spirit_stone: price 是万灵石，通过 config 比例转换为 RMB
 import { json } from '../../_utils.js';
 import { authenticateAdmin } from '../../_auth.js';
-
-// 辅助函数：将 price 按支付方式转换为人民币（扣除免费试用部分）
-// SQLite CASE 表达式模板（需与 spirit_stone_per_10_points 配置配合）
-const REVENUE_TO_RMB = `
-  CASE
-    WHEN payment_method = 'wechat' THEN price
-    WHEN payment_method = 'coin' THEN (price - COALESCE(free_trial_used, 0)) / 120.0
-    WHEN payment_method = 'spirit_stone' THEN price * 120.0 * 10000.0 / (
-      SELECT CAST(value AS REAL) FROM config WHERE key = 'spirit_stone_per_10_points' LIMIT 1
-    )
-    ELSE 0
-  END`;
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -26,7 +10,6 @@ export async function onRequest(context) {
     if (error) return json({ error }, 403);
 
     const [totalUsers, totalOrders, approvedOrders, completedOrders, rejectedOrders, pendingOrders,
-           activeOrders,
            totalAccounts, onlineAccounts, completedAccounts, errorAccounts,
            totalRevenue, todayOrders, todayRevenue, weeklyOrders] = await Promise.all([
       env.DB.prepare('SELECT COUNT(*) as cnt FROM users').first(),
@@ -35,16 +18,13 @@ export async function onRequest(context) {
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='rejected'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='pending'").first(),
-      env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE status='active'").first(),
       env.DB.prepare('SELECT COUNT(*) as cnt FROM game_accounts').first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('farming','active')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status='completed'").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE status IN ('error','failed')").first(),
-      // 总营收：所有支付方式统一转换为人民币
-      env.DB.prepare(`SELECT COALESCE(SUM(${REVENUE_TO_RMB}), 0) as total FROM orders WHERE status IN ('approved','completed','active')`).first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE status IN ('approved','completed')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-1 day')").first(),
-      // 今日营收：所有支付方式统一转换为人民币
-      env.DB.prepare(`SELECT COALESCE(SUM(${REVENUE_TO_RMB}), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed','active')`).first(),
+      env.DB.prepare("SELECT COALESCE(SUM(bonus_points), 0) as total FROM orders WHERE created_at >= datetime('now', '-1 day') AND status IN ('approved','completed')").first(),
       env.DB.prepare("SELECT COUNT(*) as cnt FROM orders WHERE created_at >= datetime('now', '-7 days')").first(),
     ]);
 
@@ -68,9 +48,9 @@ export async function onRequest(context) {
       "SELECT id, username, display_name, total_spent, total_orders, level FROM users WHERE total_spent > 0 ORDER BY total_spent DESC LIMIT 5"
     ).all();
 
-    // Recent 7-day order trend（营收统一转换为人民币，排除rejected）
+    // Recent 7-day order trend
     const dailyTrend = await env.DB.prepare(
-      `SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(${REVENUE_TO_RMB}), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') AND status IN ('approved','completed','active') GROUP BY date(created_at) ORDER BY day`
+      "SELECT date(created_at) as day, COUNT(*) as cnt, COALESCE(SUM(bonus_points), 0) as revenue FROM orders WHERE created_at >= datetime('now', '-7 days') GROUP BY date(created_at) ORDER BY day"
     ).all();
 
     return json({
@@ -82,7 +62,6 @@ export async function onRequest(context) {
         completed_orders: completedOrders.cnt,
         rejected_orders: rejectedOrders.cnt,
         pending_orders: pendingOrders.cnt,
-        active_orders: activeOrders.cnt,
         total_accounts: totalAccounts.cnt,
         online_accounts: onlineAccounts.cnt,
         completed_accounts: completedAccounts.cnt,

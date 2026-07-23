@@ -50,7 +50,7 @@ async function loadAppeals(status = '') {
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>ID</th><th>用户</th><th>标题</th><th>类型</th><th>状态</th><th>回复</th><th>创建时间</th><th>操作</th></tr>
+            <tr><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>内容</th><th>创建时间</th><th>操作</th></tr>
           </thead>
           <tbody>
             ${appeals.map(a => {
@@ -59,10 +59,9 @@ async function loadAppeals(status = '') {
                 <tr>
                   <td class="font-mono text-xs">#${a.id}</td>
                   <td>${a.username || a.user_id || '-'}</td>
-                  <td class="text-sm font-semibold" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.title || '-'}</td>
                   <td>${a.type || '账号问题'}</td>
                   <td><span class="badge ${st.class}">${st.label}</span></td>
-                  <td class="text-sm" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.admin_reply || a.content || ''}</td>
+                  <td class="text-sm" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.content || ''}</td>
                   <td class="text-sm text-muted">${new Date(a.created_at).toLocaleDateString('zh-CN')}</td>
                   <td>
                     <button class="btn btn-ghost btn-sm" data-reply-appeal="${a.id}">回复</button>

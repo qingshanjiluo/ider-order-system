@@ -2,6 +2,7 @@
  * 艾德尔工单系统 - GitHub Actions 订单扫描器
  * 扫描已审核通过的工单，自动注册账号并开始刷怪
  * 内置防封检测：独立IP/机器码/指纹轮换/随机延迟
+ * 完整流程：注册→创建角色(金灵根100)→绑定邀请码→装备技能/功法/武器→战斗+自动刷怪
  */
 const crypto = require('crypto');
 // Node.js 20+ 内置 fetch，无需 node-fetch
@@ -46,7 +47,7 @@ async function apiRequest(method, path, token, body) {
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
   Object.assign(headers, antiDetect.buildAntiDetectHeaders(_apiIdx++));
-  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, timeout: 30000 });
+  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, signal: AbortSignal.timeout(30000) });
   const text = await r.text();
   let data;
   try { data = JSON.parse(text); } catch (e) { throw new Error('非JSON(' + r.status + '): ' + text.slice(0, 200)); }
@@ -56,122 +57,282 @@ async function apiRequest(method, path, token, body) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function tsLog(msg) {
+  const now = new Date();
+  const t = now.toLocaleString('zh-CN', { hour12: false });
+  console.log(`[${t}] ${msg}`);
+}
+
 async function workerApi(path, method = 'GET', body = null) {
   const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
   const url = WORKER_URL.replace(/\/+$/, '') + path;
-  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, timeout: 30000 });
+  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
   return r.json();
 }
 
+/**
+ * 完整注册+配置流程（参照 batch.js 的 BatchEngine.processAccount）
+ * 1) 注册 → 2) 创建角色(金灵根100) → 3) 绑定邀请码 →
+ * 4) 装备技能(重击/火球术/治疗术) → 5) 装备铁剑 →
+ * 6) 设置功法(吐纳法) → 7) 切换地图(荒石村) → 8) 开始战斗+自动刷怪
+ * 含重试机制：如果用户名重复自动重试，最多5次
+ */
 async function registerAndSetup(workerOrder, orderIdx) {
-  const apiIdx = orderIdx * 30;
-  setApiIdx(apiIdx);
+  const inviteCode = workerOrder.invite_code || '';
+  const usedNames = new Set();
 
-  const username = antiDetect.randomUsername();
-  const password = antiDetect.randomPassword();
-  const invite_code = workerOrder.invite_code;
+  for (let retry = 0; retry < 5; retry++) {
+    const apiIdx = orderIdx * 30 + retry * 5;
+    setApiIdx(apiIdx);
 
-  console.log('[' + username + '] 开始注册 (邀请码: ' + invite_code + ')');
+    // 生成长度不超过16的用户名（确保角色名截取8字符后可读）
+    const username = antiDetect.randomUsername(16, [...usedNames]);
+    const password = antiDetect.randomPassword();
 
-  try {
-    const machineId = antiDetect.generateMachineId(apiIdx);
-    await antiDetect.randomDelay(1500);
+    if (retry > 0) {
+      tsLog('[' + username + '] 重试第 ' + (retry + 1) + ' 次' + (inviteCode ? ' (邀请码: ' + inviteCode + ')' : ''));
+    } else {
+      tsLog('[' + username + '] 开始注册' + (inviteCode ? ' (邀请码: ' + inviteCode + ')' : ''));
+    }
 
-    // 1) Register
-    const regData = await apiRequest('POST', '/auth/register', '', {
-      username, password,
-      invite_code,
-      spirit_root: 'gold',
-      machine_id: machineId,
-    });
-    console.log('[' + username + '] ✅ 注册成功');
-    await antiDetect.randomDelay(2000);
-
-    await workerApi('/api/gh/report-account', 'POST', {
-      order_id: workerOrder.id, username, password,
-      server_username: username, server_password: password,
-      status: 'creating',
-    });
-
-    // 2) Login
-    const loginData = await apiRequest('POST', '/auth/login', '', {
-      username, password, machine_id: machineId,
-    });
-    const token = loginData.token;
-    console.log('[' + username + '] ✅ 登录成功');
-    await antiDetect.randomDelay(1500);
-
-    // 3) Equip iron sword (item_id=11)
+    // 预检：通过 Worker 查询用户名是否已存在
     try {
-      await apiRequest('POST', '/player/use_item', token, {
-        page: 0, slot_index: 0, count: 1, expect_item_id: 11
+      const checkRes = await workerApi('/api/gh/check-username', 'POST', { username });
+      if (checkRes.exists) {
+        tsLog('[' + username + '] ⚠️ 用户名已被占用，重新生成...');
+        usedNames.add(username);
+        continue;
+      }
+    } catch (e) {
+      // 预检接口失败则继续，后续会捕获游戏服错误
+    }
+
+    try {
+      const machineId = antiDetect.generateMachineId(apiIdx);
+      const stepDelay = () => antiDetect.randomDelay(1200, 2500);
+
+      // ── 1) 注册账号 ──
+      const regData = await apiRequest('POST', '/auth/register', '', {
+        username, password, machine_id: machineId,
       });
-      console.log('[' + username + '] ✅ 装备铁剑');
-      await antiDetect.randomDelay(1000);
-    } catch (e) {
-      console.log('[' + username + '] 装备铁剑跳过: ' + e.message);
-    }
+      const token = regData.token;
+      tsLog('[' + username + '] ✅ 注册成功 (accountId=' + regData.accountId + ')');
+      await stepDelay();
 
-    // 4) Learn skills
-    try {
-      await apiRequest('POST', '/player/skill/learn', token, { skill_id: 1 });
-      await antiDetect.randomDelay(800);
-      await apiRequest('POST', '/player/skill/learn', token, { skill_id: 2 });
-      console.log('[' + username + '] ✅ 学习技能(重击+火球术)');
-      await antiDetect.randomDelay(800);
-    } catch (e) {
-      console.log('[' + username + '] 技能跳过: ' + e.message);
-    }
-
-    // 5) Equip technique
-    try {
-      await apiRequest('POST', '/player/technique/equip', token, { technique_id: 1 });
-      console.log('[' + username + '] ✅ 装备功法(吐纳法)');
-      await antiDetect.randomDelay(1000);
-    } catch (e) {
-      console.log('[' + username + '] 功法跳过: ' + e.message);
-    }
-
-    // 6) Switch to 荒石村 (map_id=1)
-    try {
-      await apiRequest('POST', '/player/map/switch', token, { map_id: 1 });
-      console.log('[' + username + '] ✅ 切换至荒石村');
-      await antiDetect.randomDelay(1500);
-    } catch (e) {
-      console.log('[' + username + '] 地图切换跳过: ' + e.message);
-    }
-
-    // 7) Start auto battle
-    try {
-      await apiRequest('POST', '/battle/start', token, {});
-      console.log('[' + username + '] ✅ 开始刷怪');
-      await antiDetect.randomDelay(500);
-    } catch (e) {
-      console.log('[' + username + '] 刷怪跳过: ' + e.message);
-    }
-
-    // Report success
-    await workerApi('/api/gh/report-account', 'POST', {
-      order_id: workerOrder.id, username, password,
-      server_username: username, server_password: password,
-      status: 'farming', level: 1,
-      map_id: 1, map_name: '荒石村',
-      skills: [{ id: 1, name: '重击' }, { id: 2, name: '火球术' }],
-      techniques: [{ id: 1, name: '吐纳法' }],
-      equipment: [{ id: 11, name: '铁剑' }],
-    });
-
-    return { username, password, ok: true };
-  } catch (e) {
-    console.log('[' + username + '] ❌ 失败: ' + e.message);
-    try {
+      // 上报 Worker：账号已创建
       await workerApi('/api/gh/report-account', 'POST', {
-        order_id: workerOrder.id, username, password: '',
-        status: 'failed', error_msg: e.message,
+        order_id: workerOrder.id, username, password,
+        server_username: username, server_password: password,
+        status: 'creating',
       });
-    } catch (e2) {}
-    return { username, ok: false, error: e.message };
+
+      // 记录详细日志
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: workerOrder.id, account_id: 0,
+        log_type: 'register', message: '注册账号: ' + username,
+        raw_output: JSON.stringify({ accountId: regData.accountId }),
+      });
+
+      // ── 2) 创建角色（金灵根100） ──
+      const playerName = username.slice(0, 8);
+      const createData = await apiRequest('POST', '/player/create', token, {
+        name: playerName,
+        spirit_roots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
+      });
+      tsLog('[' + username + '] ✅ 角色创建成功: ' + (createData.player?.name || playerName) + ' (金灵根100)');
+      const characterName = createData.player?.name || playerName;
+      const createdResultData = {
+        character_name: characterName,
+        spirit_roots: createData.player?.spirit_roots || { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
+      };
+      const spiritRoots = JSON.stringify(createdResultData.spirit_roots);
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: workerOrder.id, username, password,
+        status: 'character_created',
+        character_name: characterName,
+        spirit_roots: spiritRoots,
+        created_result: JSON.stringify(createdResultData),
+      });
+      await stepDelay();
+
+      // 记录详细日志
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: workerOrder.id, log_type: 'character',
+        message: '创建角色: ' + characterName + ' (金灵根100)',
+        raw_output: JSON.stringify(createdResultData),
+      });
+
+      // ── 3) 绑定邀请码 ──
+      if (inviteCode) {
+        try {
+          const inviteData = await apiRequest('POST', '/invite/bind', token, { invite_code: inviteCode });
+          tsLog('[' + username + '] ✅ 邀请码绑定成功, 邀请人: ' + (inviteData.inviter_name || '?'));
+          await workerApi('/api/gh/report-log', 'POST', {
+            order_id: workerOrder.id, log_type: 'invite',
+            message: '邀请码绑定成功: ' + inviteCode + ', 邀请人: ' + (inviteData.inviter_name || '?'),
+          });
+        } catch (e) {
+          tsLog('[' + username + '] ⚠️ 邀请码绑定失败: ' + e.message);
+        }
+        await stepDelay();
+      }
+
+      // ── 4) 装备初始3个技能（重击/火球术/治疗术） ──
+      const starterSkills = [
+        { id: 1, name: '重击' },
+        { id: 2, name: '火球术' },
+        { id: 3, name: '治疗术' },
+      ];
+      let equippedSkills = 0;
+      const equippedSkillNames = [];
+      for (const sk of starterSkills) {
+        try {
+          await apiRequest('POST', '/player/equip_skill', token, { skill_id: sk.id });
+          equippedSkills++;
+          equippedSkillNames.push(sk.name);
+          tsLog('[' + username + '] ✅ 技能装备: ' + sk.name);
+        } catch (e) {
+          if (e.message && e.message.includes('已装备')) {
+            equippedSkills++;
+            equippedSkillNames.push(sk.name);
+            tsLog('[' + username + '] ✅ 技能已装备: ' + sk.name);
+          } else {
+            tsLog('[' + username + '] ⚠️ 技能跳过(' + sk.name + '): ' + e.message);
+          }
+        }
+        await sleep(300);
+      }
+      tsLog('[' + username + '] 技能装备完成: ' + equippedSkills + '/' + starterSkills.length);
+      await stepDelay();
+
+      // ── 5) 装备铁剑 ──
+      let swordEquipped = false;
+      try {
+        const sync = await apiRequest('GET', '/player/sync', token);
+        const inv = sync?.player?.inventory || [];
+        for (let p = 0; p < inv.length && !swordEquipped; p++) {
+          if (!inv[p]) continue;
+          for (let s = 0; s < inv[p].length; s++) {
+            const slot = inv[p][s];
+            if (slot?.item && String(slot.item.name || '').includes('铁剑')) {
+              await apiRequest('POST', '/player/equip', token, {
+                page: p, slot_index: s, expect_item_id: Number(slot.item.id) || 0,
+              });
+              swordEquipped = true;
+              tsLog('[' + username + '] ✅ 铁剑装备成功');
+              break;
+            }
+          }
+        }
+        if (!swordEquipped) tsLog('[' + username + '] ⚠️ 背包中未找到铁剑');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 装备铁剑失败: ' + e.message);
+      }
+      await stepDelay();
+
+      // ── 6) 设置主功法（吐纳法 id=1） ──
+      let techniqueSet = false;
+      try {
+        await apiRequest('POST', '/player/set_technique', token, { slot: 'main', technique_id: 1 });
+        techniqueSet = true;
+        tsLog('[' + username + '] ✅ 功法设置: 吐纳法');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 功法跳过: ' + e.message);
+      }
+      await stepDelay();
+
+      // ── 7) 切换地图到荒石村 ──
+      let mapChanged = false;
+      try {
+        await apiRequest('POST', '/player/set_map', token, { map_id: 1 });
+        mapChanged = true;
+        tsLog('[' + username + '] ✅ 切换至荒石村');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 地图切换跳过: ' + e.message);
+      }
+      await stepDelay();
+
+      // ── 8) 战斗 + 自动刷怪 ──
+      let battleStarted = false;
+      try {
+        await apiRequest('POST', '/battle/start', token, { mapId: 1, poll_mode: false, auto_restart: false });
+        battleStarted = true;
+        tsLog('[' + username + '] ✅ 战斗已启动');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 战斗启动跳过: ' + e.message);
+      }
+      await sleep(500);
+      let autoRestartSet = false;
+      try {
+        await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: 1 });
+        autoRestartSet = true;
+        tsLog('[' + username + '] ✅ 自动刷怪已开启');
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 自动刷怪跳过: ' + e.message);
+      }
+
+      const setupLog = {
+        registered: true, character_created: true,
+        skills: equippedSkillNames, iron_sword: swordEquipped,
+        technique: techniqueSet, map: mapChanged,
+        battle: battleStarted, auto_restart: autoRestartSet,
+      };
+
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: workerOrder.id, username, password,
+        server_username: username, server_password: password,
+        status: 'farming', level: 1,
+        map_id: 1, map_name: '荒石村',
+        character_name: characterName,
+        spirit_roots: spiritRoots,
+        skills: starterSkills.map(s => ({ id: s.id, name: s.name })),
+        techniques: techniqueSet ? [{ id: 1, name: '吐纳法' }] : [],
+        equipment: swordEquipped ? [{ name: '铁剑' }] : [],
+        setup_status: 'farming',
+        created_result: JSON.stringify(setupLog),
+      });
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: workerOrder.id, log_type: 'setup_complete',
+        message: '账号配置完成: ' + JSON.stringify(setupLog),
+      });
+
+      return { username, password, ok: true };
+    } catch (e) {
+      const errMsg = e.message || '';
+      tsLog('[' + username + '] ❌ 失败: ' + errMsg);
+
+      // 检测是否为用户名重复错误 → 重试
+      const isDuplicate = /已存在|已注册|重复|exists|already|taken/i.test(errMsg);
+      if (isDuplicate && retry < 4) {
+        tsLog('[' + username + '] ⚠️ 用户名重复，重新生成并重试...');
+        usedNames.add(username);
+        try {
+          await workerApi('/api/gh/report-log', 'POST', {
+            order_id: workerOrder.id, log_type: 'retry',
+            message: '用户名重复，重试 #' + (retry + 1) + ': ' + errMsg,
+          });
+        } catch (e2) {}
+        continue;
+      }
+
+      try {
+        await workerApi('/api/gh/report-account', 'POST', {
+          order_id: workerOrder.id, username, password: '',
+          status: 'failed', error_msg: errMsg,
+        });
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: workerOrder.id, log_type: 'error',
+          message: '注册失败: ' + errMsg,
+          raw_output: errMsg,
+        });
+      } catch (e2) {}
+      return { username, ok: false, error: errMsg };
+    }
   }
+
+  tsLog('❌ 用户名生成重试耗尽（5次），跳过该账号');
+  return { username: '', ok: false, error: '重试耗尽' };
 }
 
 // ── 仙盟采集处理 ──
@@ -272,19 +433,17 @@ async function processAllianceDaily(order, orderIdx) {
 // ── 试炼测试处理 ──
 async function processTrialTest(order, orderIdx) {
   const username = order.game_account_name;
-  const password = order.game_account_password;
-  if (!username || !password) {
-    console.log('  ❌ 缺少游戏账号信息');
+  if (!username) {
+    console.log('  ❌ 缺少游戏账号名');
     return false;
   }
 
   setApiIdx(orderIdx * 20);
   try {
-    // 试炼测试：使用账号密码登录后触发
+    // 试炼测试需要通过 Worker API 触发
     const result = await workerApi('/api/gh/process-trial-test', 'POST', {
       order_id: order.id,
       game_account_name: username,
-      game_account_password: password,
     });
     if (result.ok) {
       console.log('  ✅ 试炼测试已触发');
@@ -348,181 +507,81 @@ async function processDailyTrial(order, orderIdx) {
 
 // ── 工单类型分发 ──
 async function dispatchOrder(order, orderIdx) {
-  const orderType = order.order_type || '购买邀请积分';
+  const orderType = order.order_type || '代练';
 
   switch (orderType) {
-    case '购买邀请积分':
-      // 注册新账号并挂机到120级
-      {
-        const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
-        const maxAccounts = Math.min(accountsToCreate, 10);
-        console.log('  类型: 购买邀请积分, 需创建账号: ' + maxAccounts + ' 个');
-
-        for (let a = 0; a < maxAccounts; a++) {
-          await antiDetect.randomDelay(5000);
-          const r = await registerAndSetup(order, orderIdx * 10 + a);
-          console.log('  结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
-          await antiDetect.smartPause(a, 3, 30);
-        }
-        return true;
-      }
     case '仙盟采集':
       return processAllianceDaily(order, orderIdx);
     case '试炼测试':
       return processTrialTest(order, orderIdx);
     case '每日试炼':
       return processDailyTrial(order, orderIdx);
+    case '代练':
+    case '代打':
+    case '托管':
     default: {
-      console.log('  ⚠️ 未知工单类型: ' + orderType + '，跳过');
-      return false;
-    }
-  }
-}
+      const existingAccounts = order.total_accounts_created || 0;
+      if (existingAccounts > 0) {
+        tsLog('已有 ' + existingAccounts + ' 个账号，跳过注册');
+        return true;
+      }
+      const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 120)) : 1);
+      const maxAccounts = Math.min(accountsToCreate, 10);
+      tsLog('类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
 
-// ── 健康检查 ──
-async function healthCheck() {
-  console.log('[健康检查] 验证 Worker API 可用性...');
-  try {
-    const data = await workerApi('/api/gh/approved-orders');
-    if (data.ok !== undefined) {
-      console.log('[健康检查] ✅ Worker API 正常');
+      for (let a = 0; a < maxAccounts; a++) {
+        await antiDetect.randomDelay(5000);
+        const r = await registerAndSetup(order, orderIdx * 10 + a);
+        tsLog('结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
+        await antiDetect.smartPause(a, 3, 30);
+      }
       return true;
     }
-    console.log('[健康检查] ⚠️ Worker API 响应异常: ' + JSON.stringify(data).slice(0, 100));
-    return false;
-  } catch (e) {
-    console.error('[健康检查] ❌ Worker API 不可用: ' + e.message);
-    return false;
   }
-}
-
-// ── 检查订阅类工单是否今日已执行 ──
-function shouldSkipSubscription(order) {
-  const orderType = order.order_type || '';
-  if (!['仙盟采集', '每日试炼'].includes(orderType)) return false;
-
-  // 检查 order 的 updated_at 是否是今天
-  const updatedAt = order.updated_at || '';
-  const today = new Date().toISOString().slice(0, 10);
-  if (updatedAt.includes(today)) {
-    console.log('  ⏭️ 订阅类工单今日已执行，跳过');
-    return true;
-  }
-  return false;
-}
-
-// ── 生成扫描报告 ──
-function generateReport(stats) {
-  const fs = require('fs');
-  const report = {
-    timestamp: new Date().toISOString(),
-    duration_ms: Date.now() - stats.startTime,
-    summary: {
-      total: stats.total,
-      success: stats.success,
-      failed: stats.failed,
-      skipped: stats.skipped,
-      subscription_skipped: stats.subscriptionSkipped,
-      success_rate: stats.total > 0 ? ((stats.success / stats.total) * 100).toFixed(1) + '%' : 'N/A',
-    },
-    details: stats.details,
-  };
-
-  try {
-    fs.writeFileSync('gh-actions/scan_report.json', JSON.stringify(report, null, 2));
-    console.log('\n[报告] 已保存扫描报告到 scan_report.json');
-  } catch (e) {
-    console.log('[报告] 保存失败: ' + e.message);
-  }
-
-  return report;
 }
 
 async function main() {
-  const startTime = Date.now();
   console.log('═══════════════════════════════════════');
-  console.log('  艾德尔工单系统 - 订单扫描器 v4.0');
+  console.log('  艾德尔工单系统 - 订单扫描器 v3.0');
   console.log('  时间: ' + new Date().toISOString());
-  console.log('  模式: ' + (process.env.FORCE_SCAN === 'true' ? '强制扫描' : '常规扫描'));
   console.log('═══════════════════════════════════════');
 
   if (!API_KEY) { console.error('错误: 未设置 API_KEY'); process.exit(1); }
   if (!WORKER_URL) { console.error('错误: 未设置 WORKER_URL'); process.exit(1); }
 
-  // 健康检查
-  const healthy = await healthCheck();
-  if (!healthy) {
-    console.error('\n❌ Worker API 不可用，终止扫描');
-    process.exit(1);
-  }
-
-  // 统计
-  const stats = {
-    startTime,
-    total: 0,
-    success: 0,
-    failed: 0,
-    skipped: 0,
-    subscriptionSkipped: 0,
-    details: [],
-  };
-
-  console.log('\n[扫描] 获取已审核通过的工单...');
+  tsLog('获取已审核通过的工单...');
   const data = await workerApi('/api/gh/approved-orders');
   if (!data.ok || !data.orders || !data.orders.length) {
-    console.log('[结果] 没有待处理的工单');
-    generateReport(stats);
+    tsLog('没有待处理的工单');
     return;
   }
 
-  console.log('[结果] 找到 ' + data.orders.length + ' 个待处理工单\n');
+  tsLog('找到 ' + data.orders.length + ' 个待处理工单\n');
 
   for (let i = 0; i < data.orders.length; i++) {
     const order = data.orders[i];
-    const orderType = order.order_type || '购买邀请积分';
     console.log('──── 工单 #' + order.id + ' [' + (i + 1) + '/' + data.orders.length + '] ────');
-    console.log('  类型: ' + orderType + ', 邀请码: ' + (order.invite_code || '-'));
+    console.log('  类型: ' + (order.order_type || '代练') + ', 邀请码: ' + (order.invite_code || '-'));
 
-    // 订阅类工单防重复执行
-    if (shouldSkipSubscription(order)) {
-      stats.subscriptionSkipped++;
-      stats.details.push({ order_id: order.id, type: orderType, result: 'subscription_skipped' });
-      continue;
-    }
-
-    stats.total++;
     const success = await dispatchOrder(order, i);
 
-    // 订阅类工单（仙盟采集/每日试炼）不标记为完成，保持 approved 状态以便每日执行
-    const isSubscription = ['仙盟采集', '每日试炼'].includes(orderType);
+    const isSubscription = ['仙盟采集', '每日试炼'].includes(order.order_type);
     if (success && !isSubscription) {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
-      console.log('  工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
-      stats.success++;
-      stats.details.push({ order_id: order.id, type: orderType, result: 'completed' });
+      tsLog('工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
     } else if (success && isSubscription) {
-      console.log('  工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
-      stats.success++;
-      stats.details.push({ order_id: order.id, type: orderType, result: 'subscription_completed' });
+      tsLog('工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
     } else {
-      console.log('  工单 #' + order.id + ' 处理失败');
-      stats.failed++;
-      stats.details.push({ order_id: order.id, type: orderType, result: 'failed' });
+      tsLog('工单 #' + order.id + ' 处理失败');
     }
   }
 
-  // 生成报告
-  const report = generateReport(stats);
-
   console.log('\n═══════════════════════════════════════');
-  console.log('  扫描完成');
-  console.log('  总计: ' + stats.total + ' | 成功: ' + stats.success + ' | 失败: ' + stats.failed);
-  console.log('  成功率: ' + report.summary.success_rate);
-  console.log('  耗时: ' + ((Date.now() - startTime) / 1000).toFixed(1) + 's');
+  console.log('  全部完成 ✓');
   console.log('═══════════════════════════════════════');
 }
 
 main().catch(e => {
-  console.error('\n❌ 致命错误:', e.message);
+  tsLog('❌ 致命错误: ' + e.message);
   process.exit(1);
 });

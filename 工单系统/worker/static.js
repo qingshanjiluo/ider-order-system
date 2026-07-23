@@ -764,7 +764,7 @@ const P = {};
 P.landing = () => \`
 <div class="hero animate-in">
   <h1 class="glitch">${icon("zap")} 赛博修仙 <span class="hl">自动化平台</span></h1>
-  <p>艾德尔修仙传 · 专业修仙自动化平台<br>一键提交工单 · 全自动注册 · 智能升级至120级 · 全程实时监控</p>
+  <p>艾德尔修仙传 · 专业邀请积分代练平台<br>一键提交工单 · 全自动注册 · 智能升级至120级 · 全程实时监控</p>
   <div class="btn-group">
     <a class="btn btn-magenta" href="#" onclick="showPage('register');return false">${icon("rocket")} 立即注册</a>
     <a class="btn" href="#" onclick="showPage('control');return false">${icon("book")} 功能介绍</a>

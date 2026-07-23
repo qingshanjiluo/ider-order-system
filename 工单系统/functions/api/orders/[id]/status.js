@@ -33,21 +33,10 @@ export async function onRequest(context) {
 
   // ── approved: 审核通过 ──────────────────────────────
   if (status === 'approved') {
-    // 更新用户统计 — total_spent 使用人民币单位
-    // wechat: price 已是人民币 | coin: price/120 转人民币 | spirit_stone: 按配置比例转换
-    let spentRMB = 0;
-    if (order.payment_method === 'wechat') {
-      spentRMB = order.price || 0;
-    } else if (order.payment_method === 'coin') {
-      spentRMB = (order.price || 0) / 120;
-    } else if (order.payment_method === 'spirit_stone') {
-      const spiritCfg = await env.DB.prepare("SELECT value FROM config WHERE key='spirit_stone_per_10_points'").first();
-      const spiritPer10 = parseFloat(spiritCfg?.value || '1000000');
-      spentRMB = (order.price || 0) * 120 * 10000 / spiritPer10;
-    }
+    // 更新用户统计（total_spent 使用 bonus_points 统一单位）
     await env.DB.prepare(
       'UPDATE users SET total_orders = total_orders + 1, total_spent = total_spent + ? WHERE id = ?'
-    ).bind(spentRMB, order.user_id).run();
+    ).bind(order.bonus_points, order.user_id).run();
 
     // 处理邀请套餐订单
     const isPackage = order.invite_code && order.invite_code.startsWith('PKG:');
@@ -94,22 +83,13 @@ export async function onRequest(context) {
 
   // ── rejected: 拒绝 ─────────────────────────────────
   else if (status === 'rejected') {
-    // 修仙币支付：退还冻结的积分（区分真实余额和试用额度）
+    // 修仙币支付：退还冻结的积分
     if (order.payment_method === 'coin' && order.frozen_points > 0) {
-      const refundTrial = order.free_trial_used || 0;
-      const refundReal = order.frozen_points - refundTrial;
-      if (refundReal > 0) {
-        await env.DB.prepare(
-          'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
-        ).bind(refundReal, order.user_id).run();
-      }
-      if (refundTrial > 0) {
-        await env.DB.prepare(
-          'UPDATE users SET free_trial_balance = free_trial_balance + ? WHERE id = ?'
-        ).bind(refundTrial, order.user_id).run();
-      }
+      await env.DB.prepare(
+        'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
+      ).bind(order.frozen_points, order.user_id).run();
       await logActivity(env, orderId, order.user_id, 'refund',
-        `工单拒绝，退还: ${refundReal > 0 ? refundReal + '修仙币' : ''}${refundReal > 0 && refundTrial > 0 ? ' + ' : ''}${refundTrial > 0 ? refundTrial + '试用额度' : ''}`);
+        '工单拒绝，退还冻结修仙币 ' + order.frozen_points + ' 个');
     }
     await env.DB.prepare(
       "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单被拒绝', '工单 #' || ? || ' 被拒绝: ' || ?, 'order')"

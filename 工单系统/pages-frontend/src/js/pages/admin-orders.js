@@ -1,6 +1,5 @@
 // pages/admin-orders.js — 管理后台 - 工单管理（含审批操作）
 import { api } from '../api.js';
-import { icon } from '../icons.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 
@@ -20,11 +19,6 @@ function formatAdminPrice(order) {
   const discount = order.discount || 0;
   if (discount > 0) {
     display += ` (优惠${discount}%)`;
-  }
-  // 免费试用抵扣
-  const freeTrialUsed = order.free_trial_used || 0;
-  if (freeTrialUsed > 0) {
-    display += ` ${icon('gift', 14)}试用-${freeTrialUsed}`;
   }
   return display;
 }
@@ -78,7 +72,7 @@ async function loadOrders(status = '') {
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>数量</th><th>创建时间</th><th>操作</th></tr>
+            <tr><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>数量</th><th>已创建</th><th>创建时间</th><th>操作</th></tr>
           </thead>
           <tbody>
             ${orders.map(o => {
@@ -88,10 +82,11 @@ async function loadOrders(status = '') {
                 <tr>
                   <td class="font-mono text-xs">#${o.id}</td>
                   <td>${o.user_name || o.username || o.user_id || '-'}</td>
-                  <td>${o.order_type || '购买邀请积分'}</td>
+                  <td>${o.order_type || '代练'}</td>
                   <td><span class="badge ${st.class}">${st.label}</span></td>
                   <td class="font-semibold">${formatAdminPrice(o)}</td>
                   <td>${o.account_count || o.quantity || 0}</td>
+                  <td>${o.total_accounts_created || 0}</td>
                   <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
                   <td>
                     <div class="flex gap-1" style="flex-wrap:wrap;">

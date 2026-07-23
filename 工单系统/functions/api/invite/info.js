@@ -32,16 +32,7 @@ export async function onRequest(context) {
       base_rate: 30,
       boost_mult: boost.mult,
       boost_label: boost.label,
-      boost_percent: boost.rate,
-      purchased_points: totalPurchased,
       total_purchased_points: totalPurchased,
-      boost_tiers: INVITE_BOOST_TIERS.map(t => ({
-        name: t.label,
-        threshold: t.min,
-        boost: t.rate,
-        percent: t.rate,
-        mult: t.mult,
-      })),
       next_tier: nextTier ? { label: nextTier.label, need: nextTier.min - totalPurchased, rate: nextTier.rate } : null,
       packages: INVITE_PACKAGES,
     });

@@ -126,9 +126,14 @@ async function registerAndSetup(workerOrder, orderIdx) {
         status: 'creating',
       });
 
+      // 获取刚创建的 account_id
+      const accInfo = await workerApi('/api/gh/active-accounts');
+      const thisAcc = (accInfo.accounts || []).find(a => a.username === username && a.order_id === workerOrder.id);
+      const accountId = thisAcc?.id || 0;
+
       // 记录详细日志
       await workerApi('/api/gh/report-log', 'POST', {
-        order_id: workerOrder.id, account_id: 0,
+        order_id: workerOrder.id, account_id: accountId,
         log_type: 'register', message: '注册账号: ' + username,
         raw_output: JSON.stringify({ accountId: regData.accountId }),
       });
@@ -157,7 +162,8 @@ async function registerAndSetup(workerOrder, orderIdx) {
 
       // 记录详细日志
       await workerApi('/api/gh/report-log', 'POST', {
-        order_id: workerOrder.id, log_type: 'character',
+        order_id: workerOrder.id, username, account_id: accountId,
+        log_type: 'character',
         message: '创建角色: ' + characterName + ' (金灵根100)',
         raw_output: JSON.stringify(createdResultData),
       });
@@ -168,7 +174,8 @@ async function registerAndSetup(workerOrder, orderIdx) {
           const inviteData = await apiRequest('POST', '/invite/bind', token, { invite_code: inviteCode });
           tsLog('[' + username + '] ✅ 邀请码绑定成功, 邀请人: ' + (inviteData.inviter_name || '?'));
           await workerApi('/api/gh/report-log', 'POST', {
-            order_id: workerOrder.id, log_type: 'invite',
+            order_id: workerOrder.id, username, account_id: accountId,
+            log_type: 'invite',
             message: '邀请码绑定成功: ' + inviteCode + ', 邀请人: ' + (inviteData.inviter_name || '?'),
           });
         } catch (e) {
@@ -293,7 +300,8 @@ async function registerAndSetup(workerOrder, orderIdx) {
       });
 
       await workerApi('/api/gh/report-log', 'POST', {
-        order_id: workerOrder.id, log_type: 'setup_complete',
+        order_id: workerOrder.id, username, account_id: accountId,
+        log_type: 'setup_complete',
         message: '账号配置完成: ' + JSON.stringify(setupLog),
       });
 
@@ -309,7 +317,8 @@ async function registerAndSetup(workerOrder, orderIdx) {
         usedNames.add(username);
         try {
           await workerApi('/api/gh/report-log', 'POST', {
-            order_id: workerOrder.id, log_type: 'retry',
+            order_id: workerOrder.id, username, account_id: accountId,
+            log_type: 'retry',
             message: '用户名重复，重试 #' + (retry + 1) + ': ' + errMsg,
           });
         } catch (e2) {}
@@ -322,7 +331,8 @@ async function registerAndSetup(workerOrder, orderIdx) {
           status: 'failed', error_msg: errMsg,
         });
         await workerApi('/api/gh/report-log', 'POST', {
-          order_id: workerOrder.id, log_type: 'error',
+          order_id: workerOrder.id, username, account_id: accountId,
+          log_type: 'error',
           message: '注册失败: ' + errMsg,
           raw_output: errMsg,
         });
@@ -420,6 +430,7 @@ async function processAllianceDaily(order, orderIdx) {
     // 更新上次执行时间
     await workerApi('/api/gh/report-log', 'POST', {
       order_id: order.id, username,
+      log_type: 'alliance_daily',
       message: '仙盟日常完成',
     });
 
@@ -495,6 +506,7 @@ async function processDailyTrial(order, orderIdx) {
 
     await workerApi('/api/gh/report-log', 'POST', {
       order_id: order.id, username,
+      log_type: 'daily_trial',
       message: '每日试炼完成',
     });
 

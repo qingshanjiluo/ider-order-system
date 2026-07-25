@@ -222,7 +222,7 @@ async function workerApi(path, method = 'GET', body = null) {
 async function checkAndLevelUp(account, idx) {
   setApiIdx(idx * 10);
 
-  const { server_username, server_password, order_id, username } = account;
+  const { id, server_username, server_password, order_id, username } = account;
   if (!server_username || !server_password) {
     tsLog('[' + (username || '?') + '] ⏭️ 无账号密码，跳过');
     return { ok: false, error: '无账号密码' };
@@ -291,7 +291,7 @@ async function checkAndLevelUp(account, idx) {
 
     // 上报登录日志
     await workerApi('/api/gh/report-log', 'POST', {
-      order_id, log_type: 'health_login',
+      order_id, account_id: id, log_type: 'health_login',
       message: '健康检测: Lv.' + level + ' 经验' + expPercent + '%' + (fixes.length ? ' 修复:' + fixes.join(',') : ''),
       raw_output: JSON.stringify({ level, exp, expPercent, canLevelUp, fixes }),
     });
@@ -381,7 +381,7 @@ async function checkAndLevelUp(account, idx) {
 
     // 记录详细日志
     await workerApi('/api/gh/report-log', 'POST', {
-      order_id, log_type: isCompleted ? 'health_completed' : 'health_report',
+      order_id, account_id: id, log_type: isCompleted ? 'health_completed' : 'health_report',
       message: isCompleted
         ? '🎉 满级120! 共升级' + levelsGained + '级'
         : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' 经验' + expPercent + '% 升级' + levelsGained + '级',
@@ -408,7 +408,7 @@ async function checkAndLevelUp(account, idx) {
         error_msg: errMsg, health_status: 'error',
       });
       await workerApi('/api/gh/report-log', 'POST', {
-        order_id, log_type: 'health_error',
+        order_id, account_id: id, log_type: 'health_error',
         message: '健康检测失败: ' + errMsg,
         raw_output: errMsg,
       });

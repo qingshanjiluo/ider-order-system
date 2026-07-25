@@ -69,7 +69,7 @@ async function workerApi(path, method, body) {
 async function levelUpAccount(account, idx) {
   setApiIdx(idx * 10);
 
-  const { server_username, server_password, order_id, username } = account;
+  const { id, server_username, server_password, order_id, username } = account;
   if (!server_username || !server_password) {
     tsLog('[' + (username || '?') + '] ⏭️ 无账号密码，跳过');
     return { ok: false, skipped: true };
@@ -214,7 +214,7 @@ async function levelUpAccount(account, idx) {
     });
 
     await workerApi('/api/gh/report-log', 'POST', {
-      order_id, log_type: isCompleted ? 'levelup_completed' : 'levelup_report',
+      order_id, account_id: id, log_type: isCompleted ? 'levelup_completed' : 'levelup_report',
       message: isCompleted
         ? '🎉 满级120! 升级' + levelsGained + '级'
         : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' (+' + levelsGained + ')',
@@ -237,7 +237,7 @@ async function levelUpAccount(account, idx) {
         error_msg: errMsg, health_status: 'error',
       });
       await workerApi('/api/gh/report-log', 'POST', {
-        order_id, log_type: 'levelup_error',
+        order_id, account_id: id, log_type: 'levelup_error',
         message: '升级失败: ' + errMsg,
         raw_output: errMsg,
       });

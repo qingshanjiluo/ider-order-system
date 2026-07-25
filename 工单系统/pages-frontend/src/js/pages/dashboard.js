@@ -21,10 +21,11 @@ export async function renderDashboard({ container }) {
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const [stats, config] = await Promise.all([
+    const [statsRes, config] = await Promise.all([
       api.getStats(),
       api.getConfig(),
     ]);
+    const stats = statsRes.stats || statsRes;
     store.set('config', config);
 
     const user = store.getUser();
@@ -104,11 +105,11 @@ export async function renderDashboard({ container }) {
     // 每 15 秒自动刷新统计+工单
     _pollTimer = setInterval(async () => {
       try {
-        const [freshStats, freshOrders] = await Promise.all([
+        const [freshStatsRes, freshOrders] = await Promise.all([
           api.getStats(),
           api.getOrders(),
         ]);
-        updateStats(freshStats);
+        updateStats(freshStatsRes.stats || freshStatsRes);
         updateRecentOrders(freshOrders);
         const dot = document.getElementById('dashboard-update-dot');
         if (dot) dot.style.backgroundColor = 'var(--accent-green)';

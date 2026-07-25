@@ -14,7 +14,8 @@ export async function renderAdminStats({ container }) {
   container.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const stats = await api.adminGetStats();
+    const statsRes = await api.adminGetStats();
+    const stats = statsRes.stats || statsRes;
 
     container.innerHTML = `
       <div class="page-header">

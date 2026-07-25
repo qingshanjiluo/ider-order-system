@@ -78,7 +78,7 @@ async function loadLeaderboard() {
                     ${isMe ? '<span class="text-xs text-muted" style="margin-left:4px;">(我)</span>' : ''}
                   </td>
                   <td class="font-semibold">
-                    ${currentTab === 'purchase' ? '¥' + (item.total_spent || item.value || 0).toFixed(2) 
+                    ${currentTab === 'purchase' ? '¥' + ((item.total_spent || 0) / 400).toFixed(2) 
                       : currentTab === 'invite' ? (item.total_invited || item.value || 0) + '人'
                       : 'Lv.' + (item.level || item.value || 1)}
                   </td>

@@ -5,7 +5,7 @@ import { icon } from '../icons.js';
 import { store } from '../store.js';
 import { toast } from '../components/toast.js';
 
-const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请积分', '托管':'购买邀请积分' };
+const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请积分', '托管':'购买邀请积分', '仙盟采集':'仙盟采集', '试炼测试':'试炼测试', '每日试炼':'每日试炼' };
 
 let _pollTimer = null;
 

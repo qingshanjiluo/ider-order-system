@@ -120,7 +120,7 @@ export async function renderInvite({ container }) {
             <div class="stat-card" style="cursor:pointer;border:2px solid transparent;transition:border-color 0.15s;"
                  data-pkg='${JSON.stringify(p)}' data-buy-pkg>
               <div class="stat-label">${p.name || p.tier}</div>
-              <div class="stat-value" style="color:var(--accent-amber);">${(p.price / 100000000).toFixed(0)}亿灵石</div>
+              <div class="stat-value" style="color:var(--accent-amber);">${(p.price / 10000).toFixed(0)}万灵石</div>
               <div class="stat-change">${p.points || 0} 积分</div>
               <div class="text-xs text-muted mt-2">${p.desc || ''}</div>
             </div>
@@ -178,7 +178,7 @@ export async function renderInvite({ container }) {
 
 function buyPackage(pkg) {
   const isCash = pkg.currency === 'cash';
-  const priceLabel = isCash ? `¥${pkg.price}` : `${(pkg.price / 100000000).toFixed(0)}亿灵石`;
+  const priceLabel = isCash ? `¥${pkg.price}` : `${(pkg.price / 10000).toFixed(0)}万灵石`;
   const payMethodLabel = isCash ? '微信支付' : '灵石支付';
 
   const qrSection = isCash ? `

@@ -19,10 +19,11 @@ export async function onRequest(context) {
     if (!user) return json({ error: '未登录' }, 401);
     const body = await request.json().catch(() => ({}));
     const { order_id, title, content, type } = body;
-    if (!title || !content) return json({ error: '请填写标题和内容' }, 400);
+    const finalTitle = title || type || '申诉';
+    if (!finalTitle || !content) return json({ error: '请填写标题和内容' }, 400);
     await env.DB.prepare(
       "INSERT INTO appeals (user_id, order_id, title, content, type, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))"
-    ).bind(user.id, order_id || 0, title, content, type || 'appeal').run();
+    ).bind(user.id, order_id || 0, finalTitle, content, type || 'appeal').run();
     return json({ ok: true, message: '申诉已提交' });
   }
 

@@ -1,5 +1,5 @@
 // POST /api/auth/register — 用户注册
-import { json, hashPassword, getClientIP } from '../../_utils.js';
+import { json, hashPassword, generateToken, getClientIP } from '../../_utils.js';
 import { addXP } from '../../_xp.js';
 
 export async function onRequest(context) {
@@ -41,9 +41,10 @@ export async function onRequest(context) {
   }
 
   // INSERT 用户
-  await env.DB.prepare(
+  const ins = await env.DB.prepare(
     "INSERT INTO users (username, password_hash, email, invite_code, invited_by, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))"
   ).bind(username, hash, email || '', myInviteCode, inviterId, ip).run();
+  const userId = ins.meta?.last_row_id;
 
   // 邀请人获得 50XP
   if (inviterId > 0) {
@@ -51,5 +52,17 @@ export async function onRequest(context) {
     await addXP(env, inviterId, 50, '成功邀请用户 ' + username);
   }
 
-  return json({ ok: true, message: '注册成功' });
+  // 生成 token（7天有效期）
+  const token = generateToken();
+  const expires = new Date(Date.now() + 7 * 86400000).toISOString();
+  await env.DB.prepare(
+    'INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)'
+  ).bind(userId, token, expires).run();
+
+  return json({
+    ok: true,
+    message: '注册成功',
+    token,
+    user: { id: userId, username },
+  });
 }

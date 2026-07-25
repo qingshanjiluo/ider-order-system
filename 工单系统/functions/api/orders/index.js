@@ -116,20 +116,23 @@ export async function onRequest(context) {
     let discount = 0;
     let couponType = 'percent';
     let couponFixedAmount = 0;
+    let couponId = null;
     if (coupon_code) {
       const coupon = await env.DB.prepare(
         "SELECT * FROM coupons WHERE code = ? AND (expires_at IS NULL OR expires_at > datetime('now')) AND (max_uses = 0 OR used_count < max_uses)"
       ).bind(coupon_code).first();
-      if (coupon) {
-        couponType = coupon.coupon_type || 'percent';
-        if (couponType === 'fixed') {
-          couponFixedAmount = coupon.fixed_amount || 0;
-        } else {
-          discount = coupon.discount_percent || 0;
-        }
-        await env.DB.prepare(
-          'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
-        ).bind(coupon.id).run();
+      if (!coupon) {
+        return json({ error: '优惠码无效、已过期或已达使用上限' }, 400);
+      }
+      if (coupon.min_amount > 0 && points < coupon.min_amount) {
+        return json({ error: `该优惠码需订单金额达到 ${coupon.min_amount} 积分才能使用` }, 400);
+      }
+      couponId = coupon.id;
+      couponType = coupon.coupon_type || 'percent';
+      if (couponType === 'fixed') {
+        couponFixedAmount = coupon.fixed_amount || 0;
+      } else {
+        discount = coupon.discount_percent || 0;
       }
     }
 
@@ -141,14 +144,11 @@ export async function onRequest(context) {
     // ── 7. 计算最终价格（取最大折扣） ──
     let finalPrice = price;
     if (couponType === 'fixed') {
-      // 固定金额减免
-      finalPrice = Math.max(0, price - couponFixedAmount);
-      // 如果等级折扣更高，使用等级折扣
+      const afterCoupon = Math.max(0, price - couponFixedAmount);
       const levelPrice = price * (100 - levelDiscount) / 100;
-      finalPrice = Math.min(finalPrice, levelPrice);
-      discount = levelDiscount; // 记录实际折扣百分比
+      finalPrice = Math.min(afterCoupon, levelPrice);
+      discount = levelPrice < afterCoupon ? levelDiscount : Math.round(couponFixedAmount / price * 100);
     } else {
-      // 百分比折扣，取最大值
       const maxDiscount = Math.max(discount, levelDiscount);
       finalPrice = price * (100 - maxDiscount) / 100;
       discount = maxDiscount;
@@ -201,6 +201,13 @@ export async function onRequest(context) {
     ).run();
 
     const orderId = result.meta.last_row_id;
+
+    // 订单创建成功后递增优惠码使用次数
+    if (couponId) {
+      await env.DB.prepare(
+        'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
+      ).bind(couponId).run();
+    }
 
     // ── 11. 发送通知 ──
     await env.DB.prepare(

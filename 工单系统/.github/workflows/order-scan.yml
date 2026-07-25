@@ -18,10 +18,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
-        working-directory: gh-actions
-
       - name: Run order scanner
         run: node scan_orders.js
         working-directory: gh-actions

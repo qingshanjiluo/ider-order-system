@@ -24,10 +24,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install dependencies
-        run: npm install
-        working-directory: gh-actions
-
       - name: Run daily maintenance
         run: node daily_maintenance.js
         working-directory: gh-actions

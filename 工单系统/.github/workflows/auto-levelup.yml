@@ -1,9 +1,9 @@
-# 一键升级工作流 — 每 15 分钟执行一次，持续升级直到经验不足或满级
+# 一键升级工作流 — 每 3 小时执行一次，防封号
 name: Auto Levelup
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 */3 * * *'
   workflow_dispatch:
 
 jobs:

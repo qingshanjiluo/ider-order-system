@@ -1,9 +1,9 @@
-# 健康检测工作流 — 每30分钟执行一次
+# 健康检测工作流 — 每 6 小时执行一次，防封号
 name: Health Check
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:

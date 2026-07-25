@@ -323,7 +323,7 @@ async function loadRechargeHistory() {
           <tr>
             <td class="text-sm">${o.created_at?.split(' ')[0] || '-'}</td>
             <td>${o.type === 'package' ? '套餐' : o.type === 'cash' ? '现金' : '灵石'}</td>
-            <td>${o.type === 'spirit_stone' ? (o.amount / 10000).toFixed(0) + '万' : '¥' + o.amount}</td>
+            <td>${(o.package_id?.startsWith('stone-') || o.type === 'spirit_stone') ? (o.amount / 10000).toFixed(0) + '万灵石' : '¥' + o.amount}</td>
             <td style="color:var(--accent-amber);">+${o.coins}</td>
             <td><span class="badge badge-${o.status === 'completed' ? 'approved' : o.status === 'pending' ? 'pending' : 'cancelled'}">${o.status === 'completed' ? '已到账' : o.status === 'pending' ? '待审核' : '已取消'}</span></td>
           </tr>

@@ -86,7 +86,8 @@ function renderOrdersTable(orders, showActions) {
         <tbody>
           ${orders.map(o => {
             const typeLabel = o.type === 'package' ? '套餐' : o.type === 'cash' ? '现金' : '灵石';
-            const amountLabel = o.type === 'spirit_stone' ? (o.amount / 10000).toFixed(0) + '万灵石' : '¥' + o.amount;
+            const isSpiritStone = o.package_id?.startsWith('stone-') || o.type === 'spirit_stone';
+            const amountLabel = isSpiritStone ? (o.amount / 10000).toFixed(0) + '万灵石' : '¥' + o.amount;
             const statusLabel = o.status === 'completed' ? '已到账' : o.status === 'pending' ? '待审核' : '已取消';
             const statusClass = o.status === 'completed' ? 'badge-approved' : o.status === 'pending' ? 'badge-pending' : 'badge-cancelled';
             return `

@@ -3,6 +3,8 @@ import { api } from '../api.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 
+const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请积分', '托管':'购买邀请积分' };
+
 /** 根据支付方式格式化价格显示 */
 function formatAdminPrice(order) {
   const price = order.total_price || order.price || 0;
@@ -82,7 +84,7 @@ async function loadOrders(status = '') {
                 <tr>
                   <td class="font-mono text-xs">#${o.id}</td>
                   <td>${o.user_name || o.username || o.user_id || '-'}</td>
-                  <td>${o.order_type || '代练'}</td>
+                  <td>${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</td>
                   <td><span class="badge ${st.class}">${st.label}</span></td>
                   <td class="font-semibold">${formatAdminPrice(o)}</td>
                   <td>${o.account_count || o.quantity || 0}</td>

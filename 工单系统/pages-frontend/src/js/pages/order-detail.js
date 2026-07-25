@@ -6,6 +6,8 @@ import { toast } from '../components/toast.js';
 import { store } from '../store.js';
 import { modal } from '../components/modal.js';
 
+const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请积分', '托管':'购买邀请积分' };
+
 const STATUS_MAP = {
   pending: { label: '待审批', class: 'badge-pending' },
   approved: { label: '进行中', class: 'badge-approved' },
@@ -58,7 +60,7 @@ export async function renderOrderDetail({ container, params }) {
         <div class="flex justify-between items-center">
           <div>
             <h2>工单 #${order.id}</h2>
-            <p>${order.order_type || '代练'} · ${status.label}</p>
+            <p>${ORDER_TYPE_LABEL[order.order_type] || '购买邀请积分'} · ${status.label}</p>
           </div>
           <div class="flex gap-2">
             ${isAdmin ? `<button class="btn btn-primary btn-sm" id="btn-create-account">+ 创建角色</button>` : ''}

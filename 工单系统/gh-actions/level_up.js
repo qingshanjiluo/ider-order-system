@@ -15,6 +15,7 @@ const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const MAX_LEVEL = 120;
+const MAX_ACCOUNTS_PER_RUN = 50; // 每轮最多处理50个账号
 
 const REQUIRED_ENV = { WORKER_URL, API_KEY, API_BASE, SIGN_KEY };
 for (const [name, val] of Object.entries(REQUIRED_ENV)) {
@@ -260,16 +261,18 @@ async function main() {
   }
 
   const accounts = data.accounts;
-  tsLog('找到 ' + accounts.length + ' 个活跃账号\n');
+  const total = Math.min(accounts.length, MAX_ACCOUNTS_PER_RUN);
+  const skipped = accounts.length > MAX_ACCOUNTS_PER_RUN ? accounts.length - MAX_ACCOUNTS_PER_RUN : 0;
+  tsLog('找到 ' + accounts.length + ' 个活跃账号，本轮处理 ' + total + ' 个' + (skipped ? '（跳过 ' + skipped + ' 个，下轮继续）' : '') + '\n');
 
   let leveled = 0;
   let completed = 0;
   let failed = 0;
   const processedOrders = new Set();
 
-  for (let i = 0; i < accounts.length; i++) {
+  for (let i = 0; i < total; i++) {
     const account = accounts[i];
-    console.log('──── [' + (i + 1) + '/' + accounts.length + '] ' + (account.server_username || account.username) + ' ────');
+    console.log('──── [' + (i + 1) + '/' + total + '] ' + (account.server_username || account.username) + ' ────');
 
     const result = await levelUpAccount(account, i);
     if (result.ok && !result.skipped) {
@@ -303,7 +306,7 @@ async function main() {
 
   console.log('\n═══════════════════════════════════════');
   console.log('  一键升级完成 ✓');
-  console.log('  总计: ' + accounts.length + ' | 升级: ' + leveled + ' | 满级: ' + completed + ' | 失败: ' + failed);
+  console.log('  本轮: ' + total + '/' + accounts.length + ' | 升级: ' + leveled + ' | 满级: ' + completed + ' | 失败: ' + failed);
   console.log('═══════════════════════════════════════');
 }
 

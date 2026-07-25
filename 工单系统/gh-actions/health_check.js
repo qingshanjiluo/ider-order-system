@@ -15,6 +15,7 @@ const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const MAX_LEVEL = 120;
+const MAX_ACCOUNTS_PER_RUN = 50; // 每轮最多处理50个账号（GitHub Actions 60分钟限制）
 
 // 启动前验证关键环境变量
 const REQUIRED_ENV = { WORKER_URL, API_KEY, API_BASE, SIGN_KEY };
@@ -439,11 +440,14 @@ async function main() {
 
   let completed = 0;
   let failed = 0;
-  let total = accounts.length;
+  let total = Math.min(accounts.length, MAX_ACCOUNTS_PER_RUN);
   let leveled = 0;
+  let skipped = accounts.length > MAX_ACCOUNTS_PER_RUN ? accounts.length - MAX_ACCOUNTS_PER_RUN : 0;
   const processedOrders = new Set();
 
-  for (let i = 0; i < accounts.length; i++) {
+  tsLog('本轮处理 ' + total + ' 个账号' + (skipped ? '，跳过 ' + skipped + ' 个（下轮继续）' : '') + '\n');
+
+  for (let i = 0; i < total; i++) {
     const account = accounts[i];
     console.log('──── [' + (i + 1) + '/' + total + '] ' + (account.server_username || account.username) + ' ────');
 

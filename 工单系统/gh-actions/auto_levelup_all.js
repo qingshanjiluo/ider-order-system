@@ -77,9 +77,49 @@ async function levelUpAccount(account, idx) {
     });
     const token = loginData.token;
 
+    // ── 检查战斗状态，没战斗不产经验 ──
+    let syncPlayer = {};
+    try {
+      const syncResult = await apiRequest('GET', '/player/sync', token);
+      syncPlayer = syncResult?.player || {};
+    } catch (e) {}
     const state = await apiRequest('GET', '/player/state', token);
     const player = state.player || {};
     let currentLevel = player.level || 0;
+
+    // 战斗修复
+    const autoBattleOn = syncPlayer?.auto_battle_enabled;
+    const activeBattle = !!state.active_battle;
+    let battleFixed = false;
+    if (!activeBattle || !autoBattleOn) {
+      try {
+        const mapId = syncPlayer?.current_map_id || 1;
+        await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
+        await sleep(800);
+        await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
+        battleFixed = true;
+        await antiDetect.randomDelay(800, 1500);
+      } catch (e) {
+        tsLog('[' + server_username + '] ⚠️ 战斗启动失败: ' + e.message);
+      }
+    }
+    if (battleFixed) {
+      tsLog('[' + server_username + '] 🔧 战斗已启动');
+      // 战斗刚启动，等一下再看经验情况
+      try {
+        const st2 = await apiRequest('GET', '/player/state', token);
+        if (st2?.player) Object.assign(player, st2.player);
+      } catch (e) {}
+    }
+
+    // 重新获取最新状态
+    let stCheck;
+    try { stCheck = await apiRequest('GET', '/player/state', token); } catch (e) {}
+    const finalPlayer = stCheck?.player || player;
+    currentLevel = finalPlayer.level || currentLevel;
+    const hasExp = (finalPlayer.exp || 0) > 0;
+    tsLog('[' + server_username + '] 📊 Lv.' + currentLevel + ' 战斗中=' + (stCheck?.active_battle ? '✅' : '❌') + ' exp=' + (finalPlayer.exp || 0));
+
     if (currentLevel >= MAX_LEVEL) {
       tsLog('[' + server_username + '] 🏆 已满级');
       await workerApi('/api/gh/report-health', 'POST', {

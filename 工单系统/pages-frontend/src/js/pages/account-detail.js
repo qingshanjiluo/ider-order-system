@@ -61,6 +61,10 @@ export async function renderAccountDetail({ container, params }) {
           <div class="stat-value">Lv.${account.level || '-'}</div>
         </div>
         <div class="stat-card">
+          <div class="stat-label">经验</div>
+          <div class="stat-value text-sm">${account.exp != null ? account.exp.toLocaleString() + (account.exp_percent != null ? ' (' + account.exp_percent + '%)' : '') : '-'}</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-label">订单号</div>
           <div class="stat-value font-mono text-sm">#${account.order_id || '-'}</div>
         </div>

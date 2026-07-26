@@ -1586,15 +1586,45 @@ async function handleRoute(method, path, request, env, url) {
         health_status = ?,
         setup_status = COALESCE(NULLIF(?, ''), setup_status),
         reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END,
-        stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END
+        stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END,
+        exp = ?, exp_percent = ?
       WHERE username = ? AND order_id = ?`
     ).bind(
       reportStatus, level || 0, map_id || 0, map_name || '',
       character_name || '', spirit_roots || '{}',
       JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []),
       error_msg || '', health_status || 'ok', setup_status || '',
-      level || 0, level || 0, username, order_id
-    ).run();
+      level || 0, level || 0,
+      exp || 0, exp_percent || 0,
+      username, order_id
+    ).run().catch(e => {
+      // 兼容旧表缺少 exp 列
+      if (e.message?.includes('no such column')) {
+        return env.DB.prepare(
+          `UPDATE game_accounts SET
+            status = ?, level = ?, map_id = ?, map_name = ?,
+            character_name = COALESCE(NULLIF(?, ''), character_name),
+            spirit_roots = COALESCE(NULLIF(?, ''), spirit_roots),
+            skills = COALESCE(NULLIF(?, '[]'), skills),
+            techniques = COALESCE(NULLIF(?, '[]'), techniques),
+            equipment = COALESCE(NULLIF(?, '[]'), equipment),
+            last_check_at = datetime('now'),
+            error_msg = ?,
+            health_status = ?,
+            setup_status = COALESCE(NULLIF(?, ''), setup_status),
+            reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END,
+            stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END
+          WHERE username = ? AND order_id = ?`
+        ).bind(
+          reportStatus, level || 0, map_id || 0, map_name || '',
+          character_name || '', spirit_roots || '{}',
+          JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []),
+          error_msg || '', health_status || 'ok', setup_status || '',
+          level || 0, level || 0, username, order_id
+        ).run();
+      }
+      throw e;
+    });
 
     return json({ ok: true, completed: isCompleted, level: level || 0 });
   }

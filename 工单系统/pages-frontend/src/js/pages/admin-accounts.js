@@ -156,7 +156,7 @@ async function loadAccounts() {
           <td class="font-semibold">${a.character_name || '-'}</td>
           <td><span class="badge ${st.class}">${st.label}</span></td>
           <td><span class="badge ${setup.class}">${setup.label}</span></td>
-          <td>Lv.${a.level || '-'}</td>
+          <td><span title="${(a.exp != null ? a.exp.toLocaleString() : '0')}exp (${a.exp_percent || 0}%)">Lv.${a.level || '-'}</span></td>
           <td class="text-xs text-muted">${a.user_name || a.user_id || '-'}</td>
           <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
           <td class="text-xs" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>

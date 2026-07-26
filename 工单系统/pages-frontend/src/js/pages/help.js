@@ -100,7 +100,7 @@ export function renderHelp({ container }) {
       <p class="subtitle">了解如何使用艾德尔修仙工单平台</p>
 
       <div class="help-section open">
-        <div class="help-section-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="help-section-header" data-toggle-section>
           <span>快速入门</span>
           <span class="arrow">▸</span>
         </div>
@@ -117,7 +117,7 @@ export function renderHelp({ container }) {
       </div>
 
       <div class="help-section">
-        <div class="help-section-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="help-section-header" data-toggle-section>
           <span>等级与称号</span>
           <span class="arrow">▸</span>
         </div>
@@ -146,7 +146,7 @@ export function renderHelp({ container }) {
       </div>
 
       <div class="help-section">
-        <div class="help-section-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="help-section-header" data-toggle-section>
           <span>修仙币充值</span>
           <span class="arrow">▸</span>
         </div>
@@ -179,7 +179,7 @@ export function renderHelp({ container }) {
       </div>
 
       <div class="help-section">
-        <div class="help-section-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="help-section-header" data-toggle-section>
           <span>邀请返利</span>
           <span class="arrow">▸</span>
         </div>
@@ -203,7 +203,7 @@ export function renderHelp({ container }) {
       </div>
 
       <div class="help-section">
-        <div class="help-section-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="help-section-header" data-toggle-section>
           <span>修仙坊市</span>
           <span class="arrow">▸</span>
         </div>
@@ -226,7 +226,7 @@ export function renderHelp({ container }) {
       </div>
 
       <div class="help-section">
-        <div class="help-section-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="help-section-header" data-toggle-section>
           <span>常见问题</span>
           <span class="arrow">▸</span>
         </div>
@@ -244,4 +244,13 @@ export function renderHelp({ container }) {
         </div>
       </div>
     </div>`;
+
+  container.addEventListener('click', (e) => {
+    const header = e.target.closest('[data-toggle-section]');
+    if (!header) return;
+    e.stopPropagation();
+    header.parentElement.classList.toggle('open');
+    const arrow = header.querySelector('.arrow');
+    if (arrow) arrow.textContent = header.parentElement.classList.contains('open') ? '▸' : '▾';
+  });
 }

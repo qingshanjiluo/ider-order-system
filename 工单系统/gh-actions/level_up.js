@@ -15,7 +15,7 @@ const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const MAX_LEVEL = 120;
-const MAX_ACCOUNTS_PER_RUN = 50; // 每轮最多处理50个账号
+const MAX_ACCOUNTS_PER_RUN = 30; // 每轮最多处理30个（适配1h超时限制）
 
 const REQUIRED_ENV = { WORKER_URL, API_KEY, API_BASE, SIGN_KEY };
 for (const [name, val] of Object.entries(REQUIRED_ENV)) {
@@ -104,17 +104,15 @@ async function levelUpAccount(account, idx) {
     const currentLevel = player.level || 0;
     const canLevelUp = player.can_level_up || false;
     const exp = player.exp || 0;
-    const nextLevelExp = player.next_level_exp || 1;
-    const expPercent = Math.floor((exp / nextLevelExp) * 100);
+    const nextLevelExp = player.next_level_exp || player.max_exp || 1;
+    const expPercent = nextLevelExp > 0 ? Math.floor((exp / nextLevelExp) * 100) : 0;
 
     // DEBUG: dump raw state keys for debugging
     const stateTopKeys = Object.keys(state).join(',');
     const playerKeys = Object.keys(player).join(',');
     tsLog('[' + server_username + '] 🔍 state顶层字段: ' + stateTopKeys.slice(0,200));
     tsLog('[' + server_username + '] 🔍 player字段: ' + playerKeys.slice(0,200));
-    tsLog('[' + server_username + '] 🔍 can_level_up原文: ' + JSON.stringify(state.can_level_up) + ' / player.can_level_up: ' + JSON.stringify(player.can_level_up));
-
-    tsLog('[' + server_username + '] 📊 等级=' + currentLevel + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
+    tsLog('[' + server_username + '] 📊 起始等级=' + currentLevel + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
 
     // 获取玩家名、灵根
     let playerName = '';
@@ -185,8 +183,8 @@ async function levelUpAccount(account, idx) {
 
     // 使用最终数据重算 expPercent
     const finalExp = finalPlayer.exp || 0;
-    const finalNextExp = finalPlayer.next_level_exp || 1;
-    const finalExpPercent = Math.floor((finalExp / finalNextExp) * 100);
+    const finalNextExp = finalPlayer.next_level_exp || finalPlayer.max_exp || 1;
+    const finalExpPercent = finalNextExp > 0 ? Math.floor((finalExp / finalNextExp) * 100) : 0;
 
     // 收集完整数据
     const equippedSkills = finalPlayer.equipped_skills || [];
@@ -280,8 +278,8 @@ async function main() {
     if (!result.ok) failed++;
     processedOrders.add(account.order_id);
 
-    await antiDetect.smartPause(i, 5, 20);
-    await antiDetect.randomDelay(3000);
+    await antiDetect.smartPause(i, 2, 8);
+    await antiDetect.randomDelay(1500);
   }
 
   if (processedOrders.size > 0) {

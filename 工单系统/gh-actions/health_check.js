@@ -15,7 +15,7 @@ const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const MAX_LEVEL = 120;
-const MAX_ACCOUNTS_PER_RUN = 50; // 每轮最多处理50个账号（GitHub Actions 60分钟限制）
+const MAX_ACCOUNTS_PER_RUN = 30; // 每轮最多处理30个（适配1h超时限制）
 
 // 启动前验证关键环境变量
 const REQUIRED_ENV = { WORKER_URL, API_KEY, API_BASE, SIGN_KEY };
@@ -266,8 +266,8 @@ async function checkAndLevelUp(account, idx) {
     const level = player.level || 0;
     const canLevelUp = player.can_level_up || false;
     const exp = player.exp || 0;
-    const nextLevelExp = player.next_level_exp || 1;
-    const expPercent = Math.floor((exp / nextLevelExp) * 100);
+    const nextLevelExp = player.next_level_exp || player.max_exp || 1;
+    const expPercent = nextLevelExp > 0 ? Math.floor((exp / nextLevelExp) * 100) : 0;
 
     // DEBUG: dump raw state keys
     tsLog('[' + server_username + '] 🔍 state顶层: ' + Object.keys(state).join(','));
@@ -333,8 +333,8 @@ async function checkAndLevelUp(account, idx) {
 
     // 使用最终数据重算 expPercent
     const finalExp = finalPlayer.exp || 0;
-    const finalNextExp = finalPlayer.next_level_exp || 1;
-    const finalExpPercent = Math.floor((finalExp / finalNextExp) * 100);
+    const finalNextExp = finalPlayer.next_level_exp || finalPlayer.max_exp || 1;
+    const finalExpPercent = finalNextExp > 0 ? Math.floor((finalExp / finalNextExp) * 100) : 0;
 
     // 收集完整装备/技能信息
     const equippedSkills = finalPlayer.equipped_skills || syncPlayer.equipped_skills || [];
@@ -445,8 +445,8 @@ async function main() {
     if (!result.ok) failed++;
     processedOrders.add(account.order_id);
 
-    await antiDetect.smartPause(i, 5, 20);
-    await antiDetect.randomDelay(3000);
+    await antiDetect.smartPause(i, 3, 10);
+    await antiDetect.randomDelay(2000);
   }
 
   // 推进工单

@@ -15,7 +15,6 @@ const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const MAX_LEVEL = 120;
-const MAX_ACCOUNTS_PER_RUN = 30; // 每轮最多处理30个（适配1h超时限制）
 
 const REQUIRED_ENV = { WORKER_URL, API_KEY, API_BASE, SIGN_KEY };
 for (const [name, val] of Object.entries(REQUIRED_ENV)) {
@@ -257,9 +256,8 @@ async function main() {
   }
 
   const accounts = data.accounts;
-  const total = Math.min(accounts.length, MAX_ACCOUNTS_PER_RUN);
-  const skipped = accounts.length > MAX_ACCOUNTS_PER_RUN ? accounts.length - MAX_ACCOUNTS_PER_RUN : 0;
-  tsLog('找到 ' + accounts.length + ' 个活跃账号，本轮处理 ' + total + ' 个' + (skipped ? '（跳过 ' + skipped + ' 个，下轮继续）' : '') + '\n');
+  const total = accounts.length;
+  tsLog('找到 ' + accounts.length + ' 个活跃账号，全部处理\n');
 
   let leveled = 0;
   let completed = 0;

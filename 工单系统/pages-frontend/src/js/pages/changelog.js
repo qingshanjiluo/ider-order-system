@@ -33,8 +33,11 @@ const HISTORY = [
       { type: 'perf', text: '订单创建/审批自动写入 account_logs，全链路可追溯' },
       { type: 'fix', text: '升级超时修复：每轮账号数 50→30，减少延迟适配 1h 限制' },
       { type: 'fix', text: '经验百分比错误：next_level_exp→max_exp，修复显示 8897200%' },
-      { type: 'fix', text: 'help.js inline onclick 改为 data-toggle + stopPropagation' },
-      { type: 'feat', text: '全账号自动升级每2h：所有未完成工单的账号反复升级直到经验不足' },
+      { type: 'fix', text: '健康检测 v3重写：修正 combat/技能/功法检测逻辑，去除不存在的字段' },
+      { type: 'fix', text: '战斗状态检测修正：使用 state.active_battle 顶层字段而非 player 假字段' },
+      { type: 'fix', text: '技能/功法检测修正：使用 /player/sync 全量数据而非 /player/state 子集' },
+      { type: 'perf', text: '取消1h超时限制：GitHub Actions timeout-minutes 移除，不限制处理量' },
+      { type: 'perf', text: '全账号处理：不再每轮限制 30 个，一次性处理所有活跃账号' },
     ],
   },
   {

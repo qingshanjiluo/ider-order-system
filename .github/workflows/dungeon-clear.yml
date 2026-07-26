@@ -1,0 +1,24 @@
+name: ⚔️ 副本刷取
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run dungeon clear
+        run: node 工单系统/gh-actions/dungeon_clear.js
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          API_BASE: ${{ secrets.API_BASE }}
+          CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}

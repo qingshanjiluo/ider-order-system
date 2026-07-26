@@ -17,6 +17,7 @@ import { renderForgotPassword } from './pages/forgot-password.js';
 import { renderDashboard } from './pages/dashboard.js';
 import { renderHelp } from './pages/help.js';
 import { renderContact } from './pages/contact.js';
+import { renderChangelog } from './pages/changelog.js';
 import { renderOrders } from './pages/orders.js';
 import { renderOrderDetail } from './pages/order-detail.js';
 import { renderAccounts } from './pages/accounts.js';
@@ -97,7 +98,7 @@ function renderFullPage(renderFn, opts = {}) {
 }
 
 // ── 路由守卫 ──────────────────────────
-const PUBLIC_ROUTES = ['/', '/landing', '/login', '/register', '/forgot-password', '/help', '/contact'];
+const PUBLIC_ROUTES = ['/', '/landing', '/login', '/register', '/forgot-password', '/help', '/contact', '/changelog'];
 
 router.beforeEach = (path, params) => {
   const isPublic = PUBLIC_ROUTES.includes(path);
@@ -125,6 +126,7 @@ router.register('/register', (ctx) => renderFullPage(renderRegister, ctx));
 router.register('/forgot-password', (ctx) => renderFullPage(renderForgotPassword, ctx));
 router.register('/help', (ctx) => renderFullPage(renderHelp, ctx));
 router.register('/contact', (ctx) => renderFullPage(renderContact, ctx));
+router.register('/changelog', (ctx) => renderFullPage(renderChangelog, ctx));
 
 // 带侧边栏的页面
 router.register('/dashboard', (ctx) => renderLayout('/dashboard', renderDashboard));

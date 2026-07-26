@@ -1,0 +1,24 @@
+name: 🚚 每日传人派出
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run daily dispatch
+        run: node 工单系统/gh-actions/daily_dispatch.js
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          API_BASE: ${{ secrets.API_BASE }}
+          CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}

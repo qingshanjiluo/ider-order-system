@@ -138,19 +138,35 @@ async function registerAndSetup(workerOrder, orderIdx) {
         raw_output: JSON.stringify({ accountId: regData.accountId }),
       });
 
-      // ── 2) 创建角色（金灵根100） ──
-      const playerName = username.slice(0, 8);
-      const createData = await apiRequest('POST', '/player/create', token, {
-        name: playerName,
-        spirit_roots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
-      });
+      // ── 2) 创建角色（金灵根100），角色名冲突时自动加后缀重试 ──
+      let playerName = username.slice(0, 8);
+      let createData, characterName, createdResultData, spiritRoots;
+      for (let nameRetry = 0; nameRetry < 10; nameRetry++) {
+        if (nameRetry > 0) {
+          playerName = username.slice(0, 6) + '_' + nameRetry;
+          tsLog('[' + username + '] 角色名重试 #' + (nameRetry + 1) + ': ' + playerName);
+        }
+        try {
+          createData = await apiRequest('POST', '/player/create', token, {
+            name: playerName,
+            spirit_roots: { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
+          });
+          break;
+        } catch (e) {
+          if (/角色名已|已被使用|taken/i.test(e.message || '') && nameRetry < 9) {
+            tsLog('[' + username + '] ⚠️ 角色名"' + playerName + '"已被占用，换名重试...');
+            continue;
+          }
+          throw e;
+        }
+      }
       tsLog('[' + username + '] ✅ 角色创建成功: ' + (createData.player?.name || playerName) + ' (金灵根100)');
-      const characterName = createData.player?.name || playerName;
-      const createdResultData = {
+      characterName = createData.player?.name || playerName;
+      createdResultData = {
         character_name: characterName,
         spirit_roots: createData.player?.spirit_roots || { metal: 100, wood: 0, water: 0, fire: 0, earth: 0 },
       };
-      const spiritRoots = JSON.stringify(createdResultData.spirit_roots);
+      spiritRoots = JSON.stringify(createdResultData.spirit_roots);
       await workerApi('/api/gh/report-account', 'POST', {
         order_id: workerOrder.id, username, password,
         status: 'character_created',
@@ -310,8 +326,8 @@ async function registerAndSetup(workerOrder, orderIdx) {
       const errMsg = e.message || '';
       tsLog('[' + username + '] ❌ 失败: ' + errMsg);
 
-      // 检测是否为用户名重复错误 → 重试
-      const isDuplicate = /已存在|已注册|重复|exists|already|taken/i.test(errMsg);
+      // 检测是否为用户名/角色名重复错误 → 重试
+      const isDuplicate = /已存在|已注册|重复|角色名已|已被使用|exists|already|taken/i.test(errMsg);
       if (isDuplicate && retry < 4) {
         tsLog('[' + username + '] ⚠️ 用户名重复，重新生成并重试...');
         usedNames.add(username);
@@ -521,6 +537,151 @@ async function processDailyTrial(order, orderIdx) {
   }
 }
 
+// ── 传人派出处理 ──
+async function processDispatch(order, orderIdx) {
+  const username = order.game_account_name;
+  const password = order.game_account_password;
+  if (!username || !password) {
+    console.log('  ❌ 缺少游戏账号信息');
+    return false;
+  }
+
+  setApiIdx(orderIdx * 20);
+  try {
+    const machineId = antiDetect.generateMachineId(orderIdx);
+    await antiDetect.randomDelay(1500);
+
+    const loginData = await apiRequest('POST', '/auth/login', '', { username, password, machine_id: machineId });
+    const token = loginData.token;
+    console.log('  ✅ 登录成功');
+    await antiDetect.randomDelay(1000);
+
+    // 派出传人
+    try {
+      const dispatchRes = await apiRequest('POST', '/courier/send', token, {
+        map: order.dispatch_map || '灵翠山脉',
+        material: order.material_type || '灵石',
+      });
+      console.log('  ✅ 传人已派出至[' + (order.dispatch_map || '默认') + '] 物资[' + (order.material_type || '默认') + ']');
+      await antiDetect.randomDelay(1000);
+    } catch (e) {
+      console.log('  派出跳过: ' + e.message);
+    }
+
+    await workerApi('/api/gh/report-account', 'POST', {
+      order_id: order.id, username, password,
+      server_username: username, server_password: password,
+      status: 'farming',
+    });
+    await workerApi('/api/gh/report-log', 'POST', {
+      order_id: order.id, username,
+      log_type: 'daily_dispatch',
+      message: '传人派出: ' + (order.dispatch_map || '默认') + '/' + (order.material_type || '默认'),
+    });
+    return true;
+  } catch (e) {
+    console.log('  ❌ 失败: ' + e.message);
+    return false;
+  }
+}
+
+// ── 副本刷取处理 ──
+async function processDungeonClear(order, orderIdx) {
+  const username = order.game_account_name;
+  const password = order.game_account_password;
+  if (!username || !password) {
+    console.log('  ❌ 缺少游戏账号信息');
+    return false;
+  }
+
+  setApiIdx(orderIdx * 20);
+  try {
+    const machineId = antiDetect.generateMachineId(orderIdx);
+    await antiDetect.randomDelay(1500);
+
+    const loginData = await apiRequest('POST', '/auth/login', '', { username, password, machine_id: machineId });
+    const token = loginData.token;
+    console.log('  ✅ 登录成功');
+    await antiDetect.randomDelay(1000);
+
+    // 获取副本列表
+    let dungeonList = [];
+    try {
+      const listData = await apiRequest('GET', '/dungeon/list', token);
+      dungeonList = listData.dungeons || listData.list || [];
+      console.log('  获取到 ' + dungeonList.length + ' 个副本');
+    } catch (e) {
+      console.log('  获取副本列表失败，使用默认列表: ' + e.message);
+      dungeonList = [{ id: 1, name: '灵翠山脉副本' }, { id: 2, name: '幽暗森林副本' }, { id: 3, name: '冰霜峡谷副本' }];
+    }
+
+    const clearType = order.clear_type || '全物资';
+    let cleared = 0;
+
+    for (const dungeon of dungeonList) {
+      const dungeonId = dungeon.id || dungeon.dungeon_id;
+      const dungeonName = dungeon.name || ('副本#' + dungeonId);
+
+      // 每个副本战斗2次
+      for (let round = 1; round <= 2; round++) {
+        try {
+          const startData = await apiRequest('POST', '/dungeon-battle/start', token, {
+            dungeon_id: dungeonId,
+          });
+          const battleId = startData.battle_id;
+          if (!battleId) {
+            console.log('  [' + dungeonName + '] 第' + round + '轮 无battle_id，跳过');
+            continue;
+          }
+
+          // 自动推进直到战斗结束
+          let ended = false;
+          for (let adv = 0; adv < 60; adv++) {
+            const advData = await apiRequest('POST', '/dungeon-battle/advance?state=lite', token, { battle_id: battleId });
+            ended = Boolean(advData.ended);
+            if (ended) break;
+            await sleep(100);
+          }
+
+          if (ended) {
+            cleared++;
+            console.log('  ✅ [' + dungeonName + '] 第' + round + '轮 完成');
+          } else {
+            console.log('  ⚠️ [' + dungeonName + '] 第' + round + '轮 超时');
+          }
+          await antiDetect.randomDelay(500, 1000);
+        } catch (e) {
+          console.log('  ⚠️ [' + dungeonName + '] 第' + round + '轮 跳过: ' + e.message);
+        }
+      }
+
+      // 自动推进到下一个地图
+      try {
+        await apiRequest('POST', '/player/set_map', token, { map_id: (dungeonId || 0) + 1 });
+        console.log('  ➡️ 推进到下一地图');
+      } catch (e) {}
+      await antiDetect.randomDelay(800, 1500);
+    }
+
+    console.log('  本次清理 ' + cleared + '/' + (dungeonList.length * 2) + ' 轮次，类型=' + clearType);
+
+    await workerApi('/api/gh/report-account', 'POST', {
+      order_id: order.id, username, password,
+      server_username: username, server_password: password,
+      status: 'farming',
+    });
+    await workerApi('/api/gh/report-log', 'POST', {
+      order_id: order.id, username,
+      log_type: 'dungeon_clear',
+      message: '副本刷取: ' + clearType + ' 清理' + cleared + '轮',
+    });
+    return true;
+  } catch (e) {
+    console.log('  ❌ 失败: ' + e.message);
+    return false;
+  }
+}
+
 // ── 工单类型分发 ──
 async function dispatchOrder(order, orderIdx) {
   const orderType = order.order_type || '代练';
@@ -532,17 +693,49 @@ async function dispatchOrder(order, orderIdx) {
       return processTrialTest(order, orderIdx);
     case '每日试炼':
       return processDailyTrial(order, orderIdx);
+    case '传人派出':
+      return processDispatch(order, orderIdx);
+    case '副本刷取':
+      return processDungeonClear(order, orderIdx);
     case '代练':
     case '代打':
     case '托管':
     default: {
       const existingAccounts = order.total_accounts_created || 0;
-      if (existingAccounts > 0) {
-        tsLog('已有 ' + existingAccounts + ' 个账号，跳过注册');
-        return true;
-      }
       const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
       const maxAccounts = Math.min(accountsToCreate, 10);
+
+      // 检查是否有失败账号需要重试
+      let retriedCount = 0;
+      try {
+        const activeRes = await workerApi('/api/gh/active-accounts');
+        const failedAccounts = (activeRes.accounts || []).filter(a => a.order_id === order.id && a.status === 'failed');
+        if (failedAccounts.length > 0) {
+          tsLog('发现 ' + failedAccounts.length + ' 个失败账号，尝试重试...');
+          for (const fa of failedAccounts) {
+            tsLog('重试失败账号: ' + (fa.username || '?'));
+            const r = await registerAndSetup(order, orderIdx * 10 + retriedCount);
+            if (r.ok) {
+              retriedCount++;
+              tsLog('✅ 失败账号重试成功: ' + r.username);
+            } else {
+              tsLog('❌ 失败账号重试仍失败: ' + (r.error || ''));
+            }
+            await antiDetect.smartPause(retriedCount, 3, 30);
+          }
+        }
+      } catch (e) {
+        tsLog('⚠️ 查询失败账号出错: ' + e.message);
+      }
+
+      if (existingAccounts > 0 && retriedCount === 0) {
+        tsLog('已有 ' + existingAccounts + ' 个账号，无失败账号需重试，跳过注册');
+        return true;
+      }
+      if (existingAccounts > 0 && retriedCount > 0) {
+        tsLog('重试完成 ' + retriedCount + ' 个失败账号，跳过新注册');
+        return true;
+      }
       tsLog('类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
 
       for (let a = 0; a < maxAccounts; a++) {
@@ -581,12 +774,18 @@ async function main() {
 
     const success = await dispatchOrder(order, i);
 
-    const isSubscription = ['仙盟采集', '每日试炼'].includes(order.order_type);
+    const isSubscription = ['仙盟采集', '每日试炼', '传人派出'].includes(order.order_type);
     if (success && !isSubscription) {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
       tsLog('工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
     } else if (success && isSubscription) {
-      tsLog('工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
+      // 检查订阅是否到期
+      if (order.subscription_end && new Date(order.subscription_end) < new Date()) {
+        tsLog('工单 #' + order.id + ' 订阅已到期，自动完成');
+        await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
+      } else {
+        tsLog('工单 #' + order.id + ' 执行完成（订阅类，保持活跃）');
+      }
     } else {
       tsLog('工单 #' + order.id + ' 处理失败');
     }

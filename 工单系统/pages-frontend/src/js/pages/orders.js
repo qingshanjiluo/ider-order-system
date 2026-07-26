@@ -11,6 +11,8 @@ const ORDER_TYPE_LABEL = {
   '仙盟采集': '仙盟采集',
   '试炼测试': '试炼测试',
   '每日试炼': '每日试炼',
+  '传人派出': '传人派出',
+  '副本刷取': '副本刷取',
 };
 
 const STATUS_MAP = {
@@ -136,6 +138,8 @@ async function showNewOrderModal() {
     '仙盟采集': { label: '仙盟采集', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动领取仙盟并开启采集（1修仙币/月）' },
     '试炼测试': { label: '试炼测试', priceUnit: '修仙币', needsInvite: false, needsAccount: false, needsAccountName: true, fixedPrice: 0.5, fixedMethod: 'coin', desc: '测试并记录最佳配置（0.5修仙币/次）' },
     '每日试炼': { label: '每日试炼', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 2, fixedMethod: 'coin', desc: '每日自动完成试炼挑战（2修仙币/月）' },
+    '传人派出': { label: '传人派出', priceUnit: '修仙币', needsInvite: false, needsAccount: true, needsDispatchFields: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动派出传人采集物资（1修仙币/月）' },
+    '副本刷取': { label: '副本刷取', priceUnit: '修仙币', needsInvite: false, needsAccount: true, needsClearType: true, fixedPrice: 3, fixedMethod: 'coin', desc: '全地图副本刷取，每图战斗2次自动推进（3修仙币/次）' },
   };
 
   const body = document.createElement('div');
@@ -148,6 +152,8 @@ async function showNewOrderModal() {
           <option value="仙盟采集">🏯 仙盟采集（1修仙币/月）</option>
           <option value="试炼测试">⚔️ 试炼测试（0.5修仙币/次）</option>
           <option value="每日试炼">🗡️ 每日试炼（2修仙币/月）</option>
+          <option value="传人派出">🚚 传人派出（1修仙币/月）</option>
+          <option value="副本刷取">⚔️ 副本刷取（3修仙币/次）</option>
         </select>
         <div id="order-type-desc" style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;"></div>
       </div>
@@ -207,6 +213,41 @@ async function showNewOrderModal() {
         </div>
       </div>
 
+      <!-- 派出地图 + 物资类别（传人派出时显示） -->
+      <div id="dispatch-fields-wrap" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">派出地图 <span style="color:var(--accent-red)">*</span></label>
+          <select class="form-select" id="order-dispatch-map">
+            <option value="灵翠山脉">灵翠山脉</option>
+            <option value="幽暗森林">幽暗森林</option>
+            <option value="冰霜峡谷">冰霜峡谷</option>
+            <option value="火焰山">火焰山</option>
+            <option value="星辰塔">星辰塔</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">物资类别 <span style="color:var(--accent-red)">*</span></label>
+          <select class="form-select" id="order-material-type">
+            <option value="灵石">灵石</option>
+            <option value="药材">药材</option>
+            <option value="矿石">矿石</option>
+            <option value="木材">木材</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 刷取类型（副本刷取时显示） -->
+      <div id="clear-type-wrap" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">刷取类型 <span style="color:var(--accent-red)">*</span></label>
+          <select class="form-select" id="order-clear-type">
+            <option value="全物资">全物资 — 副本奖励全部选物资</option>
+            <option value="全阵纹">全阵纹 — 副本奖励全部选阵纹</option>
+            <option value="一半一半">一半一半 — 物资和阵纹各取一半</option>
+          </select>
+        </div>
+      </div>
+
       <div class="form-group">
         <label class="form-label">优惠码（选填）</label>
         <div style="display:flex;gap:8px;">
@@ -236,12 +277,16 @@ async function showNewOrderModal() {
     const inviteWrap = document.getElementById('invite-fields-wrap');
     const gameAccWrap = document.getElementById('game-account-fields-wrap');
     const accNameWrap = document.getElementById('account-name-only-wrap');
+    const dispatchWrap = document.getElementById('dispatch-fields-wrap');
+    const clearWrap = document.getElementById('clear-type-wrap');
 
     descEl.textContent = cfg.desc || '';
     paymentWrap.style.display = cfg.needsInvite ? '' : 'none';
     inviteWrap.style.display = cfg.needsInvite ? '' : 'none';
     gameAccWrap.style.display = cfg.needsAccount ? '' : 'none';
     accNameWrap.style.display = cfg.needsAccountName ? '' : 'none';
+    dispatchWrap.style.display = cfg.needsDispatchFields ? '' : 'none';
+    clearWrap.style.display = cfg.needsClearType ? '' : 'none';
 
     // 自动设置付款方式和价格
     if (cfg.fixedMethod) {
@@ -282,6 +327,18 @@ async function showNewOrderModal() {
         if (cfg.needsAccount && !game_account_password) { toast.error('请输入游戏账号密码'); return; }
       }
 
+      let dispatch_map, material_type, clear_type;
+      if (cfg.needsDispatchFields) {
+        dispatch_map = document.getElementById('order-dispatch-map')?.value;
+        material_type = document.getElementById('order-material-type')?.value;
+        if (!dispatch_map) { toast.error('请选择派出地图'); return; }
+        if (!material_type) { toast.error('请选择物资类别'); return; }
+      }
+      if (cfg.needsClearType) {
+        clear_type = document.getElementById('order-clear-type')?.value;
+        if (!clear_type) { toast.error('请选择刷取类型'); return; }
+      }
+
       try {
         const payload = {
           order_type,
@@ -293,6 +350,9 @@ async function showNewOrderModal() {
         };
         if (game_account_name) payload.game_account_name = game_account_name;
         if (game_account_password) payload.game_account_password = game_account_password;
+        if (dispatch_map) payload.dispatch_map = dispatch_map;
+        if (material_type) payload.material_type = material_type;
+        if (clear_type) payload.clear_type = clear_type;
         const res = await api.createOrder(payload);
         toast.success('工单创建成功');
         modal.close();

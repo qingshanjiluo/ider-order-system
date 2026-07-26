@@ -22,6 +22,7 @@ const NAV_ITEMS = [
     { id: 'after-sales', label: '售后服务', icon: 'diamondOutline', hash: '#/after-sales' },
     { id: 'help', label: '帮助文档', icon: 'question', hash: '#/help' },
     { id: 'contact', label: '联系站长', icon: 'mail', hash: '#/contact' },
+    { id: 'changelog', label: '更新日志', icon: 'star', hash: '#/changelog' },
   ]},
 ];
 

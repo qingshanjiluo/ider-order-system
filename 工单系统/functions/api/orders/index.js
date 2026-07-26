@@ -39,8 +39,11 @@ export async function onRequest(context) {
       invite_code,
       payment_method,   // 'coin' | 'wechat' | 'spirit_stone'
       points,            // 邀请积分数量（10的倍数）
-      game_account_name,     // 游戏账号名（仙盟采集/试炼测试/每日试炼）
-      game_account_password, // 游戏账号密码（仙盟采集/每日试炼）
+      game_account_name,     // 游戏账号名（新类型必填）
+      game_account_password, // 游戏账号密码（新类型必填）
+      dispatch_map,          // 派出地图（传人派出）
+      material_type,         // 物资类别（传人派出）
+      clear_type,            // 刷取类型（副本刷取）
     } = body;
 
     // ── 0. 输入验证（长度限制）──
@@ -50,11 +53,20 @@ export async function onRequest(context) {
     if (game_account_password && game_account_password.length > 200) return json({ error: '密码最多200字符' }, 400);
 
     // ── 0.1 新工单类型特殊验证 ──
-    const NEW_ORDER_TYPES = ['仙盟采集', '试炼测试', '每日试炼'];
+    const NEW_ORDER_TYPES = ['仙盟采集', '试炼测试', '每日试炼', '传人派出', '副本刷取'];
     if (NEW_ORDER_TYPES.includes(order_type)) {
       if (!game_account_name) return json({ error: '请输入游戏账号名' }, 400);
-      if ((order_type === '仙盟采集' || order_type === '每日试炼') && !game_account_password) {
+      if (!game_account_password && order_type !== '试炼测试') {
         return json({ error: '请输入游戏账号密码' }, 400);
+      }
+      if (order_type === '传人派出') {
+        if (!dispatch_map) return json({ error: '请选择派出地图' }, 400);
+        if (!material_type) return json({ error: '请选择物资类别' }, 400);
+      }
+      if (order_type === '副本刷取') {
+        if (!['全物资', '全阵纹', '一半一半'].includes(clear_type)) {
+          return json({ error: '请选择有效的刷取类型：全物资/全阵纹/一半一半' }, 400);
+        }
       }
     }
 
@@ -170,15 +182,15 @@ export async function onRequest(context) {
     let subscriptionEnd = '';
     if (NEW_ORDER_TYPES.includes(order_type)) {
       subscriptionStart = new Date().toISOString();
-      if (order_type === '仙盟采集' || order_type === '每日试炼') {
+      if (['仙盟采集', '每日试炼', '传人派出'].includes(order_type)) {
         // 月度订阅：30天
         subscriptionEnd = new Date(Date.now() + 30 * 86400000).toISOString();
       }
     }
 
     const result = await env.DB.prepare(
-      `INSERT INTO orders (user_id, invite_code, payment_method, payment_account, amount, price, coupon_code, discount, bonus_points, order_type, quantity, frozen_points, invite_code_used, status, created_at, est_complete_date, game_account_name, game_account_password, subscription_start, subscription_end)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), ?, ?, ?, ?, ?)`
+      `INSERT INTO orders (user_id, invite_code, payment_method, payment_account, amount, price, coupon_code, discount, bonus_points, order_type, quantity, frozen_points, invite_code_used, status, created_at, est_complete_date, game_account_name, game_account_password, subscription_start, subscription_end, dispatch_map, material_type, clear_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       user.id,
       finalInviteCode,
@@ -197,7 +209,10 @@ export async function onRequest(context) {
       game_account_name || '',
       game_account_password || '',
       subscriptionStart,
-      subscriptionEnd
+      subscriptionEnd,
+      dispatch_map || '',
+      material_type || '',
+      clear_type || ''
     ).run();
 
     const orderId = result.meta.last_row_id;

@@ -1,0 +1,47 @@
+name: 一键卖出
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: '游戏账号（留空使用默认 zzhx）'
+        required: false
+        default: ''
+        type: string
+      password:
+        description: '游戏密码'
+        required: false
+        default: ''
+        type: string
+      min_quality:
+        description: '最低品质（1白 2绿 3蓝 4紫 5金）'
+        required: true
+        default: '1'
+        type: number
+      max_quality:
+        description: '最高品质'
+        required: true
+        default: '3'
+        type: number
+
+jobs:
+  auto-sell:
+    name: 一键卖出
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 运行一键卖出
+        env:
+          SELL_USERNAME: ${{ inputs.username || secrets.SELL_USERNAME }}
+          SELL_PASSWORD: ${{ inputs.password || secrets.SELL_PASSWORD }}
+          SELL_MIN_QUALITY: ${{ inputs.min_quality }}
+          SELL_MAX_QUALITY: ${{ inputs.max_quality }}
+        run: node gh-actions/auto_sell.js

@@ -492,24 +492,7 @@ async function handleRoute(method, path, request, env, url) {
       priceUnit = '修仙币';
     }
 
-    // ── 4. 修仙币支付：验证余额并冻结 ──
-    let frozenPoints = 0;
-    if (payment_method === 'coin') {
-      const userInfo = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(user.id).first();
-      const currentBalance = userInfo?.bonus_points || 0;
-      if (currentBalance < points) {
-        return json({
-          error: `修仙币余额不足，当前余额: ${currentBalance}，需要: ${points}`
-        }, 400);
-      }
-      // 冻结积分：从余额中扣除
-      await env.DB.prepare(
-        'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
-      ).bind(points, user.id).run();
-      frozenPoints = points;
-    }
-
-    // ── 5. 优惠码折扣 ──
+    // ── 4. 优惠码折扣 ──
     let discount = 0;
     let couponType = 'percent';
     let couponFixedAmount = 0;
@@ -550,14 +533,31 @@ async function handleRoute(method, path, request, env, url) {
       discount = maxDiscount;
     }
 
-    // ── 8. 计算账号数 ──
+    // ── 5. 修仙币支付：验证余额并冻结（使用折后价） ──
+    let frozenPoints = 0;
+    if (payment_method === 'coin') {
+      const userInfo = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(user.id).first();
+      const currentBalance = userInfo?.bonus_points || 0;
+      const needPoints = Math.round(Number(finalPrice));
+      if (currentBalance < needPoints) {
+        return json({
+          error: `修仙币余额不足，当前余额: ${currentBalance}，需要: ${needPoints}`
+        }, 400);
+      }
+      await env.DB.prepare(
+        'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
+      ).bind(needPoints, user.id).run();
+      frozenPoints = needPoints;
+    }
+
+    // ── 6. 计算账号数 ──
     const accCount = Math.max(1, Math.ceil(bonusPoints / 10));
 
-    // ── 9. 预估完成日期 ──
+    // ── 7. 预估完成日期 ──
     const estDays = parseInt((await env.DB.prepare("SELECT value FROM config WHERE key='est_delivery_days'").first())?.value || '5');
     const estDate = new Date(Date.now() + estDays * 86400000).toISOString().split('T')[0];
 
-    // ── 10. 插入订单 ──
+    // ── 8. 插入订单 ──
     const finalInviteCode = invite_code || user.invite_code || '';
     const result = await env.DB.prepare(
       `INSERT INTO orders (user_id, invite_code, payment_method, amount, price, coupon_code, discount, bonus_points, order_type, quantity, frozen_points, invite_code_used, status, created_at, est_complete_date)
@@ -580,12 +580,12 @@ async function handleRoute(method, path, request, env, url) {
 
     const orderId = result.meta.last_row_id;
 
-    // ── 11. 发送通知 ──
+    // ── 9. 发送通知 ──
     await env.DB.prepare(
       "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已提交', '工单 #' || ? || ' 已提交，等待管理员审核中', 'order')"
     ).bind(user.id, orderId).run();
 
-    // ── 12. 记录活动日志 ──
+    // ── 10. 记录活动日志 ──
     const paymentLabel = payment_method === 'coin' ? '修仙币' : payment_method === 'wechat' ? '现金' : '灵石';
     await logActivity(env, orderId, user.id, 'created',
       `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分`);
@@ -816,10 +816,17 @@ async function handleRoute(method, path, request, env, url) {
     const orderId = parseInt(path.match(/^\/api\/admin\/orders\/(\d+)\/status$/)[1]);
     const { status, admin_notes } = body;
 
+    // 先查当前订单，防止重复操作
+    let order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    if (!order) return json({ error: '工单不存在' }, 404);
+    if (order.status === status) {
+      return json({ ok: true, message: '工单已是此状态，无需重复操作' });
+    }
+
     await env.DB.prepare(
       "UPDATE orders SET status = ?, admin_notes = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(status, admin_notes || '', orderId).run();
-    const order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
 
     if (status === 'approved') {
       await env.DB.prepare(

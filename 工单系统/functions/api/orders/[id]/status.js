@@ -23,13 +23,17 @@ export async function onRequest(context) {
     return json({ error: '无效状态值' }, 400);
   }
 
+  // 先查当前订单，防止重复操作（幂等性）
+  const order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+  if (!order) return json({ error: '工单不存在' }, 404);
+  if (order.status === status) {
+    return json({ ok: true, message: '工单已是此状态，无需重复操作' });
+  }
+
   // 更新工单状态
   await env.DB.prepare(
     "UPDATE orders SET status = ?, admin_notes = ?, updated_at = datetime('now') WHERE id = ?"
   ).bind(status, admin_notes || '', orderId).run();
-
-  const order = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
-  if (!order) return json({ error: '工单不存在' }, 404);
 
   // ── approved: 审核通过 ──────────────────────────────
   if (status === 'approved') {

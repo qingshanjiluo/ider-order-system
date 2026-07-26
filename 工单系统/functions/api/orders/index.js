@@ -113,24 +113,7 @@ export async function onRequest(context) {
       priceUnit = '修仙币';
     }
 
-    // ── 4. 修仙币支付：验证余额并冻结 ──
-    let frozenPoints = 0;
-    if (payment_method === 'coin') {
-      const userInfo = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(user.id).first();
-      const currentBalance = userInfo?.bonus_points || 0;
-      if (currentBalance < points) {
-        return json({ 
-          error: `修仙币余额不足，当前余额: ${currentBalance}，需要: ${points}` 
-        }, 400);
-      }
-      // 冻结积分：从余额中扣除
-      await env.DB.prepare(
-        'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
-      ).bind(points, user.id).run();
-      frozenPoints = points;
-    }
-
-    // ── 5. 优惠码折扣 ──
+    // ── 4. 优惠码折扣 ──
     let discount = 0;
     let couponType = 'percent';
     let couponFixedAmount = 0;
@@ -154,12 +137,12 @@ export async function onRequest(context) {
       }
     }
 
-    // ── 6. 等级折扣 ──
+    // ── 5. 等级折扣 ──
     const userLevel = user.level || 1;
     const levelDiscounts = { 1: 0, 2: 0, 3: 10, 4: 20, 5: 30, 6: 40, 7: 45, 8: 50, 9: 60, 10: 70 };
     const levelDiscount = levelDiscounts[userLevel] || 0;
 
-    // ── 7. 计算最终价格（取最大折扣） ──
+    // ── 6. 计算最终价格（取最大折扣） ──
     let finalPrice = price;
     if (couponType === 'fixed') {
       const afterCoupon = Math.max(0, price - couponFixedAmount);
@@ -170,6 +153,24 @@ export async function onRequest(context) {
       const maxDiscount = Math.max(discount, levelDiscount);
       finalPrice = price * (100 - maxDiscount) / 100;
       discount = maxDiscount;
+    }
+
+    // ── 7. 修仙币支付：验证余额并冻结（使用折后价） ──
+    let frozenPoints = 0;
+    if (payment_method === 'coin') {
+      const userInfo = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(user.id).first();
+      const currentBalance = userInfo?.bonus_points || 0;
+      // finalPrice 的单位与 price 相同（修仙币），直接比较
+      const needPoints = Math.round(Number(finalPrice));
+      if (currentBalance < needPoints) {
+        return json({ 
+          error: `修仙币余额不足，当前余额: ${currentBalance}，需要: ${needPoints}` 
+        }, 400);
+      }
+      await env.DB.prepare(
+        'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
+      ).bind(needPoints, user.id).run();
+      frozenPoints = needPoints;
     }
 
     // ── 8. 计算账号数 ──

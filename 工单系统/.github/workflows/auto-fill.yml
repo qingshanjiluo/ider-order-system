@@ -1,13 +1,14 @@
-# 快速自动升级 — 每 2 小时执行一次（与原有的 3 小时工作流互补）
-name: Auto Levelup (Fast)
+# 自动补齐工单 — 每 2 小时执行一次，补充未满的账号
+# 与 Order Scan 错开 30 分钟，避免同时执行
+name: 自动补齐工单
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '30 */2 * * *'
   workflow_dispatch:
 
 jobs:
-  levelup:
+  fill:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -19,8 +20,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run level up
-        run: node level_up.js
+      - name: 补齐工单账号
+        run: node scan_orders.js
         working-directory: gh-actions
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}

@@ -8,13 +8,14 @@ on:
 jobs:
   levelup:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
 
       - name: 运行全账号升级
         working-directory: 工单系统

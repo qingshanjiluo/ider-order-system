@@ -14,6 +14,7 @@ jobs:
   health:
     name: 检测账号健康状态并自动升级
     runs-on: ubuntu-latest
+    timeout-minutes: 360
 
     steps:
       - name: 检出代码

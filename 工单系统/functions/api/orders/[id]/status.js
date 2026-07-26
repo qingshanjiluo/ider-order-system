@@ -1,5 +1,7 @@
-// functions/api/orders/[id]/status.js — POST /api/admin/orders/:id/status
-// 重要：这是 admin 路由，放在 orders/[id]/ 路径下
+// functions/api/orders/[id]/status.js
+// 注意: 此路径为 /api/orders/:id/status（前端已使用此路径），
+//       但功能上属于 admin 接口。若需迁移至 /api/admin/orders/:id/status，
+//       需同步更新前端调用地址。
 import { json, logActivity } from '../../../_utils.js';
 import { authenticateAdmin } from '../../../_auth.js';
 import { addXP, getInviteBoost } from '../../../_xp.js';

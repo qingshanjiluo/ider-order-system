@@ -82,39 +82,67 @@ async function levelUpAccount(account, idx) {
     try {
       const syncResult = await apiRequest('GET', '/player/sync', token);
       syncPlayer = syncResult?.player || {};
-    } catch (e) {}
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 同步失败: ' + e.message);
+    }
     const state = await apiRequest('GET', '/player/state', token);
     const player = state.player || {};
     let currentLevel = player.level || 0;
 
-    // 战斗修复
-    const autoBattleOn = syncPlayer?.auto_battle_enabled;
+    // 记录当前完整状态
     const activeBattle = !!state.active_battle;
+    const autoBattleOn = syncPlayer?.auto_battle_enabled;
+    const restUntil = player.rest_until || 0;
+    const spiritStones = player.spirit_stones || 0;
+    tsLog('[' + server_username + '] 📊 Lv.' + currentLevel + ' 战斗中=' + (activeBattle ? '✅' : '❌') + ' auto=' + (autoBattleOn ? '✅' : '❌') + ' 休息到=' + (restUntil > Date.now() ? new Date(restUntil).toISOString() : '否') + ' 灵石=' + spiritStones + ' exp=' + (player.exp || 0));
+
+    // ── 战斗修复 ──
     let battleFixed = false;
     if (!activeBattle || !autoBattleOn) {
-      try {
-        const mapId = syncPlayer?.current_map_id || 1;
-        await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
-        await sleep(800);
-        await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
-        battleFixed = true;
-        await antiDetect.randomDelay(800, 1500);
-      } catch (e) {
-        tsLog('[' + server_username + '] ⚠️ 战斗启动失败: ' + e.message);
+      if (restUntil > Date.now()) {
+        tsLog('[' + server_username + '] ⏳ 正在休息中(rest_until=' + new Date(restUntil).toISOString() + ')，跳过战斗启动');
+      } else {
+        try {
+          const mapId = syncPlayer?.current_map_id || 1;
+          tsLog('[' + server_username + '] 🔧 启动战斗 mapId=' + mapId);
+          await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
+          await sleep(800);
+          await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
+          battleFixed = true;
+          await antiDetect.randomDelay(800, 1500);
+        } catch (e) {
+          tsLog('[' + server_username + '] ⚠️ 战斗启动失败: ' + e.message);
+          try {
+            await workerApi('/api/gh/report-log', 'POST', {
+              order_id, account_id: id, log_type: 'battle_error',
+              message: '战斗启动失败: ' + e.message,
+              raw_output: e.message,
+            });
+          } catch (e2) {
+            tsLog('[' + server_username + '] ⚠️ 错误上报失败: ' + e2.message);
+          }
+        }
       }
     }
     if (battleFixed) {
       tsLog('[' + server_username + '] 🔧 战斗已启动');
-      // 战斗刚启动，等一下再看经验情况
+      await sleep(500);
       try {
         const st2 = await apiRequest('GET', '/player/state', token);
         if (st2?.player) Object.assign(player, st2.player);
-      } catch (e) {}
+        tsLog('[' + server_username + '] ✅ 战后确认: 战斗中=' + (st2?.active_battle ? '✅' : '❌') + ' exp=' + ((st2?.player?.exp) || 0));
+      } catch (e) {
+        tsLog('[' + server_username + '] ⚠️ 战后状态获取失败: ' + e.message);
+      }
     }
 
     // 重新获取最新状态
     let stCheck;
-    try { stCheck = await apiRequest('GET', '/player/state', token); } catch (e) {}
+    try {
+      stCheck = await apiRequest('GET', '/player/state', token);
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 状态再确认失败: ' + e.message);
+    }
     const finalPlayer = stCheck?.player || player;
     currentLevel = finalPlayer.level || currentLevel;
     const hasExp = (finalPlayer.exp || 0) > 0;
@@ -153,7 +181,9 @@ async function levelUpAccount(account, idx) {
       try {
         await apiRequest('POST', '/player/breakthrough', token, {});
         await antiDetect.randomDelay(1000);
-      } catch (e) { /* 突破失败正常 */ }
+      } catch (e) {
+        tsLog('[' + server_username + '] 突破跳过: ' + e.message);
+      }
     }
 
     // 取最终状态
@@ -161,7 +191,9 @@ async function levelUpAccount(account, idx) {
     try {
       const st3 = await apiRequest('GET', '/player/state', token);
       finalLevel = st3.player?.level || newLevel;
-    } catch (e) {}
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 最终状态获取失败: ' + e.message);
+    }
 
     const isCompleted = finalLevel >= MAX_LEVEL;
     tsLog('[' + server_username + '] 📈 Lv.' + currentLevel + ' → Lv.' + finalLevel + (levelsGained > 0 ? ' (+' + levelsGained + ')' : ' 无变化'));
@@ -186,7 +218,9 @@ async function levelUpAccount(account, idx) {
         order_id, username, status: 'error', level: account.level || 0,
         error_msg: e.message || '', health_status: 'error',
       });
-    } catch (e2) {}
+    } catch (e2) {
+      tsLog('[' + server_username + '] ⚠️ 错误上报失败: ' + e2.message);
+    }
     return { ok: false, error: e.message };
   }
 }

@@ -98,6 +98,15 @@ async function levelUpAccount(account, idx) {
     tsLog('[' + server_username + '] ✅ 登录成功');
     await antiDetect.randomDelay(1500);
 
+    // ── 获取玩家完整数据 ──
+    let syncPlayer = {};
+    try {
+      const syncResult = await apiRequest('GET', '/player/sync', token);
+      syncPlayer = syncResult?.player || {};
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 同步失败: ' + e.message);
+    }
+
     const state = await apiRequest('GET', '/player/state', token);
     const player = state.player || {};
     const currentLevel = player.level || 0;
@@ -106,6 +115,37 @@ async function levelUpAccount(account, idx) {
     const nextLevelExp = player.next_level_exp || player.max_exp || 1;
     const expPercent = nextLevelExp > 0 ? Math.floor((exp / nextLevelExp) * 100) : 0;
 
+    // ── 检查战斗状态 ──
+    const activeBattle = !!state.active_battle;
+    const autoBattleOn = syncPlayer?.auto_battle_enabled;
+    const restUntil = player.rest_until || 0;
+    const spiritStones = player.spirit_stones || 0;
+    tsLog('[' + server_username + '] 📊 Lv.' + currentLevel + ' 战斗中=' + (activeBattle ? '✅' : '❌') + ' auto=' + (autoBattleOn ? '✅' : '❌') + ' 休息到=' + (restUntil > Date.now() ? new Date(restUntil).toISOString() : '否') + ' 灵石=' + spiritStones + ' exp=' + exp + ' (' + expPercent + '%)');
+
+    if (!activeBattle || !autoBattleOn) {
+      if (restUntil > Date.now()) {
+        tsLog('[' + server_username + '] ⏳ 正在休息中(rest_until=' + new Date(restUntil).toISOString() + ')，跳过战斗启动');
+      } else {
+        try {
+          const mapId = syncPlayer?.current_map_id || 1;
+          tsLog('[' + server_username + '] 🔧 启动战斗 mapId=' + mapId);
+          await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
+          await sleep(800);
+          await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
+          await antiDetect.randomDelay(800, 1500);
+          try {
+            const vstate = await apiRequest('GET', '/player/state', token);
+            if (vstate?.player) Object.assign(player, vstate.player);
+            tsLog('[' + server_username + '] ✅ 战后确认: 战斗中=' + (vstate?.active_battle ? '✅' : '❌'));
+          } catch (e) {
+            tsLog('[' + server_username + '] ⚠️ 战后状态确认失败: ' + e.message);
+          }
+        } catch (e) {
+          tsLog('[' + server_username + '] ⚠️ 战斗启动失败: ' + e.message);
+        }
+      }
+    }
+
     // DEBUG: dump raw state keys for debugging
     const stateTopKeys = Object.keys(state).join(',');
     const playerKeys = Object.keys(player).join(',');
@@ -113,15 +153,9 @@ async function levelUpAccount(account, idx) {
     tsLog('[' + server_username + '] 🔍 player字段: ' + playerKeys.slice(0,200));
     tsLog('[' + server_username + '] 📊 起始等级=' + currentLevel + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
 
-    // 获取玩家名、灵根
-    let playerName = '';
-    let playerRoots = {};
-    try {
-      const syncResult = await apiRequest('GET', '/player/sync', token);
-      const sp = syncResult?.player || {};
-      playerName = sp.name || sp.nickname || '';
-      playerRoots = sp.spirit_roots || {};
-    } catch (e) {}
+    // 获取玩家名、灵根（从 syncPlayer）
+    const playerName = syncPlayer.name || syncPlayer.nickname || '';
+    const playerRoots = syncPlayer.spirit_roots || {};
 
     if (currentLevel >= MAX_LEVEL) {
       tsLog('[' + server_username + '] 🏆 已达满级');
@@ -175,7 +209,9 @@ async function levelUpAccount(account, idx) {
       const st3 = await apiRequest('GET', '/player/state', token);
       finalLevel = st3.player?.level || newLevel;
       finalPlayer = st3.player || player;
-    } catch (e) {}
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 最终状态获取失败: ' + e.message);
+    }
 
     const isCompleted = finalLevel >= MAX_LEVEL;
     const reportStatus = isCompleted ? 'completed' : 'farming';
@@ -236,7 +272,9 @@ async function levelUpAccount(account, idx) {
         message: '升级失败: ' + errMsg,
         raw_output: errMsg,
       });
-    } catch (e2) {}
+    } catch (e2) {
+      tsLog('[' + server_username + '] ⚠️ 错误上报失败: ' + e2.message);
+    }
     return { ok: false, error: errMsg };
   }
 }

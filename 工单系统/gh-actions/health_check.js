@@ -80,7 +80,8 @@ async function autoMaintain(username, token, syncPlayer) {
         fixes.push('技能+' + name);
         await antiDetect.randomDelay(500, 1000);
       } catch (e) {
-        if (e.message.includes('已装备')) continue; // 已装备忽略
+        if (e.message.includes('已装备')) continue;
+        tsLog('[' + username + '] ⚠️ 装备技能失败: ' + e.message);
       }
     }
   }
@@ -93,7 +94,7 @@ async function autoMaintain(username, token, syncPlayer) {
       await apiRequest('POST', '/player/set_technique', token, { slot: 'main', technique_id: 1 });
       fixes.push('功法+吐纳法');
       await antiDetect.randomDelay(500, 1000);
-    } catch (e) { /* 可能已装备 */ }
+    } catch (e) { tsLog('[' + username + '] ⚠️ 装备功法失败: ' + e.message); }
   }
 
   // ── 检查武器（铁剑） ──
@@ -112,21 +113,24 @@ async function autoMaintain(username, token, syncPlayer) {
             await apiRequest('POST', '/player/equip', token, {
               page: p, slot_index: s, expect_item_id: Number(item.id || item.item_id || 0),
             });
-            fixes.push('装备+铁剑');
-            found = true;
-            await antiDetect.randomDelay(500, 1000);
-          } catch (e) {}
-          break;
+              fixes.push('装备+铁剑');
+              found = true;
+              await antiDetect.randomDelay(500, 1000);
+            } catch (e) {
+              tsLog('[' + username + '] ⚠️ 装备武器失败: ' + e.message);
+            }
+            break;
         }
       }
     }
   }
 
   // ── 检查战斗状态 ──
-  // active_battle 在响应顶层，auto_battle_enabled 在 player 内
-  const hasBattle = false; // 通过后续 state 检测
   const autoBattleOn = syncPlayer?.auto_battle_enabled;
-  if (!autoBattleOn) {
+  const restUntil = syncPlayer?.rest_until || 0;
+  if (restUntil > Date.now()) {
+    tsLog('[' + username + '] ⏳ 正在休息中(rest_until=' + new Date(restUntil).toISOString() + ')，跳过战斗');
+  } else if (!autoBattleOn) {
     try {
       const mapId = syncPlayer?.current_map_id || 1;
       await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
@@ -134,22 +138,36 @@ async function autoMaintain(username, token, syncPlayer) {
       await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
       fixes.push('战斗+自动刷怪');
       await antiDetect.randomDelay(500, 1000);
+      try {
+        const vstate = await apiRequest('GET', '/player/state', token);
+        tsLog('[' + username + '] ✅ 战斗启动确认: 战斗中=' + (vstate?.active_battle ? '✅' : '❌'));
+      } catch (e) {
+        tsLog('[' + username + '] ⚠️ 战斗状态验证失败: ' + e.message);
+      }
     } catch (e) {
       tsLog('[' + username + '] ⚠️ 战斗启动失败: ' + e.message);
     }
   } else {
-    // 有 auto_battle 但可能没在战斗中，尝试启动
     try {
       const state = await apiRequest('GET', '/player/state', token);
       if (!state.active_battle) {
+        tsLog('[' + username + '] 🔧 auto_battle已开但未战斗中，尝试重启');
         const mapId = syncPlayer?.current_map_id || 1;
         await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
         await sleep(500);
         await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
         fixes.push('战斗重启');
         await antiDetect.randomDelay(500, 1000);
+        try {
+          const vstate = await apiRequest('GET', '/player/state', token);
+          tsLog('[' + username + '] ✅ 战斗重启确认: 战斗中=' + (vstate?.active_battle ? '✅' : '❌'));
+        } catch (e) {
+          tsLog('[' + username + '] ⚠️ 战斗重启验证失败: ' + e.message);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      tsLog('[' + username + '] ⚠️ 战斗状态检查失败: ' + e.message);
+    }
   }
 
   return fixes;
@@ -192,7 +210,9 @@ async function checkAndLevelUp(account, idx) {
     try {
       const syncResult = await apiRequest('GET', '/player/sync', token);
       syncPlayer = syncResult?.player || {};
-    } catch (e) {}
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 同步失败: ' + e.message);
+    }
 
     const playerName = syncPlayer.name || syncPlayer.nickname || '';
     const playerRoots = syncPlayer.spirit_roots || {};
@@ -235,7 +255,9 @@ async function checkAndLevelUp(account, idx) {
       try {
         await apiRequest('POST', '/player/breakthrough', token, {});
         await antiDetect.randomDelay(1000);
-      } catch (e) {}
+      } catch (e) {
+        tsLog('[' + server_username + '] 突破跳过: ' + e.message);
+      }
     }
 
     // 最终状态
@@ -245,7 +267,9 @@ async function checkAndLevelUp(account, idx) {
       const st3 = await apiRequest('GET', '/player/state', token);
       finalLevel = st3.player?.level || currentLevel;
       finalPlayer = st3.player || player;
-    } catch (e) {}
+    } catch (e) {
+      tsLog('[' + server_username + '] ⚠️ 最终状态获取失败: ' + e.message);
+    }
 
     const isCompleted = finalLevel >= MAX_LEVEL;
     const gained = levelsGained > 0 ? ' +' + levelsGained + '级' : '';
@@ -286,7 +310,9 @@ async function checkAndLevelUp(account, idx) {
         order_id, username, status: 'error', level: account.level || 0,
         error_msg: e.message || '', health_status: 'error',
       });
-    } catch (e2) {}
+    } catch (e2) {
+      tsLog('[' + (server_username || '?') + '] ⚠️ 错误上报失败: ' + e2.message);
+    }
     return { ok: false, error: e.message };
   }
 }

@@ -1,5 +1,4 @@
-name: ⬆️ 全账号自动升级（每2h）
-
+name: ⬆️ 全账号自动升级（�?h�?
 on:
   schedule:
     - cron: '0 */2 * * *'
@@ -15,10 +14,9 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: 运行全账号升级
-        working-directory: 工单系统
+      - name: 运行全账号升�?        working-directory: 工单系统
         run: node gh-actions/auto_levelup_all.js
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}

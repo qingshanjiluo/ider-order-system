@@ -326,7 +326,7 @@ async function registerAndSetup(workerOrder, orderIdx) {
             log_type: 'retry',
             message: '用户名重复，重试 #' + (retry + 1) + ': ' + errMsg,
           });
-        } catch (e2) {}
+        } catch (e2) { tsLog('[' + username + '] ⚠️ 日志上报失败: ' + (e2.message || '').slice(0, 60)); }
         continue;
       }
 
@@ -341,7 +341,7 @@ async function registerAndSetup(workerOrder, orderIdx) {
           message: '注册失败: ' + errMsg,
           raw_output: errMsg,
         });
-      } catch (e2) {}
+      } catch (e2) { tsLog('[' + username + '] ⚠️ 错误上报失败: ' + (e2.message || '').slice(0, 60)); }
       return { username, ok: false, error: errMsg };
     }
   }
@@ -648,7 +648,7 @@ async function processDungeonClear(order, orderIdx) {
       try {
         await apiRequest('POST', '/player/set_map', token, { map_id: (dungeonId || 0) + 1 });
         console.log('  ➡️ 推进到下一地图');
-      } catch (e) {}
+      } catch (e) { tsLog('⚠️ 地图推进失败: ' + (e.message || '').slice(0, 60)); }
       await antiDetect.randomDelay(800, 1500);
     }
 

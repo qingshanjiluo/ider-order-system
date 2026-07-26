@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       username:
-        description: '游戏账号（留空使用默认 zzhx）'
+        description: '游戏账号（留空使用默�?zzhx�?
         required: false
         default: ''
         type: string
@@ -36,7 +36,7 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22'
 
       - name: 运行试炼测试
         env:

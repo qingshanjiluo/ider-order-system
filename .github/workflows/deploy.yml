@@ -1,5 +1,4 @@
-# Cloudflare Pages + Worker 部署工作流
-name: Deploy to Cloudflare
+# Cloudflare Pages + Worker 部署工作�?name: Deploy to Cloudflare
 
 on:
   push:

@@ -151,7 +151,7 @@ async function authenticate(request, env) {
     return null;
   }
   const user = await env.DB.prepare(
-    'SELECT id, username, display_name, level, xp, total_orders, total_spent, invite_code, invited_by, invite_points, total_invited, total_purchased_points, commission_rate, email, avatar_url, bio, is_admin, locked FROM users WHERE id = ?'
+    'SELECT id, username, display_name, level, xp, total_orders, total_spent, invite_code, invited_by, invite_points, total_invited, total_purchased_points, commission_rate, email, avatar_url, bio, is_admin, role, locked FROM users WHERE id = ?'
   ).bind(result.user_id).first();
   return user;
 }
@@ -1640,17 +1640,18 @@ async function handleRoute(method, path, request, env, url) {
     const getCount = (statuses) => rows.filter(r => statuses.includes(r.status)).reduce((s, r) => s + r.cnt, 0);
     const setupPhase = ['pending', 'registering', 'created'];
     const farmingPhase = ['farming', 'active'];
-    const finalPhase = ['completed', 'failed'];
+    const finalPhase = ['completed'];
 
     const settingUp = getCount(setupPhase);
     const farming = getCount(farmingPhase);
     const finished = getCount(finalPhase);
+    const failed = getCount(['failed']);
 
     const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
     if (!order) return json({ error: '工单不存在' }, 404);
 
-    // 阶段1: 初始交付
-    if (settingUp === 0 && total > 0 && farming + finished === total) {
+    // 阶段1: 初始交付 — 全部离开设置阶段，仍有账号在挂机
+    if (settingUp === 0 && farming > 0) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'"
       ).bind(total, order_id).run();
@@ -1658,11 +1659,11 @@ async function handleRoute(method, path, request, env, url) {
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已交付', '工单 #' || ? || ' 账号已全部创建并配置完成，开始自动挂机', 'order')"
       ).bind(order.user_id, order_id).run();
       await logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段');
-      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total });
+      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, failed });
     }
 
-    // 阶段2: 最终完成
-    if (settingUp === 0 && farming === 0 && finished === total && total > 0) {
+    // 阶段2: 最终完成 — 无挂中账号，全部已完成或失败
+    if (settingUp === 0 && farming === 0 && finished + failed === total && total > 0) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
       ).bind(order_id).run();

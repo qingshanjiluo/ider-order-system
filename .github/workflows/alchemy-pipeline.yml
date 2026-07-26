@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       accounts_data:
-        description: '账号数据（格式: username,password，每行一个）'
+        description: '账号数据（格�? username,password，每行一个）'
         required: true
         type: string
       max_accounts:
-        description: '处理的账号数量（默认全部）'
+        description: '处理的账号数量（默认全部�?
         required: false
         default: ''
         type: string
@@ -26,13 +26,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 检出代码
+    - name: 检出代�?
       uses: actions/checkout@v4
 
     - name: 设置 Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
         cache-dependency-path: '批量注册工具/package-lock.json'
 
@@ -72,11 +72,11 @@ jobs:
       if: always()
       run: |
         cd 批量注册工具
-        echo "📊 流水线执行结果:"
+        echo "📊 流水线执行结�?"
         echo "---"
         ls -la pipeline_result_*.json 2>/dev/null || echo "无总控结果文件"
         echo "---"
-        echo "📋 各阶段结果预览:"
+        echo "📋 各阶段结果预�?"
         for f in craft_result_*.json mail_pill_result_*.json levelup_result_*.json; do
           if [ -f "$f" ]; then
             echo "=== $f ==="

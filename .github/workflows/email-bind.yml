@@ -1,41 +1,41 @@
 # ════════════════════════════════════════════════════════════
-#  艾德尔修仙传 - 一键邮箱绑定工具 📧
+#  艾德尔修仙传 - 一键邮箱绑定工�?📧
 # ════════════════════════════════════════════════════════════
-#  🛡️ 防封号特性：
-#     - 每账号独立伪造IP（31段真实中国运营商IP轮换）
-#     - 独立 machine_id（6种格式防指纹）
-#     - 完整浏览器指纹轮换（UA/Sec-CH-UA/Accept-Language）
-#     - CDN代理链模拟（Via/X-Cache）
-#     - 操作间随机延迟 + 智能分段暂停
-#     - 每个账号使用独立临时邮箱（Mail.tm / Tempy.email 轮换）
+#  🛡�?防封号特性：
+#     - 每账号独立伪造IP�?1段真实中国运营商IP轮换�?
+#     - 独立 machine_id�?种格式防指纹�?
+#     - 完整浏览器指纹轮换（UA/Sec-CH-UA/Accept-Language�?
+#     - CDN代理链模拟（Via/X-Cache�?
+#     - 操作间随机延�?+ 智能分段暂停
+#     - 每个账号使用独立临时邮箱（Mail.tm / Tempy.email 轮换�?
 # ════════════════════════════════════════════════════════════
 #  📝 账号输入方式（优先级由低到高）：
-#    1. 仓库中的 accounts_email.txt（每行 用户名,密码）
-#    2. workflow_dispatch 传入的 accounts 参数
+#    1. 仓库中的 accounts_email.txt（每�?用户�?密码�?
+#    2. workflow_dispatch 传入�?accounts 参数
 #    3. GitHub Secrets 中的 ACCOUNTS_DATA
-#    4. GitHub Secrets 中的 ACCOUNTS_BASE64（base64编码）
+#    4. GitHub Secrets 中的 ACCOUNTS_BASE64（base64编码�?
 # ════════════════════════════════════════════════════════════
-#  📝 手动输入格式：
-#     用户名1,密码1;用户名2,密码2;用户名3,密码3
+#  📝 手动输入格式�?
+#     用户�?,密码1;用户�?,密码2;用户�?,密码3
 #     分号分隔账号，逗号分隔用户名和密码
 # ════════════════════════════════════════════════════════════
 
-name: 📧 一键邮箱绑定
+name: 📧 一键邮箱绑�?
 
 on:
-  # 手动触发（最常用）
+  # 手动触发（最常用�?
   workflow_dispatch:
     inputs:
       accounts:
-        description: '📂 账号列表（格式: user1,pass1;user2,pass2），留空则用文件'
+        description: '📂 账号列表（格�? user1,pass1;user2,pass2），留空则用文件'
         required: false
         default: ''
       accounts_file:
-        description: '📄 仓库账号文件路径（如 accounts_email.txt 或 批量注册工具/my_acc.txt）'
+        description: '📄 仓库账号文件路径（如 accounts_email.txt �?批量注册工具/my_acc.txt�?
         required: false
         default: ''
       provider:
-        description: '📧 邮箱提供商'
+        description: '📧 邮箱提供�?
         required: false
         default: 'mail_tm'
         type: choice
@@ -44,7 +44,7 @@ on:
           - tempy_email
           - all
       delay_seconds:
-        description: '⏱️ 账号间隔（秒）'
+        description: '⏱️ 账号间隔（秒�?
         required: false
         default: '10'
       poll_timeout:
@@ -64,7 +64,7 @@ jobs:
         working-directory: 批量注册工具
 
     steps:
-      - name: 🔄 检出代码
+      - name: 🔄 检出代�?
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -72,7 +72,7 @@ jobs:
       - name: ⚙️ 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: 批量注册工具/package-lock.json
 
@@ -83,30 +83,30 @@ jobs:
 
       - name: 📝 准备账号数据
         run: |
-          echo "═══════════════════════════════════════════════"
+          echo "══════════════════════════════════════════════�?
           echo "  准备账号数据"
-          echo "═══════════════════════════════════════════════"
+          echo "══════════════════════════════════════════════�?
 
           ACCOUNTS_FILE_INPUT="${{ github.event.inputs.accounts_file }}"
           ACCOUNTS_MANUAL="${{ github.event.inputs.accounts }}"
 
-          # 1) 如果指定了 accounts_file 且文件存在，复制到工作目录
+          # 1) 如果指定�?accounts_file 且文件存在，复制到工作目�?
           if [ -n "$ACCOUNTS_FILE_INPUT" ]; then
-            # 检查工作目录下（批量注册工具/）和仓库根目录（../）
+            # 检查工作目录下（批量注册工�?）和仓库根目录（../�?
             if [ -f "$ACCOUNTS_FILE_INPUT" ]; then
               echo "📄 使用仓库账号文件: $ACCOUNTS_FILE_INPUT"
               cp "$ACCOUNTS_FILE_INPUT" accounts_email.txt
             elif [ -f "../$ACCOUNTS_FILE_INPUT" ]; then
-              echo "📄 使用仓库根目录账号文件: ../$ACCOUNTS_FILE_INPUT"
+              echo "📄 使用仓库根目录账号文�? ../$ACCOUNTS_FILE_INPUT"
               cp "../$ACCOUNTS_FILE_INPUT" accounts_email.txt
             else
-              echo "⚠️ 未找到指定文件: $ACCOUNTS_FILE_INPUT，尝试其他来源"
+              echo "⚠️ 未找到指定文�? $ACCOUNTS_FILE_INPUT，尝试其他来�?
             fi
           fi
 
-          # 2) 如果 workflow 传入了 accounts，覆盖文件
+          # 2) 如果 workflow 传入�?accounts，覆盖文�?
           if [ -n "$ACCOUNTS_MANUAL" ]; then
-            echo "📄 使用 workflow_dispatch 传入的账号数据"
+            echo "📄 使用 workflow_dispatch 传入的账号数�?
             echo "$ACCOUNTS_MANUAL" | tr ';' '\n' > accounts_email.txt
           fi
 
@@ -123,36 +123,36 @@ jobs:
 
           # 4) 检查文件是否存在（工作目录或上级目录）
           if [ ! -f accounts_email.txt ] && [ -f ../accounts_email.txt ]; then
-            echo "📄 使用仓库根目录 accounts_email.txt"
+            echo "📄 使用仓库根目�?accounts_email.txt"
             cp ../accounts_email.txt accounts_email.txt
           fi
 
           if [ ! -f accounts_email.txt ]; then
-            echo "❌ 未找到账号文件！"
+            echo "�?未找到账号文件！"
             echo ""
-            echo "请通过以下方式提供账号："
-            echo "  1) 将 accounts_email.txt 提交到仓库任意位置"
-            echo "  2) 在 accounts_file 填入仓库中的文件路径"
-            echo "  3) 在 accounts 参数直接传入: user1,pass1;user2,pass2"
-            echo "  4) 在 Secrets 中设置 ACCOUNTS_DATA 或 ACCOUNTS_BASE64"
+            echo "请通过以下方式提供账号�?
+            echo "  1) �?accounts_email.txt 提交到仓库任意位�?
+            echo "  2) �?accounts_file 填入仓库中的文件路径"
+            echo "  3) �?accounts 参数直接传入: user1,pass1;user2,pass2"
+            echo "  4) �?Secrets 中设�?ACCOUNTS_DATA �?ACCOUNTS_BASE64"
             exit 1
           fi
 
-          echo "✅ 账号文件就绪: accounts_email.txt"
-          echo "   有效账号数: $(grep -cE '^[^#,/]' accounts_email.txt 2>/dev/null || echo 0)"
-          echo "   总行数: $(wc -l < accounts_email.txt)"
+          echo "�?账号文件就绪: accounts_email.txt"
+          echo "   有效账号�? $(grep -cE '^[^#,/]' accounts_email.txt 2>/dev/null || echo 0)"
+          echo "   总行�? $(wc -l < accounts_email.txt)"
 
       - name: 🚀 执行邮箱绑定
         run: |
-          echo "═══════════════════════════════════════════════"
-          echo "  ⏱️  开始时间: $(date '+%Y-%m-%d %H:%M:%S')"
-          echo "═══════════════════════════════════════════════"
+          echo "══════════════════════════════════════════════�?
+          echo "  ⏱️  开始时�? $(date '+%Y-%m-%d %H:%M:%S')"
+          echo "══════════════════════════════════════════════�?
           echo "  配置:"
-          echo "    邮箱提供商: ${{ github.event.inputs.provider || 'mail_tm' }}"
+          echo "    邮箱提供�? ${{ github.event.inputs.provider || 'mail_tm' }}"
           echo "    账号间隔:   ${{ github.event.inputs.delay_seconds || '10' }}s"
           echo "    超时:       ${{ github.event.inputs.poll_timeout || '120' }}s"
-          echo "    账号文件:   $([ -n '${{ github.event.inputs.accounts_file }}' ] && echo '${{ github.event.inputs.accounts_file }}' || echo '自动检测')"
-          echo "═══════════════════════════════════════════════"
+          echo "    账号文件:   $([ -n '${{ github.event.inputs.accounts_file }}' ] && echo '${{ github.event.inputs.accounts_file }}' || echo '自动检�?)"
+          echo "══════════════════════════════════════════════�?
 
           PROVIDER="${{ github.event.inputs.provider || 'mail_tm' }}" \
           DELAY_MS="${{ github.event.inputs.delay_seconds || '10' }}000" \
@@ -164,7 +164,7 @@ jobs:
           CI: true
           NODE_ENV: production
 
-      - name: 📤 上传运行日志和结果
+      - name: 📤 上传运行日志和结�?
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -178,10 +178,10 @@ jobs:
       - name: 📊 输出运行摘要
         if: always()
         run: |
-          echo "═══════════════════════════════════════════════"
+          echo "══════════════════════════════════════════════�?
           echo "  ⏱️  结束时间: $(date '+%Y-%m-%d %H:%M:%S')"
           echo "  📋  绑定结果摘要"
-          echo "═══════════════════════════════════════════════"
+          echo "══════════════════════════════════════════════�?
 
           LATEST_JSON=$(ls -t email_bind_result_*.json 2>/dev/null | head -1)
           if [ -n "$LATEST_JSON" ]; then
@@ -193,22 +193,22 @@ jobs:
             FAILED=$(node -e "const d=require('./$LATEST_JSON');console.log(d.failed||0)")
             TOTAL=$(node -e "const d=require('./$LATEST_JSON');console.log(d.total||0)")
 
-            echo "  📊 统计: $SUCCESS 成功 / $SKIPPED 跳过 / $FAILED 失败（共 $TOTAL）"
+            echo "  📊 统计: $SUCCESS 成功 / $SKIPPED 跳过 / $FAILED 失败（共 $TOTAL�?
             echo ""
 
             node -e "
               const d=require('./$LATEST_JSON');
               (d.results||[]).forEach(r=>{
-                const icon=r.status==='success'?'✅':r.status==='skipped'?'⏭️':'❌';
+                const icon=r.status==='success'?'�?:r.status==='skipped'?'⏭️':'�?;
                 if (r.status === 'success') {
-                  console.log('  '+icon+' ['+r.username+'] 已绑定 '+r.email);
+                  console.log('  '+icon+' ['+r.username+'] 已绑�?'+r.email);
                 } else if (r.status === 'skipped') {
-                  console.log('  '+icon+' ['+r.username+'] 之前已绑定');
+                  console.log('  '+icon+' ['+r.username+'] 之前已绑�?);
                 } else {
                   console.log('  '+icon+' ['+r.username+'] 失败: '+(r.error||'未知'));
                 }
               });
             "
           else
-            echo "  未找到结果文件"
+            echo "  未找到结果文�?
           fi

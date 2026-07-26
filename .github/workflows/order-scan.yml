@@ -1,8 +1,8 @@
-name: 工单扫描 - 自动注册刷怪
+name: 工单扫描 - 自动注册刷�?
 
 on:
   schedule:
-    # 每4小时运行一次（0, 4, 8, 12, 16, 20点）
+    # �?小时运行一次（0, 4, 8, 12, 16, 20点）
     - cron: '0 */4 * * *'
   workflow_dispatch:
     inputs:
@@ -18,7 +18,7 @@ on:
 
 jobs:
   pre-check:
-    name: 预检查 - API 可用性
+    name: 预检�?- API 可用�?
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -26,15 +26,15 @@ jobs:
       worker_ok: ${{ steps.check.outputs.worker_ok }}
 
     steps:
-      - name: 检出代码
+      - name: 检出代�?
         uses: actions/checkout@v4
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: 检查 API 可用性
+      - name: 检�?API 可用�?
         id: check
         working-directory: 工单系统
         env:
@@ -53,13 +53,13 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - name: 检出代码
+      - name: 检出代�?
         uses: actions/checkout@v4
 
       - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: 安装依赖
         working-directory: 工单系统

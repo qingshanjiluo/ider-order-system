@@ -1,5 +1,4 @@
-name: 自动补齐工单（每2h）
-
+name: 自动补齐工单（每2h�?
 on:
   schedule:
     - cron: '30 */2 * * *'
@@ -15,7 +14,7 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: 补齐工单账号
         working-directory: 工单系统

@@ -1,10 +1,10 @@
-name: 一键卖出
+name: 一键卖�?
 
 on:
   workflow_dispatch:
     inputs:
       username:
-        description: '游戏账号（留空使用默认 zzhx）'
+        description: '游戏账号（留空使用默�?zzhx�?
         required: false
         default: ''
         type: string
@@ -14,19 +14,19 @@ on:
         default: ''
         type: string
       min_quality:
-        description: '最低品质（1白 2绿 3蓝 4紫 5金）'
+        description: '最低品质（1�?2�?3�?4�?5金）'
         required: true
         default: '1'
         type: number
       max_quality:
-        description: '最高品质'
+        description: '最高品�?
         required: true
         default: '3'
         type: number
 
 jobs:
   auto-sell:
-    name: 一键卖出
+    name: 一键卖�?
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -36,9 +36,9 @@ jobs:
       - name: 设置 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22'
 
-      - name: 运行一键卖出
+      - name: 运行一键卖�?
         env:
           SELL_USERNAME: ${{ inputs.username || secrets.SELL_USERNAME }}
           SELL_PASSWORD: ${{ inputs.password || secrets.SELL_PASSWORD }}

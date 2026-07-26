@@ -13,9 +13,25 @@ function loadStyles() {
 
 const HISTORY = [
   {
-    version: 'v3.4',
+    version: 'v3.5',
     date: '2026-07-26',
     badge: 'current',
+    changes: [
+      { type: 'feat', text: '修仙聊天室上线：文字聊天/3秒轮询/彩色头像，道友可实时交流' },
+      { type: 'fix', text: '优惠折扣未实际应用：修仙币冻结改为基于折后价，不再冻结全额' },
+      { type: 'fix', text: '重复退款修复：拒绝工单幂等性检查，防止 Webhook 重复调用多次退还修仙币' },
+      { type: 'fix', text: '角色名冲突自动重试：创建角色冲突后加 _1/_2 后缀重试（最多10次）' },
+      { type: 'fix', text: '失败账号自动重试：扫描时联查 status=failed 的账号重新注册' },
+      { type: 'perf', text: '日志系统全面增强：report-account 返回 account_id + 内部自动写日志' },
+      { type: 'perf', text: 'account_logs 查询优化：支持订单级日志（account_id=0 也可查询到）' },
+      { type: 'perf', text: '升级日志增强：从"满级120!"改为"从Lv.X升到Lv.Y（+N级）"' },
+      { type: 'perf', text: '订单预览实付价格：优惠后显示实付金额 + 原价划线 + "省X"提示' },
+      { type: 'perf', text: '订单创建/审批自动写入 account_logs，全链路可追溯' },
+    ],
+  },
+  {
+    version: 'v3.4',
+    date: '2026-07-26',
     changes: [
       { type: 'feat', text: '传人派出工单：选择地图 + 物资类别，每日自动派（1修仙币/月）' },
       { type: 'feat', text: '副本刷取工单：全地图自动战斗，每图 2 次自动推进（3修仙币/次）' },

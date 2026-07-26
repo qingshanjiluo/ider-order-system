@@ -177,24 +177,17 @@ async function autoMaintain(username, token, player) {
     }
   }
 
-  // ── 最终验证：重新获取玩家数据，确认修复结果 ──
+  // ── 最终验证：用 /player/state 确认修复结果 ──
   try {
-    // 使用与检测时相同的 /player/sync 端点，确保字段名一致
-    const verify = await apiRequest('GET', '/player/sync', token);
-    const vp = verify?.player || {};
-    // 兼容多种字段名
-    const vSkills = vp.equipped_skills || vp.skills || vp.skill_list || vp.key_skill_id ? [vp.key_skill_id] : [];
-    const vSkillCount = Array.isArray(vSkills) ? vSkills.length
-      : (typeof vSkills === 'object' ? Object.keys(vSkills).length : (vSkills ? 1 : 0));
-    const vTech = vp.equipped_technique || vp.technique || vp.main_technique || vp.technique_id || vp.technique_name;
-    const vWeapon = vp.equipment?.weapon || vp.equipment?.['0'] || vp.weapon || vp.main_hand || vp.weapon_name;
-    const vBattle = vp.is_battling || vp.battle_active || vp.in_battle || vp.fighting || vp.current_map_id > 1;
+    const state = await apiRequest('GET', '/player/state', token);
+    const sp = state.player || {};
+    const vBattle = !!(sp.active_battle || (sp.current_map_id || 0) > 0);
+    // 检测技术（功法）是否已装备
+    const hasPlayerData = !!(sp.name || sp.level > 0);
 
     const remaining = [];
-    if (vSkillCount < 3 && !vSkills) remaining.push('技能(' + vSkillCount + '/3)');
-    if (!vTech) remaining.push('功法');
-    if (!vWeapon) remaining.push('铁剑');
-    if (!vBattle) remaining.push('战斗');
+    if (!hasPlayerData) remaining.push('无角色');
+    if (fixes.includes('战斗+自动刷怪') && !vBattle) remaining.push('战斗');
 
     if (remaining.length > 0) {
       if (fixes.length > 0) {
@@ -291,29 +284,26 @@ async function checkAndLevelUp(account, idx) {
     // 升级循环
     let currentLevel = level;
     let levelsGained = 0;
-    if (canLevelUp) {
-      for (let i = 0; i < 30; i++) {
-        try {
-          await apiRequest('POST', '/player/level_up', token, {});
-          currentLevel++;
-          levelsGained++;
-          tsLog('[' + server_username + '] ⬆️ 升级! Lv.' + currentLevel);
-          await antiDetect.randomDelay(800);
+    for (let i = 0; i < 30; i++) {
+      try {
+        const upRes = await apiRequest('POST', '/player/level_up', token, {});
+        if (!upRes || !upRes.player || !upRes.player.level) break;
+        currentLevel = upRes.player.level;
+        levelsGained++;
+        tsLog('[' + server_username + '] ⬆️ 升级! Lv.' + currentLevel);
 
-          if (currentLevel >= MAX_LEVEL) {
-            tsLog('[' + server_username + '] 🏆 到达满级120!');
-            break;
-          }
-
-          const state2 = await apiRequest('GET', '/player/state', token);
-          if (!state2.player?.can_level_up) {
-            tsLog('[' + server_username + '] 经验不足，停止升级');
-            break;
-          }
-        } catch (e) {
-          tsLog('[' + server_username + '] 升级中断: ' + e.message);
+        if (currentLevel >= MAX_LEVEL) {
+          tsLog('[' + server_username + '] 🏆 到达满级120!');
           break;
         }
+        await antiDetect.randomDelay(800);
+      } catch (e) {
+        if (e.message.includes('经验不足') || e.message.includes('exp') || e.message.includes('等级')) {
+          tsLog('[' + server_username + '] 经验不足，停止升级');
+        } else {
+          tsLog('[' + server_username + '] 升级中断: ' + e.message);
+        }
+        break;
       }
     }
 

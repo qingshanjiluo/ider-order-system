@@ -139,34 +139,27 @@ async function levelUpAccount(account, idx) {
 
     let newLevel = currentLevel;
     let levelsGained = 0;
-    if (canLevelUp) {
-      for (let i = 0; i < 50; i++) {
-        try {
-          await apiRequest('POST', '/player/level_up', token, {});
-          newLevel++;
-          levelsGained++;
-          tsLog('[' + server_username + '] ⬆️ 升级! Lv.' + newLevel);
-          await antiDetect.randomDelay(600);
+    for (let i = 0; i < 50; i++) {
+      try {
+        const upRes = await apiRequest('POST', '/player/level_up', token, {});
+        if (!upRes || !upRes.player || !upRes.player.level) break;
+        newLevel = upRes.player.level;
+        levelsGained++;
+        tsLog('[' + server_username + '] ⬆️ 升级! Lv.' + newLevel);
 
-          if (newLevel >= MAX_LEVEL) {
-            tsLog('[' + server_username + '] 🏆 到达满级 120!');
-            break;
-          }
-
-          if (i % 5 === 4 || i === 0) {
-            const st2 = await apiRequest('GET', '/player/state', token);
-            if (!st2.player?.can_level_up) {
-              tsLog('[' + server_username + '] 经验不足，暂停升级');
-              break;
-            }
-          }
-        } catch (e) {
-          tsLog('[' + server_username + '] 升级中断: ' + e.message);
+        if (newLevel >= MAX_LEVEL) {
+          tsLog('[' + server_username + '] 🏆 到达满级 120!');
           break;
         }
+        await antiDetect.randomDelay(600);
+      } catch (e) {
+        if (e.message.includes('经验不足') || e.message.includes('exp') || e.message.includes('等级')) {
+          tsLog('[' + server_username + '] 经验不足，无法升级');
+        } else {
+          tsLog('[' + server_username + '] 升级中断: ' + e.message);
+        }
+        break;
       }
-    } else {
-      tsLog('[' + server_username + '] 经验不足(' + expPercent + '%)，无法升级');
     }
 
     if (newLevel >= 100 && newLevel < MAX_LEVEL) {

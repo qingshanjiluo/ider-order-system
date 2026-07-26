@@ -1,0 +1,212 @@
+/**
+ * 艾德尔工单系统 - 全账号升级（每2h）
+ * 遍历所有未完成工单的账号，反复升级直到经验不足
+ * 纯升级，不修战斗/功法，极限速度
+ */
+const crypto = require('crypto');
+const antiDetect = require('./_anti_detect');
+
+const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
+const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
+const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
+const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
+const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
+const MAX_LEVEL = 120;
+
+for (const [n, v] of Object.entries({ WORKER_URL, API_KEY, API_BASE, SIGN_KEY })) {
+  if (!v) { console.error('错误: 环境变量 ' + n + ' 未设置'); process.exit(1); }
+}
+
+let _apiIdx = 0;
+function setApiIdx(idx) { _apiIdx = idx; }
+
+function makeSign(method, path, timestamp, bodyStr) {
+  const hmac = crypto.createHmac('sha256', SIGN_KEY);
+  hmac.update(method + '\n' + path + '\n' + timestamp + '\n' + bodyStr);
+  return hmac.digest('hex');
+}
+
+async function apiRequest(method, path, token, body) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const bodyStr = body ? JSON.stringify(body) : '';
+  const sign = makeSign(method, path, timestamp, bodyStr);
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Client-Version': CLIENT_VERSION,
+    'X-Sign-T': String(timestamp),
+    'X-Sign': sign,
+  };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  Object.assign(headers, antiDetect.buildAntiDetectHeaders(_apiIdx++));
+  const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, signal: AbortSignal.timeout(20000) });
+  const text = await r.text();
+  let data;
+  try { data = JSON.parse(text); } catch (e) { throw new Error('非JSON(' + r.status + '): ' + text.slice(0, 200)); }
+  if (!data || data.ok === false) throw new Error(data && data.error ? data.error : '请求失败(' + r.status + ')');
+  return data;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function tsLog(msg) {
+  const t = new Date().toLocaleString('zh-CN', { hour12: false });
+  console.log(`[${t}] ${msg}`);
+}
+
+async function workerApi(path, method, body) {
+  const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
+  const r = await fetch(WORKER_URL.replace(/\/+$/, '') + path, {
+    method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000),
+  });
+  return r.json();
+}
+
+async function levelUpAccount(account, idx) {
+  setApiIdx(idx * 10);
+
+  const { id, server_username, server_password, order_id, username } = account;
+  if (!server_username || !server_password) {
+    tsLog('[' + (username || '?') + '] ⏭️ 无账号密码');
+    return { ok: false, skipped: true };
+  }
+
+  try {
+    const machineId = 'lvlall_' + idx + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const loginData = await apiRequest('POST', '/auth/login', '', {
+      username: server_username, password: server_password, machine_id: machineId,
+    });
+    const token = loginData.token;
+
+    const state = await apiRequest('GET', '/player/state', token);
+    const player = state.player || {};
+    let currentLevel = player.level || 0;
+    if (currentLevel >= MAX_LEVEL) {
+      tsLog('[' + server_username + '] 🏆 已满级');
+      await workerApi('/api/gh/report-health', 'POST', {
+        order_id, username, status: 'completed', level: MAX_LEVEL,
+        health_status: 'completed',
+      });
+      return { ok: true, level: MAX_LEVEL, completed: true };
+    }
+
+    let newLevel = currentLevel;
+    let levelsGained = 0;
+    for (let i = 0; i < 100; i++) {
+      try {
+        const upRes = await apiRequest('POST', '/player/level_up', token, {});
+        if (!upRes || !upRes.player || !upRes.player.level) break;
+        newLevel = upRes.player.level;
+        levelsGained++;
+        if (newLevel >= MAX_LEVEL) { tsLog('[' + server_username + '] 🏆 满级!'); break; }
+        await antiDetect.randomDelay(500);
+      } catch (e) {
+        if (e.message.includes('经验不足') || e.message.includes('exp')) {
+          tsLog('[' + server_username + '] 经验不足，升级停止');
+        } else {
+          tsLog('[' + server_username + '] 升级中断: ' + e.message.slice(0, 60));
+        }
+        break;
+      }
+    }
+
+    if (newLevel >= 100 && newLevel < MAX_LEVEL) {
+      try {
+        await apiRequest('POST', '/player/breakthrough', token, {});
+        await antiDetect.randomDelay(1000);
+      } catch (e) { /* 突破失败正常 */ }
+    }
+
+    // 取最终状态
+    let finalLevel = newLevel;
+    try {
+      const st3 = await apiRequest('GET', '/player/state', token);
+      finalLevel = st3.player?.level || newLevel;
+    } catch (e) {}
+
+    const isCompleted = finalLevel >= MAX_LEVEL;
+    tsLog('[' + server_username + '] 📈 Lv.' + currentLevel + ' → Lv.' + finalLevel + (levelsGained > 0 ? ' (+' + levelsGained + ')' : ' 无变化'));
+
+    await workerApi('/api/gh/report-health', 'POST', {
+      order_id, username, status: isCompleted ? 'completed' : 'farming', level: finalLevel,
+      health_status: isCompleted ? 'completed' : 'ok',
+    });
+    await workerApi('/api/gh/report-log', 'POST', {
+      order_id, account_id: id, log_type: isCompleted ? 'levelup_completed' : 'levelup_report',
+      message: isCompleted
+        ? '🎉 从 Lv.' + currentLevel + ' 升到满级 Lv.' + finalLevel + '（+' + levelsGained + '级）'
+        : '📈 Lv.' + currentLevel + ' → Lv.' + finalLevel + '（+' + levelsGained + '级）',
+      raw_output: JSON.stringify({ from_level: currentLevel, to_level: finalLevel, levelsGained }),
+    });
+
+    return { ok: true, level: finalLevel, completed: isCompleted, gained: levelsGained };
+  } catch (e) {
+    tsLog('[' + (server_username || '?') + '] ❌ 失败: ' + (e.message || '').slice(0, 100));
+    try {
+      await workerApi('/api/gh/report-health', 'POST', {
+        order_id, username, status: 'error', level: account.level || 0,
+        error_msg: e.message || '', health_status: 'error',
+      });
+    } catch (e2) {}
+    return { ok: false, error: e.message };
+  }
+}
+
+async function main() {
+  console.log('═══════════════════════════════════════');
+  console.log('  艾德尔 - 全账号自动升级');
+  console.log('  时间: ' + new Date().toISOString());
+  console.log('═══════════════════════════════════════');
+
+  tsLog('获取所有未完成订单的账号...');
+  const data = await workerApi('/api/gh/all-accounts', 'GET');
+  if (!data.ok || !data.accounts || !data.accounts.length) {
+    tsLog('没有可升级的账号');
+    return;
+  }
+
+  const accounts = data.accounts;
+  tsLog('找到 ' + accounts.length + ' 个账号，开始升级\n');
+
+  let leveled = 0;
+  let completed = 0;
+  let failed = 0;
+  const processedOrders = new Set();
+
+  for (let i = 0; i < accounts.length; i++) {
+    const acc = accounts[i];
+    console.log('──── [' + (i + 1) + '/' + accounts.length + '] ' + (acc.server_username || acc.username) + ' (Lv.' + (acc.level || 0) + ') ────');
+
+    const result = await levelUpAccount(acc, i);
+    if (result.ok && !result.skipped) {
+      if (result.gained > 0) leveled++;
+      if (result.completed) completed++;
+    }
+    if (!result.ok) failed++;
+    processedOrders.add(acc.order_id);
+
+    await antiDetect.smartPause(i, 5, 8);
+    await antiDetect.randomDelay(1000);
+  }
+
+  if (processedOrders.size > 0) {
+    tsLog('检查 ' + processedOrders.size + ' 个工单完成状态...');
+    for (const oid of processedOrders) {
+      try {
+        const res = await workerApi('/api/gh/complete-order', 'POST', { order_id: oid });
+        if (res.ok) tsLog('✅ 工单 #' + oid + ': ' + (res.message || res.status || 'ok'));
+      } catch (e) {
+        tsLog('⚠️ 工单 #' + oid + ' 推进失败: ' + e.message);
+      }
+    }
+  }
+
+  console.log('\n═══════════════════════════════════════');
+  console.log('  全账号升级完成 ✓');
+  console.log('  总数: ' + accounts.length + ' | 升级: ' + leveled + ' | 满级: ' + completed + ' | 失败: ' + failed);
+  console.log('═══════════════════════════════════════');
+}
+
+main().catch(e => {
+  tsLog('❌ 致命错误: ' + e.message);
+  process.exit(1);
+});

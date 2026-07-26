@@ -1,0 +1,28 @@
+name: ⬆️ 全账号自动升级（每2h）
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  levelup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 运行全账号升级
+        working-directory: 工单系统
+        run: node gh-actions/auto_levelup_all.js
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          API_BASE: ${{ secrets.API_BASE }}
+          CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}

@@ -1469,6 +1469,22 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, accounts: accounts.results });
   }
 
+  // ── GH: All Accounts from Unfinished Orders ──────────
+  if (path === '/api/gh/all-accounts' && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const accounts = await env.DB.prepare(
+      `SELECT ga.*, o.user_id, o.invite_code, o.order_type 
+       FROM game_accounts ga 
+       JOIN orders o ON ga.order_id = o.id 
+       WHERE o.status NOT IN ('completed', 'rejected', 'cancelled')
+       AND ga.status NOT IN ('completed', 'error')
+       AND (ga.stop_monitor_at IS NULL OR ga.stop_monitor_at > datetime('now'))
+       ORDER BY ga.level ASC
+       LIMIT 200`
+    ).all();
+    return json({ ok: true, accounts: accounts.results });
+  }
+
   if (path === '/api/gh/process-trial-test' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const { order_id, game_account_name } = body;

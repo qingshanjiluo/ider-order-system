@@ -1427,10 +1427,10 @@ async function handleRoute(method, path, request, env, url) {
     if (!order_id) return json({ error: '缺少 order_id' }, 400);
     await env.DB.prepare(
       "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), status = CASE WHEN status = 'pending' THEN 'processing' ELSE status END, updated_at = datetime('now') WHERE id = ?"
-    ).bind(game_account_name || '', order_id).run();
+    ).bind(game_account_name || '', order_id).run().catch(() => {});
     await env.DB.prepare(
       "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (0, ?, 'trial_test', '试炼测试已触发', ?)"
-    ).bind(order_id, JSON.stringify({ game_account_name })).run();
+    ).bind(order_id, JSON.stringify({ game_account_name })).run().catch(() => {});
     return json({ ok: true, message: '试炼测试已触发' });
   }
 

@@ -66,16 +66,27 @@ export function renderSidebar() {
   const isAdmin = role === 'admin' || role === 'super_admin';
   const adminItems = isAdmin ? getAdminItems() : [];
   const allItems = isAdmin ? [...NAV_ITEMS, ...adminItems] : NAV_ITEMS;
+  // 从 localStorage 恢复展开状态
+  let expandedSections;
+  try { expandedSections = JSON.parse(localStorage.getItem('ider_sidebar_expanded') || '{}'); } catch { expandedSections = {}; }
 
-  const sections = allItems.map(s => `
-    <div class="sidebar-section">${s.section}</div>
-    ${s.items.map(item => `
-      <div class="nav-item" data-hash="${item.hash}">
-        <span class="icon">${icon(item.icon, 16)}</span>
-        <span>${item.label}</span>
-      </div>
-    `).join('')}
-  `).join('');
+  const sections = allItems.map((s, si) => {
+    const sectionKey = `section_${si}`;
+    const isExpanded = expandedSections[sectionKey] !== false;
+    return `
+    <div class="sidebar-section-trigger" data-section="${sectionKey}" role="button" tabindex="0" aria-expanded="${isExpanded}">
+      <span class="sidebar-section-arrow">${isExpanded ? '▾' : '▸'}</span>
+      <span>${s.section}</span>
+    </div>
+    <div class="sidebar-items" data-section="${sectionKey}" style="display:${isExpanded ? 'block' : 'none'}">
+      ${s.items.map(item => `
+        <div class="nav-item" data-hash="${item.hash}">
+          <span class="icon">${icon(item.icon, 16)}</span>
+          <span>${item.label}</span>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
 
   return `
     <div class="sidebar-brand">
@@ -98,6 +109,26 @@ export function renderSidebar() {
 export function initSidebar() {
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
+
+  // 侧边栏分区展开/收起（只有再次点击同一触发器才切换，点击外部不关闭）
+  sidebar.querySelectorAll('.sidebar-section-trigger').forEach(trigger => {
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sectionKey = trigger.dataset.section;
+      const list = sidebar.querySelector(`.sidebar-items[data-section="${sectionKey}"]`);
+      if (!list) return;
+      const isOpen = list.style.display !== 'none';
+      list.style.display = isOpen ? 'none' : 'block';
+      trigger.setAttribute('aria-expanded', !isOpen);
+      trigger.querySelector('.sidebar-section-arrow').textContent = isOpen ? '▸' : '▾';
+      // 持久化展开状态
+      try {
+        const state = JSON.parse(localStorage.getItem('ider_sidebar_expanded') || '{}');
+        state[sectionKey] = !isOpen;
+        localStorage.setItem('ider_sidebar_expanded', JSON.stringify(state));
+      } catch { /* 静默降级 */ }
+    });
+  });
 
   sidebar.addEventListener('click', (e) => {
     const item = e.target.closest('.nav-item');

@@ -191,8 +191,17 @@ async function init() {
   router.setContainer(contentEl);
   router.start();
 
-  // 初始化浮动帮助机器人
-  initChatBot();
+  // 非关键功能延后加载，不阻塞首屏
+  requestIdleCallback(() => {
+    initChatBot();
+  }, { timeout: 3000 });
 }
 
 init();
+
+// 非关键 JS 在 DOMContentLoaded 后执行
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('img:not([loading])').forEach(img => {
+    if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy');
+  });
+});

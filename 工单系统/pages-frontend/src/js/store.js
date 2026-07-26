@@ -56,29 +56,38 @@ class Store {
 
   // ── Auth helpers ──────────────────────
   loadFromStorage() {
-    const token = localStorage.getItem('ider_token');
-    const userStr = localStorage.getItem('ider_user');
-    if (token && userStr) {
-      try {
+    try {
+      const token = lsGet('ider_token');
+      const userStr = lsGet('ider_user');
+      if (token && userStr) {
         const user = JSON.parse(userStr);
         this.setUser(user);
         return true;
-      } catch { /* ignore */ }
-    }
+      }
+    } catch { /* ignore */ }
     return false;
   }
 
   saveUserToStorage(user, token) {
-    localStorage.setItem('ider_token', token);
-    localStorage.setItem('ider_user', JSON.stringify(user));
+    try {
+      localStorage.setItem('ider_token', token);
+      localStorage.setItem('ider_user', JSON.stringify(user));
+    } catch { /* 静默降级 */ }
     this.setUser(user);
   }
 
   clearStorage() {
-    localStorage.removeItem('ider_token');
-    localStorage.removeItem('ider_user');
+    try {
+      localStorage.removeItem('ider_token');
+      localStorage.removeItem('ider_user');
+    } catch { /* 静默降级 */ }
     this.setUser(null);
   }
+}
+
+// localStorage 安全封装，读写失败时静默降级
+function lsGet(key, fallback = null) {
+  try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
 }
 
 export const store = new Store();

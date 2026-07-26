@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>艾德尔工单系统</title>
   <meta name="description" content="艾德尔代练工单系统 — 自动挂机，稳定高效">
   <meta name="theme-color" content="#2C2C2C">
@@ -10,15 +10,20 @@
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◈</text></svg>">
 
-  <!-- Fonts -->
+  <!-- Preconnect + Preload -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="preconnect" href="/api">
+
+  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- Styles -->
+  <!-- Styles (critical, blocks render) -->
   <link rel="stylesheet" href="/src/css/theme.css">
   <link rel="stylesheet" href="/src/css/base.css">
   <link rel="stylesheet" href="/src/css/auth.css">
+  <!-- 非首屏样式在 DOMContentLoaded 后加载 -->
 </head>
 <body>
   <!-- SPA 挂载点 -->

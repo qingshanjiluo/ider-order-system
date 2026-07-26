@@ -1,7 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    Base Reset + Global Styles
    ═══════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* ── 滚动公告栏 ────────────────────────── */
 .scrolling-announcement {
@@ -115,6 +114,32 @@ img { max-width: 100%; display: block; }
   flex: 1;
   padding: var(--space-3) 0;
   overflow-y: auto;
+}
+
+.sidebar-section-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+  min-height: 32px;
+  touch-action: manipulation;
+}
+.sidebar-section-trigger:hover {
+  color: var(--text-sidebar);
+}
+.sidebar-section-arrow {
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
 }
 
 .sidebar-section {
@@ -731,8 +756,52 @@ tbody tr:hover {
 .justify-between { justify-content: space-between; }
 .hidden { display: none !important; }
 
+/* ── 侧边栏分区触发器 ────────────────────────── */
+.sidebar-section-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+  min-height: 32px;
+  touch-action: manipulation;
+}
+.sidebar-section-trigger:hover {
+  color: var(--text-sidebar);
+}
+.sidebar-section-arrow {
+  font-size: 10px;
+  width: 12px;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+/* ── 触摸优化 ──────────────────────────── */
+.btn, .nav-item, .tab, .sidebar-section-trigger,
+input, select, textarea, label, a, button {
+  touch-action: manipulation;
+}
+.btn, .nav-item, .tab, .sidebar-section-trigger {
+  min-height: 44px;
+}
+.form-input, .form-select, .form-textarea {
+  min-height: 44px;
+  font-size: 16px; /* iOS 防止自动缩放 */
+}
+
 /* ── 响应式 ──────────────────────────────── */
+html {
+  font-size: 16px;
+}
 @media (max-width: 768px) {
+  html { font-size: 14px; }
   .sidebar {
     transform: translateX(-100%);
   }
@@ -763,3 +832,6 @@ tbody tr:hover {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ── localStorage 读写失败静默降级 ── */
+.localstorage-error { display: none !important; }

@@ -5,6 +5,9 @@ import { modal } from '../components/modal.js';
 
 const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请积分', '托管':'购买邀请积分', '仙盟采集':'仙盟采集', '试炼测试':'试炼测试', '每日试炼':'每日试炼' };
 
+/** 需要创建游戏账号的工单类型 */
+const ACCOUNT_ORDER_TYPES = ['代练', '代打', '托管'];
+
 /** 根据支付方式格式化价格显示 */
 function formatAdminPrice(order) {
   const price = order.total_price || order.price || 0;
@@ -91,10 +94,11 @@ async function loadOrders(status = '') {
                   <td>${o.total_accounts_created || 0}</td>
                   <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
                   <td>
-                    <div class="flex gap-1" style="flex-wrap:wrap;">
-                      ${adminBtns}
-                      <button class="btn btn-ghost btn-sm" onclick="location.hash='#/orders/${o.id}'">详情</button>
-                    </div>
+            <div class="flex gap-1" style="flex-wrap:wrap;">
+              ${adminBtns}
+              ${needsReissue(o) ? `<button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" data-action="reissue-order" data-id="${o.id}">补发审查</button>` : ''}
+              <button class="btn btn-ghost btn-sm" onclick="location.hash='#/orders/${o.id}'">详情</button>
+            </div>
                   </td>
                 </tr>`;
             }).join('')}
@@ -111,6 +115,9 @@ async function loadOrders(status = '') {
     });
     document.querySelectorAll('[data-action="complete-order"]').forEach(btn => {
       btn.addEventListener('click', () => showStatusModal(btn.dataset.id, 'completed'));
+    });
+    document.querySelectorAll('[data-action="reissue-order"]').forEach(btn => {
+      btn.addEventListener('click', () => reissueOrder(btn.dataset.id));
     });
 
   } catch (err) {
@@ -129,6 +136,37 @@ function getActionButtons(order) {
       <button class="btn btn-sm" style="background:var(--accent-green);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" data-action="complete-order" data-id="${order.id}">完成</button>`;
   }
   return '';
+}
+
+function needsReissue(order) {
+  if (!ACCOUNT_ORDER_TYPES.includes(order.order_type)) return false;
+  if (order.status === 'rejected') return true;
+  const qty = order.quantity || 0;
+  const created = order.total_accounts_created || 0;
+  return qty > 0 && created < qty;
+}
+
+async function reissueOrder(orderId) {
+  if (!confirm(`确定对工单 #${orderId} 执行补发审查？将重置所有失败账号并重新处理。`)) return;
+  try {
+    const btn = document.querySelector(`[data-action="reissue-order"][data-id="${orderId}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '审查中...'; }
+    const res = await api.adminReissueOrder(orderId);
+    if (res.ok) {
+      if (res.reset_count > 0) {
+        toast.success('已重置 ' + res.reset_count + ' 个失败账号，下次扫描将重新处理');
+      } else {
+        toast.info('没有需要补发的失败账号');
+      }
+      // 刷新列表
+      const statusEl = document.getElementById('admin-order-status');
+      loadOrders(statusEl?.value || '');
+    } else {
+      toast.error(res.error || '补发审查失败');
+    }
+  } catch (err) {
+    toast.error('补发审查失败: ' + err.message);
+  }
 }
 
 function showStatusModal(orderId, newStatus) {

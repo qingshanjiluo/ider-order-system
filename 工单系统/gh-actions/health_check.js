@@ -80,8 +80,9 @@ async function autoMaintain(username, token, player) {
     .join(', ');
   if (player && Object.keys(player).length > 0) {
     tsLog('[' + username + '] 📋 玩家数据字段: ' + keys.slice(0, 300));
-  } else {
-    tsLog('[' + username + '] ⚠️ 玩家数据为空');
+  } else if (!player.name && !player.nickname) {
+    tsLog('[' + username + '] ⚠️ 无角色数据，跳过维护');
+    return fixes;
   }
 
   // ── 检查技能装备 ──

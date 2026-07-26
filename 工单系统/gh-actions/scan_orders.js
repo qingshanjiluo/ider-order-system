@@ -692,7 +692,6 @@ async function dispatchOrder(order, orderIdx) {
     default: {
       const existingAccounts = order.total_accounts_created || 0;
       const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
-      const maxAccounts = Math.min(accountsToCreate, 10);
 
       // 检查是否有失败账号需要重试
       let retriedCount = 0;
@@ -717,20 +716,25 @@ async function dispatchOrder(order, orderIdx) {
         tsLog('⚠️ 查询失败账号出错: ' + e.message);
       }
 
-      if (existingAccounts > 0 && retriedCount === 0) {
-        tsLog('已有 ' + existingAccounts + ' 个账号，无失败账号需重试，跳过注册');
+      // 如果已有账号已达目标数量，且无失败账号需重试，跳过
+      if (existingAccounts >= accountsToCreate && retriedCount === 0) {
+        tsLog('已有 ' + existingAccounts + '/' + accountsToCreate + ' 个账号，无需补充');
         return true;
       }
       if (existingAccounts > 0 && retriedCount > 0) {
-        tsLog('重试完成 ' + retriedCount + ' 个失败账号，跳过新注册');
-        return true;
+        tsLog('重试完成 ' + retriedCount + ' 个失败账号');
+        // 继续检查是否需要补充到目标数量
       }
-      tsLog('类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
 
-      for (let a = 0; a < maxAccounts; a++) {
+      // 当前需要创建的账号数 = 目标 - 已有（但每次最多不超过 50，防超时）
+      const remaining = Math.max(0, accountsToCreate - existingAccounts);
+      const maxToCreate = Math.min(remaining, 50);
+      tsLog('类型: ' + orderType + ', 目标: ' + accountsToCreate + ', 已有: ' + existingAccounts + ', 本次创建: ' + maxToCreate + ' 个');
+
+      for (let a = 0; a < maxToCreate; a++) {
         await antiDetect.randomDelay(5000);
         const r = await registerAndSetup(order, orderIdx * 10 + a);
-        tsLog('结果 [' + (a + 1) + '/' + maxAccounts + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
+        tsLog('结果 [' + (a + 1) + '/' + maxToCreate + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
         await antiDetect.smartPause(a, 3, 30);
       }
       return true;

@@ -1404,6 +1404,10 @@ async function handleRoute(method, path, request, env, url) {
         ).bind(accountId, order_id, '注册账号: ' + username).run();
       } else {
         accountId = existing.id;
+        // 重试失败账号：重置状态
+        await env.DB.prepare(
+          "UPDATE game_accounts SET status = 'registering', setup_status = 'pending', error_msg = '' WHERE id = ? AND status = 'failed'"
+        ).bind(accountId).run();
       }
     } else if (status === 'character_created') {
       await env.DB.prepare(
@@ -1481,6 +1485,21 @@ async function handleRoute(method, path, request, env, url) {
        AND (ga.stop_monitor_at IS NULL OR ga.stop_monitor_at > datetime('now'))
        ORDER BY ga.level ASC
        LIMIT 200`
+    ).all();
+    return json({ ok: true, accounts: accounts.results });
+  }
+
+  // ── GH: Failed Accounts (for retry) ──────────
+  if (path === '/api/gh/failed-accounts' && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const accounts = await env.DB.prepare(
+      `SELECT ga.*, o.user_id, o.invite_code, o.order_type 
+       FROM game_accounts ga 
+       JOIN orders o ON ga.order_id = o.id 
+       WHERE ga.status = 'failed'
+       AND o.status NOT IN ('completed', 'rejected', 'cancelled')
+       ORDER BY ga.id ASC
+       LIMIT 50`
     ).all();
     return json({ ok: true, accounts: accounts.results });
   }

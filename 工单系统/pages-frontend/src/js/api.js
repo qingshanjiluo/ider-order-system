@@ -160,6 +160,7 @@ class ApiClient {
     const q = status ? `?status=${status}` : '';
     return this.get(`/admin/accounts${q}`);
   }
+  adminRetryAccount(id) { return this.post(`/admin/accounts/${id}/retry`); }
   adminGetConfig() { return this.get('/admin/config'); }
   adminSetConfig(key, value) { return this.post('/admin/config', { key, value }); }
   adminSetConfigBatch(configs) { return this.post('/admin/config', { configs }); }

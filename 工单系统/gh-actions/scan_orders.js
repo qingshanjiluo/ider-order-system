@@ -697,8 +697,8 @@ async function dispatchOrder(order, orderIdx) {
       // 检查是否有失败账号需要重试
       let retriedCount = 0;
       try {
-        const activeRes = await workerApi('/api/gh/active-accounts');
-        const failedAccounts = (activeRes.accounts || []).filter(a => a.order_id === order.id && a.status === 'failed');
+        const failedRes = await workerApi('/api/gh/failed-accounts');
+        const failedAccounts = (failedRes.accounts || []).filter(a => a.order_id === order.id);
         if (failedAccounts.length > 0) {
           tsLog('发现 ' + failedAccounts.length + ' 个失败账号，尝试重试...');
           for (const fa of failedAccounts) {

@@ -108,6 +108,7 @@ async function loadAccounts() {
               <th>订单号</th>
               <th>错误信息</th>
               <th>更新时间</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -133,6 +134,12 @@ async function loadAccounts() {
                   <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
                   <td class="text-xs" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
                   <td class="text-sm text-muted">${fmtDate(a.last_check_at || a.created_at)}</td>
+                  <td>
+                    <div style="display:flex;gap:4px;flex-wrap:nowrap;">
+                      <a href="#/accounts/${a.id}" class="btn btn-sm" title="查看详情">详情</a>
+                      ${a.status === 'failed' ? `<button class="btn btn-sm btn-danger" data-account-id="${a.id}" onclick="window.__retryAccount(this)" title="重新尝试注册">重试</button>` : ''}
+                    </div>
+                  </td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -142,6 +149,18 @@ async function loadAccounts() {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }
 }
+
+window.__retryAccount = async function(el) {
+  const accountId = el.dataset.accountId;
+  if (!accountId || !confirm('确定要重试这个失败账号吗？')) return;
+  try {
+    el.disabled = true; el.textContent = '重试中...';
+    const res = await api.adminRetryAccount(accountId);
+    if (res.ok) { toast.success('已提交重试，下次扫描将重新处理'); loadAccounts(); }
+    else { toast.error(res.error || '重试失败'); }
+  } catch (err) { toast.error('重试失败: ' + err.message); }
+  finally { el.disabled = false; el.textContent = '重试'; }
+};
 
 function parseSpiritRoots(str) {
   if (!str) return null;

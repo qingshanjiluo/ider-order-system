@@ -1395,8 +1395,8 @@ async function handleRoute(method, path, request, env, url) {
     } else if (status === 'farming' || status === 'active') {
       const ss = setup_status || 'farming';
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, map_id = ?, map_name = ?, skills = ?, techniques = ?, equipment = ?, is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = ?, spirit_roots = ?, created_result = ? WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
+        "UPDATE game_accounts SET status = ?, level = COALESCE(NULLIF(?, 0), level), map_id = ?, map_name = ?, skills = COALESCE(NULLIF(?, '[]'), skills), techniques = COALESCE(NULLIF(?, '[]'), techniques), equipment = COALESCE(NULLIF(?, '[]'), equipment), is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = COALESCE(NULLIF(?, ''), character_name), spirit_roots = COALESCE(?, spirit_roots), created_result = COALESCE(NULLIF(?, ''), created_result) WHERE username = ? AND order_id = ?"
+      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || null, created_result || '', username, order_id).run();
     } else if (status === 'completed') {
       await env.DB.prepare(
         "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
@@ -1421,6 +1421,19 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, accounts: accounts.results });
   }
 
+  if (path === '/api/gh/process-trial-test' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { order_id, game_account_name } = body;
+    if (!order_id) return json({ error: '缺少 order_id' }, 400);
+    await env.DB.prepare(
+      "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), status = CASE WHEN status = 'pending' THEN 'processing' ELSE status END, updated_at = datetime('now') WHERE id = ?"
+    ).bind(game_account_name || '', order_id).run();
+    await env.DB.prepare(
+      "INSERT INTO account_logs (order_id, username, log_type, message, raw_output, created_at) VALUES (?, ?, 'trial_test', '试炼测试已触发', ?, datetime('now'))"
+    ).bind(order_id, game_account_name || '', JSON.stringify({ game_account_name })).run();
+    return json({ ok: true, message: '试炼测试已触发' });
+  }
+
   if (path === '/api/gh/report-health' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const { order_id, username, level, status, map_id, map_name, error_msg, character_name, spirit_roots, skills, techniques, equipment, exp, exp_percent, health_status, setup_status } = body;
@@ -1432,7 +1445,9 @@ async function handleRoute(method, path, request, env, url) {
         status = ?, level = ?, map_id = ?, map_name = ?,
         character_name = COALESCE(NULLIF(?, ''), character_name),
         spirit_roots = COALESCE(NULLIF(?, ''), spirit_roots),
-        skills = ?, techniques = ?, equipment = ?,
+        skills = COALESCE(NULLIF(?, '[]'), skills),
+        techniques = COALESCE(NULLIF(?, '[]'), techniques),
+        equipment = COALESCE(NULLIF(?, '[]'), equipment),
         last_check_at = datetime('now'),
         error_msg = ?,
         health_status = ?,
@@ -1444,7 +1459,7 @@ async function handleRoute(method, path, request, env, url) {
       reportStatus, level || 0, map_id || 0, map_name || '',
       character_name || '', spirit_roots || '{}',
       JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []),
-      error_msg || '', health_status || 'ok', setup_status || 'farming',
+      error_msg || '', health_status || 'ok', setup_status || '',
       level || 0, level || 0, username, order_id
     ).run();
 
@@ -1454,23 +1469,52 @@ async function handleRoute(method, path, request, env, url) {
   if (path === '/api/gh/complete-order' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const { order_id } = body;
-    const pending = await env.DB.prepare(
-      "SELECT COUNT(*) as cnt FROM game_accounts WHERE order_id = ? AND status NOT IN ('completed', 'failed')"
-    ).bind(order_id).first();
-    if (pending.cnt === 0) {
-      const order = await env.DB.prepare("SELECT user_id FROM orders WHERE id = ?").bind(order_id).first();
+    const stats = await env.DB.prepare(
+      "SELECT status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status"
+    ).bind(order_id).all();
+    const rows = stats.results || [];
+    const total = rows.reduce((s, r) => s + r.cnt, 0);
+    const getCount = (statuses) => rows.filter(r => statuses.includes(r.status)).reduce((s, r) => s + r.cnt, 0);
+    const setupPhase = ['pending', 'registering', 'created'];
+    const farmingPhase = ['farming', 'active'];
+    const finalPhase = ['completed', 'failed'];
+
+    const settingUp = getCount(setupPhase);
+    const farming = getCount(farmingPhase);
+    const finished = getCount(finalPhase);
+
+    const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
+    if (!order) return json({ error: '工单不存在' }, 404);
+
+    // 阶段1: 初始交付
+    if (settingUp === 0 && total > 0 && farming + finished === total) {
       await env.DB.prepare(
-        "UPDATE orders SET status = 'completed', completed_at = datetime('now') WHERE id = ?"
-      ).bind(order_id).run();
-      if (order) {
-        await env.DB.prepare(
-          "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已完成', '工单 #' || ? || ' 已全部完成，账号已到达120级', 'order')"
-        ).bind(order.user_id, order_id).run();
-        await logActivity(env, order_id, order.user_id, 'completed', '所有账号已到120级，工单自动完成');
-      }
-      return json({ ok: true, message: '订单已完成' });
+        "UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'"
+      ).bind(total, order_id).run();
+      await env.DB.prepare(
+        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已交付', '工单 #' || ? || ' 账号已全部创建并配置完成，开始自动挂机', 'order')"
+      ).bind(order.user_id, order_id).run();
+      await logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段');
+      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total });
     }
-    return json({ ok: true, message: '仍有账号未完成', pending: pending.cnt });
+
+    // 阶段2: 最终完成
+    if (settingUp === 0 && farming === 0 && finished === total && total > 0) {
+      await env.DB.prepare(
+        "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
+      ).bind(order_id).run();
+      await env.DB.prepare(
+        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已完成', '工单 #' || ? || ' 已全部完成，账号已到达120级', 'order')"
+      ).bind(order.user_id, order_id).run();
+      await logActivity(env, order_id, order.user_id, 'completed', '所有账号已到120级，工单自动完成');
+      return json({ ok: true, message: '订单已完成', status: 'completed' });
+    }
+
+    return json({
+      ok: true,
+      message: '仍有账号未完成',
+      detail: { settingUp, farming, finished, total },
+    });
   }
 
   // ── Coupon validation ─────────────────────────────

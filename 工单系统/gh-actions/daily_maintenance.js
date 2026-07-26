@@ -177,6 +177,13 @@ async function maintainAccount(account, idx) {
       level: account.level || 0,
       map_id: account.map_id || 0,
       map_name: account.map_name || '',
+      character_name: account.character_name || '',
+      spirit_roots: account.spirit_roots || '{}',
+      skills: account.skills ? (typeof account.skills === 'string' ? JSON.parse(account.skills) : account.skills) : [],
+      techniques: account.techniques ? (typeof account.techniques === 'string' ? JSON.parse(account.techniques) : account.techniques) : [],
+      equipment: account.equipment ? (typeof account.equipment === 'string' ? JSON.parse(account.equipment) : account.equipment) : [],
+      health_status: 'ok',
+      setup_status: account.setup_status || 'farming',
       error_msg: '日常: ' + (allDone.join(', ') || '无操作'),
     });
 

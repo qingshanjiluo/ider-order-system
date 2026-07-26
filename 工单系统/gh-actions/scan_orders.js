@@ -342,6 +342,10 @@ async function registerAndSetup(workerOrder, orderIdx) {
   }
 
   tsLog('❌ 用户名生成重试耗尽（5次），跳过该账号');
+  await workerApi('/api/gh/report-account', 'POST', {
+    order_id: workerOrder.id, username: '', password: '',
+    status: 'failed', error_msg: '重试耗尽（5次用户名重复）',
+  }).catch(() => {});
   return { username: '', ok: false, error: '重试耗尽' };
 }
 
@@ -537,7 +541,7 @@ async function dispatchOrder(order, orderIdx) {
         tsLog('已有 ' + existingAccounts + ' 个账号，跳过注册');
         return true;
       }
-      const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 120)) : 1);
+      const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
       const maxAccounts = Math.min(accountsToCreate, 10);
       tsLog('类型: ' + orderType + ', 需创建账号: ' + maxAccounts + ' 个');
 

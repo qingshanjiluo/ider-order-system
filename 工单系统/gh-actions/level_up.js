@@ -190,6 +190,11 @@ async function levelUpAccount(account, idx) {
     const isCompleted = finalLevel >= MAX_LEVEL;
     const reportStatus = isCompleted ? 'completed' : 'farming';
 
+    // 使用最终数据重算 expPercent
+    const finalExp = finalPlayer.exp || 0;
+    const finalNextExp = finalPlayer.next_level_exp || 1;
+    const finalExpPercent = Math.floor((finalExp / finalNextExp) * 100);
+
     // 收集完整数据
     const equippedSkills = finalPlayer.equipped_skills || [];
     const equippedWeapon = finalPlayer.equipment?.weapon || null;
@@ -208,9 +213,9 @@ async function levelUpAccount(account, idx) {
       character_name: charName,
       spirit_roots: JSON.stringify(playerRoots),
       skills: skillList, techniques: techList, equipment: equipList,
-      exp: finalPlayer.exp || 0, exp_percent: expPercent,
+      exp: finalExp, exp_percent: finalExpPercent,
       health_status: isCompleted ? 'completed' : 'ok',
-      setup_status: account.setup_status || 'farming',
+      setup_status: account.setup_status && account.setup_status !== 'pending' ? account.setup_status : '',
     });
 
     await workerApi('/api/gh/report-log', 'POST', {
@@ -218,7 +223,7 @@ async function levelUpAccount(account, idx) {
       message: isCompleted
         ? '🎉 满级120! 升级' + levelsGained + '级'
         : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' (+' + levelsGained + ')',
-      raw_output: JSON.stringify({ level: finalLevel, levelsGained, expPercent }),
+      raw_output: JSON.stringify({ level: finalLevel, levelsGained, expPercent: finalExpPercent }),
     });
 
     if (isCompleted) {

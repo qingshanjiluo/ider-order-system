@@ -279,14 +279,6 @@ async function checkAndLevelUp(account, idx) {
     tsLog('[' + server_username + '] 🔍 state顶层: ' + Object.keys(state).join(','));
     tsLog('[' + server_username + '] 🔍 player键: ' + Object.keys(player).join(','));
     tsLog('[' + server_username + '] 🔍 can_level_up原文=' + JSON.stringify(state.can_level_up) + ' player.can=' + JSON.stringify(player.can_level_up));
-    // 即使can_level_up=false也强制试一次level_up，看服务端返回什么错误
-    try {
-      const forcedUp = await apiRequest('POST', '/player/level_up', token, {});
-      tsLog('[' + server_username + '] ⬆️ 强制升级成功: ' + JSON.stringify(forcedUp).slice(0,200));
-    } catch (e) {
-      tsLog('[' + server_username + '] 🔍 升级被拒: ' + (e.message || '').slice(0,300));
-    }
-
     tsLog('[' + server_username + '] 📊 等级=' + level + ', 经验=' + expPercent + '%, 可升级=' + canLevelUp);
 
     // 上报登录日志
@@ -348,6 +340,11 @@ async function checkAndLevelUp(account, idx) {
     const isCompleted = finalLevel >= MAX_LEVEL;
     const reportStatus = isCompleted ? 'completed' : 'farming';
 
+    // 使用最终数据重算 expPercent
+    const finalExp = finalPlayer.exp || 0;
+    const finalNextExp = finalPlayer.next_level_exp || 1;
+    const finalExpPercent = Math.floor((finalExp / finalNextExp) * 100);
+
     // 收集完整装备/技能信息
     const equippedSkills = finalPlayer.equipped_skills || syncPlayer.equipped_skills || [];
     const equippedWeapon = finalPlayer.equipment?.weapon || finalPlayer.equipment?.['0'] || null;
@@ -373,10 +370,10 @@ async function checkAndLevelUp(account, idx) {
       skills: skillList,
       techniques: techList,
       equipment: equipList,
-      exp: finalPlayer.exp || 0,
-      exp_percent: expPercent,
+      exp: finalExp,
+      exp_percent: finalExpPercent,
       health_status: isCompleted ? 'completed' : 'ok',
-      setup_status: account.setup_status || 'farming',
+      setup_status: account.setup_status && account.setup_status !== 'pending' ? account.setup_status : '',
     });
 
     // 记录详细日志
@@ -384,9 +381,9 @@ async function checkAndLevelUp(account, idx) {
       order_id, account_id: id, log_type: isCompleted ? 'health_completed' : 'health_report',
       message: isCompleted
         ? '🎉 满级120! 共升级' + levelsGained + '级'
-        : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' 经验' + expPercent + '% 升级' + levelsGained + '级',
+        : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' 经验' + finalExpPercent + '% 升级' + levelsGained + '级',
       raw_output: JSON.stringify({
-        level: finalLevel, exp: finalPlayer.exp, expPercent,
+        level: finalLevel, exp: finalExp, expPercent: finalExpPercent,
         levelsGained, fixes, skills: skillList.length,
       }),
     });

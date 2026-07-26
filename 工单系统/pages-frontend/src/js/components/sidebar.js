@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { section: '社交', items: [
     { id: 'invite', label: '邀请返利', icon: 'star', hash: '#/invite' },
     { id: 'leaderboard', label: '排行榜', icon: 'triangle', hash: '#/leaderboard' },
+    { id: 'chat', label: '修仙聊天室', icon: 'star', hash: '#/chat' },
   ]},
   { section: '坊市', items: [
     { id: 'market', label: '修仙坊市', icon: 'star', hash: '#/market' },

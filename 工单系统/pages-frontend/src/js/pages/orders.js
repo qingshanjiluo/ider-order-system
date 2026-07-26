@@ -408,29 +408,32 @@ async function showNewOrderModal() {
     }
 
     const accounts = Math.ceil(pts / 10);
+    const couponInfo = document.getElementById('coupon-info');
+    const discountPercent = couponInfo?.dataset?.couponType === 'percent' ? parseInt(couponInfo.dataset.discountPercent) : 0;
+    const fixedAmount = couponInfo?.dataset?.couponType === 'fixed' ? parseFloat(couponInfo.dataset.fixedAmount) : 0;
+
     let priceText = '';
+    let discountLine = '';
     if (method === 'wechat') {
-      priceText = `¥${(pts / 120).toFixed(2)}`;
+      const orig = pts / 120;
+      const final = fixedAmount > 0 ? Math.max(0, orig - fixedAmount) : orig * (100 - discountPercent) / 100;
+      priceText = `¥${(discountPercent > 0 || fixedAmount > 0) ? final.toFixed(2) : orig.toFixed(2)}`;
+      if (discountPercent > 0 || fixedAmount > 0) discountLine = `<div class="text-xs text-muted mt-1">原价 <s>¥${orig.toFixed(2)}</s> → 实付 <strong style="color:var(--accent-green)">¥${final.toFixed(2)}</strong> (省 ¥${(orig - final).toFixed(2)})</div>`;
     } else if (method === 'coin') {
-      priceText = `${pts} 修仙币`;
+      const orig = pts;
+      const final = Math.round(orig * (100 - discountPercent) / 100);
+      priceText = discountPercent > 0 ? `${final} 修仙币` : `${orig} 修仙币`;
+      if (discountPercent > 0) discountLine = `<div class="text-xs text-muted mt-1">原价 <s>${orig} 修仙币</s> → 实付 <strong style="color:var(--accent-green)">${final} 修仙币</strong> (省 ${orig - final} 修仙币)</div>`;
     } else if (method === 'spirit_stone') {
       const spiritPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
-      priceText = `${spiritPrice.toLocaleString()} 万灵石`;
-    }
-
-    let discountText = '';
-    const couponInfo = document.getElementById('coupon-info');
-    if (couponInfo?.dataset?.couponType) {
-      if (couponInfo.dataset.couponType === 'percent') {
-        discountText = ` (优惠 ${couponInfo.dataset.discountPercent}%)`;
-      } else {
-        discountText = ` (减免 ¥${couponInfo.dataset.fixedAmount})`;
-      }
+      const final = Math.round(spiritPrice * (100 - discountPercent) / 100);
+      priceText = discountPercent > 0 ? `${final.toLocaleString()} 万灵石` : `${spiritPrice.toLocaleString()} 万灵石`;
+      if (discountPercent > 0) discountLine = `<div class="text-xs text-muted mt-1">原价 <s>${spiritPrice.toLocaleString()} 万灵石</s> → 实付 <strong style="color:var(--accent-green)">${final.toLocaleString()} 万灵石</strong></div>`;
     }
 
     el.innerHTML = `
       <div>积分: <strong>${pts}</strong> | 账号数: <strong>${accounts}</strong></div>
-      <div>价格: <strong>${priceText}</strong>${discountText}</div>
+      <div>实付: <strong>${priceText}</strong>${discountLine}</div>
     `;
   }
 

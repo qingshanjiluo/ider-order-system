@@ -2,6 +2,12 @@
 import { json, logActivity } from '../../_utils.js';
 import { authenticate } from '../../_auth.js';
 
+const ORDER_TYPE_LABEL = {
+  '代练': '购买邀请积分', '代打': '购买邀请积分', '托管': '购买邀请积分',
+  '仙盟采集': '仙盟采集', '试炼测试': '试炼测试',
+  '每日试炼': '每日试炼', '传人派出': '传人派出', '副本刷取': '副本刷取',
+};
+
 export async function onRequest(context) {
   const { request, env } = context;
 
@@ -233,6 +239,9 @@ export async function onRequest(context) {
     const paymentLabel = payment_method === 'coin' ? '修仙币' : payment_method === 'wechat' ? '现金' : '灵石';
     await logActivity(env, orderId, user.id, 'created', 
       `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分`);
+    await env.DB.prepare(
+      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_created', ?)"
+    ).bind(orderId, '提交工单 #' + orderId + '：' + (ORDER_TYPE_LABEL[order_type] || order_type) + ', ' + accCount + '个账号').run();
 
     return json({ 
       ok: true, 

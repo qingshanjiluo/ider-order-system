@@ -214,9 +214,9 @@ async function levelUpAccount(account, idx) {
     await workerApi('/api/gh/report-log', 'POST', {
       order_id, account_id: id, log_type: isCompleted ? 'levelup_completed' : 'levelup_report',
       message: isCompleted
-        ? '🎉 满级120! 升级' + levelsGained + '级'
-        : '📈 Lv.' + finalLevel + '/' + MAX_LEVEL + ' (+' + levelsGained + ')',
-      raw_output: JSON.stringify({ level: finalLevel, levelsGained, expPercent: finalExpPercent }),
+        ? '🎉 从 Lv.' + currentLevel + ' 升到满级 Lv.' + finalLevel + '（+' + levelsGained + '级）'
+        : '📈 Lv.' + currentLevel + ' → Lv.' + finalLevel + '（+' + levelsGained + '级）',
+      raw_output: JSON.stringify({ from_level: currentLevel, to_level: finalLevel, levelsGained, expPercent: finalExpPercent }),
     });
 
     if (isCompleted) {

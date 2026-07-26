@@ -15,8 +15,8 @@ export async function onRequest(context) {
     if (!acc) return json({ error: '账号不存在' }, 404);
     if (acc.order_user_id !== user.id && !user.is_admin) return json({ error: '无权限' }, 403);
     const logs = await env.DB.prepare(
-      'SELECT * FROM account_logs WHERE account_id = ? ORDER BY created_at DESC LIMIT 100'
-    ).bind(aid).all();
+      "SELECT * FROM account_logs WHERE account_id = ? OR (account_id = 0 AND order_id = (SELECT order_id FROM game_accounts WHERE id = ?)) ORDER BY created_at DESC LIMIT 100"
+    ).bind(aid, aid).all();
     return json({ ok: true, logs: logs.results });
   }
 

@@ -119,24 +119,13 @@ async function registerAndSetup(workerOrder, orderIdx) {
       tsLog('[' + username + '] ✅ 注册成功 (accountId=' + regData.accountId + ')');
       await stepDelay();
 
-      // 上报 Worker：账号已创建
-      await workerApi('/api/gh/report-account', 'POST', {
+      // 上报 Worker：账号已创建（返回 account_id）
+      const reportRes = await workerApi('/api/gh/report-account', 'POST', {
         order_id: workerOrder.id, username, password,
         server_username: username, server_password: password,
         status: 'creating',
       });
-
-      // 获取刚创建的 account_id
-      const accInfo = await workerApi('/api/gh/active-accounts');
-      const thisAcc = (accInfo.accounts || []).find(a => a.username === username && a.order_id === workerOrder.id);
-      const accountId = thisAcc?.id || 0;
-
-      // 记录详细日志
-      await workerApi('/api/gh/report-log', 'POST', {
-        order_id: workerOrder.id, account_id: accountId,
-        log_type: 'register', message: '注册账号: ' + username,
-        raw_output: JSON.stringify({ accountId: regData.accountId }),
-      });
+      const accountId = reportRes.account_id || 0;
 
       // ── 2) 创建角色（金灵根100），角色名冲突时自动加后缀重试 ──
       let playerName = username.slice(0, 8);

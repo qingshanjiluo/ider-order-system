@@ -18,6 +18,7 @@ import { renderDashboard } from './pages/dashboard.js';
 import { renderHelp } from './pages/help.js';
 import { renderContact } from './pages/contact.js';
 import { renderChangelog } from './pages/changelog.js';
+import { renderChat } from './pages/chat.js';
 import { renderOrders } from './pages/orders.js';
 import { renderOrderDetail } from './pages/order-detail.js';
 import { renderAccounts } from './pages/accounts.js';
@@ -141,6 +142,7 @@ router.register('/leaderboard', (ctx) => renderLayout('/leaderboard', renderLead
 router.register('/settings', (ctx) => renderLayout('/settings', renderSettings));
 router.register('/appeals', (ctx) => renderLayout('/appeals', renderAppeals));
 router.register('/after-sales', (ctx) => renderLayout('/after-sales', renderAfterSales));
+router.register('/chat', (ctx) => renderLayout('/chat', renderChat));
 
 // Admin pages
 router.register('/admin/stats', (ctx) => renderLayout('/admin/stats', renderAdminStats));

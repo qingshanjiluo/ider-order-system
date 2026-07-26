@@ -17,6 +17,10 @@ const HISTORY = [
     date: '2026-07-26',
     badge: 'current',
     changes: [
+      { type: 'perf', text: '侧边栏分区可折叠：stopPropagation 防止误关闭，状态持久化 localStorage' },
+      { type: 'perf', text: '移动端适配：rem 字体缩放到 touch-action 全面优化' },
+      { type: 'perf', text: '非关键 JS 延后加载：聊天机器人 requestIdleCallback 执行' },
+      { type: 'perf', text: 'localStorage 全部 try/catch 包裹，读写失败静默降级' },
       { type: 'feat', text: '修仙聊天室上线：文字聊天/3秒轮询/彩色头像，道友可实时交流' },
       { type: 'fix', text: '优惠折扣未实际应用：修仙币冻结改为基于折后价，不再冻结全额' },
       { type: 'fix', text: '重复退款修复：拒绝工单幂等性检查，防止 Webhook 重复调用多次退还修仙币' },
@@ -27,6 +31,9 @@ const HISTORY = [
       { type: 'perf', text: '升级日志增强：从"满级120!"改为"从Lv.X升到Lv.Y（+N级）"' },
       { type: 'perf', text: '订单预览实付价格：优惠后显示实付金额 + 原价划线 + "省X"提示' },
       { type: 'perf', text: '订单创建/审批自动写入 account_logs，全链路可追溯' },
+      { type: 'fix', text: '升级超时修复：每轮账号数 50→30，减少延迟适配 1h 限制' },
+      { type: 'fix', text: '经验百分比错误：next_level_exp→max_exp，修复显示 8897200%' },
+      { type: 'fix', text: 'help.js inline onclick 改为 data-toggle + stopPropagation' },
     ],
   },
   {

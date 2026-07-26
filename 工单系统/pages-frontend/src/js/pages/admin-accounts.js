@@ -2,6 +2,8 @@ import { api } from '../api.js';
 import { toast } from '../components/toast.js';
 
 let _pollTimer = null;
+let _isLoading = false;
+let _lastUpdate = null;
 
 function fmtDate(d) {
   if (!d) return '-';
@@ -9,6 +11,15 @@ function fmtDate(d) {
   const date = new Date(dt);
   if (isNaN(date.getTime())) return '-';
   return date.toLocaleString('zh-CN', { hour12: false });
+}
+
+function timeAgo(d) {
+  if (!d) return '';
+  const dt = typeof d === 'string' ? d.replace(' ', 'T') : d;
+  const diff = Date.now() - new Date(dt).getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  return Math.floor(diff / 3600000) + '小时前';
 }
 
 const STATUS_MAP = {
@@ -38,10 +49,22 @@ export async function renderAdminAccounts({ container }) {
 
   container.innerHTML = `
     <div class="page-header">
-      <h2>账号管理</h2>
-      <p>所有账号实时状态（自动刷新）</p>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h2>账号管理</h2>
+          <p>所有账号实时状态</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="text-xs text-muted" id="admin-account-refresh-time"></span>
+          <button class="btn btn-sm btn-ghost" id="admin-account-refresh-btn" title="手动刷新">
+            <span id="admin-refresh-icon">↻</span>
+          </button>
+          <label class="text-xs text-muted" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+            <input type="checkbox" id="admin-auto-refresh" checked> 自动刷新
+          </label>
+        </div>
+      </div>
     </div>
-    <div class="text-xs text-muted mb-2" style="text-align:right;">上次更新: ${fmtDate(new Date().toISOString())}</div>
     <div class="filter-bar">
       <select class="form-select" id="admin-account-status">
         <option value="">全部状态</option>
@@ -67,15 +90,38 @@ export async function renderAdminAccounts({ container }) {
 
   document.getElementById('admin-account-status').addEventListener('change', () => loadAccounts());
   document.getElementById('admin-account-setup').addEventListener('change', () => loadAccounts());
-  await loadAccounts();
+  document.getElementById('admin-account-refresh-btn').addEventListener('click', () => loadAccounts());
+  document.getElementById('admin-auto-refresh').addEventListener('change', (e) => {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    if (e.target.checked) startPoll();
+  });
 
-  _pollTimer = setInterval(loadAccounts, 20000);
+  await loadAccounts();
+  startPoll();
+}
+
+function startPoll() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(() => {
+    if (_isLoading) return;
+    const cb = document.getElementById('admin-auto-refresh');
+    if (cb && !cb.checked) return;
+    loadAccounts();
+  }, 15000);
 }
 
 async function loadAccounts() {
+  if (_isLoading) return;
+  _isLoading = true;
+
+  const btn = document.getElementById('admin-account-refresh-btn');
+  const icon = document.getElementById('admin-refresh-icon');
+  if (btn) btn.disabled = true;
+  if (icon) icon.style.display = 'inline-block';
+
   const el = document.getElementById('admin-accounts-list');
-  if (!el) return;
-  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  if (!el) { _isLoading = false; return; }
+  const isFirstLoad = el.querySelector('.loading') !== null;
 
   try {
     const res = await api.adminGetAccounts();
@@ -86,72 +132,90 @@ async function loadAccounts() {
     if (statusFilter) accounts = accounts.filter(a => a.status === statusFilter);
     if (setupFilter) accounts = accounts.filter(a => a.setup_status === setupFilter);
 
+    _lastUpdate = new Date().toISOString();
+    const rt = document.getElementById('admin-account-refresh-time');
+    if (rt) rt.textContent = '更新: ' + timeAgo(_lastUpdate);
+
     if (!accounts.length) {
-      el.innerHTML = `<div class="empty-state"><p>暂无账号</p></div>`;
+      // 只在首次或无内容时替换，避免闪烁
+      if (isFirstLoad || !el.querySelector('table')) {
+        el.innerHTML = `<div class="empty-state"><p>暂无账号</p></div>`;
+      }
+      _isLoading = false; if (btn) btn.disabled = false;
       return;
     }
 
-    el.innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>游戏账号</th>
-              <th>角色名</th>
-              <th>灵根</th>
-              <th>状态</th>
-              <th>Setup</th>
-              <th>等级</th>
-              <th>用户</th>
-              <th>操作人</th>
-              <th>订单号</th>
-              <th>错误信息</th>
-              <th>更新时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${accounts.map(a => {
-              const st = STATUS_MAP[a.status] || { label: a.status, class: '' };
-              const setup = SETUP_MAP[a.setup_status] || { label: a.setup_status || '待Setup', class: 'badge-pending' };
-              const roots = parseSpiritRoots(a.spirit_roots);
-              const rootDesc = roots ? Object.entries(roots)
-                .filter(([, v]) => v > 0)
-                .map(([k, v]) => `${({metal:'金',wood:'木',water:'水',fire:'火',earth:'土'})[k] || k}${v}`)
-                .join(' ') : '-';
-              return `
-                <tr>
-                  <td class="font-mono text-xs">${a.id}</td>
-                  <td class="font-mono text-xs">${a.username || '-'}</td>
-                  <td class="font-semibold">${a.character_name || '-'}</td>
-                  <td class="text-xs">${rootDesc || '-'}</td>
-                  <td><span class="badge ${st.class}">${st.label}</span></td>
-                  <td><span class="badge ${setup.class}">${setup.label}</span></td>
-                  <td>Lv.${a.level || '-'}</td>
-                  <td class="text-xs">${a.user_name || a.user_id || '-'}</td>
-                  <td class="text-xs text-muted">${a.operator_name || '-'}</td>
-                  <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
-                  <td class="text-xs" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
-                  <td class="text-sm text-muted">${fmtDate(a.last_check_at || a.created_at)}</td>
-                  <td>
-                    <div style="display:flex;gap:4px;flex-wrap:nowrap;">
-                      <a href="#/accounts/${a.id}" class="btn btn-sm" title="查看详情">详情</a>
-                      ${a.status === 'failed' ? `<button class="btn btn-sm btn-danger" data-account-id="${a.id}" onclick="window.__retryAccount(this)" title="重新尝试注册">重试</button>` : ''}
-                    </div>
-                  </td>
-                </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    const rows = accounts.map(a => {
+      const st = STATUS_MAP[a.status] || { label: a.status, class: '' };
+      const setup = SETUP_MAP[a.setup_status] || { label: a.setup_status || '待Setup', class: 'badge-pending' };
+      const showRetry = a.status === 'failed';
+      return `
+        <tr>
+          <td class="font-mono text-xs">${a.id}</td>
+          <td class="font-mono text-xs">${a.username || '-'}</td>
+          <td class="font-semibold">${a.character_name || '-'}</td>
+          <td><span class="badge ${st.class}">${st.label}</span></td>
+          <td><span class="badge ${setup.class}">${setup.label}</span></td>
+          <td>Lv.${a.level || '-'}</td>
+          <td class="text-xs text-muted">${a.user_name || a.user_id || '-'}</td>
+          <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
+          <td class="text-xs" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
+          <td class="text-sm text-muted" title="${fmtDate(a.last_check_at || a.created_at)}">${timeAgo(a.last_check_at || a.created_at) || '-'}</td>
+          <td class="actions-cell">
+            <div class="actions-group">
+              <a href="#/accounts/${a.id}" class="btn btn-sm btn-ghost" title="查看详情">详情</a>
+              ${showRetry ? `<button class="btn btn-sm btn-danger" data-rid="${a.id}" onclick="window.__retryAccount(this)">重试</button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+    // 无闪烁更新：保留 scrollTop
+    const existingTable = el.querySelector('table');
+    const scrollTop = el.scrollTop || 0;
+
+    if (existingTable) {
+      const tbody = existingTable.querySelector('tbody');
+      if (tbody) tbody.innerHTML = rows;
+    } else {
+      el.innerHTML = `
+        <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+          <table style="min-width:800px;">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>游戏账号</th>
+                <th>角色名</th>
+                <th>状态</th>
+                <th>Setup</th>
+                <th>等级</th>
+                <th>用户</th>
+                <th>订单</th>
+                <th>错误信息</th>
+                <th>最后活跃</th>
+                <th class="actions-th">操作</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    el.scrollTop = scrollTop;
+
   } catch (err) {
-    el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
+    if (isFirstLoad || !el.querySelector('table')) {
+      el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
+    }
+    toast.error('刷新失败: ' + err.message);
   }
+
+  _isLoading = false;
+  if (btn) btn.disabled = false;
 }
 
 window.__retryAccount = async function(el) {
-  const accountId = el.dataset.accountId;
+  const accountId = el.dataset.rid;
   if (!accountId || !confirm('确定要重试这个失败账号吗？')) return;
   try {
     el.disabled = true; el.textContent = '重试中...';

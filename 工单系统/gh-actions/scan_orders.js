@@ -768,9 +768,12 @@ async function main() {
     const success = await dispatchOrder(order, i);
 
     const isSubscription = ['仙盟采集', '每日试炼', '传人派出'].includes(order.order_type);
-    if (success && !isSubscription) {
+    const isBatch = ['代练', '代打', '托管'].includes(order.order_type);
+    if (success && !isSubscription && !isBatch) {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
       tsLog('工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
+    } else if (success && isBatch) {
+      tsLog('工单 #' + order.id + ' 账号补充完成（由健康检测/自动升级触发完结）');
     } else if (success && isSubscription) {
       // 检查订阅是否到期
       if (order.subscription_end && new Date(order.subscription_end) < new Date()) {

@@ -16,8 +16,8 @@ export async function onRequest(context) {
   ).bind(game_account_name || '', order_id).run();
 
   await env.DB.prepare(
-    "INSERT INTO account_logs (order_id, username, log_type, message, raw_output, created_at) VALUES (?, ?, 'trial_test', '试炼测试已触发', ?, datetime('now'))"
-  ).bind(order_id, game_account_name || '', JSON.stringify({ game_account_name })).run();
+    "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (0, ?, 'trial_test', '试炼测试已触发', ?)"
+  ).bind(order_id, JSON.stringify({ game_account_name })).run();
 
   return json({ ok: true, message: '试炼测试已触发' });
 }

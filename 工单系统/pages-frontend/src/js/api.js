@@ -291,6 +291,11 @@ class ApiClient {
   adminSetAiConfig(data) { return this.post('/admin/ai-config', data); }
   adminTestAiConnection() { return this.post('/admin/ai-test', {}); }
 
+  // ── 批量操作 ─────────────────────────────
+  batchUpdateOrderStatus(ids, status, notes) {
+    return this.post('/orders/batch-status', { ids, status, notes });
+  }
+
   // ── CS: 客服对话 ─────────────────────────
   getCsConversations() { return this.get('/cs/conversations'); }
   createCsConversation(data) { return this.post('/cs/conversations', data); }

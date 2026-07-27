@@ -38,9 +38,12 @@ const STATUS_MAP = {
 
 export async function renderAdminOrders({ container }) {
   container.innerHTML = `
-    <div class="page-header">
-      <h2>工单管理</h2>
-      <p>管理所有用户工单</p>
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div><h2>工单管理</h2><p>管理所有用户工单</p></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-primary" id="batch-approve-btn" disabled style="display:none;">批量通过</button>
+        <button class="btn btn-ghost btn-sm" id="batch-select-all" style="display:none;">全选</button>
+      </div>
     </div>
     <div class="filter-bar">
       <select class="form-select" id="admin-order-status">
@@ -56,7 +59,45 @@ export async function renderAdminOrders({ container }) {
     </div>`;
 
   document.getElementById('admin-order-status').addEventListener('change', (e) => loadOrders(e.target.value));
+  document.getElementById('batch-approve-btn').addEventListener('click', batchApprove);
+  document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
   loadOrders();
+}
+
+let selectedOrders = new Set();
+
+function updateBatchBar() {
+  const btn = document.getElementById('batch-approve-btn');
+  const selBtn = document.getElementById('batch-select-all');
+  const count = selectedOrders.size;
+  if (count > 0) {
+    btn.style.display = 'inline-flex';
+    btn.disabled = false;
+    btn.textContent = '批量通过 (' + count + ')';
+    selBtn.style.display = 'inline-flex';
+    selBtn.textContent = '取消全选';
+  } else {
+    btn.style.display = 'none';
+    btn.disabled = true;
+    selBtn.style.display = 'none';
+  }
+}
+
+function toggleSelectAll() {
+  const checkboxes = document.querySelectorAll('.order-checkbox:not(:disabled)');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  checkboxes.forEach(cb => {
+    cb.checked = !allChecked;
+    if (cb.checked) selectedOrders.add(cb.value);
+    else selectedOrders.delete(cb.value);
+  });
+  updateBatchBar();
+}
+
+function toggleOrder(id) {
+  if (selectedOrders.has(id)) selectedOrders.delete(id);
+  else selectedOrders.add(id);
+  updateBatchBar();
 }
 
 async function loadOrders(status = '') {
@@ -77,14 +118,16 @@ async function loadOrders(status = '') {
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>数量</th><th>已创建</th><th>创建时间</th><th>操作</th></tr>
+            <tr><th style="width:32px;"><input type="checkbox" id="select-all-header" style="cursor:pointer;"></th><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>数量</th><th>已创建</th><th>创建时间</th><th>操作</th></tr>
           </thead>
           <tbody>
             ${orders.map(o => {
               const st = STATUS_MAP[o.status] || { label: o.status, class: '' };
               const adminBtns = getActionButtons(o);
+              const canSelect = o.status === 'pending';
               return `
                 <tr>
+                  <td>${canSelect ? '<input type="checkbox" class="order-checkbox" value="' + o.id + '" style="cursor:pointer;">' : ''}</td>
                   <td class="font-mono text-xs">#${o.id}</td>
                   <td>${o.user_name || o.username || o.user_id || '-'}</td>
                   <td>${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</td>
@@ -118,6 +161,20 @@ async function loadOrders(status = '') {
     });
     document.querySelectorAll('[data-action="reissue-order"]').forEach(btn => {
       btn.addEventListener('click', () => reissueOrder(btn.dataset.id));
+    });
+
+    // 多选事件
+    selectedOrders.clear();
+    document.querySelectorAll('.order-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => toggleOrder(cb.value));
+    });
+    document.getElementById('select-all-header').addEventListener('change', function() {
+      document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
+        cb.checked = this.checked;
+        if (this.checked) selectedOrders.add(cb.value);
+        else selectedOrders.delete(cb.value);
+      });
+      updateBatchBar();
     });
 
   } catch (err) {
@@ -194,6 +251,44 @@ function showStatusModal(orderId, newStatus) {
         loadOrders(statusEl?.value || '');
       } catch (err) {
         toast.error(err.message);
+      }
+    },
+  });
+}
+
+function batchApprove() {
+  const ids = Array.from(selectedOrders);
+  if (!ids.length) { toast.error('请选择工单'); return; }
+
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <p>确定批量通过 <strong>${ids.length}</strong> 个待审批工单？</p>
+    <p style="font-size:13px;color:var(--text-tertiary);margin-top:4px;">工单编号: ${ids.slice(0,10).join(', ')}${ids.length > 10 ? '...等' + ids.length + '个' : ''}</p>
+    <div class="form-group" style="margin-top:12px;">
+      <label class="form-label">备注（可选）</label>
+      <textarea class="form-input" id="batch-order-note" rows="3" placeholder="批量审批备注..."></textarea>
+    </div>`;
+
+  modal.open({
+    title: '批量通过工单',
+    body,
+    confirmText: '确认通过 (' + ids.length + ')',
+    onConfirm: async () => {
+      const notes = document.getElementById('batch-order-note')?.value || '';
+      const btn = document.querySelector('[data-confirm]');
+      if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
+      try {
+        const res = await api.batchUpdateOrderStatus(ids, 'approved', notes);
+        if (res.ok) {
+          toast.success('已通过 ' + res.approved + ' 个工单' + (res.failed > 0 ? ', ' + res.failed + ' 个失败' : ''));
+        }
+        modal.close();
+        selectedOrders.clear();
+        const statusEl = document.getElementById('admin-order-status');
+        loadOrders(statusEl?.value || '');
+      } catch (err) {
+        toast.error(err.message || '批量操作失败');
+        if (btn) { btn.disabled = false; btn.textContent = '确认通过 (' + ids.length + ')'; }
       }
     },
   });

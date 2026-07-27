@@ -247,23 +247,31 @@ function refreshBalance(container) {
 function showTutorialModal() {
   showModal('完整使用教程', `
     <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
-      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📱 在手机上使用</h4>
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📥 下载脚本</h4>
+      <p style="font-size:var(--text-xs);color:var(--text-secondary);margin-bottom:var(--space-2);">点击下方按钮下载脚本文件（某些浏览器不会自动弹出安装，此时请手动导入）</p>
+      <div style="text-align:center;margin:var(--space-3) 0;">
+        <a href="/docs/ider_skin_full.user.js" target="_blank" class="btn btn-primary">📥 下载 ider_skin_full.user.js</a>
+      </div>
+    </div>
+
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">🔧 手动导入（如果自动安装没弹出）</h4>
       <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
-        <li>Android：安装 <strong>Kiwi Browser</strong>，从 Chrome 商店安装 Tampermonkey 扩展</li>
-        <li>iOS：安装 <strong>Userscripts</strong> App（App Store 免费）</li>
-        <li>下载脚本文件 <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a></li>
-        <li>Tampermonkey 会自动弹出安装提示，点击「安装」</li>
-        <li>Userscripts 需将 .user.js 文件放入 Safari 共享菜单中的 Userscripts 扩展</li>
+        <li>点击上方按钮下载 <code style="background:var(--bg-base);padding:1px 4px;border-radius:3px;">.user.js</code> 文件到本地</li>
+        <li>打开浏览器的 Tampermonkey 扩展（工具栏 🧩 图标 → 管理面板 / Dashboard）</li>
+        <li>点击「<strong>实用工具</strong>」(Utilities) 选项卡</li>
+        <li>在「<strong>导入</strong>」(Import) 区域选择刚下载的 .user.js 文件</li>
+        <li>点击「安装」(Install) 完成安装</li>
       </ol>
     </div>
 
     <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
-      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">💻 在电脑上使用</h4>
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📱 在手机上使用</h4>
       <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
-        <li>安装 <strong>Tampermonkey</strong> 浏览器扩展（Chrome/Firefox/Edge 均可）</li>
-        <li>点击 <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a> 下载脚本</li>
-        <li>Tampermonkey 自动弹出安装页面，点击「安装」</li>
-        <li>打开游戏网站 <strong>idlexiuxianzhuan.cn</strong>，脚本会自动运行</li>
+        <li>Android：安装 <strong>Kiwi Browser</strong>，从 Chrome 商店安装 Tampermonkey 扩展</li>
+        <li>iOS：安装 <strong>Userscripts</strong> App（App Store 免费）</li>
+        <li>下载脚本文件后，Tampermonkey 如果没弹出安装，进入扩展管理面板手动导入</li>
+        <li>Userscripts 需将 .user.js 文件放入 Safari 共享菜单中的 Userscripts 扩展</li>
       </ol>
     </div>
 
@@ -284,6 +292,7 @@ function showTutorialModal() {
         <li><strong>脚本设置在哪？</strong> 页面右下角 🧩 图标打开皮肤面板</li>
         <li><strong>手机怎么装？</strong> Kiwi Browser (Android) 或 Userscripts (iOS)</li>
         <li><strong>如何恢复默认？</strong> 皮肤面板选择「无」或禁用脚本</li>
+        <li><strong>下载后没有反应？</strong> 手动导入：Tampermonkey → 管理面板 → 实用工具 → 导入文件</li>
       </ol>
     </div>
   `.trim());
@@ -297,16 +306,14 @@ function showPurchaseSuccessModal(skin, message) {
     <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-3);">
       <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📖 在游戏内使用该皮肤</h4>
       <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
-        <li>安装 Tampermonkey 脚本
-          <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a>
-        </li>
+        <li><a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">下载脚本</a> 到本地（如自动安装弹窗未出现）</li>
+        <li>Tampermonkey → 管理面板 → 实用工具 → 导入文件 → 选下载的 .user.js → 安装</li>
         <li>脚本会自动同步你在工单系统选择的皮肤</li>
-        <li>支持 Kiwi Browser (Android) 和 Userscripts (iOS)</li>
         <li>游戏页面右下角会出现 🧩 皮肤按钮可切换</li>
       </ol>
     </div>
 
-    <p style="font-size:var(--text-xs);color:var(--text-tertiary);text-align:center;">详细教程请点击「教程」按钮或查看页面教程</p>
+    <p style="font-size:var(--text-xs);color:var(--text-tertiary);text-align:center;">详细教程请点击「教程」按钮查看</p>
   `.trim(), '知道了');
 }
 

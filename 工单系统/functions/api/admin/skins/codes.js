@@ -34,7 +34,7 @@ export async function onRequest(context) {
 
     const codes = [];
     const stmt = env.DB.prepare(
-      'INSERT INTO activation_codes (code, skin_id, expires_at, created_by) VALUES (?, ?, ?, ?)'
+      'INSERT INTO activation_codes (code, skin_id, user_id, expires_at, created_by) VALUES (?, ?, ?, ?, ?)'
     );
 
     for (let i = 0; i < count; i++) {
@@ -49,7 +49,7 @@ export async function onRequest(context) {
 
       if (tries >= 10) continue;
 
-      await stmt.bind(code, skin_id, expires_at, user.id).run();
+      await stmt.bind(code, skin_id, user.id, expires_at, user.id).run();
       codes.push(code);
     }
 

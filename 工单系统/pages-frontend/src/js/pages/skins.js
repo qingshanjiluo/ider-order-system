@@ -289,12 +289,18 @@ function showBuyModal(container, skin, onSuccess) {
     </div>`;
 
   document.body.appendChild(modal);
+  requestAnimationFrame(() => modal.classList.add('active'));
+
+  function closeModal() {
+    modal.classList.remove('active');
+    setTimeout(() => modal.remove(), 200);
+  }
 
   modal.querySelectorAll('[data-close-modal]').forEach(btn => {
-    btn.addEventListener('click', () => modal.remove());
+    btn.addEventListener('click', closeModal);
   });
   modal.addEventListener('click', (e) => {
-    if (e.target === modal) modal.remove();
+    if (e.target === modal) closeModal();
   });
 
   const confirmBtn = modal.querySelector('#confirm-buy-btn');
@@ -304,7 +310,7 @@ function showBuyModal(container, skin, onSuccess) {
     try {
       const res = await api.buySkin(skin.id);
       toast.success(res.message);
-      modal.remove();
+      closeModal();
       if (onSuccess) onSuccess();
     } catch (err) {
       toast.error(err.message);

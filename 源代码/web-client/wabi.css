@@ -1,0 +1,632 @@
+/* ═══════════════════════════════════════
+   侘寂 · WABI-SABI THEME
+   一期一会，世当珍惜
+   ═══════════════════════════════════════ */
+
+/* ── CSS 变量覆盖 ── */
+.theme-wabi {
+  --bg: #F5F0E8;
+  --bg2: #EDE8DD;
+  --bg3: #F5F0E8;
+  --bg4: #E8E3D8;
+  --border: rgba(44,44,44,0.10);
+  --text: #2C2C2C;
+  --text2: #5A5A5A;
+  --gold: #B7413E;
+  --gold2: #8B2E2C;
+  --accent: #6B8E6B;
+  --red: #B7413E;
+  --green: #6B8E6B;
+  --radius: 2px;
+  /* 侘寂专有变量 */
+  --washi: #F5F0E8;
+  --warm: #EDE8DD;
+  --ink-black: #2C2C2C;
+  --ink-light: #5A5A5A;
+  --ink-fade: #8A8A8A;
+  --vermilion: #B7413E;
+  --vermilion-deep: #8B2E2C;
+  --bamboo: #6B8E6B;
+  --stone: #7A8B8B;
+  --sand: #C4B9A8;
+  --line: rgba(44,44,44,0.10);
+  --line-strong: rgba(44,44,44,0.22);
+}
+
+/* ── 全局重置 ── */
+.theme-wabi body {
+  font-family: 'Noto Serif JP', 'Noto Serif SC', 'Songti SC', serif;
+  background-color: var(--bg);
+  letter-spacing: 0.06em;
+  line-height: 1.9;
+}
+.theme-wabi input,
+.theme-wabi button,
+.theme-wabi select {
+  font-family: 'Noto Serif JP', 'Noto Serif SC', 'Songti SC', serif;
+}
+
+/* ── 和纸纹理 ── */
+.theme-wabi .wabi-paper {
+  position: fixed; inset: 0;
+  z-index: -1; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  opacity: 0.5;
+}
+
+/* ── 墨点散落 ── */
+.theme-wabi .wabi-splash {
+  position: fixed; border-radius: 50%;
+  background: radial-gradient(circle, var(--ink-black) 0%, transparent 70%);
+  pointer-events: none; z-index: -1;
+}
+.theme-wabi .wabi-circle-motif {
+  position: fixed;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  pointer-events: none; z-index: -1;
+}
+
+/* ── 引首 ── */
+.theme-wabi .wabi-header-line {
+  width: 1px; height: 50px;
+  background: linear-gradient(to bottom, transparent, var(--line-strong) 20%, var(--line-strong) 80%, transparent);
+  margin-bottom: 4px; opacity: 0.5;
+}
+
+/* ── 细线分割 ── */
+.theme-wabi .wabi-divider {
+  width: 40px; height: 1px;
+  background: var(--line-strong);
+  margin: 4px auto; opacity: 0.4;
+}
+
+/* ══════════════════════
+   Header
+   ══════════════════════ */
+.theme-wabi .game-header {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 18px 16px 10px;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  gap: 4px;
+}
+.theme-wabi .game-header .hdr-name {
+  font-family: 'Noto Serif JP', 'Noto Serif SC', serif;
+  font-weight: 600;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+  letter-spacing: 0.2em;
+  color: var(--ink-black);
+  position: relative;
+  padding: 4px 0;
+}
+.theme-wabi .game-header .hdr-name::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 10%; right: 10%;
+  height: 1px;
+  background: var(--vermilion);
+  opacity: 0.5;
+}
+.theme-wabi .game-header .hdr-info {
+  font-weight: 300;
+  letter-spacing: 0.35em;
+  color: var(--ink-light);
+  font-size: 0.7rem;
+  order: -1;
+}
+.theme-wabi .game-header .hdr-info .realm-badge {
+  background: transparent; color: var(--ink-light);
+  padding: 0; font-size: inherit; border: none;
+}
+.theme-wabi .game-header .hdr-qq {
+  font-size: 10px; color: var(--ink-fade);
+  letter-spacing: 0.15em;
+  order: -2;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 3px; margin-bottom: 3px;
+  width: 100%; text-align: center;
+}
+.theme-wabi .game-header .hdr-res {
+  margin-left: 0;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  gap: 12px;
+  color: var(--ink-light);
+}
+.theme-wabi .game-header .btn-icon {
+  color: var(--ink-fade);
+  font-size: 15px;
+  padding: 2px 6px;
+}
+.theme-wabi .game-header .btn-icon:hover {
+  background: rgba(183,65,62,0.06);
+}
+
+/* ══════════════════════
+   Tab Nav
+   ══════════════════════ */
+.theme-wabi .tab-nav {
+  justify-content: center;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
+  padding: 3px 6px;
+  gap: 1px;
+}
+.theme-wabi .tab-btn {
+  font-family: 'Noto Serif JP', 'Noto Serif SC', serif;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  padding: 5px 10px;
+  font-size: 11px;
+  border-bottom: 1px solid transparent;
+  color: var(--ink-fade);
+  transition: all 0.5s ease;
+}
+.theme-wabi .tab-btn.active {
+  color: var(--vermilion);
+  border-bottom-color: var(--vermilion);
+}
+.theme-wabi .tab-btn:hover {
+  color: var(--vermilion-deep);
+}
+@media (min-width: 1024px) {
+  .theme-wabi .tab-nav {
+    flex-direction: column;
+    position: fixed;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    background: transparent;
+    border: none;
+    padding: 16px 6px;
+    gap: 2px;
+  }
+  .theme-wabi .tab-btn {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    padding: 6px 4px;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    border-bottom: none;
+    border-right: 1px solid transparent;
+  }
+  .theme-wabi .tab-btn.active {
+    border-bottom-color: transparent;
+    border-right-color: var(--vermilion);
+  }
+  .theme-wabi .tab-btn::after {
+    content: '';
+    position: absolute;
+    right: -2px; top: 50%;
+    width: 0; height: 1px;
+    background: var(--vermilion);
+    transition: width 0.5s ease;
+  }
+  .theme-wabi .tab-btn:hover::after {
+    width: 8px;
+  }
+  .theme-wabi .tab-btn[data-tab="character"],
+  .theme-wabi .tab-btn[data-tab="battle"] {
+    display: block;
+  }
+  .theme-wabi .main-area {
+    margin-left: 32px;
+  }
+}
+
+/* ══════════════════════
+   Nav SVG 图标
+   ══════════════════════ */
+.theme-wabi .wabi-nav-icon {
+  display: inline-block;
+  width: 14px; height: 14px;
+  vertical-align: middle;
+  margin-right: 3px;
+  flex-shrink: 0;
+  color: var(--ink-fade);
+  transition: color 0.3s;
+}
+.theme-wabi .tab-btn.active .wabi-nav-icon {
+  color: var(--vermilion);
+}
+@media (min-width: 1024px) {
+  .theme-wabi .tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .theme-wabi .wabi-nav-icon {
+    width: 18px; height: 18px;
+    margin-right: 0;
+    margin-bottom: 2px;
+  }
+}
+
+/* ══════════════════════
+   Sidebar · 右置 (PC)
+   ══════════════════════ */
+@media (min-width: 1024px) {
+  .theme-wabi .battle-sidebar {
+    width: 160px;
+    border-right: none;
+    border-left: 1px solid var(--line);
+    background: var(--bg);
+    padding: 14px 12px;
+    order: 2;
+  }
+  .theme-wabi .sidebar-char-name {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-black);
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    margin: 0 auto;
+    display: block;
+    text-align: center;
+    line-height: 2;
+  }
+  .theme-wabi .sidebar-char-realm {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: var(--ink-fade);
+    text-align: center;
+    display: block;
+    margin-top: 2px;
+  }
+  .theme-wabi .sidebar-char-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .theme-wabi .sidebar-section-title {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 300;
+    letter-spacing: 0.25em;
+    font-size: 9px;
+    color: var(--ink-fade);
+    border-bottom: 1px solid var(--line);
+  }
+  .theme-wabi .sidebar-attr-grid .attr-item {
+    background: transparent;
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+  .theme-wabi .sidebar-stat-cards .stat-card.compact {
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 4px 6px;
+  }
+}
+
+/* ══════════════════════
+   Cards · 侘寂卡片
+   ══════════════════════ */
+.theme-wabi .stat-card,
+.theme-wabi .skill-card,
+.theme-wabi .map-card,
+.theme-wabi .sect-card,
+.theme-wabi .alliance-card,
+.theme-wabi .recipe-card,
+.theme-wabi .dungeon-card,
+.theme-wabi .listing-card {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  position: relative;
+  transition: background 0.6s ease;
+}
+.theme-wabi .stat-card:hover,
+.theme-wabi .skill-card:hover,
+.theme-wabi .map-card:hover {
+  background: var(--bg2);
+}
+.theme-wabi .stat-card::before,
+.theme-wabi .skill-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 0;
+  background: var(--vermilion);
+  transition: height 0.4s ease;
+}
+.theme-wabi .stat-card:hover::before,
+.theme-wabi .skill-card:hover::before {
+  height: 2px;
+}
+.theme-wabi .section-title {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  color: var(--ink-black);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.theme-wabi .stat-value {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+
+/* ══════════════════════
+   战斗面板
+   ══════════════════════ */
+.theme-wabi .battle-status-panel {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+.theme-wabi .battle-unit .unit-name {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+}
+.theme-wabi .battle-unit .unit-name.enemy-name {
+  color: var(--vermilion);
+}
+.theme-wabi .battle-vs {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 300;
+  font-size: 0.9rem;
+  color: var(--ink-fade);
+  letter-spacing: 0.2em;
+}
+
+/* ── 极细条 ── */
+.theme-wabi .bar-track {
+  height: 4px;
+  background: var(--line);
+  border-radius: 0;
+  border: none;
+}
+.theme-wabi .bar-fill {
+  border-radius: 0;
+  transition: width 0.6s ease;
+}
+.theme-wabi .hp-bar-green { background: var(--bamboo); }
+.theme-wabi .hp-bar-red { background: var(--vermilion); }
+.theme-wabi .mp-bar-blue { background: #5a7a8a; }
+.theme-wabi .action-bar-yellow { background: var(--sand); }
+
+.theme-wabi .exp-fill,
+.theme-wabi .exp-bar-fill {
+  background: var(--ink-black);
+}
+.theme-wabi .exp-bar-green {
+  background: var(--bamboo);
+}
+
+/* ── 战斗日志 ── */
+.theme-wabi .battle-log-box {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font-family: 'Noto Serif JP', serif;
+  font-size: 11px;
+  line-height: 2;
+  letter-spacing: 0.04em;
+}
+
+/* ══════════════════════
+   弹窗
+   ══════════════════════ */
+.theme-wabi .modal-overlay {
+  background: rgba(44,44,44,0.2);
+}
+.theme-wabi .modal-panel {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 20px rgba(0,0,0,0.04);
+}
+.theme-wabi .modal-title {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  color: var(--ink-black);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+  font-size: 14px;
+}
+
+/* ══════════════════════
+   按钮
+   ══════════════════════ */
+.theme-wabi .btn-primary {
+  background: var(--ink-black);
+  color: var(--bg);
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.2em;
+  border-radius: 0;
+  font-weight: 300;
+}
+.theme-wabi .btn-primary:hover {
+  background: var(--vermilion);
+}
+.theme-wabi .btn-action {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.12em;
+  font-weight: 300;
+  border-radius: 0;
+}
+.theme-wabi .btn-action:hover {
+  background: rgba(183,65,62,0.04);
+  border-color: var(--vermilion);
+}
+.theme-wabi .btn-action.gold {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
+}
+.theme-wabi .btn-sm {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.1em;
+  font-weight: 300;
+  border-radius: 0;
+}
+.theme-wabi .btn-sm:hover {
+  background: rgba(44,44,44,0.03);
+}
+.theme-wabi .btn-sm.gold {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
+}
+
+/* ══════════════════════
+   物品/装备
+   ══════════════════════ */
+.theme-wabi .item-detail {
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.theme-wabi .item-detail-name {
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.1em;
+}
+.theme-wabi .equip-slot {
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+/* ══════════════════════
+   灵根
+   ══════════════════════ */
+.theme-wabi .sr-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 0;
+}
+
+/* ══════════════════════
+   命途
+   ══════════════════════ */
+.theme-wabi .mingtu-scroll {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(107,142,107,0.08), transparent 36%),
+    radial-gradient(circle at 90% 25%, rgba(183,65,62,0.05), transparent 34%),
+    linear-gradient(165deg, var(--bg), var(--bg2));
+}
+.theme-wabi .mingtu-node {
+  border-radius: 0;
+  border: 1px solid var(--line-strong);
+}
+
+/* ══════════════════════
+   登录页
+   ══════════════════════ */
+.theme-wabi .view-login {
+  background: var(--bg);
+}
+.theme-wabi .login-card {
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+.theme-wabi .game-title {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  color: var(--ink-black);
+  text-shadow: none;
+}
+.theme-wabi .login-subtitle {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 200;
+  letter-spacing: 0.4em;
+  color: var(--ink-fade);
+}
+
+/* ══════════════════════
+   Sub-tab
+   ══════════════════════ */
+.theme-wabi .sub-tab {
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.12em;
+}
+.theme-wabi .sub-tab.active {
+  color: var(--vermilion);
+  border-bottom-color: var(--vermilion);
+}
+
+/* ══════════════════════
+   技能/功法
+   ══════════════════════ */
+.theme-wabi .skill-card.equipped {
+  border-top: 2px solid var(--vermilion);
+  border-color: var(--line);
+  background: rgba(183,65,62,0.02);
+}
+.theme-wabi .skill-name {
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.1em;
+}
+.theme-wabi .key-badge {
+  background: var(--vermilion);
+  font-family: 'Noto Serif JP', serif;
+}
+
+/* ══════════════════════
+   Toast
+   ══════════════════════ */
+.theme-wabi .toast {
+  background: var(--bg2);
+  border: 1px solid var(--vermilion);
+  color: var(--vermilion);
+  font-family: 'Noto Serif JP', serif;
+  letter-spacing: 0.12em;
+}
+
+/* ══════════════════════
+   Map
+   ══════════════════════ */
+.theme-wabi .map-current {
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+
+/* ══════════════════════
+   Scrollbar
+   ══════════════════════ */
+.theme-wabi ::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+}
+
+/* ══════════════════════
+   动画
+   ══════════════════════ */
+@keyframes wabiFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.theme-wabi .panel {
+  animation: wabiFadeIn 0.8s ease;
+}
+
+/* ══════════════════════
+   响应式
+   ══════════════════════ */
+@media (max-width: 767px) {
+  .theme-wabi .game-header {
+    padding: 12px 10px 8px;
+    gap: 3px;
+  }
+  .theme-wabi .game-title {
+    font-size: 20px;
+  }
+}
+@media (max-width: 1023px) and (min-width: 768px) {
+  .theme-wabi .tab-nav {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}

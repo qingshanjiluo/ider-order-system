@@ -5,6 +5,11 @@ import { getRealm, getRealmTier, getRealmStage, qualityColor, allianceRankName, 
 import { helpBaiyiHtml, helpAffixHtml } from './helpContent.js?v=20260330c';
 import { getMapDrops } from './mapDrops.js?v=20260330c';
 import { getCurrentMapInfo, buildMapTooltip, buildMapInfoLines } from './mapView.js?v=20260330c';
+import { toggleInkWash } from '../inkwash.js?v=1';
+import { toggleWabi } from '../wabi.js?v=1';
+import { toggleMinimal } from '../minimal.js?v=1';
+import { toggleGlass } from '../glass.js?v=1';
+import { toggleBrutal } from '../brutal.js?v=1';
 
 const { createApp, ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
 
@@ -417,12 +422,44 @@ const app = createApp({
       forceRelogin(msg || '登录已过期，请重新登录');
     });
     const emailBound = ref(false);
-    const darkTheme = ref(true);
-    function toggleTheme() { darkTheme.value = !darkTheme.value; document.documentElement.classList.toggle('theme-light', !darkTheme.value); }
+    const themeMode = ref(localStorage.getItem('inkwash-theme') || 'dark');
+    function toggleTheme() {
+      const modes = ['dark', 'light', 'inkwash', 'wabi', 'minimal', 'glass', 'brutal'];
+      const idx = modes.indexOf(themeMode.value);
+      themeMode.value = modes[(idx + 1) % modes.length];
+      applyTheme(themeMode.value);
+      localStorage.setItem('inkwash-theme', themeMode.value);
+    }
+    function applyTheme(mode) {
+      document.documentElement.classList.remove('theme-light', 'theme-inkwash', 'theme-wabi', 'theme-minimal', 'theme-glass', 'theme-brutal');
+      toggleInkWash(false);
+      toggleWabi(false);
+      toggleMinimal(false);
+      toggleGlass(false);
+      toggleBrutal(false);
+      if (mode === 'light') {
+        document.documentElement.classList.add('theme-light');
+      } else if (mode === 'inkwash') {
+        document.documentElement.classList.add('theme-inkwash');
+        toggleInkWash(true);
+      } else if (mode === 'wabi') {
+        document.documentElement.classList.add('theme-wabi');
+        toggleWabi(true);
+      } else if (mode === 'minimal') {
+        document.documentElement.classList.add('theme-minimal');
+        toggleMinimal(true);
+      } else if (mode === 'glass') {
+        document.documentElement.classList.add('theme-glass');
+        toggleGlass(true);
+      } else if (mode === 'brutal') {
+        document.documentElement.classList.add('theme-brutal');
+        toggleBrutal(true);
+      }
+    }
 
     onMounted(() => {
       if (api.hasToken()) startSync();
-      document.documentElement.classList.toggle('theme-light', !darkTheme.value);
+      applyTheme(themeMode.value);
     });
     onUnmounted(stopSync);
 
@@ -4508,7 +4545,7 @@ const app = createApp({
       formatNumber, qualityColor, qualityName, itemTierLine, getRealm, getRealmStage, allianceRankName, mapDropMetaById, mapTooltipById, getMapDropsPreview, hasMapDropsPreview, getMapDropsPreviewText, getSpiritRootVal, currentMap, getCurrentMap, getMapTooltip, getSectName, getRerollLockArr, fmtMailAttach, countItemInInv,
       showToast, doSync: doSync, loadGameData,
       DICTIONARY_ENTRIES, dictCategory, dictPage, dictPageCount, dictPageEntries, dictFiltered, DICT_PAGE_SIZE,
-      wipeConfirm, doWipe, renameInput, doRename, darkTheme, toggleTheme,
+      wipeConfirm, doWipe, renameInput, doRename, themeMode, toggleTheme,
       itemTooltip, showItemTooltip, hideItemTooltip, cancelHideTooltip, itemTouchStart, itemTouchEnd,
       offlineReport, formatDuration, formatLastOnline,
       caveSubTab,

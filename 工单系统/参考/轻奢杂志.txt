@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STILL — The Quiet Index</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --white: #FFFFFF;
+      --warm-grey: #F5F5F0;
+      --charcoal: #1A1A1A;
+      --charcoal-soft: rgba(26, 26, 26, 0.55);
+      --charcoal-faint: rgba(26, 26, 26, 0.18);
+      --charcoal-ghost: rgba(26, 26, 26, 0.08);
+      --accent-wine: #7A3B3B;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 300;
+      background-color: var(--white);
+      color: var(--charcoal);
+      line-height: 1.75;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── 容器 ── */
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 64px;
+    }
+
+    @media (max-width: 768px) {
+      .page {
+        padding: 0 28px;
+      }
+    }
+
+    /* ── 极细线工具 ── */
+    .hairline {
+      width: 100%;
+      height: 0.5px;
+      background-color: var(--charcoal-ghost);
+    }
+
+    .hairline-dark {
+      width: 100%;
+      height: 0.5px;
+      background-color: var(--charcoal-faint);
+    }
+
+    /* ── 刊头 ── */
+    .masthead {
+      padding-top: 48px;
+      padding-bottom: 24px;
+    }
+
+    .masthead-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding-bottom: 16px;
+    }
+
+    .masthead-title {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 400;
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--charcoal);
+    }
+
+    .masthead-meta {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--charcoal-soft);
+    }
+
+    /* ── 主视觉区 ── */
+    .hero {
+      padding-top: 100px;
+      padding-bottom: 80px;
+      position: relative;
+    }
+
+    .hero-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent-wine);
+      margin-bottom: 32px;
+      display: inline-block;
+    }
+
+    .hero-title {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      font-size: clamp(2.8rem, 5.5vw, 4.2rem);
+      line-height: 1.05;
+      letter-spacing: 0.02em;
+      color: var(--charcoal);
+      max-width: 680px;
+      margin-bottom: 36px;
+    }
+
+    .hero-subtitle {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1rem, 1.8vw, 1.25rem);
+      line-height: 1.5;
+      letter-spacing: 0.02em;
+      color: var(--charcoal-soft);
+      max-width: 480px;
+    }
+
+    .hero-meta {
+      margin-top: 48px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      color: var(--charcoal-faint);
+    }
+
+    .hero-meta span {
+      margin-right: 24px;
+    }
+
+    /* ── 正文网格 ── */
+    .body-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 80px;
+      padding-top: 80px;
+      padding-bottom: 120px;
+    }
+
+    @media (max-width: 768px) {
+      .body-grid {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+    }
+
+    .column-main {
+      max-width: 520px;
+    }
+
+    .column-side {
+      padding-top: 8px;
+    }
+
+    /* ── 段落 ── */
+    .lead {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 400;
+      font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+      line-height: 1.7;
+      letter-spacing: 0.01em;
+      color: var(--charcoal);
+      margin-bottom: 2.2em;
+    }
+
+    .body-text {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.9rem;
+      line-height: 1.8;
+      letter-spacing: 0.01em;
+      color: var(--charcoal-soft);
+      margin-bottom: 2em;
+    }
+
+    /* ── 边栏 ── */
+    .sidebar-note {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: var(--charcoal-faint);
+      padding-left: 24px;
+      border-left: 0.5px solid var(--charcoal-ghost);
+    }
+
+    .sidebar-heading {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--charcoal-faint);
+      margin-bottom: 16px;
+    }
+
+    /* ── 引用块 ── */
+    .pull-quote {
+      padding: 100px 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .pull-quote::before {
+      content: '';
+      position: absolute;
+      top: 48px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 32px;
+      height: 0.5px;
+      background-color: var(--charcoal-faint);
+    }
+
+    .pull-quote-text {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+      color: var(--charcoal);
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .pull-quote-attrib {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--charcoal-faint);
+      margin-top: 32px;
+    }
+
+    /* ── 图片区 ── */
+    .image-section {
+      padding: 40px 0 120px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .image-section {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .image-placeholder {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      background: linear-gradient(
+        135deg,
+        var(--warm-grey) 0%,
+        #EDEAE4 40%,
+        #E8E5DE 60%,
+        var(--warm-grey) 100%
+      );
+      position: relative;
+      overflow: hidden;
+    }
+
+    .image-placeholder::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 30% 40%, rgba(255,255,255,0.6) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(0,0,0,0.02) 0%, transparent 50%);
+    }
+
+    .image-caption {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      font-style: italic;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--charcoal-faint);
+      padding-top: 8px;
+    }
+
+    .image-caption-number {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-wine);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    /* ── 第二正文区 ── */
+    .body-continued {
+      max-width: 520px;
+      padding-bottom: 120px;
+    }
+
+    /* ── 数据栏 ── */
+    .data-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 48px;
+      padding: 80px 0;
+      border-top: 0.5px solid var(--charcoal-ghost);
+      border-bottom: 0.5px solid var(--charcoal-ghost);
+      margin-bottom: 120px;
+    }
+
+    @media (max-width: 768px) {
+      .data-row {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+    }
+
+    .data-item {
+      text-align: left;
+    }
+
+    .data-number {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 300;
+      font-size: clamp(2rem, 3.5vw, 2.8rem);
+      line-height: 1;
+      letter-spacing: 0.02em;
+      color: var(--charcoal);
+      margin-bottom: 12px;
+    }
+
+    .data-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--charcoal-faint);
+    }
+
+    /* ── 页脚 ── */
+    .page-footer {
+      padding-bottom: 48px;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding-top: 16px;
+    }
+
+    .page-number {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 400;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      color: var(--charcoal-soft);
+    }
+
+    .page-section {
+      font-family: 'Inter', sans-serif;
+      font-weight: 300;
+      font-size: 0.6rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--charcoal-faint);
+    }
+
+    /* ── 淡入动画 ── */
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .reveal {
+      animation: reveal 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+
+    .r-1 { animation-delay: 0.1s; }
+    .r-2 { animation-delay: 0.3s; }
+    .r-3 { animation-delay: 0.5s; }
+    .r-4 { animation-delay: 0.7s; }
+    .r-5 { animation-delay: 0.9s; }
+    .r-6 { animation-delay: 1.1s; }
+  </style>
+</head>
+<body>
+
+  <div class="page">
+
+    <!-- 刊头 -->
+    <header class="masthead">
+      <div class="masthead-inner reveal r-1">
+        <span class="masthead-title">Still Magazine</span>
+        <span class="masthead-meta">Vol. 12 &mdash; Summer 2026</span>
+      </div>
+      <div class="hairline"></div>
+    </header>
+
+    <!-- 主视觉 -->
+    <section class="hero">
+      <span class="hero-label reveal r-2">Cover Story</span>
+      <h1 class="hero-title reveal r-3">The Quiet Index</h1>
+      <p class="hero-subtitle reveal r-4">
+        How silence became the ultimate luxury in an age of perpetual noise
+      </p>
+      <div class="hero-meta reveal r-5">
+        <span>Words by Eleanor Vance</span>
+        <span>Photography by James Chen</span>
+      </div>
+    </section>
+
+    <!-- 分割线 -->
+    <div class="hairline-dark reveal r-5"></div>
+
+    <!-- 正文 -->
+    <section class="body-grid">
+      <div class="column-main reveal r-5">
+        <p class="lead">
+          There is a particular quality to the silence of a well-designed room. It is not merely the absence of sound, but a presence in itself—something cultivated, intentional, and deeply personal.
+        </p>
+        <p class="body-text">
+          We have spent the better part of a decade accelerating toward maximum stimulation. Notifications stack like cordwood. Every surface glows. Every moment of stillness feels like a bug in the system rather than a feature. And yet, quietly, a counter-movement has been forming—not loud, not performative, but precise.
+        </p>
+        <p class="body-text">
+          The architects and designers we spoke with across Copenhagen, Tokyo, and Mexico City all returned to the same word: <em>breath</em>. Space needs to breathe. Objects need room to be seen. The eye, like the mind, requires intervals of rest.
+        </p>
+      </div>
+      <div class="column-side reveal r-6">
+        <div class="sidebar-heading">Editor's Note</div>
+        <div class="sidebar-note">
+          This issue began with a simple question: what does it mean to design for quiet? The answers we found were more architectural than acoustic.
+        </div>
+      </div>
+    </section>
+
+    <!-- 引用 -->
+    <section class="pull-quote reveal r-5">
+      <p class="pull-quote-text">
+        In the absence of sound, we hear ourselves most clearly. The room does not speak. It listens.
+      </p>
+      <p class="pull-quote-attrib">— Junya Ishigami, Architect</p>
+    </section>
+
+    <!-- 图片区 -->
+    <section class="image-section reveal r-5">
+      <div class="image-placeholder"></div>
+      <div class="image-caption">
+        <span class="image-caption-number">01</span>
+        Interior of the House of Silence, Naoshima. Natural light enters through a single horizontal aperture, shifting throughout the day.
+      </div>
+    </section>
+
+    <!-- 续文 -->
+    <section class="body-continued reveal r-5">
+      <p class="body-text">
+        The materials matter more than one might expect. Unfinished oak, raw linen, hand-troweled plaster—these surfaces absorb sound differently than their polished counterparts. They create what acousticians call <em>diffusion</em>, scattering sound waves so that no single frequency dominates.
+      </p>
+      <p class="body-text">
+        But perhaps the most radical act of quiet design is subtraction. Removing rather than adding. The Japanese concept of <em>ma</em>—the meaningful space between things—has found new relevance in contemporary interiors where every square centimeter once demanded occupation.
+      </p>
+      <p class="body-text">
+        What remains is not emptiness, but clarity. A kind of visual and acoustic honesty that feels, in the current moment, almost revolutionary.
+      </p>
+    </section>
+
+    <!-- 数据栏 -->
+    <section class="data-row reveal r-5">
+      <div class="data-item">
+        <div class="data-number">47</div>
+        <div class="data-label">Decibels</div>
+        <div class="data-label">Average studio reading</div>
+      </div>
+      <div class="data-item">
+        <div class="data-number">12</div>
+        <div class="data-label">Cities</div>
+        <div class="data-label">Visited for this story</div>
+      </div>
+      <div class="data-item">
+        <div class="data-number">03</div>
+        <div class="data-label">Principles</div>
+        <div class="data-label">Of silent design</div>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="page-footer">
+      <div class="hairline"></div>
+      <div class="footer-inner reveal r-6">
+        <span class="page-number">24</span>
+        <span class="page-section">Essays</span>
+      </div>
+    </footer>
+
+  </div>
+
+</body>
+</html>

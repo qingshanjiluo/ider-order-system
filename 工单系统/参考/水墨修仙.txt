@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>修仙问道 · 水墨卷轴</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@200;300;400;600&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --paper: #F5F0E6;
+      --paper-warm: #F0EBE0;
+      --ink-deep: #1a1a1a;
+      --ink-mid: rgba(26, 26, 26, 0.55);
+      --ink-light: rgba(26, 26, 26, 0.18);
+      --ink-faint: rgba(26, 26, 26, 0.06);
+      --ink-ghost: rgba(26, 26, 26, 0.025);
+      --cinnabar: #C43A2B;
+      --cinnabar-soft: rgba(196, 58, 43, 0.85);
+      --cinnabar-faint: rgba(196, 58, 43, 0.08);
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', 'FangSong', serif;
+      background-color: var(--paper);
+      color: var(--ink-deep);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      line-height: 2.4;
+      letter-spacing: 0.06em;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── 宣纸底层纹理 ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.7;
+      background-image:
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 60px,
+          rgba(60, 50, 30, 0.008) 60px,
+          rgba(60, 50, 30, 0.008) 61px
+        ),
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 60px,
+          rgba(60, 50, 30, 0.008) 60px,
+          rgba(60, 50, 30, 0.008) 61px
+        );
+    }
+
+    /* ── 宣纸纤维噪点 ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.35;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+    }
+
+    /* ── 淡墨山水背景 ── */
+    .landscape-bg {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 50vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .landscape-bg svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* ── 云雾飘动层 ── */
+    .mist-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .mist-layer::before,
+    .mist-layer::after {
+      content: '';
+      position: absolute;
+      width: 150%;
+      height: 200px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(245, 240, 230, 0.4) 30%,
+        rgba(245, 240, 230, 0.6) 50%,
+        rgba(245, 240, 230, 0.4) 70%,
+        transparent 100%
+      );
+      filter: blur(40px);
+      animation: drift 25s ease-in-out infinite;
+    }
+
+    .mist-layer::before {
+      top: 55%;
+      left: -25%;
+      animation-delay: 0s;
+    }
+
+    .mist-layer::after {
+      top: 65%;
+      left: -25%;
+      animation-delay: -12s;
+      opacity: 0.6;
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(15%); }
+    }
+
+    /* ── 主卷轴容器 ── */
+    .scroll-container {
+      position: relative;
+      z-index: 1;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16vh 40px 20vh;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── 引首装饰 ── */
+    .scroll-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 8vh;
+    }
+
+    .header-line {
+      width: 1px;
+      height: 80px;
+      background: linear-gradient(
+        to bottom,
+        transparent,
+        var(--ink-light) 20%,
+        var(--ink-light) 80%,
+        transparent
+      );
+      opacity: 0.6;
+    }
+
+    .header-ornament {
+      width: 24px;
+      height: 24px;
+      border: 1px solid var(--ink-faint);
+      transform: rotate(45deg);
+      margin-top: 16px;
+      position: relative;
+    }
+
+    .header-ornament::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border: 1px solid var(--ink-ghost);
+    }
+
+    /* ── 主标题：毛笔飞白 ── */
+    .main-title {
+      font-family: 'Ma Shan Zheng', 'Zhi Mang Xing', cursive;
+      font-size: clamp(3.2rem, 9vw, 5.8rem);
+      font-weight: 400;
+      letter-spacing: 0.25em;
+      text-align: center;
+      color: var(--ink-deep);
+      position: relative;
+      margin-bottom: 1.5vh;
+      line-height: 1.2;
+      text-indent: 0.25em;
+    }
+
+    /* 飞白质感：多层阴影模拟干笔刷 */
+    .main-title .char {
+      display: inline-block;
+      position: relative;
+      text-shadow:
+        1px 0 0 rgba(26, 26, 26, 0.04),
+        -1px 0 0 rgba(26, 26, 26, 0.06),
+        0 1px 0 rgba(26, 26, 26, 0.03),
+        0 -1px 0 rgba(26, 26, 26, 0.05),
+        2px 1px 0 rgba(26, 26, 26, 0.02);
+    }
+
+    /* 水墨晕染层 */
+    .main-title::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      font-family: 'Ma Shan Zheng', cursive;
+      font-size: inherit;
+      letter-spacing: 0.25em;
+      text-align: center;
+      color: transparent;
+      filter: blur(4px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: -1;
+      transform: translate(3px, 4px);
+    }
+
+    /* ── 副标题 ── */
+    .sub-title {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 200;
+      font-size: clamp(0.85rem, 2vw, 1.05rem);
+      letter-spacing: 0.5em;
+      color: var(--ink-light);
+      text-align: center;
+      margin-bottom: 10vh;
+      opacity: 0.7;
+    }
+
+    /* ── 界栏分隔 ── */
+    .divider {
+      width: 32px;
+      height: 1px;
+      background: var(--ink-light);
+      margin: 0 auto 10vh;
+      opacity: 0.35;
+      position: relative;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border: 1px solid var(--ink-faint);
+      border-radius: 50%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .divider::before { left: -10px; }
+    .divider::after { right: -10px; }
+
+    /* ── 正文段落 ── */
+    .verse {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
+      line-height: 3;
+      letter-spacing: 0.12em;
+      text-align: justify;
+      text-align-last: center;
+      color: var(--ink-mid);
+      margin-bottom: 5vh;
+      position: relative;
+      max-width: 480px;
+      text-indent: 2em;
+    }
+
+    .verse:first-of-type {
+      text-indent: 0;
+    }
+
+    /* 水墨渗化效果 */
+    .verse::before {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      font-family: inherit;
+      font-size: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      text-align: justify;
+      text-align-last: center;
+      text-indent: inherit;
+      color: transparent;
+      filter: blur(3px);
+      opacity: 0.1;
+      pointer-events: none;
+      z-index: -1;
+      transform: translate(1px, 2px);
+    }
+
+    /* ── 朱砂印章 ── */
+    .seal-wrapper {
+      margin: 10vh 0 8vh;
+      display: flex;
+      justify-content: center;
+      position: relative;
+    }
+
+    .seal {
+      width: 90px;
+      height: 90px;
+      border: 2px solid var(--cinnabar);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transform: rotate(-4deg);
+      background: 
+        radial-gradient(circle at 30% 30%, rgba(196, 58, 43, 0.06) 0%, transparent 60%),
+        var(--cinnabar-faint);
+      box-shadow:
+        inset 0 0 30px rgba(196, 58, 43, 0.04),
+        0 0 0 1px rgba(196, 58, 43, 0.08);
+      transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .seal:hover {
+      transform: rotate(-2deg) scale(1.02);
+    }
+
+    /* 印章边框磨损感 */
+    .seal::before {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      border: 1px solid rgba(196, 58, 43, 0.18);
+      pointer-events: none;
+    }
+
+    /* 印章内部界格 */
+    .seal::after {
+      content: '';
+      position: absolute;
+      inset: 12px;
+      border: 1px solid rgba(196, 58, 43, 0.1);
+      pointer-events: none;
+    }
+
+    .seal-text {
+      font-family: 'Ma Shan Zheng', cursive;
+      font-size: 2.4rem;
+      color: var(--cinnabar-soft);
+      letter-spacing: 0.08em;
+      line-height: 1;
+      opacity: 0.88;
+      text-shadow: 0 0 10px rgba(196, 58, 43, 0.12);
+      position: relative;
+    }
+
+    /* 印章文字渗色 */
+    .seal-text::after {
+      content: '道心';
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-family: 'Ma Shan Zheng', cursive;
+      font-size: inherit;
+      color: transparent;
+      filter: blur(2px);
+      opacity: 0.2;
+      transform: translate(1px, 1px);
+    }
+
+    /* ── 底部落款区 ── */
+    .signature-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 6vh;
+      gap: 12px;
+    }
+
+    .signature-line {
+      width: 1px;
+      height: 60px;
+      background: linear-gradient(
+        to bottom,
+        var(--ink-faint),
+        transparent
+      );
+      opacity: 0.5;
+    }
+
+    .signature {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 200;
+      font-size: 0.8rem;
+      letter-spacing: 0.3em;
+      color: var(--ink-light);
+      text-align: center;
+      opacity: 0.5;
+    }
+
+    .date-mark {
+      font-family: 'Ma Shan Zheng', cursive;
+      font-size: 0.9rem;
+      color: var(--cinnabar-soft);
+      opacity: 0.6;
+      letter-spacing: 0.15em;
+      margin-top: 4px;
+    }
+
+    /* ── 散落墨点 ── */
+    .ink-splash {
+      position: fixed;
+      border-radius: 50%;
+      background: var(--ink-deep);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ink-splash:nth-of-type(1) {
+      width: 5px;
+      height: 5px;
+      top: 12%;
+      left: 10%;
+      opacity: 0.035;
+    }
+
+    .ink-splash:nth-of-type(2) {
+      width: 3px;
+      height: 3px;
+      top: 28%;
+      right: 12%;
+      opacity: 0.04;
+    }
+
+    .ink-splash:nth-of-type(3) {
+      width: 7px;
+      height: 7px;
+      bottom: 30%;
+      left: 15%;
+      opacity: 0.025;
+    }
+
+    .ink-splash:nth-of-type(4) {
+      width: 4px;
+      height: 4px;
+      top: 55%;
+      right: 18%;
+      opacity: 0.03;
+    }
+
+    .ink-splash:nth-of-type(5) {
+      width: 6px;
+      height: 6px;
+      bottom: 45%;
+      right: 8%;
+      opacity: 0.025;
+    }
+
+    .ink-splash:nth-of-type(6) {
+      width: 2px;
+      height: 2px;
+      top: 42%;
+      left: 22%;
+      opacity: 0.04;
+    }
+
+    /* ── 淡墨远山装饰角 ── */
+    .corner-ink {
+      position: fixed;
+      width: 200px;
+      height: 200px;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.04;
+    }
+
+    .corner-ink.top-right {
+      top: -40px;
+      right: -40px;
+      background: radial-gradient(circle at 70% 30%, var(--ink-deep) 0%, transparent 70%);
+      filter: blur(30px);
+    }
+
+    .corner-ink.bottom-left {
+      bottom: -40px;
+      left: -40px;
+      background: radial-gradient(circle at 30% 70%, var(--ink-deep) 0%, transparent 70%);
+      filter: blur(30px);
+    }
+
+    /* ── 响应式 ── */
+    @media (max-width: 640px) {
+      .scroll-container {
+        padding: 12vh 28px 16vh;
+      }
+      .seal {
+        width: 76px;
+        height: 76px;
+      }
+      .seal-text {
+        font-size: 2rem;
+      }
+      .verse {
+        text-indent: 1.5em;
+        line-height: 2.6;
+      }
+    }
+
+    /* ── 淡入动画 ── */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .fade-in {
+      animation: fadeInUp 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+
+    .fade-in-slow {
+      animation: fadeIn 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+
+    .delay-1 { animation-delay: 0.2s; }
+    .delay-2 { animation-delay: 0.6s; }
+    .delay-3 { animation-delay: 1.0s; }
+    .delay-4 { animation-delay: 1.4s; }
+    .delay-5 { animation-delay: 1.8s; }
+    .delay-6 { animation-delay: 2.2s; }
+    .delay-7 { animation-delay: 2.6s; }
+  </style>
+</head>
+<body>
+
+  <!-- 淡墨山水背景 -->
+  <div class="landscape-bg fade-in-slow delay-1">
+    <svg viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="mountainGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.05"/>
+          <stop offset="60%" style="stop-color:#1a1a1a;stop-opacity:0.02"/>
+          <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/>
+        </linearGradient>
+        <linearGradient id="mountainGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.04"/>
+          <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/>
+        </linearGradient>
+        <filter id="blur1">
+          <feGaussianBlur stdDeviation="2"/>
+        </filter>
+      </defs>
+      
+      <!-- 最远山层 -->
+      <path d="M0,340 Q200,280 400,310 T800,270 T1200,300 T1440,280 L1440,420 L0,420 Z" 
+            fill="url(#mountainGrad1)" filter="url(#blur1)"/>
+      
+      <!-- 中山层 -->
+      <path d="M0,370 Q240,320 480,345 T960,315 T1440,340 L1440,420 L0,420 Z" 
+            fill="url(#mountainGrad2)"/>
+      
+      <!-- 近山层 -->
+      <path d="M-60,420 Q240,360 520,390 T1040,370 T1500,400 L1500,420 L-60,420 Z" 
+            fill="rgba(26,26,26,0.02)"/>
+      
+      <!-- 孤峰 -->
+      <path d="M620,420 Q640,240 670,210 Q700,240 720,420 Z" 
+            fill="rgba(26,26,26,0.025)"/>
+      
+      <!-- 右侧远山 -->
+      <path d="M900,420 Q1000,320 1100,300 Q1200,320 1300,420 Z" 
+            fill="rgba(26,26,26,0.02)"/>
+      
+      <!-- 水纹 -->
+      <path d="M0,400 Q360,390 720,400 T1440,395" 
+            stroke="rgba(26,26,26,0.03)" stroke-width="0.5" fill="none"/>
+      <path d="M0,408 Q360,398 720,408 T1440,403" 
+            stroke="rgba(26,26,26,0.025)" stroke-width="0.5" fill="none"/>
+      <path d="M0,415 Q360,405 720,415 T1440,410" 
+            stroke="rgba(26,26,26,0.02)" stroke-width="0.5" fill="none"/>
+    </svg>
+  </div>
+
+  <!-- 云雾层 -->
+  <div class="mist-layer"></div>
+
+  <!-- 墨角装饰 -->
+  <div class="corner-ink top-right"></div>
+  <div class="corner-ink bottom-left"></div>
+
+  <!-- 散落墨点 -->
+  <div class="ink-splash"></div>
+  <div class="ink-splash"></div>
+  <div class="ink-splash"></div>
+  <div class="ink-splash"></div>
+  <div class="ink-splash"></div>
+  <div class="ink-splash"></div>
+
+  <!-- 主内容 -->
+  <main class="scroll-container">
+    
+    <!-- 引首 -->
+    <div class="scroll-header fade-in delay-1">
+      <div class="header-line"></div>
+      <div class="header-ornament"></div>
+    </div>
+
+    <!-- 主标题 -->
+    <h1 class="main-title fade-in delay-2" data-text="修仙问道">
+      <span class="char">修</span><span class="char">仙</span><span class="char">问</span><span class="char">道</span>
+    </h1>
+
+    <!-- 副标题 -->
+    <p class="sub-title fade-in delay-3">天地玄黄 &nbsp;&middot;&nbsp; 宇宙洪荒</p>
+
+    <!-- 界栏 -->
+    <div class="divider fade-in delay-3"></div>
+
+    <!-- 正文 -->
+    <p class="verse fade-in delay-4" data-text="夫道者，虚无之系，造化之根，神明之本，天地之源。其大无外，其小无内，浩渺无穷，不可名状。">
+      夫道者，虚无之系，造化之根，神明之本，天地之源。其大无外，其小无内，浩渺无穷，不可名状。
+    </p>
+
+    <p class="verse fade-in delay-5" data-text="仙人者，或竦身入云，无翅而飞；或驾龙乘云，上造天阶；或化为鸟兽，浮游青云。">
+      仙人者，或竦身入云，无翅而飞；或驾龙乘云，上造天阶；或化为鸟兽，浮游青云。
+    </p>
+
+    <p class="verse fade-in delay-6" data-text="炼精化气，炼气化神，炼神还虚，与道合真。此所谓长生久视之道也。">
+      炼精化气，炼气化神，炼神还虚，与道合真。此所谓长生久视之道也。
+    </p>
+
+    <!-- 朱砂印章 -->
+    <div class="seal-wrapper fade-in delay-6">
+      <div class="seal">
+        <span class="seal-text">道心</span>
+      </div>
+    </div>
+
+    <!-- 落款 -->
+    <div class="signature-block fade-in delay-7">
+      <div class="signature-line"></div>
+      <p class="signature">乙巳年 &nbsp;夏月 &nbsp;于无名山</p>
+      <p class="date-mark">闭关修撰</p>
+    </div>
+
+  </main>
+
+</body>
+</html>

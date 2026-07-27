@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRUTALISM — 粗野主义</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+<style>
+:root {
+    --black: #0A0A0A;
+    --white: #F0F0F0;
+    --concrete: #C8C8C8;
+    --concrete-light: #E0E0E0;
+    --red: #FF2200;
+    --blue: #0033FF;
+    --yellow: #FFDD00;
+    --border: 4px solid var(--black);
+    --border-thick: 6px solid var(--black);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+::selection {
+    background: var(--red);
+    color: var(--white);
+}
+
+html {
+    scroll-behavior: auto;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    background: var(--white);
+    color: var(--black);
+    line-height: 1.25;
+    overflow-x: hidden;
+    cursor: crosshair;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+    width: 16px;
+}
+::-webkit-scrollbar-track {
+    background: var(--concrete);
+    border-left: var(--border);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--black);
+    border: 2px solid var(--concrete);
+}
+
+/* 字体类 */
+.brutal {
+    font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.9;
+    font-weight: 400;
+}
+
+.brutal-cn {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
+}
+
+/* 顶部警示条 */
+.alert-bar {
+    background: var(--red);
+    color: var(--white);
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-align: center;
+    padding: 10px;
+    border-bottom: var(--border-thick);
+    position: relative;
+    z-index: 100;
+    text-transform: uppercase;
+}
+
+/* 导航 */
+nav {
+    position: sticky;
+    top: 0;
+    background: var(--black);
+    color: var(--white);
+    padding: 0;
+    border-bottom: var(--border-thick);
+    z-index: 99;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 70px;
+}
+
+.nav-logo {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 1.8rem;
+    padding: 0 30px;
+    letter-spacing: 0.05em;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    height: 100%;
+}
+
+.nav-links li {
+    border-left: var(--border);
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.nav-links a {
+    color: var(--white);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0 30px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    transition: 0s;
+    text-transform: uppercase;
+}
+
+.nav-links a:hover {
+    background: var(--red);
+    color: var(--white);
+}
+
+/* HERO */
+.hero {
+    min-height: 100vh;
+    background: var(--black);
+    color: var(--white);
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border-bottom: var(--border-thick);
+}
+
+.hero-main-char {
+    font-size: clamp(8rem, 28vw, 28rem);
+    font-weight: 900;
+    line-height: 0.85;
+    position: absolute;
+    left: 5vw;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.15;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    user-select: none;
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 0 8vw;
+    width: 100%;
+}
+
+.hero-label {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(1rem, 1.5vw, 1.3rem);
+    letter-spacing: 0.3em;
+    color: var(--red);
+    margin-bottom: 30px;
+    display: block;
+    text-transform: uppercase;
+}
+
+.hero-title {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(3.5rem, 10vw, 10rem);
+    line-height: 0.9;
+    margin-bottom: 40px;
+    max-width: 900px;
+    text-shadow: 6px 6px 0px var(--red);
+}
+
+.hero-title .cn {
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-weight: 900;
+    display: block;
+    font-size: 0.7em;
+    margin-top: 20px;
+    letter-spacing: 0.1em;
+    text-shadow: none;
+    color: var(--concrete);
+}
+
+.hero-desc {
+    font-size: clamp(1rem, 1.3vw, 1.2rem);
+    max-width: 500px;
+    line-height: 1.8;
+    color: #999;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+}
+
+.hero-block-red {
+    position: absolute;
+    right: -5vw;
+    top: 15vh;
+    width: 35vw;
+    height: 35vw;
+    background: var(--red);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: var(--border-thick);
+    transform: rotate(5deg);
+}
+
+.hero-block-text {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(2rem, 5vw, 5rem);
+    color: var(--white);
+    transform: rotate(-5deg);
+    letter-spacing: 0.05em;
+    text-align: center;
+}
+
+.hero-strip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--white);
+    color: var(--black);
+    padding: 20px 8vw;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(0.8rem, 1.2vw, 1.1rem);
+    letter-spacing: 0.2em;
+    border-top: var(--border-thick);
+    z-index: 4;
+    text-transform: uppercase;
+}
+
+/* MARQUEE */
+.marquee-container {
+    background: var(--red);
+    color: var(--white);
+    border-bottom: var(--border-thick);
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 15px 0;
+}
+
+.marquee-text {
+    display: inline-block;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(1.2rem, 2vw, 2rem);
+    letter-spacing: 0.15em;
+    animation: marquee 20s linear infinite;
+    text-transform: uppercase;
+    padding-right: 100px;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+/* MANIFESTO */
+.manifesto {
+    background: var(--concrete);
+    padding: 120px 8vw;
+    border-bottom: var(--border-thick);
+    position: relative;
+}
+
+.manifesto::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: repeating-linear-gradient(90deg, var(--black) 0px, var(--black) 20px, transparent 20px, transparent 40px);
+}
+
+.manifesto-statement {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(2.5rem, 6vw, 6rem);
+    line-height: 1.0;
+    margin-bottom: 60px;
+    max-width: 1000px;
+    text-transform: uppercase;
+}
+
+.manifesto-statement .highlight {
+    background: var(--black);
+    color: var(--white);
+    padding: 0 12px;
+    display: inline;
+    box-decoration-break: clone;
+}
+
+.manifesto-statement .highlight-red {
+    background: var(--red);
+    color: var(--white);
+    padding: 0 12px;
+    display: inline;
+    box-decoration-break: clone;
+}
+
+.manifesto-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    max-width: 1100px;
+}
+
+.manifesto-col {
+    font-size: 1.05rem;
+    line-height: 2;
+    font-weight: 400;
+}
+
+.manifesto-col strong {
+    font-weight: 900;
+    border-bottom: 3px solid var(--black);
+}
+
+/* ASYMMETRY SHOWCASE */
+.asymmetry {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    min-height: 80vh;
+    border-bottom: var(--border-thick);
+}
+
+.asym-left {
+    padding: 100px 8vw;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: var(--border-thick);
+}
+
+.asym-label {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.3em;
+    color: var(--red);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+}
+
+.asym-title {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(2rem, 4vw, 4rem);
+    line-height: 0.95;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+}
+
+.asym-text {
+    font-size: 1rem;
+    line-height: 1.9;
+    max-width: 500px;
+    color: #333;
+}
+
+.asym-right {
+    background: var(--black);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.asym-right-text {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(4rem, 10vw, 10rem);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 0.1em;
+    opacity: 0.9;
+    transform: rotate(180deg);
+}
+
+.asym-right::after {
+    content: '';
+    position: absolute;
+    bottom: -50px;
+    right: -50px;
+    width: 200px;
+    height: 200px;
+    background: var(--red);
+    transform: rotate(15deg);
+    border: var(--border);
+}
+
+/* PROJECTS */
+.projects {
+    background: var(--concrete-light);
+    padding: 120px 0;
+    border-bottom: var(--border-thick);
+}
+
+.section-header {
+    padding: 0 8vw 80px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: var(--border);
+    margin-bottom: 0;
+}
+
+.section-header-title {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(2.5rem, 5vw, 5rem);
+    line-height: 0.9;
+    text-transform: uppercase;
+}
+
+.section-header-num {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 5rem;
+    color: var(--concrete);
+    line-height: 0.8;
+}
+
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.project-card {
+    background: var(--white);
+    border: var(--border);
+    margin: -2px;
+    position: relative;
+    transition: 0s;
+}
+
+.project-card:nth-child(2) { margin-top: 80px; }
+.project-card:nth-child(3) { margin-top: 160px; }
+.project-card:nth-child(5) { margin-top: 120px; }
+.project-card:nth-child(6) { margin-top: 40px; }
+
+.project-card:hover {
+    background: var(--black);
+    color: var(--white);
+    z-index: 10;
+}
+
+.project-img {
+    height: 280px;
+    background: var(--concrete);
+    border-bottom: var(--border);
+    position: relative;
+    overflow: hidden;
+}
+
+.project-img::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 60%;
+    border: 3px solid var(--black);
+    opacity: 0.3;
+}
+
+.project-card:hover .project-img {
+    background: var(--red);
+    border-bottom-color: var(--white);
+}
+
+.project-card:hover .project-img::after {
+    border-color: var(--white);
+}
+
+.project-info {
+    padding: 30px;
+}
+
+.project-num {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    color: var(--red);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+}
+
+.project-title {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 1.6rem;
+    margin-bottom: 12px;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.project-desc {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #555;
+    font-weight: 400;
+}
+
+.project-card:hover .project-desc {
+    color: #AAA;
+}
+
+/* STATS */
+.stats {
+    background: var(--black);
+    color: var(--white);
+    padding: 100px 8vw;
+    border-bottom: var(--border-thick);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+}
+
+.stat-item {
+    padding: 40px 30px;
+    border-right: 1px solid #333;
+    position: relative;
+}
+
+.stat-item:last-child {
+    border-right: none;
+}
+
+.stat-number {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(3rem, 6vw, 6rem);
+    line-height: 0.9;
+    margin-bottom: 15px;
+    color: var(--white);
+}
+
+.stat-number.red {
+    color: var(--red);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    color: #777;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.stat-label-cn {
+    font-size: 0.9rem;
+    color: #555;
+    margin-top: 4px;
+    font-weight: 400;
+}
+
+/* CONTACT */
+.contact {
+    background: var(--concrete);
+    padding: 120px 8vw;
+    position: relative;
+}
+
+.contact::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 8vw;
+    right: 8vw;
+    height: 6px;
+    background: var(--black);
+}
+
+.contact-header {
+    margin-bottom: 60px;
+}
+
+.contact-title {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(2.5rem, 5vw, 5rem);
+    line-height: 0.9;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+}
+
+.contact-sub {
+    font-size: 1.1rem;
+    color: #444;
+    max-width: 500px;
+    line-height: 1.8;
+}
+
+.contact-form {
+    max-width: 800px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.form-input {
+    width: 100%;
+    padding: 24px;
+    font-size: 1.2rem;
+    border: var(--border);
+    background: var(--white);
+    font-family: inherit;
+    outline: none;
+    margin: -2px;
+    position: relative;
+    z-index: 1;
+}
+
+.form-input:focus {
+    z-index: 2;
+    background: var(--yellow);
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 24px;
+    font-size: 1.2rem;
+    border: var(--border);
+    background: var(--white);
+    font-family: inherit;
+    outline: none;
+    min-height: 200px;
+    resize: vertical;
+    margin: -2px;
+    margin-top: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.form-textarea:focus {
+    z-index: 2;
+    background: var(--yellow);
+}
+
+.form-submit {
+    width: 100%;
+    padding: 30px;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(1.5rem, 3vw, 3rem);
+    background: var(--red);
+    color: var(--white);
+    border: var(--border-thick);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 20px;
+    transition: 0s;
+    position: relative;
+    z-index: 3;
+}
+
+.form-submit:hover {
+    background: var(--black);
+    color: var(--red);
+}
+
+/* FOOTER */
+footer {
+    background: var(--black);
+    color: var(--white);
+    padding: 80px 8vw;
+    position: relative;
+    overflow: hidden;
+}
+
+.footer-giant {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(5rem, 15vw, 15rem);
+    line-height: 0.85;
+    opacity: 0.06;
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
+    text-transform: uppercase;
+}
+
+.footer-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 40px;
+}
+
+.footer-left {
+    max-width: 400px;
+}
+
+.footer-brand {
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: 2rem;
+    margin-bottom: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.footer-text {
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: #777;
+}
+
+.footer-right {
+    text-align: right;
+}
+
+.footer-links {
+    list-style: none;
+    display: flex;
+    gap: 30px;
+    margin-bottom: 20px;
+}
+
+.footer-links a {
+    color: var(--white);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    transition: 0s;
+}
+
+.footer-links a:hover {
+    border-bottom-color: var(--red);
+    color: var(--red);
+}
+
+.footer-copy {
+    font-size: 0.8rem;
+    color: #555;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+/* 滚动显示 — 粗暴直接 */
+.reveal {
+    opacity: 0;
+    transform: translateY(60px);
+    transition: opacity 0.15s linear, transform 0.15s linear;
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 响应式 */
+@media (max-width: 1024px) {
+    .projects-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .project-card:nth-child(2),
+    .project-card:nth-child(3),
+    .project-card:nth-child(5),
+    .project-card:nth-child(6) {
+        margin-top: 0;
+    }
+    .project-card:nth-child(even) {
+        margin-top: 60px;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .stat-item:nth-child(2) {
+        border-right: none;
+    }
+    .stat-item {
+        border-bottom: 1px solid #333;
+    }
+    .manifesto-body {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    .asymmetry {
+        grid-template-columns: 1fr;
+    }
+    .asym-right {
+        min-height: 300px;
+    }
+    .asym-right::after {
+        display: none;
+    }
+    .hero-block-red {
+        width: 50vw;
+        height: 50vw;
+        right: -10vw;
+    }
+}
+
+@media (max-width: 640px) {
+    nav {
+        height: 60px;
+    }
+    .nav-logo {
+        font-size: 1.4rem;
+        padding: 0 20px;
+    }
+    .nav-links a {
+        padding: 0 15px;
+        font-size: 0.75rem;
+    }
+    .hero {
+        min-height: 90vh;
+    }
+    .hero-title {
+        text-shadow: 3px 3px 0px var(--red);
+    }
+    .hero-block-red {
+        display: none;
+    }
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
+    .project-card:nth-child(even) {
+        margin-top: 0;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .stat-item {
+        border-right: none;
+        border-bottom: 1px solid #333;
+    }
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+    .footer-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .footer-right {
+        text-align: left;
+    }
+    section, .manifesto, .contact {
+        padding-left: 5vw;
+        padding-right: 5vw;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- 警示条 -->
+<div class="alert-bar">WARNING: THIS WEBSITE CONTAINS RAW CONCRETE, EXPOSED STRUCTURE, AND ZERO APOLOGIES</div>
+
+<!-- 导航 -->
+<nav>
+    <div class="nav-logo">BRUTALISM</div>
+    <ul class="nav-links">
+        <li><a href="#manifesto">宣言</a></li>
+        <li><a href="#projects">项目</a></li>
+        <li><a href="#contact">联络</a></li>
+    </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-main-char">裸</div>
+    <div class="hero-content">
+        <span class="hero-label">STRUCTURE OVER STYLE</span>
+        <h1 class="hero-title">
+            RAW<br>CONCRETE
+            <span class="cn">粗野主义</span>
+        </h1>
+        <p class="hero-desc">
+            我们不粉饰墙面，不隐藏梁柱，不假装完美。
+            混凝土是诚实的，钢筋是赤裸的，建筑是未完成的。
+            这才是真实。
+        </p>
+    </div>
+    <div class="hero-block-red">
+        <div class="hero-block-text">NO<br>DECO</div>
+    </div>
+    <div class="hero-strip">拒绝修饰 · 展示结构 · 直面真实 / REJECT ORNAMENT · EXPOSE STRUCTURE · FACE REALITY</div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-container">
+    <div class="marquee-text">
+        CONCRETE IS HONEST · 混凝土不说谎 · FORM FOLLOWS FUNCTION · 形式追随功能 · LESS IS A BORE · 少即是乏味 ·
+        CONCRETE IS HONEST · 混凝土不说谎 · FORM FOLLOWS FUNCTION · 形式追随功能 · LESS IS A BORE · 少即是乏味 ·
+    </div>
+</div>
+
+<!-- 宣言 -->
+<section class="manifesto" id="manifesto">
+    <h2 class="manifesto-statement reveal">
+        WE BUILD <span class="highlight">TRUTH</span>,<br>
+        NOT <span class="highlight-red">ILLUSIONS</span>.
+    </h2>
+    <div class="manifesto-body">
+        <div class="manifesto-col reveal">
+            <p>
+                粗野主义不是风格，而是一种<strong>立场</strong>。
+                它拒绝为取悦眼睛而牺牲真实。每一道模板的痕迹，
+                每一处混凝土的毛孔，每一根裸露的管线——
+                都是建筑与人之间最诚实的对话。
+            </p>
+        </div>
+        <div class="manifesto-col reveal">
+            <p>
+                我们反对光滑的幕墙、虚伪的饰面、
+                精心计算过的"自然感"。
+                当世界沉迷于滤镜与修饰时，
+                我们选择将<strong>结构裸露在外</strong>，
+                让材料自己说话，让缺陷成为特征。
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- 不对称展示 -->
+<section class="asymmetry">
+    <div class="asym-left reveal">
+        <span class="asym-label">ASYMMETRY / 非对称</span>
+        <h2 class="asym-title">BALANCE<br>IS A LIE</h2>
+        <p class="asym-text">
+            对称是暴政。自然界没有完美的对称，
+            城市也不应该有。我们刻意制造张力、
+            偏移与失衡，因为真实世界本就如此。
+            左边沉重，右边悬空；前面封闭，后面撕裂。
+            这就是粗野主义的呼吸。
+        </p>
+    </div>
+    <div class="asym-right reveal">
+        <div class="asym-right-text">WORK</div>
+    </div>
+</section>
+
+<!-- 项目 -->
+<section class="projects" id="projects">
+    <div class="section-header reveal">
+        <h2 class="section-header-title">SELECTED<br>WORKS</h2>
+        <div class="section-header-num">06</div>
+    </div>
+    <div class="projects-grid">
+        <div class="project-card reveal">
+            <div class="project-img"></div>
+            <div class="project-info">
+                <div class="project-num">PRJ.01</div>
+                <h3 class="project-title">BRUTAL TOWER</h3>
+                <p class="project-desc">混凝土巨塔，无窗立面，以纯粹体量刺破天际。内部中庭裸露所有设备管线。</p>
+            </div>
+        </div>
+        <div class="project-card reveal">
+            <div class="project-img" style="background: #B0B0B0;"></div>
+            <div class="project-info">
+                <div class="project-num">PRJ.02</div>
+                <h3 class="project-title">RAW MUSEUM</h3>
+                <p class="project-desc">清水混凝土浇筑的展览空间。墙面保留模板孔洞，地面不做任何抛光处理。</p>
+            </div>
+        </div>
+        <div class="project-card reveal">
+            <div class="project-img" style="background: #A0A0A0;"></div>
+            <div class="project-info">
+                <div class="project-num">PRJ.03</div>
+                <h3 class="project-title">EXPOSED CORE</h3>
+                <p class="project-desc">住宅项目。电梯井、消防楼梯、排水管全部外露。住户每天面对真实的建筑内脏。</p>
+            </div>
+        </div>
+        <div class="project-card reveal">
+            <div class="project-img" style="background: #909090;"></div>
+            <div class="project-info">
+                <div class="project-num">PRJ.04</div>
+                <h3 class="project-title">HEAVY BLOCK</h3>
+                <p class="project-desc">政府办公综合体。预制混凝土板块以粗暴方式堆叠，缝隙不做填缝处理。</p>
+            </div>
+        </div>
+        <div class="project-card reveal">
+            <div class="project-img" style="background: #888888;"></div>
+            <div class="project-info">
+                <div class="project-num">PRJ.05</div>
+                <h3 class="project-title">VOID HOUSE</h3>
+                <p class="project-desc">私人住宅。中央凿出巨型空洞，混凝土断面直接作为室内墙面，不加任何覆盖。</p>
+            </div>
+        </div>
+        <div class="project-card reveal">
+            <div class="project-img" style="background: #787878;"></div>
+            <div class="project-info">
+                <div class="project-num">PRJ.06</div>
+                <h3 class="project-title">UNFINISHED</h3>
+                <p class="project-desc">文化中心。建筑刻意保留"未完工"状态，钢筋头外露，混凝土表面保留浇筑瑕疵。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 数据 -->
+<section class="stats">
+    <div class="stats-grid">
+        <div class="stat-item reveal">
+            <div class="stat-number">2019</div>
+            <div class="stat-label">ESTABLISHED</div>
+            <div class="stat-label-cn">成立于</div>
+        </div>
+        <div class="stat-item reveal">
+            <div class="stat-number">47</div>
+            <div class="stat-label">PROJECTS</div>
+            <div class="stat-label-cn">完成项目</div>
+        </div>
+        <div class="stat-item reveal">
+            <div class="stat-number red">0</div>
+            <div class="stat-label">COMPROMISES</div>
+            <div class="stat-label-cn">妥协次数</div>
+        </div>
+        <div class="stat-item reveal">
+            <div class="stat-number">100%</div>
+            <div class="stat-label">BRUTAL</div>
+            <div class="stat-label-cn">粗野纯度</div>
+        </div>
+    </div>
+</section>
+
+<!-- 联系 -->
+<section class="contact" id="contact">
+    <div class="contact-header reveal">
+        <h2 class="contact-title">TALK TO US<br>IF YOU DARE</h2>
+        <p class="contact-sub">如果你也厌倦了圆滑、修饰与伪装，欢迎联络。我们只与敢于直面真实的人合作。</p>
+    </div>
+    <form class="contact-form reveal" onsubmit="event.preventDefault(); alert('MESSAGE SENT. WE WILL RESPOND IN RAW TEXT.');">
+        <div class="form-row">
+            <input type="text" class="form-input" placeholder="NAME / 姓名" required>
+            <input type="email" class="form-input" placeholder="EMAIL / 邮箱" required>
+        </div>
+        <input type="text" class="form-input" placeholder="SUBJECT / 主题" style="margin-top:0;" required>
+        <textarea class="form-textarea" placeholder="MESSAGE / 留言" required></textarea>
+        <button type="submit" class="form-submit">SEND MESSAGE — 发送</button>
+    </form>
+</section>
+
+<!-- 页脚 -->
+<footer>
+    <div class="footer-giant">BRUTALISM</div>
+    <div class="footer-content">
+        <div class="footer-left">
+            <div class="footer-brand">BRUTALISM</div>
+            <p class="footer-text">
+                裸露的结构，真实的材料，拒绝修饰。<br>
+                这是粗野主义，这是真实本身。
+            </p>
+        </div>
+        <div class="footer-right">
+            <ul class="footer-links">
+                <li><a href="#manifesto">宣言</a></li>
+                <li><a href="#projects">项目</a></li>
+                <li><a href="#contact">联络</a></li>
+            </ul>
+            <p class="footer-copy">ALL RIGHTS RESERVED. NO DECORATION ALLOWED.</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+// 粗暴的滚动显示 — 直接出现，无缓动
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+        }
+    });
+}, { threshold: 0.15 });
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// 平滑滚动 — 但保持粗野感，直接跳转
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'auto' });
+    });
+});
+</script>
+
+</body>
+</html>

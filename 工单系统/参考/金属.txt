@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURELIA · 鎏金典藏</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Noto+Serif+SC:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --gold-pale: #F4E4BC;
+      --gold-light: #E8D5A3;
+      --gold-mid: #D4AF37;
+      --gold-rich: #C5A028;
+      --gold-deep: #B8860B;
+      --gold-dark: #8B6914;
+      --obsidian: #0A0A0A;
+      --obsidian-mid: #111111;
+      --obsidian-light: #1A1A1A;
+      --bronze: #6B4E2C;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Noto Serif SC', 'Playfair Display', serif;
+      background-color: var(--obsidian);
+      color: var(--gold-pale);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ── 金属质感底层 ── */
+    .metal-base {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(212, 175, 55, 0.04) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(26, 26, 26, 0.5) 0%, var(--obsidian) 70%),
+        linear-gradient(180deg, var(--obsidian) 0%, var(--obsidian-mid) 40%, var(--obsidian) 100%);
+    }
+
+    /* 金属噪点纹理 */
+    .metal-texture {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.4;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+      mix-blend-mode: overlay;
+    }
+
+    /* ── 外框装饰 ── */
+    .outer-frame {
+      position: fixed;
+      inset: 24px;
+      border: 1px solid rgba(212, 175, 55, 0.1);
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .outer-frame::before {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border: 1px solid rgba(212, 175, 55, 0.04);
+    }
+
+    /* 四角花饰 */
+    .corner-ornament {
+      position: fixed;
+      width: 48px;
+      height: 48px;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    .corner-ornament::before,
+    .corner-ornament::after {
+      content: '';
+      position: absolute;
+      background: linear-gradient(180deg, var(--gold-mid), var(--gold-dark));
+    }
+
+    .corner-ornament.tl {
+      top: 24px;
+      left: 24px;
+    }
+
+    .corner-ornament.tl::before {
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 32px;
+    }
+
+    .corner-ornament.tl::after {
+      top: 0;
+      left: 0;
+      width: 32px;
+      height: 1px;
+    }
+
+    .corner-ornament.tr {
+      top: 24px;
+      right: 24px;
+    }
+
+    .corner-ornament.tr::before {
+      top: 0;
+      right: 0;
+      width: 1px;
+      height: 32px;
+    }
+
+    .corner-ornament.tr::after {
+      top: 0;
+      right: 0;
+      width: 32px;
+      height: 1px;
+    }
+
+    .corner-ornament.bl {
+      bottom: 24px;
+      left: 24px;
+    }
+
+    .corner-ornament.bl::before {
+      bottom: 0;
+      left: 0;
+      width: 1px;
+      height: 32px;
+    }
+
+    .corner-ornament.bl::after {
+      bottom: 0;
+      left: 0;
+      width: 32px;
+      height: 1px;
+    }
+
+    .corner-ornament.br {
+      bottom: 24px;
+      right: 24px;
+    }
+
+    .corner-ornament.br::before {
+      bottom: 0;
+      right: 0;
+      width: 1px;
+      height: 32px;
+    }
+
+    .corner-ornament.br::after {
+      bottom: 0;
+      right: 0;
+      width: 32px;
+      height: 1px;
+    }
+
+    /* ── 主容器 ── */
+    .main-container {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── 烫金徽标 ── */
+    .emblem-wrapper {
+      margin-bottom: 64px;
+      position: relative;
+    }
+
+    .emblem {
+      width: 88px;
+      height: 88px;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: linear-gradient(135deg, rgba(212, 175, 55, 0.03), transparent);
+      box-shadow:
+        0 0 0 1px rgba(212, 175, 55, 0.05),
+        inset 0 0 20px rgba(212, 175, 55, 0.03);
+    }
+
+    .emblem::before {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border: 1px solid rgba(212, 175, 55, 0.18);
+    }
+
+    .emblem::after {
+      content: '';
+      position: absolute;
+      inset: 16px;
+      border: 1px solid rgba(212, 175, 55, 0.08);
+    }
+
+    .emblem-inner {
+      font-family: 'Cinzel', serif;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 0;
+      background: linear-gradient(
+        135deg,
+        var(--gold-pale) 0%,
+        var(--gold-mid) 40%,
+        var(--gold-rich) 60%,
+        var(--gold-pale) 100%
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.8));
+      position: relative;
+    }
+
+    /* 徽标光晕 */
+    .emblem-glow {
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.06) 0%, transparent 70%);
+      pointer-events: none;
+      animation: pulse-glow 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    /* ── 建立年份 ── */
+    .established {
+      font-family: 'Cinzel', serif;
+      font-weight: 400;
+      font-size: 0.7rem;
+      letter-spacing: 0.6em;
+      color: rgba(244, 228, 188, 0.35);
+      text-align: center;
+      margin-bottom: 32px;
+      text-transform: uppercase;
+    }
+
+    /* ── 主标题：浮雕烫金 ── */
+    .main-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      font-weight: 700;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.1;
+      position: relative;
+      margin-bottom: 8px;
+      text-indent: 0.35em;
+    }
+
+    /* 金色渐变填充 */
+    .main-title .title-text {
+      background: linear-gradient(
+        180deg,
+        var(--gold-pale) 0%,
+        var(--gold-light) 15%,
+        var(--gold-mid) 35%,
+        var(--gold-rich) 50%,
+        var(--gold-mid) 65%,
+        var(--gold-light) 85%,
+        var(--gold-pale) 100%
+      );
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    /* 浮雕凸起效果：多层阴影 */
+    .main-title {
+      text-shadow:
+        /* 高光层（顶部） */
+        0 -1px 1px rgba(244, 228, 188, 0.3),
+        0 -2px 2px rgba(244, 228, 188, 0.15),
+        /* 主体投影 */
+        0 1px 1px rgba(0, 0, 0, 0.9),
+        0 2px 2px rgba(0, 0, 0, 0.8),
+        0 3px 4px rgba(0, 0, 0, 0.6),
+        0 4px 8px rgba(0, 0, 0, 0.4),
+        /* 金色环境光 */
+        0 0 40px rgba(212, 175, 55, 0.08),
+        0 0 80px rgba(212, 175, 55, 0.04);
+    }
+
+    /* 烫金描边层 */
+    .main-title::before {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      font-family: 'Cinzel', serif;
+      font-size: inherit;
+      font-weight: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
+      text-align: center;
+      text-indent: inherit;
+      -webkit-text-stroke: 1.5px rgba(212, 175, 55, 0.25);
+      -webkit-text-fill-color: transparent;
+      z-index: -1;
+    }
+
+    /* 光扫动画 */
+    .shine-sweep {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .shine-sweep::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 30%;
+      height: 200%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(244, 228, 188, 0.08),
+        rgba(244, 228, 188, 0.15),
+        rgba(244, 228, 188, 0.08),
+        transparent
+      );
+      transform: rotate(25deg);
+      animation: sweep 6s ease-in-out infinite;
+    }
+
+    @keyframes sweep {
+      0% { left: -60%; }
+      100% { left: 160%; }
+    }
+
+    /* ── 金色细线分割 ── */
+    .gold-divider {
+      width: 140px;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(212, 175, 55, 0.2) 15%,
+        var(--gold-mid) 40%,
+        var(--gold-pale) 50%,
+        var(--gold-mid) 60%,
+        rgba(212, 175, 55, 0.2) 85%,
+        transparent 100%
+      );
+      margin: 48px auto;
+      position: relative;
+    }
+
+    .gold-divider::before,
+    .gold-divider::after {
+      content: '';
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background: var(--gold-mid);
+      border-radius: 50%;
+      top: 50%;
+      transform: translateY(-50%);
+      box-shadow:
+        0 0 6px rgba(212, 175, 55, 0.4),
+        0 0 12px rgba(212, 175, 55, 0.2);
+    }
+
+    .gold-divider::before { left: -2px; }
+    .gold-divider::after { right: -2px; }
+
+    /* 双线变体 */
+    .gold-divider.double {
+      height: 3px;
+      background: transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: center;
+    }
+
+    .gold-divider.double::before,
+    .gold-divider.double::after {
+      display: none;
+    }
+
+    .gold-divider.double .line {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(212, 175, 55, 0.15) 20%,
+        var(--gold-mid) 45%,
+        var(--gold-pale) 50%,
+        var(--gold-mid) 55%,
+        rgba(212, 175, 55, 0.15) 80%,
+        transparent 100%
+      );
+    }
+
+    /* ── 副标题 ── */
+    .subtitle {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      font-size: clamp(0.85rem, 2vw, 1.05rem);
+      letter-spacing: 0.4em;
+      color: rgba(244, 228, 188, 0.45);
+      text-align: center;
+      margin-bottom: 16px;
+      line-height: 1.8;
+    }
+
+    /* ── 正文内容 ── */
+    .content-section {
+      max-width: 560px;
+      text-align: center;
+      margin: 0 auto;
+    }
+
+    .verse {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 300;
+      font-size: clamp(0.9rem, 1.8vw, 1.05rem);
+      line-height: 2.6;
+      letter-spacing: 0.12em;
+      color: rgba(244, 228, 188, 0.55);
+      margin-bottom: 2.5em;
+      position: relative;
+    }
+
+    .verse:last-child {
+      margin-bottom: 0;
+    }
+
+    /* 首字下沉效果 */
+    .verse.drop-cap::first-letter {
+      font-family: 'Cinzel', serif;
+      font-size: 2.8em;
+      float: left;
+      line-height: 0.9;
+      margin-right: 0.1em;
+      margin-top: 0.05em;
+      background: linear-gradient(180deg, var(--gold-pale), var(--gold-mid));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 600;
+    }
+
+    /* ── 底部落款 ── */
+    .footer-section {
+      margin-top: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-line {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(212, 175, 55, 0.15),
+        transparent
+      );
+    }
+
+    .footer-text {
+      font-family: 'Cinzel', serif;
+      font-weight: 400;
+      font-size: 0.65rem;
+      letter-spacing: 0.4em;
+      color: rgba(244, 228, 188, 0.25);
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .footer-chinese {
+      font-family: 'Noto Serif SC', serif;
+      font-weight: 200;
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      color: rgba(244, 228, 188, 0.2);
+    }
+
+    /* ── 悬浮粒子 ── */
+    .particle {
+      position: fixed;
+      border-radius: 50%;
+      background: var(--gold-mid);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      animation: float-particle 12s ease-in-out infinite;
+    }
+
+    .particle:nth-child(1) {
+      width: 2px;
+      height: 2px;
+      top: 20%;
+      left: 15%;
+      animation-delay: 0s;
+    }
+
+    .particle:nth-child(2) {
+      width: 1.5px;
+      height: 1.5px;
+      top: 40%;
+      right: 20%;
+      animation-delay: -4s;
+    }
+
+    .particle:nth-child(3) {
+      width: 2.5px;
+      height: 2.5px;
+      bottom: 30%;
+      left: 25%;
+      animation-delay: -8s;
+    }
+
+    @keyframes float-particle {
+      0%, 100% {
+        opacity: 0;
+        transform: translateY(0) scale(1);
+      }
+      20% {
+        opacity: 0.3;
+      }
+      50% {
+        opacity: 0.15;
+        transform: translateY(-30px) scale(1.2);
+      }
+      80% {
+        opacity: 0.1;
+      }
+    }
+
+    /* ── 淡入动画 ── */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .fade-in {
+      animation: fadeInUp 1.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+
+    .fade-in-slow {
+      animation: fadeIn 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+
+    .delay-1 { animation-delay: 0.2s; }
+    .delay-2 { animation-delay: 0.5s; }
+    .delay-3 { animation-delay: 0.9s; }
+    .delay-4 { animation-delay: 1.3s; }
+    .delay-5 { animation-delay: 1.7s; }
+    .delay-6 { animation-delay: 2.1s; }
+    .delay-7 { animation-delay: 2.5s; }
+
+    /* ── 响应式 ── */
+    @media (max-width: 640px) {
+      .main-container {
+        padding: 100px 28px;
+      }
+      .outer-frame {
+        inset: 16px;
+      }
+      .corner-ornament {
+        width: 32px;
+        height: 32px;
+      }
+      .corner-ornament.tl::before,
+      .corner-ornament.tr::before,
+      .corner-ornament.bl::before,
+      .corner-ornament.br::before {
+        height: 24px;
+      }
+      .corner-ornament.tl::after,
+      .corner-ornament.tr::after,
+      .corner-ornament.bl::after,
+      .corner-ornament.br::after {
+        width: 24px;
+      }
+      .emblem {
+        width: 72px;
+        height: 72px;
+      }
+      .emblem-inner {
+        font-size: 26px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 金属底层 -->
+  <div class="metal-base fade-in-slow delay-1"></div>
+  <div class="metal-texture fade-in-slow delay-1"></div>
+
+  <!-- 悬浮粒子 -->
+  <div class="particle"></div>
+  <div class="particle"></div>
+  <div class="particle"></div>
+
+  <!-- 外框 -->
+  <div class="outer-frame"></div>
+  <div class="corner-ornament tl"></div>
+  <div class="corner-ornament tr"></div>
+  <div class="corner-ornament bl"></div>
+  <div class="corner-ornament br"></div>
+
+  <!-- 主内容 -->
+  <main class="main-container">
+
+    <!-- 烫金徽标 -->
+    <div class="emblem-wrapper fade-in delay-1">
+      <div class="emblem-glow"></div>
+      <div class="emblem">
+        <span class="emblem-inner">A</span>
+      </div>
+    </div>
+
+    <!-- 建立年份 -->
+    <p class="established fade-in delay-2">Est. MCMXCVI</p>
+
+    <!-- 主标题 -->
+    <h1 class="main-title fade-in delay-3" data-text="AURELIA">
+      <span class="title-text">AURELIA</span>
+      <span class="shine-sweep"></span>
+    </h1>
+
+    <!-- 金色分割线 -->
+    <div class="gold-divider fade-in delay-4"></div>
+
+    <!-- 副标题 -->
+    <p class="subtitle fade-in delay-4">鎏金典藏 ·  timeless elegance</p>
+
+    <!-- 正文 -->
+    <div class="content-section">
+      <p class="verse drop-cap fade-in delay-5">
+        时间是最珍贵的金属，在沉默中沉淀出永恒的光泽。每一道纹路都是岁月的刻痕，每一寸鎏金都是匠心的凝结。
+      </p>
+
+      <p class="verse fade-in delay-6">
+        不为浮华所动，只为经典而生。当指尖触碰那温润的浮雕，便能感受到跨越世纪的重量与温度。
+      </p>
+
+      <p class="verse fade-in delay-7">
+        奢华从不是喧嚣的炫耀，而是内敛的从容。在光与影的交错中，鎏金诉说着关于永恒的故事。
+      </p>
+    </div>
+
+    <!-- 双线分割 -->
+    <div class="gold-divider double fade-in delay-7">
+      <div class="line"></div>
+      <div class="line"></div>
+    </div>
+
+    <!-- 底部落款 -->
+    <div class="footer-section fade-in delay-7">
+      <div class="footer-line"></div>
+      <p class="footer-text">Handcrafted Excellence</p>
+      <p class="footer-chinese">匠心独运 · 世代传承</p>
+    </div>
+
+  </main>
+
+</body>
+</html>

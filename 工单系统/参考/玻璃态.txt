@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ethereal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-deep: #020617;
+      --glass-bg: rgba(255, 255, 255, 0.03);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --glass-border-bright: rgba(255, 255, 255, 0.14);
+      --text-primary: rgba(255, 255, 255, 0.92);
+      --text-secondary: rgba(255, 255, 255, 0.45);
+      --text-tertiary: rgba(255, 255, 255, 0.25);
+      --orb-blue: rgba(59, 130, 246, 0.35);
+      --orb-purple: rgba(139, 92, 246, 0.30);
+      --orb-rose: rgba(236, 72, 153, 0.22);
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-weight: 400;
+      background-color: var(--bg-deep);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    /* ── 背景光斑 ── */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      will-change: transform;
+    }
+
+    .orb-1 {
+      width: 600px;
+      height: 600px;
+      background: var(--orb-blue);
+      top: -10%;
+      left: -5%;
+      opacity: 0.5;
+      animation: drift-1 24s ease-in-out infinite;
+    }
+
+    .orb-2 {
+      width: 500px;
+      height: 500px;
+      background: var(--orb-purple);
+      top: 40%;
+      right: -10%;
+      opacity: 0.4;
+      animation: drift-2 28s ease-in-out infinite;
+    }
+
+    .orb-3 {
+      width: 400px;
+      height: 400px;
+      background: var(--orb-rose);
+      bottom: -5%;
+      left: 30%;
+      opacity: 0.35;
+      animation: drift-3 32s ease-in-out infinite;
+    }
+
+    @keyframes drift-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(60px, 40px) scale(1.08); }
+      66% { transform: translate(-30px, 80px) scale(0.95); }
+    }
+
+    @keyframes drift-2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-80px, -60px) scale(1.1); }
+    }
+
+    @keyframes drift-3 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(50px, -40px) scale(1.05); }
+      66% { transform: translate(-40px, 20px) scale(0.92); }
+    }
+
+    /* ── 鼠标聚光灯 ── */
+    .spotlight {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(
+        700px circle at var(--mx, 50%) var(--my, 50%),
+        rgba(255, 255, 255, 0.035),
+        transparent 50%
+      );
+      transition: background 0.15s ease-out;
+    }
+
+    /* ── 噪点纹理 ── */
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0.25;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      mix-blend-mode: overlay;
+    }
+
+    /* ── 主容器 ── */
+    .page {
+      position: relative;
+      z-index: 3;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 48px;
+    }
+
+    @media (max-width: 768px) {
+      .page {
+        padding: 0 24px;
+      }
+    }
+
+    /* ── 玻璃工具 ── */
+    .glass {
+      background: var(--glass-bg);
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      border: 1px solid var(--glass-border);
+      border-radius: 28px;
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                  border-color 0.4s ease,
+                  box-shadow 0.4s ease;
+    }
+
+    .glass::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        transparent 40%,
+        transparent 60%,
+        rgba(255, 255, 255, 0.03) 100%
+      );
+      pointer-events: none;
+    }
+
+    .glass:hover {
+      border-color: var(--glass-border-bright);
+      box-shadow:
+        0 12px 48px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    /* ── 导航 ── */
+    .nav {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: calc(100% - 96px);
+      max-width: 1024px;
+      padding: 14px 28px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .nav-logo {
+      font-weight: 500;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      color: var(--text-primary);
+    }
+
+    .nav-index {
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      color: var(--text-tertiary);
+    }
+
+    @media (max-width: 768px) {
+      .nav {
+        width: calc(100% - 48px);
+        padding: 12px 20px;
+        top: 16px;
+      }
+    }
+
+    /* ── 主视觉网格 ── */
+    .hero {
+      padding-top: 160px;
+      padding-bottom: 80px;
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .hero-main {
+      grid-row: 1 / 3;
+      padding: 56px 48px;
+    }
+
+    .hero-side-top {
+      padding: 36px 32px;
+      margin-top: 48px;
+    }
+
+    .hero-side-bottom {
+      padding: 36px 32px;
+    }
+
+    .label {
+      display: inline-block;
+      font-weight: 400;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      margin-bottom: 24px;
+      padding: 4px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 100px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .hero-title {
+      font-weight: 300;
+      font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .hero-lead {
+      font-weight: 300;
+      font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+      line-height: 1.7;
+      color: var(--text-secondary);
+      max-width: 420px;
+    }
+
+    .side-title {
+      font-weight: 400;
+      font-size: 1.05rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+
+    .side-text {
+      font-weight: 300;
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding-top: 120px;
+        gap: 16px;
+      }
+      .hero-main {
+        grid-row: auto;
+        padding: 40px 28px;
+      }
+      .hero-side-top,
+      .hero-side-bottom {
+        margin-top: 0;
+        padding: 28px 24px;
+      }
+    }
+
+    /* ── 分隔 ── */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.08) 30%,
+        rgba(255, 255, 255, 0.08) 70%,
+        transparent
+      );
+      margin: 40px 0;
+    }
+
+    /* ── 原则区 ── */
+    .principles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      padding-bottom: 120px;
+    }
+
+    .principle-card {
+      padding: 40px 32px;
+    }
+
+    .principle-number {
+      font-weight: 300;
+      font-size: 0.65rem;
+      letter-spacing: 0.15em;
+      color: var(--text-tertiary);
+      margin-bottom: 20px;
+      display: block;
+    }
+
+    .principle-title {
+      font-weight: 400;
+      font-size: 1.1rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 12px;
+    }
+
+    .principle-body {
+      font-weight: 300;
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+      .principles {
+        grid-template-columns: 1fr;
+        padding-bottom: 80px;
+      }
+      .principle-card {
+        padding: 32px 24px;
+      }
+    }
+
+    /* ── 页脚 ── */
+    .footer {
+      padding-bottom: 48px;
+    }
+
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 32px;
+    }
+
+    .footer-text {
+      font-weight: 300;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+    }
+
+    @media (max-width: 768px) {
+      .footer-inner {
+        padding: 16px 24px;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+    }
+
+    /* ── 入场动画 ── */
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .rise {
+      animation: rise 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      opacity: 0;
+    }
+
+    .d-1 { animation-delay: 0.1s; }
+    .d-2 { animation-delay: 0.25s; }
+    .d-3 { animation-delay: 0.4s; }
+    .d-4 { animation-delay: 0.55s; }
+    .d-5 { animation-delay: 0.7s; }
+    .d-6 { animation-delay: 0.85s; }
+  </style>
+</head>
+<body>
+
+  <!-- 环境层 -->
+  <div class="ambient">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="spotlight" id="spotlight"></div>
+  <div class="grain"></div>
+
+  <!-- 导航 -->
+  <nav class="nav rise d-1">
+    <span class="nav-logo">ETHEREAL</span>
+    <span class="nav-index">INDEX 01</span>
+  </nav>
+
+  <!-- 主内容 -->
+  <div class="page">
+
+    <!-- 主视觉 -->
+    <section class="hero">
+      <div class="glass hero-main rise d-2">
+        <span class="label">Interface</span>
+        <h1 class="hero-title">Through the<br>Mist</h1>
+        <p class="hero-lead">
+          Reality softens at the edges. Information passes through surfaces that exist between states, neither fully present nor entirely absent.
+        </p>
+      </div>
+
+      <div class="glass hero-side-top rise d-3">
+        <h2 class="side-title">Transparency</h2>
+        <p class="side-text">
+          Light bends through layers of meaning. What remains visible is only what matters.
+        </p>
+      </div>
+
+      <div class="glass hero-side-bottom rise d-4">
+        <h2 class="side-title">Weightless</h2>
+        <p class="side-text">
+          Untethered from material constraints, content floats in a field of pure relation.
+        </p>
+      </div>
+    </section>
+
+    <div class="divider rise d-5"></div>
+
+    <!-- 原则 -->
+    <section class="principles">
+      <div class="glass principle-card rise d-5">
+        <span class="principle-number">01</span>
+        <h3 class="principle-title">Refraction</h3>
+        <p class="principle-body">
+          Every surface bends the truth slightly. The interface is a lens, not a window.
+        </p>
+      </div>
+
+      <div class="glass principle-card rise d-6">
+        <span class="principle-number">02</span>
+        <h3 class="principle-title">Diffusion</h3>
+        <p class="principle-body">
+          Sharp edges dissolve. Hierarchy emerges from depth, not from contrast.
+        </p>
+      </div>
+
+      <div class="glass principle-card rise d-6">
+        <span class="principle-number">03</span>
+        <h3 class="principle-title">Suspension</h3>
+        <p class="principle-body">
+          Elements hover in equilibrium. Nothing touches the ground. Nothing is anchored.
+        </p>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer rise d-6">
+      <div class="glass footer-inner">
+        <span class="footer-text">Inter / 2026</span>
+        <span class="footer-text">All rights reserved</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // 鼠标聚光灯
+    const spotlight = document.getElementById('spotlight');
+    
+    document.addEventListener('mousemove', (e) => {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      spotlight.style.setProperty('--mx', x + '%');
+      spotlight.style.setProperty('--my', y + '%');
+    });
+
+    // 触摸设备禁用聚光灯以节省性能
+    if ('ontouchstart' in window) {
+      spotlight.style.display = 'none';
+    }
+  </script>
+
+</body>
+</html>

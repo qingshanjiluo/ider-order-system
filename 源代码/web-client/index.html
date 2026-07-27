@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>艾德尔修仙传</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@200;300;400;600&family=Zhi+Mang+Xing&family=Noto+Serif+JP:wght@200;300;400;600;700;900&family=Inter:wght@200;300;400;500&family=Noto+Sans+SC:wght@200;300;400;500&family=Anton&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=20260416b">
+  <link rel="stylesheet" href="inkwash.css?v=1">
+  <link rel="stylesheet" href="wabi.css?v=1">
+  <link rel="stylesheet" href="minimal.css?v=1">
+  <link rel="stylesheet" href="glass.css?v=1">
+  <link rel="stylesheet" href="brutal.css?v=1">
   <script src="js/vendor/vue.global.prod.js?v=3.5.30"></script>
   <script>if(typeof Vue==='undefined'){document.write('<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"><\/script>');}</script>
   <script>if(typeof Vue==='undefined'){document.write('<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"><\/script>');}</script>
@@ -264,7 +272,7 @@
         <span title="灵石">💎 {{ formatNumber(player.spirit_stones || 0) }}</span>
         <span v-if="player.sect_id" title="宗门贡献" style="margin-left:8px">📜 {{ player.sect_contribution || 0 }}</span>
       </div>
-      <button class="btn-icon" @click="toggleTheme" title="切换主题">🌓</button>
+      <button class="btn-icon" @click="toggleTheme" title="切换主题">{{ themeMode==='dark' ? '🌕' : themeMode==='light' ? '🖌' : themeMode==='inkwash' ? '🏯' : themeMode==='wabi' ? '◻' : themeMode==='minimal' ? '💎' : themeMode==='glass' ? '🧱' : '🌓' }}</button>
       <button class="btn-icon" @click="doLogout" title="换号/退出">⏏</button>
     </header>
     <div v-if="!isOnline" class="offline-bar">连接断开，正在尝试重连…</div>
@@ -3100,7 +3108,7 @@
         </div>
 
         <h3 class="section-title" style="margin-top:16px">主题</h3>
-        <button class="btn-sm" @click="toggleTheme">{{ darkTheme ? '切换浅色' : '切换深色' }}</button>
+        <button class="btn-sm" @click="toggleTheme">{{ themeMode==='dark' ? '切换浅色' : themeMode==='light' ? '切换水墨' : themeMode==='inkwash' ? '切换侘寂' : themeMode==='wabi' ? '切换极简' : themeMode==='minimal' ? '切换玻璃' : themeMode==='glass' ? '切换粗野' : '切换深色' }}</button>
 
         <h3 class="section-title" style="margin-top:16px">其他</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap">

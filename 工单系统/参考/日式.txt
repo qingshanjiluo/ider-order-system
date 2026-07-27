@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>侘寂 · 一期一会</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg-washi: #F5F0E8;
+    --bg-warm: #EDE8DD;
+    --ink-black: #2C2C2C;
+    --ink-light: #5A5A5A;
+    --ink-fade: #8A8A8A;
+    --vermilion: #B7413E;
+    --vermilion-deep: #8B2E2C;
+    --bamboo: #6B8E6B;
+    --stone: #7A8B8B;
+    --sand: #C4B9A8;
+    --line: rgba(44,44,44,0.12);
+    --line-strong: rgba(44,44,44,0.25);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Noto Serif JP', 'Noto Serif SC', 'Songti SC', serif;
+    background-color: var(--bg-washi);
+    color: var(--ink-black);
+    line-height: 2;
+    letter-spacing: 0.08em;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 纸张纹理 */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
+}
+
+/* 墨点装饰 */
+.ink-dot {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--ink-black) 0%, transparent 70%);
+    opacity: 0.08;
+    pointer-events: none;
+}
+
+/* 导航 */
+nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 40px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+    background: linear-gradient(180deg, var(--bg-washi) 0%, transparent 100%);
+}
+
+.logo {
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.3em;
+    color: var(--ink-black);
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    position: fixed;
+    left: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: auto;
+    line-height: 2.5;
+}
+
+.nav-links {
+    display: flex;
+    gap: 48px;
+    list-style: none;
+    position: fixed;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    flex-direction: column;
+    align-items: center;
+}
+
+.nav-links a {
+    color: var(--ink-light);
+    text-decoration: none;
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.2em;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    transition: color 0.6s ease;
+    position: relative;
+    padding: 8px 0;
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 1px;
+    background: var(--vermilion);
+    transition: width 0.6s ease;
+}
+
+.nav-links a:hover {
+    color: var(--vermilion-deep);
+}
+
+.nav-links a:hover::after {
+    width: 100%;
+}
+
+/* 细线装饰 */
+.divider-line {
+    width: 1px;
+    height: 80px;
+    background: var(--line-strong);
+    margin: 0 auto;
+    opacity: 0.6;
+}
+
+.divider-line-horizontal {
+    width: 60px;
+    height: 1px;
+    background: var(--line-strong);
+    margin: 40px auto;
+    opacity: 0.6;
+}
+
+/* Hero区域 */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0 120px;
+    overflow: hidden;
+}
+
+.hero-bg-kanji {
+    position: absolute;
+    font-size: 45vw;
+    font-weight: 900;
+    color: var(--ink-black);
+    opacity: 0.025;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: 0.1em;
+}
+
+.hero-content {
+    text-align: center;
+    position: relative;
+    z-index: 2;
+    max-width: 600px;
+}
+
+.hero-subtitle {
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: var(--ink-fade);
+    letter-spacing: 0.5em;
+    margin-bottom: 30px;
+}
+
+.hero-title {
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    line-height: 1.4;
+    color: var(--ink-black);
+    margin-bottom: 30px;
+}
+
+.hero-title span {
+    display: block;
+}
+
+.hero-desc {
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: var(--ink-light);
+    line-height: 2.4;
+    letter-spacing: 0.12em;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.scroll-hint {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7rem;
+    color: var(--ink-fade);
+    letter-spacing: 0.3em;
+    animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+    0%, 100% { opacity: 0.4; transform: translateX(-50%) translateY(0); }
+    50% { opacity: 0.8; transform: translateX(-50%) translateY(8px); }
+}
+
+/* Section通用 */
+section {
+    padding: 140px 120px;
+    position: relative;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.section-label {
+    font-size: 0.7rem;
+    font-weight: 300;
+    color: var(--vermilion);
+    letter-spacing: 0.4em;
+    margin-bottom: 20px;
+}
+
+.section-title {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    line-height: 1.5;
+    margin-bottom: 24px;
+    color: var(--ink-black);
+}
+
+.section-desc {
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: var(--ink-light);
+    line-height: 2.4;
+    max-width: 560px;
+    letter-spacing: 0.08em;
+}
+
+/* 侘寂理念 */
+.wabi-section {
+    background: linear-gradient(180deg, var(--bg-washi) 0%, var(--bg-warm) 50%, var(--bg-washi) 100%);
+}
+
+.wabi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 100px;
+    align-items: center;
+    margin-top: 60px;
+}
+
+.wabi-text-block {
+    padding-right: 40px;
+}
+
+.wabi-quote {
+    font-size: 1.1rem;
+    font-weight: 400;
+    color: var(--ink-black);
+    line-height: 2.6;
+    letter-spacing: 0.1em;
+    margin-bottom: 30px;
+    position: relative;
+    padding-left: 30px;
+    border-left: 2px solid var(--vermilion);
+}
+
+.wabi-quote-source {
+    font-size: 0.8rem;
+    color: var(--ink-fade);
+    letter-spacing: 0.15em;
+    text-align: right;
+    margin-top: 16px;
+}
+
+.wabi-visual {
+    position: relative;
+    height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wabi-circle {
+    width: 300px;
+    height: 300px;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wabi-circle-inner {
+    width: 200px;
+    height: 200px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.wabi-kanji {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--ink-black);
+    opacity: 0.15;
+    letter-spacing: 0.2em;
+}
+
+.wabi-ink-splash {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(ellipse at center, rgba(44,44,44,0.08) 0%, transparent 70%);
+    border-radius: 60% 40% 50% 50%;
+    top: 20%;
+    right: 10%;
+}
+
+.wabi-ink-splash:nth-child(2) {
+    width: 80px;
+    height: 80px;
+    bottom: 15%;
+    left: 15%;
+    top: auto;
+    right: auto;
+    border-radius: 40% 60% 40% 60%;
+}
+
+/* 四季 */
+.seasons-section {
+    padding-top: 100px;
+}
+
+.seasons-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+    margin-top: 80px;
+    background: var(--line);
+}
+
+.season-card {
+    background: var(--bg-washi);
+    padding: 60px 30px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.8s ease;
+}
+
+.season-card:hover {
+    background: var(--bg-warm);
+}
+
+.season-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: var(--vermilion);
+    transition: width 0.6s ease;
+}
+
+.season-card:hover::before {
+    width: 40px;
+}
+
+.season-icon {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    opacity: 0.2;
+    letter-spacing: 0.1em;
+}
+
+.season-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: 0.15em;
+}
+
+.season-name-en {
+    font-size: 0.65rem;
+    font-weight: 300;
+    color: var(--ink-fade);
+    letter-spacing: 0.2em;
+    margin-bottom: 24px;
+}
+
+.season-desc {
+    font-size: 0.85rem;
+    font-weight: 300;
+    color: var(--ink-light);
+    line-height: 2.2;
+    letter-spacing: 0.06em;
+}
+
+/* 手作工艺 */
+.craft-section {
+    background: var(--bg-warm);
+}
+
+.craft-container {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 80px;
+    align-items: start;
+    margin-top: 60px;
+}
+
+.craft-item {
+    margin-bottom: 60px;
+    position: relative;
+    padding-left: 40px;
+}
+
+.craft-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 20px;
+    height: 1px;
+    background: var(--vermilion);
+    opacity: 0.6;
+}
+
+.craft-item:last-child {
+    margin-bottom: 0;
+}
+
+.craft-item-number {
+    font-size: 0.7rem;
+    font-weight: 300;
+    color: var(--ink-fade);
+    letter-spacing: 0.2em;
+    margin-bottom: 12px;
+}
+
+.craft-item-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+    color: var(--ink-black);
+}
+
+.craft-item-desc {
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--ink-light);
+    line-height: 2.2;
+    letter-spacing: 0.06em;
+}
+
+.craft-visual {
+    position: sticky;
+    top: 120px;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.craft-frame {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 3/4;
+    border: 1px solid var(--line);
+    position: relative;
+    background: var(--bg-washi);
+}
+
+.craft-frame::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    border: 1px solid var(--line);
+    opacity: 0.5;
+}
+
+.craft-frame-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.craft-frame-kanji {
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--ink-black);
+    opacity: 0.08;
+    letter-spacing: 0.2em;
+    line-height: 1.2;
+}
+
+.craft-frame-sub {
+    font-size: 0.75rem;
+    color: var(--ink-fade);
+    letter-spacing: 0.3em;
+    margin-top: 20px;
+}
+
+/* 枯山水 */
+.zen-section {
+    padding: 0;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.zen-container {
+    position: relative;
+    height: 600px;
+    background: linear-gradient(180deg, var(--bg-washi) 0%, #E8E3D8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.zen-garden {
+    position: relative;
+    width: 700px;
+    height: 400px;
+}
+
+.zen-rake-line {
+    position: absolute;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--sand), transparent);
+    opacity: 0.4;
+}
+
+.zen-stone {
+    position: absolute;
+    background: linear-gradient(135deg, #8A8A8A 0%, #5A5A5A 100%);
+    border-radius: 45% 55% 40% 60%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+.zen-stone:nth-child(1) {
+    width: 60px;
+    height: 50px;
+    top: 30%;
+    left: 20%;
+    transform: rotate(-15deg);
+}
+
+.zen-stone:nth-child(2) {
+    width: 45px;
+    height: 40px;
+    top: 50%;
+    left: 45%;
+    transform: rotate(10deg);
+    background: linear-gradient(135deg, #7A7A7A 0%, #4A4A4A 100%);
+}
+
+.zen-stone:nth-child(3) {
+    width: 35px;
+    height: 30px;
+    top: 35%;
+    left: 65%;
+    transform: rotate(-5deg);
+    background: linear-gradient(135deg, #9A9A9A 0%, #6A6A6A 100%);
+}
+
+.zen-stone:nth-child(4) {
+    width: 50px;
+    height: 45px;
+    top: 60%;
+    left: 75%;
+    transform: rotate(20deg);
+}
+
+.zen-stone:nth-child(5) {
+    width: 25px;
+    height: 22px;
+    top: 25%;
+    left: 50%;
+    transform: rotate(-25deg);
+    background: linear-gradient(135deg, #6A6A6A 0%, #3A3A3A 100%);
+}
+
+.zen-text {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+}
+
+.zen-text-main {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--ink-black);
+    margin-bottom: 12px;
+}
+
+.zen-text-sub {
+    font-size: 0.8rem;
+    font-weight: 300;
+    color: var(--ink-fade);
+    letter-spacing: 0.2em;
+}
+
+/* 生成耙纹 */
+.zen-rake-pattern {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.3;
+}
+
+/* 页脚 */
+footer {
+    padding: 100px 120px 60px;
+    text-align: center;
+    border-top: 1px solid var(--line);
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.footer-seal {
+    width: 60px;
+    height: 60px;
+    border: 2px solid var(--vermilion);
+    border-radius: 4px;
+    margin: 0 auto 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(3deg);
+    opacity: 0.7;
+}
+
+.footer-seal-inner {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--vermilion);
+    letter-spacing: 0.1em;
+    transform: rotate(-3deg);
+}
+
+.footer-text {
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--ink-fade);
+    letter-spacing: 0.2em;
+    line-height: 2.2;
+}
+
+.footer-divider {
+    width: 40px;
+    height: 1px;
+    background: var(--line-strong);
+    margin: 24px auto;
+    opacity: 0.5;
+}
+
+/* 滚动显示 */
+.reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 墨点散落 */
+.ink-splatter {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.06;
+}
+
+.ink-splatter:nth-child(1) {
+    top: 15%;
+    right: 8%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, var(--ink-black) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.ink-splatter:nth-child(2) {
+    top: 45%;
+    left: 5%;
+    width: 100px;
+    height: 150px;
+    background: radial-gradient(ellipse, var(--ink-black) 0%, transparent 70%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+
+.ink-splatter:nth-child(3) {
+    bottom: 20%;
+    right: 12%;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, var(--ink-black) 0%, transparent 70%);
+    border-radius: 40% 60% 50% 50%;
+}
+
+/* 竖排文字装饰 */
+.vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    position: absolute;
+    font-size: 0.75rem;
+    font-weight: 300;
+    color: var(--ink-fade);
+    letter-spacing: 0.3em;
+    opacity: 0.4;
+}
+
+.vertical-text.left {
+    left: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.vertical-text.right {
+    right: 60px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* 响应式 */
+@media (max-width: 1024px) {
+    nav {
+        padding: 20px 30px;
+    }
+    
+    .logo {
+        left: 20px;
+        font-size: 0.75rem;
+    }
+    
+    .nav-links {
+        right: 20px;
+        gap: 24px;
+    }
+    
+    section {
+        padding: 100px 60px;
+    }
+    
+    .hero {
+        padding: 0 80px;
+    }
+    
+    .wabi-grid {
+        grid-template-columns: 1fr;
+        gap: 60px;
+    }
+    
+    .seasons-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .craft-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .craft-visual {
+        position: relative;
+        top: 0;
+        height: 350px;
+    }
+    
+    .vertical-text {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    section {
+        padding: 80px 30px;
+    }
+    
+    .hero {
+        padding: 0 50px;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .seasons-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .zen-garden {
+        width: 90%;
+        height: 300px;
+    }
+    
+    .nav-links {
+        display: none;
+    }
+    
+    .logo {
+        writing-mode: horizontal-tb;
+        position: static;
+        transform: none;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- 墨点散落装饰 -->
+<div class="ink-splatter"></div>
+<div class="ink-splatter"></div>
+<div class="ink-splatter"></div>
+
+<!-- 导航 -->
+<nav>
+    <div class="logo">侘寂</div>
+    <ul class="nav-links">
+        <li><a href="#wabi">侘寂</a></li>
+        <li><a href="#seasons">四季</a></li>
+        <li><a href="#craft">手作</a></li>
+        <li><a href="#zen">禅庭</a></li>
+    </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+    <div class="hero-bg-kanji">寂</div>
+    <div class="hero-content">
+        <p class="hero-subtitle">WABI · SABI</p>
+        <h1 class="hero-title">
+            <span>一期一会</span>
+        </h1>
+        <div class="divider-line-horizontal"></div>
+        <p class="hero-desc">
+            世间万物，无一常驻。于无常之中见永恒，
+            于残缺之中见圆满，于寂静之中听见万籁。
+            此乃侘寂之心，手作之温，自然之息。
+        </p>
+    </div>
+    <div class="scroll-hint"> Scroll </div>
+</section>
+
+<!-- 侘寂理念 -->
+<section class="wabi-section" id="wabi">
+    <div class="reveal">
+        <p class="section-label">PHILOSOPHY</p>
+        <h2 class="section-title">侘寂之心</h2>
+        <p class="section-desc">
+            侘寂并非简陋，而是对繁复的超越。它是在不完美中发现深刻的美，
+            在岁月的痕迹中读出时间的诗行。每一件手作器物，都承载着匠人的呼吸与温度。
+        </p>
+    </div>
+    
+    <div class="wabi-grid">
+        <div class="wabi-text-block reveal">
+            <div class="wabi-quote">
+                「不完美的美，比完美更动人。因为在那道裂痕里，
+                光得以照进来，时间得以停留，灵魂得以栖息。」
+                <div class="wabi-quote-source">— 无名匠人 · 手泽录</div>
+            </div>
+            <p class="section-desc" style="margin-top: 40px;">
+                手作的器物从不追求工业化的精确。陶轮上留下的指纹，
+                刀刃上细微的起伏，漆器中偶然的气泡——这些被机器视为瑕疵的印记，
+                恰恰是人与物对话的证据，是时间在物质上留下的温柔注脚。
+            </p>
+        </div>
+        <div class="wabi-visual reveal">
+            <div class="wabi-ink-splash"></div>
+            <div class="wabi-ink-splash"></div>
+            <div class="wabi-circle">
+                <div class="wabi-circle-inner">
+                    <div class="wabi-kanji">侘寂</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider-line"></div>
+
+<!-- 四季 -->
+<section class="seasons-section" id="seasons">
+    <div class="reveal">
+        <p class="section-label">FOUR SEASONS</p>
+        <h2 class="section-title">岁时记</h2>
+        <p class="section-desc">
+            春樱、夏萤、秋枫、冬雪。四季轮回，万物各安其位。
+            顺应天时，便是最大的智慧。
+        </p>
+    </div>
+    
+    <div class="seasons-grid">
+        <div class="season-card reveal">
+            <div class="season-icon">春</div>
+            <h3 class="season-name">花見</h3>
+            <p class="season-name-en">HANAMI</p>
+            <p class="season-desc">
+                樱花七日，刹那芳华。
+                于盛开时凝视凋零，
+                在无常中照见生命之美。
+            </p>
+        </div>
+        <div class="season-card reveal">
+            <div class="season-icon">夏</div>
+            <h3 class="season-name">蛍火</h3>
+            <p class="season-name-en">HOTARU</p>
+            <p class="season-desc">
+                夏夜流萤，微光点点。
+                黑暗中的短暂光芒，
+                胜过白昼的万盏灯火。
+            </p>
+        </div>
+        <div class="season-card reveal">
+            <div class="season-icon">秋</div>
+            <h3 class="season-name">紅葉</h3>
+            <p class="season-name-en">MOMIJI</p>
+            <p class="season-desc">
+                霜叶红于二月花。
+                凋零并非终结，
+                而是以燃烧的姿态告别。
+            </p>
+        </div>
+        <div class="season-card reveal">
+            <div class="season-icon">冬</div>
+            <h3 class="season-name">雪華</h3>
+            <p class="season-name-en">SEKKKA</p>
+            <p class="season-desc">
+                万籁俱寂，白雪覆庭。
+                空无一物之处，
+                正是万物生长之始。
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- 手作工艺 -->
+<section class="craft-section" id="craft">
+    <div class="vertical-text left">手作之温</div>
+    <div class="vertical-text right">匠心独运</div>
+    
+    <div class="reveal">
+        <p class="section-label">CRAFTSMANSHIP</p>
+        <h2 class="section-title">手泽之温</h2>
+        <p class="section-desc">
+            机器可以复制形状，却无法复制温度。
+            匠人的手，是连接自然与心灵的桥梁。
+            每一次触碰，都是人与物的深情对话。
+        </p>
+    </div>
+    
+    <div class="craft-container">
+        <div class="craft-list">
+            <div class="craft-item reveal">
+                <div class="craft-item-number">01</div>
+                <h3 class="craft-item-title">陶芸 · 土与火的诗</h3>
+                <p class="craft-item-desc">
+                    取山野之土，经水火淬炼，方成器物。
+                    拉坯时掌心的温度，窑变中不可预知的釉色，
+                    都在诉说着泥土的记忆。一件好器，当如老友，
+                    越用越温润，越旧越动人。
+                </p>
+            </div>
+            <div class="craft-item reveal">
+                <div class="craft-item-number">02</div>
+                <h3 class="craft-item-title">茶道 · 一碗中的宇宙</h3>
+                <p class="craft-item-desc">
+                    茶碗倾斜十五度，茶汤注入七分满。
+                    这不是规矩，而是对自然的敬畏。
+                    抹茶的一抹翠绿里，藏着整座山林的呼吸。
+                    点茶的过程，即是冥想的过程。
+                </p>
+            </div>
+            <div class="craft-item reveal">
+                <div class="craft-item-number">03</div>
+                <h3 class="craft-item-title">華道 · 生之姿态</h3>
+                <p class="craft-item-desc">
+                    一枝花，一片叶，一块枯木。
+                    花道并非装饰，而是对生命的凝视。
+                    剪去多余，留下本质。在留白中，
+                    看见比满盈更丰盈的世界。
+                </p>
+            </div>
+            <div class="craft-item reveal">
+                <div class="craft-item-number">04</div>
+                <h3 class="craft-item-title">漆芸 · 时间的层叠</h3>
+                <p class="craft-item-desc">
+                    大漆需涂数十层，每层干透方可续涂。
+                    一件漆器，动辄数月甚至数年。
+                    在这漫长的等待中，急躁被磨平，
+                    浮躁被沉淀，最终呈现的，
+                    是时间本身的光泽。
+                </p>
+            </div>
+        </div>
+        <div class="craft-visual reveal">
+            <div class="craft-frame">
+                <div class="craft-frame-content">
+                    <div class="craft-frame-kanji">匠心</div>
+                    <p class="craft-frame-sub">SHOKUNIN · KOKORO</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 枯山水 -->
+<section class="zen-section" id="zen">
+    <div class="zen-container">
+        <div class="zen-garden">
+            <svg class="zen-rake-pattern" viewBox="0 0 700 400" preserveAspectRatio="none">
+                <defs>
+                    <pattern id="rakePattern" x="0" y="0" width="40" height="20" patternUnits="userSpaceOnUse">
+                        <line x1="0" y1="10" x2="40" y2="10" stroke="#C4B9A8" stroke-width="0.5" opacity="0.5"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#rakePattern)"/>
+                <circle cx="140" cy="140" r="100" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="140" cy="140" r="80" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="140" cy="140" r="60" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="315" cy="200" r="70" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="315" cy="200" r="50" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="455" cy="140" r="50" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="525" cy="240" r="80" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+                <circle cx="525" cy="240" r="60" fill="none" stroke="#C4B9A8" stroke-width="0.5" opacity="0.3"/>
+            </svg>
+            <div class="zen-stone"></div>
+            <div class="zen-stone"></div>
+            <div class="zen-stone"></div>
+            <div class="zen-stone"></div>
+            <div class="zen-stone"></div>
+        </div>
+        <div class="zen-text reveal">
+            <h3 class="zen-text-main">石庭静坐</h3>
+            <p class="zen-text-sub">KARESANSUI · MEDITATION</p>
+        </div>
+    </div>
+</section>
+
+<!-- 页脚 -->
+<footer>
+    <div class="footer-seal">
+        <div class="footer-seal-inner">寂</div>
+    </div>
+    <p class="footer-text">
+        一期一会 · 世当珍惜<br>
+        ICHIGO ICHIE · TREASURE EVERY ENCOUNTER
+    </p>
+    <div class="footer-divider"></div>
+    <p class="footer-text" style="font-size: 0.7rem; opacity: 0.6;">
+        Wabi Sabi Aesthetics · Handcrafted with Intention
+    </p>
+</footer>
+
+<script>
+// 滚动显示动画
+const revealElements = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+        }
+    });
+}, { threshold: 0.1 });
+
+revealElements.forEach(el => revealObserver.observe(el));
+
+// 平滑滚动
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelector(this.getAttribute('href')).scrollIntoView({ behavior: 'smooth' });
+    });
+});
+</script>
+
+</body>
+</html>

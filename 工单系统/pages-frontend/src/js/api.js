@@ -290,6 +290,29 @@ class ApiClient {
   adminGetAiConfig() { return this.get('/admin/ai-config'); }
   adminSetAiConfig(data) { return this.post('/admin/ai-config', data); }
   adminTestAiConnection() { return this.post('/admin/ai-test', {}); }
+
+  // ── CS: 客服对话 ─────────────────────────
+  getCsConversations() { return this.get('/cs/conversations'); }
+  createCsConversation(data) { return this.post('/cs/conversations', data); }
+  getCsMessages(convId) { return this.get(`/cs/conversations/${convId}/messages`); }
+  sendCsMessage(convId, content) { return this.post(`/cs/conversations/${convId}/messages`, { content }); }
+  updateCsStatus(convId, status) { return this.put(`/cs/conversations/${convId}/status`, { status }); }
+
+  // ── CS: 退款 ────────────────────────────
+  submitRefund(convId, data) { return this.post(`/cs/conversations/${convId}/refund`, data); }
+
+  // ── CS: 管理端 ───────────────────────────
+  adminGetCsConversations(status) {
+    const q = status ? `?status=${status}` : '';
+    return this.get(`/cs/admin/conversations${q}`);
+  }
+  adminGetRefunds(status) {
+    const q = status ? `?status=${status}` : '';
+    return this.get(`/cs/admin/refunds${q}`);
+  }
+  adminReviewRefund(refund_id, action, admin_note) {
+    return this.post('/cs/admin/refund-review', { refund_id, action, admin_note });
+  }
 }
 
 class ApiError extends Error {

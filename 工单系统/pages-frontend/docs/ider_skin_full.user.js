@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         艾德尔修仙传 - 完整皮肤系统 v3
 // @namespace    http://tampermonkey.net/
-// @version      4.1
+// @version      5.0
 // @description  完整皮肤系统 v4 - 个性化定制 + Token 管理 + 自定义皮肤 + 工单集成
 // @author       Ider
 // @match        https://idlexiuxianzhuan.cn/*
@@ -41,6 +41,402 @@ function getApiToken() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// SVG 图标系统 — 每个皮肤定制图标
+// ═══════════════════════════════════════════════════════════
+
+const ICONS = {
+  // ── 通用 UI 图标（跨皮肤） ──
+  gear: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1a7 7 0 0 0-.7.04l-.3.75-1.2.4-.6-.6-.7.7.6.6-.4 1.2-.75.3A7 7 0 0 0 1 8a7 7 0 0 0 .04.7l.75.3.4 1.2-.6.6.7.7.6-.6 1.2.4.3.75A7 7 0 0 0 8 15a7 7 0 0 0 .7-.04l.3-.75 1.2-.4.6.6.7-.7-.6-.6.4-1.2.75-.3A7 7 0 0 0 15 8a7 7 0 0 0-.04-.7l-.75-.3-.4-1.2.6-.6-.7-.7-.6.6-1.2-.4-.3-.75A7 7 0 0 0 8 1z"/><circle cx="8" cy="8" r="2.5"/></svg>',
+  close: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>',
+  lock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3.5" y="7.5" width="9" height="7" rx="1"/><path d="M5.5 7.5V4.5a2.5 2.5 0 015 0v3"/><circle cx="8" cy="10.5" r="1"/></svg>',
+  key: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="5.5" cy="10.5" r="3.5"/><path d="M8 8l4.5-4.5"/><line x1="10" y1="6" x2="12" y2="8"/><line x1="11" y1="3" x2="14" y2="6"/></svg>',
+  bulb: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1a5 5 0 0 0-3 9c0 1 1 2 1 3h4c0-1 1-2 1-3a5 5 0 0 0-3-9z"/><line x1="6" y1="13" x2="10" y2="13"/><line x1="7" y1="15" x2="9" y2="15"/></svg>',
+  checkmark: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,8 6.5,12 13,4"/></svg>',
+  warning: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1.5L1 13.5h14L8 1.5z"/><line x1="8" y1="6" x2="8" y2="9.5"/><circle cx="8" cy="11.5" r="0.8" fill="currentColor"/></svg>',
+  cross: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>',
+  cycle: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><polyline points="14 2 14 7 9 7"/><polyline points="2 14 2 9 7 9"/><path d="M13.5 5.5A7 7 0 002.5 10M2.5 10.5A7 7 0 0013.5 6"/></svg>',
+  hourglass: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 1h10v2a4 4 0 01-4 4 4 4 0 014 4v2H3v-2a4 4 0 014-4 4 4 0 01-4-4V1z"/><line x1="3" y1="1" x2="13" y2="1"/><line x1="3" y1="15" x2="13" y2="15"/></svg>',
+  link: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M5 11l6-6"/><path d="M7 4l1.5-1.5a3.5 3.5 0 015 5L12 9"/><path d="M9 12l-1.5 1.5a3.5 3.5 0 11-5-5L4 7"/></svg>',
+  note: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3.5 2h9a1 1 0 011 1v10a1 1 0 01-1 1h-9a1 1 0 01-1-1V3a1 1 0 011-1z"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="7.5" x2="11" y2="7.5"/><line x1="5" y1="10" x2="8" y2="10"/></svg>',
+  palette: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="7"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="11" cy="5" r="1.2" fill="currentColor"/><circle cx="3" cy="9" r="1" fill="currentColor"/><path d="M8 13a2 2 0 002-2" opacity="0.5"/></svg>',
+  diamond: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><polygon points="8,2 14,6.5 8,14 2,6.5"/></svg>',
+  // ── 水墨修仙 — 笔触质感图标 ──
+  ink: {
+    palette: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4 13l4-8 4 6 4-8"/><circle cx="6" cy="4" r="1.2" fill="#c41e3a" stroke="none"/><path d="M2 13h12" opacity="0.3"/></svg>',
+    setting: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="10" height="10" rx="0" stroke-dasharray="2 2"/><circle cx="8" cy="8" r="2.5"/></svg>',
+    close: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/><path d="M2 2l12 12" opacity="0.15"/></svg>',
+    lock: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1.3"><rect x="4" y="7" width="8" height="7" rx="0"/><path d="M5.5 7V4.5a2.5 2.5 0 015 0V7"/><path d="M8 10v2" stroke-width="1.5"/></svg>',
+    key: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1.3"><path d="M5 11l-2 2"/><circle cx="7.5" cy="8.5" r="2.5"/><path d="M9 7l4-4M11 5l-2 2"/></svg>',
+    tip: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1"><path d="M8 2a4 4 0 00-4 4c0 2 1.5 3 1.5 4.5h5C10.5 9 12 8 12 6a4 4 0 00-4-4z"/><line x1="6.5" y1="12" x2="9.5" y2="12"/></svg>',
+    check: '<svg viewBox="0 0 16 16" fill="none" stroke="#3a3228" stroke-width="1.5"><polyline points="33 41 37 45 44 37" stroke-dasharray="0"/><path d="M4 8l3 4 5-7"/></svg>',
+    warning: '<svg viewBox="0 0 16 16" fill="none" stroke="#c41e3a" stroke-width="1.2"><path d="M8 2L2 13h12L8 2z"/><line x1="8" y1="6" x2="8" y2="9"/></svg>',
+    cycle: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1.3"><path d="M12 4a6 6 0 012 10"/><path d="M4 12a6 6 0 01-2-10"/><circle cx="8" cy="8" r="1.5" fill="#c41e3a"/></svg>',
+    link: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1.3"><path d="M5 11l6-6"/><path d="M7 4l1-1a2.5 2.5 0 013.5 3.5l-1 1"/><path d="M9 12l-1 1a2.5 2.5 0 11-3.5-3.5l1-1"/></svg>',
+    hourglass: '<svg viewBox="0 0 16 16" fill="none" stroke="#8a7a6a" stroke-width="1.3"><path d="M4 2h8v3a4 4 0 01-4 4 4 4 0 014 4v1H4v-1a4 4 0 014-4 4 4 0 01-4-4V2z"/></svg>',
+    crossError: '<svg viewBox="0 0 16 16" fill="none" stroke="#c41e3a" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+  },
+  // ── 樱花物语 — 粉嫩柔美 ──
+  sakura: {
+    palette: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><path d="M8 3L9 6l3-1-2 3 3 2-3 1 1 3-3-2-3 2 1-3-3-1 3-2-2-3 3 1z" opacity="0.7"/><circle cx="8" cy="8" r="2"/></svg>',
+    setting: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.5 1.5M11 11l1.5 1.5M12.5 3.5L11 5M5 11L3.5 12.5"/></svg>',
+    close: '<svg viewBox="0 0 16 16" fill="none" stroke="#d4878a" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/><circle cx="8" cy="8" r="6" opacity="0.15"/></svg>',
+    lock: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><rect x="4" y="7.5" width="8" height="6" rx="2"/><path d="M5.5 7.5V5a2.5 2.5 0 015 0v2.5"/><circle cx="8" cy="10.5" r="0.8" fill="#d4878a"/></svg>',
+    key: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><circle cx="5" cy="10" r="3"/><path d="M7 8l4-4"/><circle cx="12.5" cy="3.5" r="1.5" fill="#d4878a" stroke="none" opacity="0.3"/></svg>',
+    tip: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><circle cx="8" cy="5" r="3"/><path d="M5 10c0-1 1.5-2 3-2s3 1 3 2"/><path d="M6 12h4"/></svg>',
+    check: '<svg viewBox="0 0 16 16" fill="none" stroke="#7ab07a" stroke-width="2"><polyline points="3 8 6.5 12 13 4"/></svg>',
+    warning: '<svg viewBox="0 0 16 16" fill="none" stroke="#d4878a" stroke-width="1.2"><path d="M8 2L2 13h12L8 2z"/><line x1="8" y1="6" x2="8" y2="9"/><circle cx="8" cy="11" r="0.5" fill="#d4878a"/></svg>',
+    cycle: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><path d="M12 4a6 6 0 012 10M4 12a6 6 0 01-2-10"/><circle cx="8" cy="8" r="1.5" fill="#f0bcc0"/></svg>',
+    link: '<svg viewBox="0 0 16 16" fill="none" stroke="#d4878a" stroke-width="1"><path d="M5 11l6-6"/><path d="M7 4l1-1a2.5 2.5 0 013.5 3.5l-1 1"/><path d="M9 12l-1 1a2.5 2.5 0 11-3.5-3.5l1-1"/></svg>',
+    hourglass: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1"><path d="M4 2h8v2a4 4 0 01-4 4 4 4 0 014 4v2H4v-2a4 4 0 014-4 4 4 0 01-4-4V2z"/></svg>',
+    crossError: '<svg viewBox="0 0 16 16" fill="none" stroke="#d4878a" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+  },
+  // ── 赛博修仙 ──
+  cyber: {
+    palette: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1"><polygon points="8,2 14,6 12,14 4,14 2,6"/><circle cx="8" cy="8" r="1.5" fill="#00f0ff" opacity="0.4"/></svg>',
+    setting: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1.2"><rect x="2" y="2" width="12" height="12" rx="0" stroke-dasharray="4 2"/><circle cx="8" cy="8" r="2.5"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2" opacity="0.4"/></svg>',
+    close: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1.5"><path d="M4 4l8 8M12 4l-8 8"/><rect x="3" y="3" width="10" height="10" opacity="0.1"/></svg>',
+    lock: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1.2"><rect x="4" y="7" width="8" height="7" rx="0"/><path d="M5.5 7V4a2.5 2.5 0 015 0v3"/><path d="M10 10.5a2 2 0 11-4 0z"/></svg>',
+    key: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1.2"><circle cx="5.5" cy="10" r="3"/><path d="M8 7l4-4"/><rect x="10" y="4" width="3" height="1.5" fill="#00f0ff" opacity="0.3"/></svg>',
+    tip: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1"><circle cx="8" cy="5" r="3"/><path d="M4 11a4 4 0 018 0"/><line x1="6" y1="12.5" x2="10" y2="12.5"/></svg>',
+    check: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="2"><polyline points="3,8 6.5,12 13,4"/></svg>',
+    warning: '<svg viewBox="0 0 16 16" fill="none" stroke="#f0c000" stroke-width="1.2"><polygon points="8,2 2,13 14,13"/><line x1="8" y1="6" x2="8" y2="9"/><rect x="7.5" y="10.5" width="1" height="1" fill="#f0c000"/></svg>',
+    cycle: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1.2"><path d="M12 4a6 6 0 012 10M4 12a6 6 0 01-2-10"/><circle cx="8" cy="8" r="1"/></svg>',
+    link: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1"><path d="M5 11l6-6"/><path d="M7 4l1-1a2.5 2.5 0 013.5 3.5l-1 1"/><path d="M9 12l-1 1a2.5 2.5 0 11-3.5-3.5l1-1"/></svg>',
+    hourglass: '<svg viewBox="0 0 16 16" fill="none" stroke="#00f0ff" stroke-width="1.2"><polygon points="4,2 12,2 10,8 12,14 4,14 6,8" opacity="0.6"/><polygon points="6,8 10,8 8,8" fill="#00f0ff" opacity="0.15"/></svg>',
+    crossError: '<svg viewBox="0 0 16 16" fill="none" stroke="#f04040" stroke-width="2"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+  },
+};
+
+function icon(name, skinKey, size) {
+  let svg;
+  if (skinKey && ICONS[skinKey] && ICONS[skinKey][name]) {
+    svg = ICONS[skinKey][name];
+  } else if (ICONS[name]) {
+    svg = ICONS[name];
+  } else {
+    return '';
+  }
+  const s = size || 16;
+  return svg.replace('<svg', `<svg width="${s}" height="${s}" style="vertical-align:middle;display:inline-block;"`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 水墨修仙 layout 引擎 (Phase 1-8 DOM 改造)
+// ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════
+// 水墨修仙 · INKWASH LAYOUT
+// 画卷展开式 DOM 布局改造引擎
+// 参考: inkwash.css + inkwash.js
+// ═══════════════════════════════════════
+
+const INKWASH_CLASS = 'theme-inkwash';
+
+const INKWASH = {
+  active: false,
+  observer: null,
+  decorEl: null,
+
+  ICONS: {
+    mountain: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 18L9 8l4 6 5-8 3 4"/><path d="M3 18h18"/><path d="M7 18V6"/><path d="M4 6l3 2 5-3 4 2 5-2"/></svg>',
+    sword: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 14L3 21M21 3l-9 9M5 5l3 3M16 16l3 3"/></svg>',
+    pouch: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 10h12v10a2 2 0 01-2 2H8a2 2 0 01-2-2V10z"/><path d="M8 10V6a4 4 0 018 0v4"/><path d="M12 14v4"/><path d="M10 16h4"/></svg>',
+    bamboo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="14" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>',
+    talisman: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 20l4-10 4 6 4-8 4 12"/><circle cx="7" cy="6" r="1.5" fill="#C43A2B" stroke="none"/><circle cx="17" cy="5" r="1" fill="currentColor" opacity="0.3" stroke="none"/></svg>',
+    inkstone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="14" width="16" height="6" rx="1"/><rect x="6" y="16" width="12" height="2" rx="0.5" fill="currentColor" opacity="0.15"/><path d="M8 4l2 10M12 4l2 10M16 4l2 10"/><line x1="3" y1="14" x2="21" y2="14"/></svg>',
+    heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20l-7-7a4.5 4.5 0 016-6l1 1 1-1a4.5 4.5 0 016 6l-7 7z"/></svg>',
+    dantian: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/><circle cx="12" cy="12" r="5" stroke-dasharray="1 4"/><circle cx="12" cy="12" r="2" fill="currentColor" fill-opacity="0.15"/><path d="M12 2l1 3-1 1-1-1z" fill="currentColor" opacity="0.3"/></svg>',
+    scroll: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg>',
+    logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+  },
+
+  TAB_ICONS: {
+    announcement: 'scroll', character: 'heart', inventory: 'pouch',
+    equipment: 'sword', skills: 'bamboo', techniques: 'bamboo',
+    map: 'mountain', mail: 'scroll', chat: 'scroll',
+    baiyi: 'talisman', cave: 'mountain', forge: 'talisman',
+    sect: 'mountain', alliance: 'mountain', duel: 'sword',
+    league: 'sword', dungeon: 'mountain', exchange: 'pouch',
+    help: 'scroll', settings: 'inkstone',
+  },
+
+  // ── Phase 1: Header 引首 + 印章 ──
+  layoutHeader() {
+    const header = document.querySelector('.game-header');
+    if (!header || header.classList.contains('inkwash-done')) return;
+    header.classList.add('inkwash-done');
+
+    if (!header.querySelector('.inkwash-header-line')) {
+      const line = document.createElement('div');
+      line.className = 'inkwash-header-line';
+      header.prepend(line);
+    }
+
+    const nameEl = header.querySelector('.hdr-name');
+    if (nameEl) nameEl.classList.add('inkwash-seal-text');
+
+    const info = header.querySelector('.hdr-info');
+    const res = header.querySelector('.hdr-res');
+    if (info && !header.querySelector('.inkwash-divider')) {
+      const div = document.createElement('div');
+      div.className = 'inkwash-divider';
+      if (res) header.insertBefore(div, res);
+      else header.appendChild(div);
+    }
+
+    const btns = header.querySelectorAll('.btn-icon');
+    btns.forEach(btn => {
+      if (btn.querySelector('svg')) return;
+      const title = (btn.getAttribute('title') || '').toLowerCase();
+      let svg = null;
+      if (title.includes('退出') || title.includes('logout')) svg = this.ICONS.logout;
+      else if (title.includes('帮助') || title.includes('help')) svg = this.ICONS.scroll;
+      else if (title.includes('主题') || title.includes('theme') || title.includes('皮肤')) svg = this.ICONS.inkstone;
+      if (svg) {
+        btn.innerHTML = svg;
+        btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:4px;color:var(--text2);width:28px;height:28px';
+      }
+    });
+  },
+
+  // ── Phase 2: 导航栏（禁用 SVG 图标）──
+  layoutNav() {
+  },
+
+  // ── Phase 3: 侧栏玉册 ──
+  layoutSidebar() {
+    const sidebar = document.querySelector('.battle-sidebar');
+    if (!sidebar || sidebar.classList.contains('inkwash-done')) return;
+    sidebar.classList.add('inkwash-done');
+
+    const nameEl = sidebar.querySelector('.sidebar-char-name');
+    if (nameEl) nameEl.classList.add('inkwash-vertical-name');
+
+    sidebar.querySelectorAll('.exp-bar, .sr-bar, .bar-track').forEach(bar => {
+      bar.classList.add('inkwash-bar-bg');
+      const fill = bar.querySelector('.exp-fill, .sr-fill, .bar-fill');
+      if (fill) fill.classList.add('inkwash-bar-fill');
+    });
+  },
+
+  // ── Phase 4: 战斗面板 ──
+  layoutBattle() {
+    const panel = document.querySelector('.battle-status-panel');
+    if (!panel || panel.classList.contains('inkwash-done')) return;
+    panel.classList.add('inkwash-done');
+
+    panel.querySelectorAll('.bar-track').forEach(bar => {
+      bar.classList.add('inkwash-bar-bg');
+      const fill = bar.querySelector('.bar-fill');
+      if (fill) fill.classList.add('inkwash-bar-fill');
+    });
+  },
+
+  // ── Phase 5: 卡片 ──
+  layoutCards() {
+    document.querySelectorAll('.stat-card, .skill-card, .map-card').forEach(card => {
+      if (card.classList.contains('inkwash-done')) return;
+      card.classList.add('inkwash-card');
+    });
+  },
+
+  // ── Phase 6: Modal 弹窗 ──
+  layoutModals() {
+    document.querySelectorAll('.modal-panel, .modal-overlay').forEach(el => {
+      if (el.classList.contains('inkwash-done')) return;
+      el.classList.add('inkwash-done');
+    });
+  },
+
+  // ── 统一 layout 入口 ──
+  layout() {
+    if (!this.active) return;
+    this.layoutHeader();
+    this.layoutNav();
+    this.layoutSidebar();
+    this.layoutBattle();
+    this.layoutCards();
+    this.layoutModals();
+  },
+
+  // ── 背景装饰层 ──
+  MOUNTAIN_SVG: '<svg viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.05"/><stop offset="60%" style="stop-color:#1a1a1a;stop-opacity:0.02"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><linearGradient id="mg2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.04"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><filter id="mb1"><feGaussianBlur stdDeviation="2"/></filter></defs><path d="M0,340 Q200,280 400,310 T800,270 T1200,300 T1440,280 L1440,420 L0,420 Z" fill="url(#mg1)" filter="url(#mb1)"/><path d="M0,370 Q240,320 480,345 T960,315 T1440,340 L1440,420 L0,420 Z" fill="url(#mg2)"/><path d="M-60,420 Q240,360 520,390 T1040,370 T1500,400 L1500,420 L-60,420 Z" fill="rgba(26,26,26,0.02)"/><path d="M620,420 Q640,240 670,210 Q700,240 720,420 Z" fill="rgba(26,26,26,0.025)"/><path d="M900,420 Q1000,320 1100,300 Q1200,320 1300,420 Z" fill="rgba(26,26,26,0.02)"/><path d="M0,400 Q360,390 720,400 T1440,395" stroke="rgba(26,26,26,0.03)" stroke-width="0.5" fill="none"/><path d="M0,408 Q360,398 720,408 T1440,403" stroke="rgba(26,26,26,0.025)" stroke-width="0.5" fill="none"/><path d="M0,415 Q360,405 720,415 T1440,410" stroke="rgba(26,26,26,0.02)" stroke-width="0.5" fill="none"/></svg>',
+
+  BIRDS_SVG: '<svg viewBox="0 0 120 30" xmlns="http://www.w3.org/2000/svg"><path d="M20 15Q25 8 30 15Q35 8 40 15" stroke="#1a1a1a" stroke-width="0.8" fill="none" opacity="0.08"/><path d="M70 12Q74 6 78 12Q82 6 86 12" stroke="#1a1a1a" stroke-width="0.6" fill="none" opacity="0.06"/><path d="M50 18Q53 13 56 18Q59 13 62 18" stroke="#1a1a1a" stroke-width="0.5" fill="none" opacity="0.04"/></svg>',
+
+  createDecorations() {
+    if (this.decorEl) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'inkwash-decor';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none';
+
+    const layers = [
+      { tag: 'div', cls: 'ider-ink-mountains', html: this.MOUNTAIN_SVG },
+      { tag: 'div', cls: 'ider-ink-mist' },
+      { tag: 'div', cls: 'ider-ink-corner tl' },
+      { tag: 'div', cls: 'ider-ink-corner tr' },
+      { tag: 'div', cls: 'ider-ink-corner bl' },
+      { tag: 'div', cls: 'ider-ink-corner br' },
+      { tag: 'div', cls: 'ider-ink-birds', html: this.BIRDS_SVG },
+    ];
+    for (const l of layers) {
+      const el = document.createElement(l.tag);
+      el.className = l.cls;
+      if (l.html) el.innerHTML = l.html;
+      wrap.appendChild(el);
+    }
+
+    const positions = [
+      {w:5,t:'12%',l:'10%'},{w:3,t:'28%',r:'12%'},{w:7,b:'30%',l:'15%'},
+      {w:4,t:'55%',r:'18%'},{w:6,b:'45%',r:'8%'},{w:2,t:'42%',l:'22%'},
+      {w:5,b:'20%',r:'25%'},{w:3,t:'70%',l:'30%'}
+    ];
+    for (const p of positions) {
+      const dot = document.createElement('div');
+      dot.className = 'ider-ink-splash';
+      dot.style.cssText = `width:${p.w}px;height:${p.w}px;top:${p.top||'auto'};bottom:${p.bottom||'auto'};left:${p.left||'auto'};right:${p.right||'auto'}`;
+      wrap.appendChild(dot);
+    }
+    document.body.prepend(wrap);
+    this.decorEl = wrap;
+  },
+
+  removeDecorations() {
+    if (this.decorEl) { this.decorEl.remove(); this.decorEl = null; }
+  },
+
+  // ── MutationObserver 抵抗 Vue 重渲染 ──
+  startObserver() {
+    if (this.observer) return;
+    let timer = null;
+    this.observer = new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (this.active && document.querySelector('.view-game')) this.layout();
+      }, 100);
+    });
+    this.observer.observe(document.body, { childList: true, subtree: true });
+  },
+
+  stopObserver() {
+    if (this.observer) { this.observer.disconnect(); this.observer = null; }
+    document.querySelectorAll('.inkwash-done').forEach(el => el.classList.remove('inkwash-done'));
+  },
+
+  // ── 应用 / 移除 ──
+  apply() {
+    if (this.active) return;
+    this.active = true;
+    document.documentElement.classList.add(INKWASH_CLASS);
+    this.createDecorations();
+    this.layout();
+    this.startObserver();
+  },
+
+  remove() {
+    this.active = false;
+    document.documentElement.classList.remove(INKWASH_CLASS);
+    this.stopObserver();
+    this.removeDecorations();
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 赛博修仙 — 代码雨 + 文字扫描动画
+// ═══════════════════════════════════════════════════════════
+
+const CYBERWASH = {
+  active: false,
+  canvas: null,
+  ctx: null,
+  animId: null,
+  scanEl: null,
+  chars: 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEF天地玄黄宇宙洪荒日月盈昃辰宿列张寒来暑往秋收冬藏灵气氤氲剑意纵横道法自然万剑归宗',
+  drops: [],
+
+  apply() {
+    if (this.active) return;
+    this.active = true;
+    this.createScanLine();
+    this.createCanvas();
+    this.animate();
+  },
+
+  remove() {
+    this.active = false;
+    if (this.animId) { cancelAnimationFrame(this.animId); this.animId = null; }
+    if (this.canvas) { this.canvas.remove(); this.canvas = null; this.ctx = null; }
+    if (this.scanEl) { this.scanEl.remove(); this.scanEl = null; }
+    this.drops = [];
+  },
+
+  createScanLine() {
+    this.scanEl = document.createElement('div');
+    this.scanEl.id = 'ider-cyber-scan';
+    this.scanEl.textContent = '道 法 自 然  ·  剑 意 纵 衡  ·  灵 气 氤 氲';
+    this.scanEl.style.cssText = 'position:fixed!important;left:0!important;right:0!important;height:24px!important;line-height:24px!important;text-align:center!important;font-size:11px!important;font-family:"Rajdhani","Courier New",monospace!important;letter-spacing:8px!important;color:#00f0ff!important;z-index:-2!important;pointer-events:none!important;background:linear-gradient(90deg,transparent,rgba(0,240,255,0.06),transparent)!important;animation:iderCyberScanLine 8s ease-in-out infinite!important;mix-blend-mode:screen!important;opacity:0!important';
+    document.body.prepend(this.scanEl);
+  },
+
+  createCanvas() {
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = 'ider-code-rain';
+    this.canvas.style.cssText = 'position:fixed!important;inset:0!important;z-index:-2!important;pointer-events:none!important;opacity:0.25!important;width:100vw!important;height:100vh!important';
+    document.body.prepend(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  },
+
+  resize() {
+    if (!this.canvas) return;
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    const cols = Math.floor(this.canvas.width / 16);
+    this.drops = [];
+    for (let i = 0; i < cols; i++) {
+      this.drops[i] = Math.floor(Math.random() * -100);
+    }
+  },
+
+  animate() {
+    if (!this.active || !this.ctx) return;
+    const ctx = this.ctx;
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    ctx.fillStyle = 'rgba(3,3,10,0.08)';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.font = '14px "Rajdhani","Courier New",monospace';
+    for (let i = 0; i < this.drops.length; i++) {
+      const char = this.chars[Math.floor(Math.random() * this.chars.length)];
+      const x = i * 16;
+      const y = this.drops[i] * 16;
+
+      ctx.fillStyle = '#00f0ff';
+      ctx.fillText(char, x, y);
+
+      const neon = y - 16 * 8;
+      for (let j = 1; j <= 8; j++) {
+        const fadeY = y - j * 16;
+        if (fadeY < 0) break;
+        const fadeChar = this.chars[Math.floor(Math.random() * this.chars.length)];
+        const alpha = 0.6 - j * 0.07;
+        ctx.fillStyle = `rgba(0,240,255,${alpha < 0 ? 0 : alpha})`;
+        ctx.fillText(fadeChar, x, fadeY);
+      }
+
+      if (this.drops[i] * 16 > h && Math.random() > 0.98) {
+        this.drops[i] = 0;
+      }
+      this.drops[i]++;
+    }
+    this.animId = requestAnimationFrame(() => this.animate());
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
 // 8套全面升级皮肤（覆盖CSS + 布局优化）
 // ═══════════════════════════════════════════════════════════
 
@@ -53,77 +449,100 @@ inkwash: {
 name: '水墨修仙',
 desc: '泼墨写意，素雅高远 · 大面积留白，笔触质感',
 css: `
-:root {
-  --bg: #f5f0e8 !important; --bg2: #ece5d8 !important; --bg3: #e0d7c8 !important;
-  --bg4: #d5ccbc !important; --border: #c4b8a4 !important;
-  --text: #3a3228 !important; --text2: #8a7a6a !important;
-  --gold: #c41e3a !important; --gold2: #8b1528 !important;
-  --accent: #5a7a6a !important; --red: #c41e3a !important; --green: #4a7a4a !important;
-  --radius: 2px !important;
-}
-body { font-family: 'STKaiti','KaiTi','Ma Shan Zheng',cursive !important; color: #3a3228 !important; }
+html.theme-inkwash{--paper:#F5F0E6;--paper-warm:#F0EBE0;--ink-deep:#1a1a1a;--ink-mid:rgba(26,26,26,0.55);--ink-light:rgba(26,26,26,0.18);--ink-faint:rgba(26,26,26,0.06);--ink-ghost:rgba(26,26,26,0.025);--cinnabar:#C43A2B;--cinnabar-soft:rgba(196,58,43,0.85);--cinnabar-faint:rgba(196,58,43,0.08);--gold-seal:#8B7355;--bg:#F5F0E6;--bg2:#F0EBE0;--bg3:#E8E0D0;--bg4:#DDD4C0;--border:rgba(26,26,26,0.18);--text:#1a1a1a;--text2:rgba(26,26,26,0.55);--gold:#C43A2B;--gold2:#C43A2B;--accent:#8B7355;--red:#C43A2B;--green:#5a7a3a;--radius:4px}
+@keyframes inkwashIn{0%{opacity:0;clip-path:inset(0 50% 0 50%)}60%{clip-path:inset(0 0 0 0)}100%{opacity:1}}
+@keyframes inkwashSpread{from{background-position:100% 0}to{background-position:0% 0}}
+@keyframes inkwashPour{0%{background-position:100% 0}100%{background-position:0% 0}}
+@keyframes inkwashMist{0%,100%{transform:translateX(0)}50%{transform:translateX(15%)}}
+@keyframes inkwashFloat{0%,100%{transform:translateY(0) scale(1);opacity:0.03}50%{transform:translateY(-6px) scale(1.1);opacity:0.06}}
+.theme-inkwash body{font-family:'Noto Serif SC','STKaiti','KaiTi','FangSong',serif!important;background:var(--paper)!important;letter-spacing:0.04em!important;color:var(--ink-deep)!important}
+.theme-inkwash .game-header{display:flex!important;flex-direction:row!important;align-items:center!important;padding:4px 12px!important;background:transparent!important;border-bottom:1px solid var(--border)!important;gap:4px!important;flex-wrap:nowrap!important}
+.theme-inkwash .inkwash-header-line{display:none!important}
+.theme-inkwash .game-header .hdr-name{font-family:'Ma Shan Zheng',cursive!important;font-size:0.85rem!important;letter-spacing:0.15em!important;color:var(--cinnabar)!important;white-space:nowrap!important}
 
-.view-login { background: linear-gradient(160deg, #f5f0e8 0%, #e8dfd0 40%, #f0e8d8 100%) !important; }
-.login-card { background: rgba(245,240,232,0.95) !important; border: 1px solid #c4b8a4 !important; box-shadow: 0 8px 40px rgba(0,0,0,0.06) !important; }
-.game-title { font-family: 'Ma Shan Zheng','STKaiti',cursive !important; font-size: 34px !important; color: #3a3228 !important; letter-spacing: 12px !important; font-weight: 400 !important; }
 
-.game-header { background: #f5f0e8 !important; border-bottom: 1px solid #c4b8a4 !important; padding: 8px 16px !important; }
-.game-header::after { content: '' !important; position: absolute !important; bottom: -4px !important; left: 10% !important; right: 10% !important; height: 2px !important; background: #3a3228 !important; opacity: 0.15 !important; }
-.hdr-name { font-family: 'Ma Shan Zheng','STKaiti',cursive !important; font-size: 16px !important; color: #3a3228 !important; letter-spacing: 4px !important; }
-.realm-badge { background: #ece5d8 !important; border: 1px solid #c4b8a4 !important; color: #c41e3a !important; border-radius: 0 !important; }
-.btn-icon { color: #8a7a6a !important; }
-.btn-icon:hover { color: #c41e3a !important; }
+.theme-inkwash .game-header .hdr-info{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.1em!important;color:var(--text2)!important;font-size:0.7rem!important;white-space:nowrap!important}
+.theme-inkwash .game-header .hdr-info .realm-badge{background:transparent!important;color:var(--text2)!important;padding:0!important;font-size:inherit!important;border:none!important}
+.theme-inkwash .game-header .hdr-qq{display:none!important}
+.theme-inkwash .game-header .hdr-res{font-size:11px!important;letter-spacing:0.1em!important;gap:8px!important;white-space:nowrap!important;display:flex!important;align-items:center!important}
+.theme-inkwash .inkwash-divider{display:none!important}
 
-.tab-nav { background: #f0e8dc !important; border-bottom: 1px solid #d5ccbc !important; }
-.tab-btn { color: #8a7a6a !important; letter-spacing: 2px !important; border-bottom: 2px solid transparent !important; padding: 10px 20px !important; }
-.tab-btn.active { color: #c41e3a !important; border-bottom-color: #c41e3a !important; }
-.tab-btn:hover { color: #3a3228 !important; background: rgba(0,0,0,0.02) !important; }
 
-.battle-sidebar { background: #f0e8dc !important; border-right: 1px solid #d5ccbc !important; }
-.sidebar-char-name { color: #c41e3a !important; font-family: 'Ma Shan Zheng',cursive !important; font-size: 18px !important; }
-.sidebar-section-title { color: #3a3228 !important; border-bottom: 1px solid #d5ccbc !important; letter-spacing: 2px !important; }
 
-.stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {
-  background: #faf6f0 !important; border: 1px solid #d5ccbc !important;
-  padding: 16px 20px !important; box-shadow: 0 1px 4px rgba(0,0,0,0.03) !important;
-}
-.skill-card.equipped { border-left: 3px solid #c41e3a !important; background: #f5ede0 !important; }
-.section-title { color: #c41e3a !important; border-bottom: 1px solid #d5ccbc !important; font-size: 14px !important; letter-spacing: 4px !important; padding-bottom: 8px !important; margin-bottom: 12px !important; }
-
-.btn-action { background: #ece5d8 !important; border: 1px solid #c4b8a4 !important; color: #3a3228 !important; padding: 8px 16px !important; }
-.btn-action:hover { background: #e0d7c8 !important; }
-.btn-action.gold { background: #c41e3a !important; border-color: #8b1528 !important; color: #fff !important; }
-.btn-sm { background: #ece5d8 !important; border: 1px solid #c4b8a4 !important; }
-.btn-primary { background: #3a3228 !important; border: none !important; color: #f5f0e8 !important; }
-
-.bar-track { background: #e0d7c8 !important; border: none !important; height: 6px !important; }
-.hp-bar-red { background: linear-gradient(90deg, #8b1528, #c41e3a) !important; }
-.hp-bar-green { background: linear-gradient(90deg, #2a5a3a, #4a7a4a) !important; }
-.mp-bar-blue { background: linear-gradient(90deg, #4a5a7a, #6a8aaa) !important; }
-.exp-fill { background: #3a3228 !important; }
-
-.modal-overlay { background: rgba(245,240,232,0.85) !important; }
-
-.map-card { background: #faf6f0 !important; border: 1px solid #d5ccbc !important; padding: 12px !important; }
-.map-card.active { border-color: #c41e3a !important; background: #f5ede0 !important; }
-
-.inv-slot { background: #faf6f0 !important; border: 1px solid #d5ccbc !important; }
-.inv-slot.occupied:hover { border-color: #c41e3a !important; }
-
-.toast { background: rgba(250,246,240,0.95) !important; border: 1px solid #3a3228 !important; color: #3a3228 !important; }
-
-::-webkit-scrollbar-thumb { background: #c4b8a4 !important; }
-::-webkit-scrollbar-track { background: #f5f0e8 !important; }
-
-input, select, textarea { background: #faf6f0 !important; border-color: #c4b8a4 !important; color: #3a3228 !important; }
-input:focus { border-color: #3a3228 !important; }
-
-.tab-btn.active::after { display: none !important; }
-
-.panel { animation: iderWashIn 0.4s ease !important; }
-@keyframes iderWashIn { from { opacity: 0; letter-spacing: 8px; } to { opacity: 1; letter-spacing: 0; } }
+.theme-inkwash .game-header .btn-icon{color:var(--text2)!important;font-size:14px!important;padding:2px 6px!important;background:none!important;border:none!important;cursor:pointer!important;width:24px!important;height:24px!important}
+.theme-inkwash .game-header .hdr-res{margin-right:auto!important}
+.theme-inkwash .game-header .btn-icon:hover{background:var(--cinnabar-faint)!important}
+.theme-inkwash .game-header .btn-icon[title*="帮助"],.theme-inkwash .game-header .btn-icon[title*="退出"]{display:none!important}
+.theme-inkwash .tab-nav{justify-content:center!important;background:transparent!important;border-bottom:1px solid var(--border)!important;padding:4px 8px!important;gap:2px!important}
+.theme-inkwash .tab-btn{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.12em!important;padding:6px 12px!important;font-size:12px!important;border-bottom:1px solid transparent!important;transition:all 0.4s ease!important;color:var(--text2)!important}
+.theme-inkwash .tab-btn.active{color:var(--cinnabar)!important;border-bottom-color:var(--cinnabar)!important}
+.theme-inkwash .tab-btn:hover{background:linear-gradient(90deg,transparent 50%,rgba(196,58,43,0.06) 100%)!important;background-size:200% 100%!important;animation:inkwashSpread 0.4s ease forwards!important}
+.theme-inkwash .inkwash-nav-icon{display:inline-block!important;width:16px!important;height:16px!important;vertical-align:middle!important;margin-right:4px!important;flex-shrink:0!important;color:var(--text2)!important;transition:color 0.3s!important}
+.theme-inkwash .tab-btn.active .inkwash-nav-icon{color:var(--cinnabar)!important}
+.theme-inkwash .tab-btn:hover .inkwash-nav-icon{color:var(--cinnabar-soft)!important}
+@media(min-width:1024px){.theme-inkwash .tab-nav{flex-direction:column!important;position:fixed!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;z-index:100!important;background:var(--bg2)!important;border:1px solid var(--border)!important;border-left:none!important;padding:12px 8px!important;gap:4px!important;border-radius:0 8px 8px 0!important;box-shadow:2px 2px 12px rgba(0,0,0,0.04)!important}.theme-inkwash .tab-btn{writing-mode:vertical-rl!important;padding:8px 6px!important;font-size:11px!important;letter-spacing:0.2em!important;border-bottom:none!important;border-right:1px solid transparent!important}.theme-inkwash .tab-btn.active{border-bottom-color:transparent!important;border-right-color:var(--cinnabar)!important}.theme-inkwash .tab-btn[data-tab="character"],.theme-inkwash .tab-btn[data-tab="battle"]{display:block!important}.theme-inkwash .inkwash-nav-icon{width:20px!important;height:20px!important;margin-right:0!important;margin-bottom:2px!important}.theme-inkwash .main-area{margin-left:48px!important}}
+@media(min-width:1024px){.theme-inkwash .battle-sidebar{width:240px!important;border-right:none!important;border-left:1px solid var(--border)!important;background:var(--paper-warm)!important;padding:16px 14px!important;position:relative!important}.theme-inkwash .battle-sidebar::before{content:''!important;position:absolute!important;left:8px!important;top:8px!important;bottom:8px!important;width:1px!important;background:var(--ink-ghost)!important;opacity:0.4!important}.theme-inkwash .sidebar-char-header{flex-direction:column!important;align-items:center!important;gap:4px!important;margin-bottom:12px!important;padding-bottom:12px!important;border-bottom:1px solid var(--border)!important}.theme-inkwash .sidebar-char-realm{font-size:10px!important;letter-spacing:0.2em!important;color:var(--text2)!important;text-align:center!important;display:block!important;margin-top:4px!important}.theme-inkwash .sidebar-section-title{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.2em!important;font-size:10px!important;color:var(--text2)!important;border-bottom:1px solid var(--border)!important}.theme-inkwash .sidebar-attr-grid .attr-item{background:transparent!important;padding:3px 4px!important;font-size:11px!important}.theme-inkwash .sidebar-stat-cards .stat-card.compact{background:transparent!important;border:1px solid var(--border)!important;padding:6px 8px!important}}
+.theme-inkwash .stat-card,.theme-inkwash .skill-card,.theme-inkwash .map-card,.theme-inkwash .sect-card,.theme-inkwash .alliance-card,.theme-inkwash .recipe-card,.theme-inkwash .dungeon-card,.theme-inkwash .listing-card{background:var(--bg3)!important;border:1px solid var(--border)!important;position:relative!important;transition:all 0.6s ease!important}
+.theme-inkwash .stat-card::before,.theme-inkwash .skill-card::before,.theme-inkwash .map-card::before{content:''!important;position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:2px!important;background:var(--cinnabar)!important;transform:scaleY(0)!important;transition:transform 0.4s ease!important}
+.theme-inkwash .stat-card:hover::before,.theme-inkwash .skill-card:hover::before,.theme-inkwash .map-card:hover::before{transform:scaleY(1)!important}
+.theme-inkwash .section-title{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.15em!important;color:var(--ink-deep)!important;border-bottom:1px solid var(--border)!important;font-size:14px!important}
+.theme-inkwash .skill-card.equipped{border-left:3px solid var(--cinnabar)!important;border-color:var(--border)!important;background:var(--cinnabar-faint)!important}
+.theme-inkwash .inkwash-card::before{content:''!important;position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:2px!important;background:var(--cinnabar)!important;transform:scaleY(0)!important;transition:transform 0.4s ease!important}
+.theme-inkwash .inkwash-card:hover::before{transform:scaleY(1)!important}
+.theme-inkwash .battle-status-panel{background:var(--bg3)!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important;padding:14px!important}
+.theme-inkwash .battle-unit .unit-name{font-family:'Ma Shan Zheng',cursive!important;font-size:1.1rem!important;letter-spacing:0.1em!important}
+.theme-inkwash .battle-unit .unit-name.enemy-name{color:var(--cinnabar)!important}
+.theme-inkwash .battle-vs{font-family:'Ma Shan Zheng',cursive!important;font-size:1rem!important;color:var(--text2)!important}
+.theme-inkwash .battle-log-box{background:var(--bg3)!important;border:1px solid var(--border)!important;font-family:'Noto Serif SC',serif!important;font-size:12px!important;line-height:1.8!important;letter-spacing:0.06em!important}
+.theme-inkwash .bar-track{height:8px!important;background:var(--ink-faint)!important;border-radius:0!important;border:none!important}
+.theme-inkwash .bar-fill{border-radius:0!important;transition:width 0.8s cubic-bezier(0.22,1,0.36,1)!important}
+.theme-inkwash .hp-bar-green{background:linear-gradient(90deg,#1a1a1a,#4a4a4a)!important}
+.theme-inkwash .hp-bar-red{background:linear-gradient(90deg,var(--cinnabar),#8a2a1a)!important}
+.theme-inkwash .mp-bar-blue{background:linear-gradient(90deg,#3a3a5a,#5a5a8a)!important}
+.theme-inkwash .action-bar-yellow{background:linear-gradient(90deg,#5a4a2a,#8a7a3a)!important}
+.theme-inkwash .exp-fill,.theme-inkwash .exp-bar-fill{background:linear-gradient(90deg,var(--ink-deep),var(--ink-mid))!important}
+.theme-inkwash .exp-bar-green{background:linear-gradient(90deg,#3a5a3a,#5a7a4a)!important}
+.theme-inkwash .inkwash-bar-bg{background:var(--ink-faint)!important;border-radius:0!important;height:6px!important}
+.theme-inkwash .modal-overlay{background:rgba(0,0,0,0.3)!important}
+.theme-inkwash .modal-panel{background:var(--bg2)!important;border:1px solid var(--ink-light)!important;border-radius:var(--radius)!important;box-shadow:0 4px 24px rgba(0,0,0,0.06)!important}
+.theme-inkwash .modal-title{font-family:'Noto Serif SC',serif!important;font-weight:400!important;letter-spacing:0.12em!important;color:var(--ink-deep)!important;border-bottom:1px solid var(--border)!important;padding-bottom:8px!important}
+.theme-inkwash .modal-close{color:var(--text2)!important;background:transparent!important;border:1px solid var(--border)!important;border-radius:4px!important}
+.theme-inkwash .modal-close:hover{background:var(--cinnabar-faint)!important;color:var(--cinnabar)!important}
+.theme-inkwash .btn-primary{background:var(--ink-deep)!important;color:var(--paper)!important;font-family:'Noto Serif SC',serif!important;letter-spacing:0.15em!important;border-radius:var(--radius)!important}
+.theme-inkwash .btn-primary:hover{background:var(--cinnabar)!important}
+.theme-inkwash .btn-action{background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important;font-family:'Noto Serif SC',serif!important;letter-spacing:0.1em!important;font-weight:300!important}
+.theme-inkwash .btn-action:hover{background:var(--cinnabar-faint)!important;border-color:var(--cinnabar)!important}
+.theme-inkwash .btn-action.gold{color:var(--cinnabar)!important;border-color:var(--cinnabar)!important}
+.theme-inkwash .btn-sm{background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important;font-family:'Noto Serif SC',serif!important;letter-spacing:0.08em!important;font-weight:300!important}
+.theme-inkwash .btn-sm:hover{background:var(--cinnabar-faint)!important}
+.theme-inkwash .btn-sm.gold{color:var(--cinnabar)!important;border-color:var(--cinnabar)!important}
+.theme-inkwash .view-login{background:var(--paper)!important}
+.theme-inkwash .login-card{background:var(--bg2)!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important}
+.theme-inkwash .game-title{font-family:'Ma Shan Zheng',cursive!important;letter-spacing:0.25em!important;color:var(--ink-deep)!important;font-weight:400!important;text-shadow:none!important;font-size:clamp(1.5rem,5vw,2rem)!important}
+.theme-inkwash .login-subtitle{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.3em!important}
+.theme-inkwash .toast{background:var(--bg2)!important;border:1px solid var(--cinnabar)!important;color:var(--cinnabar)!important;font-family:'Noto Serif SC',serif!important;letter-spacing:0.1em!important;border-radius:var(--radius)!important}
+.theme-inkwash .item-detail{background:var(--bg3)!important;border:1px solid var(--border)!important}
+.theme-inkwash .item-detail-name{font-family:'Noto Serif SC',serif!important;letter-spacing:0.08em!important}
+.theme-inkwash .equip-slot,.theme-inkwash .opt-item,.theme-inkwash .inv-slot{background:var(--bg3)!important;border:1px solid var(--border)!important;border-radius:var(--radius)!important}
+.theme-inkwash .inv-slot.occupied:hover{border-color:var(--cinnabar)!important}
+.theme-inkwash .map-card.active{border-color:var(--cinnabar)!important;background:var(--paper-warm)!important}
+.theme-inkwash .sub-tab button,.theme-inkwash .sub-tab-item{border-bottom:1px solid var(--ink-faint)!important;color:var(--ink-mid)!important;letter-spacing:1px!important;font-size:12px!important;background:transparent!important}
+.theme-inkwash .sub-tab button.active{color:var(--cinnabar)!important;border-bottom:2px solid var(--cinnabar)!important}
+.theme-inkwash .sr-bar{height:6px!important;background:var(--ink-faint)!important;border-radius:0!important}
+.theme-inkwash .mingtu-scroll{background:radial-gradient(circle at 10% 10%,rgba(139,115,85,0.12),transparent 36%),radial-gradient(circle at 90% 25%,rgba(196,58,43,0.08),transparent 34%),linear-gradient(165deg,var(--bg2),var(--bg))!important}
+.theme-inkwash .map-current{background:var(--bg3)!important;border:1px solid var(--border)!important}
+.theme-inkwash .key-badge{background:var(--cinnabar)!important;font-family:'Noto Serif SC',serif!important}
+.theme-inkwash .skill-name{font-family:'Noto Serif SC',serif!important;letter-spacing:0.08em!important}
+.theme-inkwash ::-webkit-scrollbar{width:4px!important}
+.theme-inkwash ::-webkit-scrollbar-thumb{background:var(--border)!important}
+.theme-inkwash input,.theme-inkwash select,.theme-inkwash textarea{background:var(--paper)!important;border:1px solid var(--border)!important;color:var(--ink-deep)!important;border-radius:4px!important;font-family:'Noto Serif SC',serif!important}
+.theme-inkwash input:focus{border-color:var(--ink-deep)!important}
+.theme-inkwash .panel{animation:inkwashIn 0.8s cubic-bezier(0.22,1,0.36,1)!important}
+.theme-inkwash .bar-fill,.theme-inkwash .exp-fill{background-size:200% 100%!important;animation:inkwashPour 0.8s ease forwards!important}
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 },
+
 
 // ───────────────────────────────────────────────
 // ② 赛博修仙 — 霓虹赛博朋克（重构布局）
@@ -142,10 +561,13 @@ css: `
   --radius: 2px !important;
 }
 body { font-family: 'Rajdhani','Noto Sans SC',sans-serif !important; }
+body::before{content:''!important;position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background-image:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,240,255,0.02) 3px,rgba(0,240,255,0.02) 4px)!important}
+body::after{content:''!important;position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background:radial-gradient(ellipse at 50% 100%,rgba(0,240,255,0.03),transparent 60%)!important}
 
 .view-login { background: linear-gradient(135deg, #03030a, #0a0a20, #03030a) !important; }
 .login-card { background: rgba(7,7,24,0.95) !important; border: 1px solid rgba(0,240,255,0.15) !important; box-shadow: 0 0 60px rgba(0,240,255,0.03), inset 0 0 60px rgba(0,240,255,0.02) !important; }
 .game-title { font-family: 'Orbitron',sans-serif !important; font-size: 28px !important; color: #00f0ff !important; text-shadow: 0 0 30px rgba(0,240,255,0.3) !important; letter-spacing: 4px !important; text-transform: uppercase !important; }
+.ider-cyber-grid{position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background-image:linear-gradient(rgba(0,240,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,0.03) 1px,transparent 1px)!important;background-size:40px 40px!important}
 
 .game-header { background: linear-gradient(90deg, #03030a, #070718, #03030a) !important; border-bottom: 1px solid rgba(0,240,255,0.1) !important; position: relative !important; }
 .game-header::after { content: '' !important; position: absolute !important; bottom: -1px !important; left: 0 !important; right: 0 !important; height: 1px !important; background: linear-gradient(90deg, transparent, #00f0ff, #ff00aa, #00f0ff, transparent) !important; background-size: 200% 100% !important; animation: iderScan 2s linear infinite !important; }
@@ -174,7 +596,12 @@ body { font-family: 'Rajdhani','Noto Sans SC',sans-serif !important; }
 .btn-action:hover { border-color: #00f0ff !important; box-shadow: 0 0 15px rgba(0,240,255,0.1) !important; }
 .btn-action.gold { border-color: #00f0ff !important; color: #00f0ff !important; text-shadow: 0 0 8px rgba(0,240,255,0.3) !important; }
 .btn-sm { background: #0c0c28 !important; border: 1px solid #1a1a4a !important; color: #c4d0e0 !important; }
+.btn-sm:hover{background:#1a1a4a!important;color:#00f0ff!important}
 .btn-primary { background: linear-gradient(135deg, #ff00aa, #00f0ff) !important; border: none !important; color: #000 !important; font-weight: 700 !important; text-transform: uppercase !important; }
+.btn-primary:hover{box-shadow:0 0 30px rgba(0,240,255,0.5),0 0 60px rgba(255,0,170,0.2)!important}
+.modal-close{background:rgba(0,240,255,0.04)!important;border:1px solid rgba(0,240,255,0.08)!important;color:#4a5a7a!important;border-radius:2px!important}
+.modal-close:hover{background:rgba(0,240,255,0.1)!important;color:#00f0ff!important}
+.opt-item:hover{border-color:#00f0ff!important;box-shadow:0 0 15px rgba(0,240,255,0.08)!important}
 
 .bar-track { background: #0c0c28 !important; border: 1px solid #1a1a4a !important; height: 8px !important; }
 .hp-bar-red { background: linear-gradient(90deg, #5a0018, #ff0044) !important; }
@@ -216,6 +643,9 @@ css: `
   --radius: 4px !important;
 }
 body { font-family: 'Playfair Display','Noto Serif SC',serif !important; }
+body::before{content:''!important;position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background:radial-gradient(ellipse at 50% 0%,rgba(212,168,68,0.04),transparent 50%)!important}
+body::after{content:''!important;position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background:repeating-linear-gradient(90deg,transparent,transparent 80px,rgba(212,168,68,0.008) 80px,rgba(212,168,68,0.008) 81px)!important}
+.ider-luxe-ornament{position:fixed!important;bottom:0!important;left:0!important;right:0!important;height:4px!important;z-index:-2!important;pointer-events:none!important;background:linear-gradient(90deg,transparent,rgba(212,168,68,0.15),rgba(212,168,68,0.08) 50%,rgba(212,168,68,0.15),transparent)!important}
 
 .view-login { background: radial-gradient(ellipse at 50% 0%, #1a1612 0%, #0d0b08 60%) !important; }
 .login-card { background: linear-gradient(160deg, #1a1612, #221e18) !important; border: 1px solid #4a3f35 !important; box-shadow: 0 8px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,68,0.05) !important; }
@@ -248,7 +678,12 @@ body { font-family: 'Playfair Display','Noto Serif SC',serif !important; }
 .btn-action:hover { border-color: #d4a844 !important; box-shadow: inset 0 1px 0 rgba(212,168,68,0.05), 0 2px 12px rgba(212,168,68,0.08) !important; }
 .btn-action.gold { background: linear-gradient(160deg, #3a3022, #4a3f35) !important; border-color: #d4a844 !important; color: #d4a844 !important; }
 .btn-sm { background: #1a1612 !important; border: 1px solid #4a3f35 !important; }
+.btn-sm:hover{background:#28221c!important;border-color:#d4a844!important}
 .btn-primary { background: linear-gradient(135deg, #d4a844, #b8860b) !important; border: none !important; color: #000 !important; box-shadow: 0 2px 12px rgba(212,168,68,0.2) !important; }
+.btn-primary:hover{box-shadow:0 4px 30px rgba(212,168,68,0.4)!important}
+.modal-close{background:rgba(212,168,68,0.04)!important;border:1px solid #4a3f35!important;color:#a09080!important}
+.modal-close:hover{background:rgba(212,168,68,0.1)!important;color:#d4a844!important}
+.opt-item:hover{border-color:#d4a844!important;box-shadow:inset 0 0 20px rgba(212,168,68,0.03)!important}
 
 .bar-track { background: #28221c !important; border: 1px solid #4a3f35 !important; height: 8px !important; }
 .hp-bar-red { background: linear-gradient(90deg, #6a2020, #c04040) !important; }
@@ -272,6 +707,7 @@ body { font-family: 'Playfair Display','Noto Serif SC',serif !important; }
 .panel { animation: iderLuxeIn 0.4s ease !important; }
 @keyframes iderLuxeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 },
 
 // ───────────────────────────────────────────────
@@ -290,6 +726,7 @@ css: `
   --radius: 0 !important;
 }
 body { font-family: 'Noto Serif SC','Georgia',serif !important; }
+body::before{content:''!important;position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background:repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(42,37,32,0.02) 40px,rgba(42,37,32,0.02) 41px)!important}
 
 .view-login { background: #f8f6f2 !important; }
 .login-card { background: #fff !important; border: 1px solid #ddd6cc !important; box-shadow: none !important; }
@@ -321,7 +758,11 @@ body { font-family: 'Noto Serif SC','Georgia',serif !important; }
 .btn-action:hover { background: #f0ece6 !important; }
 .btn-action.gold { background: #c49a6c !important; border-color: #a07850 !important; color: #fff !important; }
 .btn-sm { background: #f8f6f2 !important; border: 1px solid #ddd6cc !important; color: #2a2520 !important; }
+.btn-sm:hover{background:#f0ece6!important}
 .btn-primary { background: #2a2520 !important; border: none !important; color: #fff !important; letter-spacing: 2px !important; text-transform: uppercase !important; font-size: 11px !important; padding: 10px 24px !important; }
+.btn-primary:hover{background:#3a3530!important}
+.modal-close{background:#f8f6f2!important;border:1px solid #ddd6cc!important;color:#8a8078!important}
+.modal-close:hover{background:#f0ece6!important;color:#c49a6c!important}
 
 .bar-track { background: #e8e2da !important; border: none !important; height: 4px !important; }
 .hp-bar-red { background: #b04a3a !important; }
@@ -348,6 +789,7 @@ input:focus { border-color: #2a2520 !important; }
 .panel { animation: iderMagIn 0.35s ease !important; }
 @keyframes iderMagIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 },
 
 // ───────────────────────────────────────────────
@@ -398,7 +840,12 @@ body { font-family: 'Noto Serif JP','STSong','Yu Mincho','游明朝',serif !impo
 .btn-action:hover { background: #c4b4a0 !important; }
 .btn-action.gold { background: #8b6f4c !important; border-color: #6a5038 !important; color: #f0e8dc !important; }
 .btn-sm { background: #d0c0ae !important; border: 1px solid #b09880 !important; }
+.btn-sm:hover{background:#c4b4a0!important}
 .btn-primary { background: #3a3028 !important; border: none !important; color: #f0e8dc !important; }
+.btn-primary:hover{background:#4a4038!important}
+.modal-close{background:#d0c0ae!important;border:1px solid #b09880!important;color:#7a6a5a!important}
+.modal-close:hover{background:#c4b4a0!important;color:#3a3028!important}
+.opt-item:hover{border-color:#8b6f4c!important}
 
 .bar-track { background: #c4b4a0 !important; height: 6px !important; border: none !important; }
 .hp-bar-red { background: #8a4040 !important; }
@@ -425,6 +872,7 @@ input:focus { border-color: #3a3028 !important; }
 .panel { animation: iderZenIn 0.4s ease !important; }
 @keyframes iderZenIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 },
 
 // ───────────────────────────────────────────────
@@ -474,7 +922,11 @@ body { font-family: 'Inter','Noto Sans SC',-apple-system,sans-serif !important; 
 .btn-action:hover { background: #f8f8f8 !important; border-color: #cccccc !important; }
 .btn-action.gold { background: #333333 !important; border-color: #333333 !important; color: #ffffff !important; }
 .btn-sm { background: #ffffff !important; border: 1px solid #e0e0e0 !important; color: #1a1a1a !important; }
+.btn-sm:hover{background:#f8f8f8!important}
 .btn-primary { background: #333333 !important; border: none !important; color: #ffffff !important; }
+.btn-primary:hover{background:#555!important}
+.modal-close{background:#fff!important;border:1px solid #e0e0e0!important;color:#888!important}
+.modal-close:hover{border-color:#333!important;color:#1a1a1a!important}
 
 .bar-track { background: #f0f0f0 !important; border: none !important; height: 4px !important; }
 .hp-bar-red { background: #cc3333 !important; }
@@ -501,6 +953,7 @@ input:focus { border-color: #333333 !important; }
 .panel { animation: iderMinIn 0.3s ease !important; }
 @keyframes iderMinIn { from { opacity: 0; } to { opacity: 1; } }
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 },
 
 // ───────────────────────────────────────────────
@@ -517,8 +970,12 @@ css: `
   --text: rgba(255,255,255,0.9) !important; --text2: rgba(255,255,255,0.4) !important;
   --gold: rgba(0,122,255,0.85) !important; --gold2: rgba(0,90,200,0.8) !important;
   --accent: rgba(0,122,255,0.7) !important; --red: rgba(255,69,58,0.8) !important;
-  --green: rgba(52,199,89,0.8) !important; --radius: 14px !important;
+  --green: rgba(52,199,89,0.8) !important;   --radius: 14px !important;
 }
+
+body{font-family:'Inter','Noto Sans SC',-apple-system,BlinkMacSystemFont,sans-serif!important;color:rgba(255,255,255,0.92)!important;font-weight:300!important}
+body::after{content:''!important;position:fixed!important;inset:0!important;z-index:-3!important;pointer-events:none!important;background:radial-gradient(ellipse at 50% 0%,rgba(255,255,255,0.015),transparent 60%)!important;animation:frostGlow 6s ease-in-out infinite!important}
+@keyframes frostGlow{0%,100%{opacity:0.5}50%{opacity:1}}
 
 .game-header { background: rgba(20,22,32,0.6) !important; backdrop-filter: blur(30px) saturate(1.4) !important; -webkit-backdrop-filter: blur(30px) saturate(1.4) !important; border-bottom: 1px solid rgba(255,255,255,0.04) !important; }
 .hdr-name { font-weight: 500 !important; color: rgba(255,255,255,0.9) !important; letter-spacing: 0 !important; }
@@ -547,6 +1004,9 @@ css: `
 .btn-action.gold { background: rgba(0,122,255,0.15) !important; border-color: rgba(0,122,255,0.25) !important; color: var(--gold) !important; }
 .btn-sm { background: rgba(255,255,255,0.04) !important; border: 1px solid rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.7) !important; border-radius: 10px !important; }
 .btn-primary { background: var(--gold) !important; border: none !important; color: #fff !important; border-radius: 12px !important; font-weight: 600 !important; padding: 8px 22px !important; }
+.btn-primary:hover{box-shadow:0 0 30px rgba(0,122,255,0.3)!important}
+.modal-close{background:rgba(255,255,255,0.04)!important;border:1px solid rgba(255,255,255,0.08)!important;border-radius:10px!important;color:rgba(255,255,255,0.6)!important}
+.modal-close:hover{background:rgba(255,255,255,0.08)!important;color:rgba(255,255,255,0.92)!important}
 
 .bar-track { background: rgba(255,255,255,0.06) !important; border: none !important; height: 6px !important; border-radius: 3px !important; }
 .hp-bar-red { background: linear-gradient(90deg, rgba(255,69,58,0.5), rgba(255,69,58,0.8)) !important; border-radius: 3px !important; }
@@ -570,6 +1030,7 @@ css: `
 .panel { animation: iderFrostIn 0.4s ease !important; }
 @keyframes iderFrostIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 },
 
 // ───────────────────────────────────────────────
@@ -619,7 +1080,11 @@ body { font-family: 'Impact','Arial Black','Oswald',sans-serif !important; color
 .btn-action:hover { background: #000 !important; color: #fff !important; }
 .btn-action.gold { background: #ff3300 !important; border-color: #cc2200 !important; color: #fff !important; }
 .btn-sm { background: #fff !important; border: 2px solid #000 !important; color: #000 !important; font-family: monospace !important; }
+.btn-sm:hover{background:#000!important;color:#fff!important}
 .btn-primary { background: #000 !important; border: 2px solid #000 !important; color: #fff !important; font-family: 'Arial Black',sans-serif !important; text-transform: uppercase !important; }
+.btn-primary:hover{background:#ff3300!important;border-color:#cc2200!important}
+.modal-close{background:#000!important;border:2px solid #000!important;color:#fff!important}
+.modal-close:hover{background:#ff3300!important;border-color:#cc2200!important}
 
 .bar-track { background: #e0e0e0 !important; border: 2px solid #000 !important; height: 12px !important; }
 .hp-bar-red { background: #ff0000 !important; }
@@ -646,6 +1111,7 @@ input:focus { border-color: #ff3300 !important; }
 .panel { animation: iderBrutIn 0.2s ease !important; }
 @keyframes iderBrutIn { from { opacity: 0; transform: rotate(-1deg); } to { opacity: 1; transform: rotate(0); } }
 `
+.tab-btn svg,.ider-nav-icon{display:none!important}
 }
 
 }; // SKINS end
@@ -684,6 +1150,8 @@ function clearActiveStyle() {
 
 function applySkin(skinName) {
   clearActiveStyle();
+  INKWASH.remove();
+  CYBERWASH.remove();
   isOrderSystemMode = false;
 
   if (skinName && SKINS[skinName]) {
@@ -694,6 +1162,11 @@ function applySkin(skinName) {
     activeStyleEl = style;
     setActiveSkin(skinName);
     console.log('[皮肤] 已应用: ' + SKINS[skinName].name);
+    if (skinName === 'inkwash') {
+      setTimeout(() => INKWASH.apply(), 150);
+    } else if (skinName === 'cyber') {
+      setTimeout(() => CYBERWASH.apply(), 150);
+    }
   } else {
     setActiveSkin('');
     console.log('[皮肤] 已恢复默认');
@@ -722,7 +1195,7 @@ function fetchOrderSystemSkin() {
             // Fetch the CSS
             GM_xmlhttpRequest({
               method: 'GET',
-              url: apiUrl + '/api/skins/css/' + key,
+              url: apiUrl + '/api/skins/css/' + key + '?v=' + Date.now(),
               onload: function(cssRes) {
                 resolve({ key: key, css: cssRes.responseText });
               },
@@ -783,7 +1256,8 @@ function injectSkinBtn() {
     if (header && !document.querySelector('.ider-skin-btn')) {
       const btn = document.createElement('button');
       btn.className = 'btn-icon ider-skin-btn';
-      btn.textContent = '🎨';
+      btn.innerHTML = icon('palette', null, 18);
+      btn.style.fontSize = '0';
       btn.title = '切换皮肤';
       btn.addEventListener('click', showSkinPicker);
       header.appendChild(btn);
@@ -845,10 +1319,10 @@ function showSkinPicker() {
   const token = getApiToken();
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <span style="font-size:16px;font-weight:600;color:#d4a844">🎨 皮肤切换</span>
+      <span style="font-size:16px;font-weight:600;color:#d4a844;display:flex;align-items:center;gap:6px;">${icon('palette', null, 18)} 皮肤切换</span>
       <div style="display:flex;gap:8px;align-items:center">
-        <button id="ider-skin-config-btn" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#888;font-size:12px;padding:4px 8px;border-radius:8px;cursor:pointer;">⚙</button>
-        <span class="ider-skin-close" style="font-size:20px;color:#888;cursor:pointer;line-height:1">✕</span>
+        <button id="ider-skin-config-btn" style="background:none;border:1px solid rgba(255,255,255,0.1);color:#888;font-size:0;padding:4px 8px;border-radius:8px;cursor:pointer;">${icon('gear', null, 16)}</button>
+        <span class="ider-skin-close" style="font-size:0;color:#888;cursor:pointer;line-height:1;display:inline-flex;">${icon('close', null, 20)}</span>
       </div>
     </div>
     <div id="ider-os-status" style="font-size:11px;color:#666;margin-bottom:12px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.03);display:${token ? 'block' : 'none'}">
@@ -857,26 +1331,26 @@ function showSkinPicker() {
     <div style="display:grid;gap:8px" id="ider-skin-list">
       <div class="ider-skin-opt ${!current?'active':''}" data-skin=""
            style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${!current?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
-        <div style="font-weight:600;font-size:14px;color:${!current?'#d4a844':'#ccc'}">🔄 默认样式</div>
+        <div style="font-weight:600;font-size:14px;color:${!current?'#d4a844':'#ccc'};display:flex;align-items:center;gap:6px;">${icon('cycle', null, 14)} 默认样式</div>
         <div style="font-size:12px;color:#888;margin-top:2px">恢复游戏原始外观</div>
       </div>
   `;
 
   // 有 token 时从 API 获取已拥有皮肤列表
   if (token) {
-    html += `<div style="text-align:center;padding:16px;color:#888;font-size:12px;" id="ider-skin-loading">⏳ 加载已拥有的皮肤...</div>`;
+    html += `<div style="text-align:center;padding:16px;color:#888;font-size:12px;" id="ider-skin-loading">${icon('hourglass', null, 14)} 加载已拥有的皮肤...</div>`;
   } else {
     html += `
       <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
-        <div style="font-size:32px;margin-bottom:8px;">🔒</div>
-        <div>请在 ⚙ 设置中配置工单系统 Token</div>
+        <div style="font-size:32px;margin-bottom:8px;">${icon('lock', null, 32)}</div>
+        <div style="display:flex;align-items:center;gap:4px;justify-content:center;">请在 ${icon('gear', null, 14)} 设置中配置工单系统 Token</div>
         <div style="font-size:11px;margin-top:8px;color:#555;">登录工单系统 → 设置 → 获取 Token</div>
       </div>`;
   }
 
   html += `</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:#555;">
-      <span>💡 仅显示你在工单系统已购买的皮肤</span>
+      <span style="display:inline-flex;align-items:center;gap:4px;">${icon('bulb', null, 12)} 仅显示你在工单系统已购买的皮肤</span>
     </div>`;
   panel.innerHTML = html;
 
@@ -914,7 +1388,7 @@ function applyOrderSystemSkinFromApi(skinKey, panel) {
   const localSkin = localKey ? SKINS[localKey] : null;
 
   const msgEl = panel.querySelector('#ider-os-status-text');
-  if (msgEl) msgEl.textContent = '⏳ 应用皮肤...';
+  if (msgEl) msgEl.innerHTML = icon('hourglass', null, 12) + ' 应用皮肤...';
 
   GM_xmlhttpRequest({
     method: 'GET',
@@ -1011,29 +1485,29 @@ function showTokenTutorial() {
   modal.innerHTML = `
     <div style="background:rgba(20,22,32,0.96);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;max-width:480px;width:90vw;max-height:80vh;overflow-y:auto;color:#d4d4e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <span style="font-size:15px;font-weight:600;color:#d4a844;">🔑 获取 API Token</span>
-        <span class="ider-custom-close" style="font-size:20px;color:#888;cursor:pointer;">✕</span>
+        <span style="font-size:15px;font-weight:600;color:#d4a844;display:flex;align-items:center;gap:6px;">${icon('key', null, 16)} 获取 API Token</span>
+        <span class="ider-custom-close" style="font-size:0;color:#888;cursor:pointer;">${icon('close', null, 20)}</span>
       </div>
 
       <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-bottom:12px;">
-        <h4 style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:8px;">📋 步骤</h4>
+        <h4 style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:8px;display:flex;align-items:center;gap:6px;">${icon('note', null, 14)} 步骤</h4>
         <ol style="font-size:12px;color:#aaa;line-height:2;padding-left:16px;">
           <li>点击下方按钮打开 <strong>工单系统 → 设置页面</strong></li>
           <li>登录你的账号（如未登录）</li>
           <li>找到「<strong>API Token</strong>」区域</li>
           <li>点击「<strong>复制</strong>」按钮复制 Token</li>
-          <li>回到游戏页面，打开 🎨 皮肤面板</li>
-          <li>点击 ⚙ 设置，将 Token 粘贴到输入框中</li>
+          <li>回到游戏页面，打开 <span style="display:inline-flex;align-items:center;vertical-align:middle;">${icon('palette', null, 12)}</span> 皮肤面板</li>
+          <li>点击 <span style="display:inline-flex;align-items:center;vertical-align:middle;">${icon('gear', null, 12)}</span> 设置，将 Token 粘贴到输入框中</li>
           <li>点击「保存」，脚本将自动同步你的皮肤</li>
         </ol>
       </div>
 
       <a href="${apiUrl}/#/settings" target="_blank" style="display:block;text-align:center;padding:10px 16px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#818cf8;text-decoration:none;font-size:13px;font-weight:600;margin-bottom:12px;">
-        🔗 打开工单系统设置页面
+        ${icon('link', null, 14)} 打开工单系统设置页面
       </a>
 
       <div style="background:rgba(212,168,68,0.08);border:1px solid rgba(212,168,68,0.15);border-radius:8px;padding:12px;font-size:11px;color:#b8963a;">
-        <strong>⚠️ 安全提醒</strong>
+        <strong style="display:inline-flex;align-items:center;gap:6px;">${icon('warning', null, 14)} 安全提醒</strong>
         <ul style="margin:4px 0 0 12px;padding:0;line-height:1.6;">
           <li>Token 相当于你的账号密码，请勿分享给他人</li>
           <li>如 Token 泄露，请立即在工单系统设置页面重新生成</li>
@@ -1059,7 +1533,7 @@ function showConfigPanel(panel) {
   const cfg = getConfig();
   const configHtml = `
     <div id="ider-config-form" style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:12px;">
-      <div style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:10px;">⚙ 设置</div>
+      <div style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:10px;display:flex;align-items:center;gap:6px;">${icon('gear', null, 14)} 设置</div>
 
       <div style="margin-bottom:8px;">
         <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">API 地址</label>
@@ -1073,7 +1547,7 @@ function showConfigPanel(panel) {
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
         <button id="ider-cfg-save" style="flex:1;min-width:60px;padding:6px 12px;background:rgba(212,168,68,0.2);border:1px solid rgba(212,168,68,0.3);border-radius:8px;color:#d4a844;cursor:pointer;font-size:12px;">保存</button>
         <button id="ider-cfg-test" style="padding:6px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;cursor:pointer;font-size:12px;">测试连接</button>
-        <button id="ider-cfg-token-help" style="padding:6px 12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:8px;color:#818cf8;cursor:pointer;font-size:12px;">🔑 获取 Token</button>
+        <button id="ider-cfg-token-help" style="padding:6px 12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:8px;color:#818cf8;cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:4px;">${icon('key', null, 12)} 获取 Token</button>
       </div>
 
       <div id="ider-cfg-msg" style="margin-top:8px;font-size:11px;color:#666;"></div>
@@ -1088,7 +1562,7 @@ function showConfigPanel(panel) {
     const token = panel.querySelector('#ider-cfg-token').value.trim();
     setConfig({ apiUrl, token });
     const msgEl = panel.querySelector('#ider-cfg-msg');
-    msgEl.textContent = '✅ 已保存';
+    msgEl.innerHTML = icon('checkmark', null, 12) + ' 已保存';
     msgEl.style.color = '#40a040';
     const statusEl = panel.querySelector('#ider-os-status');
     if (statusEl) {
@@ -1097,15 +1571,15 @@ function showConfigPanel(panel) {
       if (statusText) statusText.textContent = token ? '工单系统已连接' : '';
     }
     if (token) {
-      msgEl.textContent = '⏳ 正在同步...';
+      msgEl.innerHTML = icon('hourglass', null, 12) + ' 正在同步...';
       fetchOrderSystemSkin().then(result => {
         if (result) {
           applyOrderSystemSkin(result.key, result.css);
-          msgEl.textContent = '✅ 已同步工单系统皮肤';
+          msgEl.innerHTML = icon('checkmark', null, 12) + ' 已同步工单系统皮肤';
           closeSkinPicker();
           showToast('已同步工单系统皮肤');
         } else {
-          msgEl.textContent = '⚠️ 未找到激活的皮肤或连接失败';
+          msgEl.innerHTML = icon('warning', null, 12) + ' 未找到激活的皮肤或连接失败';
           msgEl.style.color = '#d4a844';
         }
       });
@@ -1117,7 +1591,7 @@ function showConfigPanel(panel) {
     const apiUrl = panel.querySelector('#ider-cfg-url').value.trim();
     const token = panel.querySelector('#ider-cfg-token').value.trim();
     const msgEl = panel.querySelector('#ider-cfg-msg');
-    msgEl.textContent = '⏳ 测试中...';
+    msgEl.innerHTML = icon('hourglass', null, 12) + ' 测试中...';
     msgEl.style.color = '#666';
     GM_xmlhttpRequest({
       method: 'GET',
@@ -1125,14 +1599,14 @@ function showConfigPanel(panel) {
       headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
       onload: function(res) {
         if (res.status === 200) {
-          msgEl.textContent = '✅ 连接成功';
+          msgEl.innerHTML = icon('checkmark', null, 12) + ' 连接成功';
           msgEl.style.color = '#40a040';
         } else {
-          msgEl.textContent = '❌ 连接失败: HTTP ' + res.status;
+          msgEl.innerHTML = icon('cross', null, 12) + ' 连接失败: HTTP ' + res.status;
           msgEl.style.color = '#d04040';
         }
       },
-      onerror: function() { msgEl.textContent = '❌ 网络错误'; msgEl.style.color = '#d04040'; },
+      onerror: function() { msgEl.innerHTML = icon('cross', null, 12) + ' 网络错误'; msgEl.style.color = '#d04040'; },
     });
   });
 
@@ -1150,7 +1624,7 @@ function loadOwnedSkins(panel) {
     if (!owned || Object.keys(owned).length === 0) {
       listEl.insertAdjacentHTML('beforeend', `
         <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
-          <div style="font-size:32px;margin-bottom:8px;">🎨</div>
+          <div style="font-size:32px;margin-bottom:8px;">${icon('palette', null, 32)}</div>
           <div>你还没有购买任何皮肤</div>
           <div style="font-size:11px;margin-top:8px;color:#555;">前往工单系统皮肤商城购买</div>
         </div>`);
@@ -1193,13 +1667,15 @@ function loadOwnedSkins(panel) {
     });
   }).catch(() => {
     const loadingEl = panel.querySelector('#ider-skin-loading');
-    if (loadingEl) loadingEl.textContent = '❌ 加载失败，请检查网络';
+    if (loadingEl) loadingEl.innerHTML = icon('cross', null, 12) + ' 加载失败，请检查网络';
   });
 }
 
 // ══ 应用工单系统皮肤 ══
 function applyOrderSystemSkin(skinKey, cssText) {
   clearActiveStyle();
+  INKWASH.remove();
+  CYBERWASH.remove();
   isOrderSystemMode = true;
   const style = document.createElement('style');
   style.textContent = cssText;
@@ -1208,11 +1684,16 @@ function applyOrderSystemSkin(skinKey, cssText) {
   activeStyleEl = style;
   setActiveSkin('__os_' + skinKey);
   console.log('[皮肤] 已应用工单系统皮肤: ' + skinKey);
+  if (skinKey === 'ink') {
+    setTimeout(() => INKWASH.apply(), 150);
+  } else if (skinKey === 'cyber') {
+    setTimeout(() => CYBERWASH.apply(), 150);
+  }
 }
 
 // 注入全局动画关键帧
 const animStyle = document.createElement('style');
-animStyle.textContent = `@keyframes iderTIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}@keyframes iderCustomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`;
+animStyle.textContent = `@keyframes iderTIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}@keyframes iderCustomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes iderCyberScanLine{0%,100%{top:0;opacity:0}10%{opacity:1}20%{opacity:0.3}30%{opacity:1}45%{opacity:0}50%{top:50%;opacity:0.8}60%{opacity:0.2}75%{opacity:1}90%{opacity:0}100%{top:100%;opacity:0}}`;
 document.head.appendChild(animStyle);
 
 // ══ 启动 ══
@@ -1221,5 +1702,17 @@ setTimeout(() => {
   // 延迟应用皮肤，等待 DOM 就绪
   setTimeout(applySavedSkin, 500);
 }, 1000);
+
+// ══ 响应式 — 窗口缩放时重新触发布局 ══
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    if (INKWASH.active) {
+      document.querySelectorAll('.inkwash-done').forEach(el => el.classList.remove('inkwash-done'));
+      INKWASH.layout();
+    }
+  }, 200);
+});
 
 })();

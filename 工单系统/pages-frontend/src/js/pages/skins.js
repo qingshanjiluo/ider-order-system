@@ -172,7 +172,7 @@ async function loadShop(el, container) {
         const key = btn.dataset.previewSkin;
         const existing = document.getElementById('skin-preview-style');
         if (existing) existing.remove();
-        fetch(`/api/skins/css/${key}`)
+        fetch(`/api/skins/css/${key}?v=${Date.now()}`)
           .then(r => r.text())
           .then(css => {
             const style = document.createElement('style');

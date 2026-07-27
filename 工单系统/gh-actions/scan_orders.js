@@ -690,7 +690,15 @@ async function dispatchOrder(order, orderIdx) {
     case '代打':
     case '托管':
     default: {
-      const existingAccounts = order.total_accounts_created || 0;
+      // 查询工单真实账号数量（不依赖 order.total_accounts_created 这种可能过期的字段）
+      let existingAccounts = 0;
+      try {
+        const countRes = await workerApi('/api/gh/account-count?order_id=' + order.id);
+        existingAccounts = countRes.total || 0;
+      } catch (e) {
+        tsLog('⚠️ 查询账号数量失败，使用 order.total_accounts_created: ' + e.message);
+        existingAccounts = order.total_accounts_created || 0;
+      }
       const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
 
       // 检查是否有失败账号需要重试
@@ -773,7 +781,8 @@ async function main() {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
       tsLog('工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));
     } else if (success && isBatch) {
-      tsLog('工单 #' + order.id + ' 账号补充完成（由健康检测/自动升级触发完结）');
+      const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
+      tsLog('工单 #' + order.id + ' 账号补充完成: ' + (completeRes.message || '') + ' (状态: ' + (completeRes.status || order.status) + ')');
     } else if (success && isSubscription) {
       // 检查订阅是否到期
       if (order.subscription_end && new Date(order.subscription_end) < new Date()) {

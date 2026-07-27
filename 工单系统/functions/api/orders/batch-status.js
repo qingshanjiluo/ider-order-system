@@ -27,27 +27,33 @@ export async function onRequest(context) {
       if (!order) { failed++; errors.push(`#${id}: 不存在`); continue; }
 
       if (status === 'approved') {
-        // 解冻积分（如果是coin支付且之前被拒绝过）
-        if (order.payment_method === 'coin' && order.frozen_points > 0 && order.status !== 'approved') {
-          await env.DB.prepare('UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?').bind(order.frozen_points, order.user_id).run();
+        if (order.status === 'approved') { approved++; continue; }
+        // 如果是从 rejected 重新通过，检查余额并重新扣除冻结积分
+        if (order.status === 'rejected' && order.payment_method === 'coin' && order.frozen_points > 0) {
+          const u = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(order.user_id).first();
+          if ((u?.bonus_points || 0) < order.frozen_points) {
+            errors.push(`#${id}: 用户修仙币不足`); failed++; continue;
+          }
+          await env.DB.prepare('UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?').bind(order.frozen_points, order.user_id).run();
         }
         await env.DB.prepare(
           "UPDATE orders SET status = 'approved', updated_at = datetime('now'), admin_notes = COALESCE(?,'') || admin_notes WHERE id = ?"
         ).bind(notes ? notes + '\n' : '', id).run();
-        // 如果是积分支付，冻结修仙币
-        if (order.payment_method === 'coin' && order.frozen_points > 0) {
-          await env.DB.prepare('UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?').bind(order.frozen_points, order.user_id).run();
-        }
         await logActivity(env, id, order.user_id, 'approved', '批量审批通过' + (notes ? ': ' + notes : ''));
       } else if (status === 'rejected') {
+        if (order.status === 'rejected') { approved++; continue; }
+        // 仅首次拒绝时退还冻结积分
         if (order.payment_method === 'coin' && order.frozen_points > 0) {
           await env.DB.prepare('UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?').bind(order.frozen_points, order.user_id).run();
+          // 标记 frozen_points 为 0 防重复退款
+          await env.DB.prepare("UPDATE orders SET frozen_points = 0 WHERE id = ?").bind(id).run();
         }
         await env.DB.prepare(
-          "UPDATE orders SET status = 'rejected', frozen_points = 0, updated_at = datetime('now'), admin_notes = COALESCE(?,'') || admin_notes WHERE id = ?"
+          "UPDATE orders SET status = 'rejected', updated_at = datetime('now'), admin_notes = COALESCE(?,'') || admin_notes WHERE id = ?"
         ).bind(notes ? notes + '\n' : '', id).run();
         await logActivity(env, id, order.user_id, 'rejected', '批量拒绝' + (notes ? ': ' + notes : ''));
       } else if (status === 'completed') {
+        if (order.status === 'completed') { approved++; continue; }
         await env.DB.prepare(
           "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now'), admin_notes = COALESCE(?,'') || admin_notes WHERE id = ?"
         ).bind(notes ? notes + '\n' : '', id).run();

@@ -39,6 +39,19 @@ export async function onRequest(context) {
 
   // ── approved: 审核通过 ──────────────────────────────
   if (status === 'approved') {
+    // 如果是从 rejected 重新通过，需要重新扣除冻结积分（防止拒绝退款后不扣回）
+    if (order.status === 'rejected' && order.payment_method === 'coin' && order.frozen_points > 0) {
+      const user = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(order.user_id).first();
+      if ((user?.bonus_points || 0) < order.frozen_points) {
+        return json({ error: '用户修仙币余额不足，无法重新通过' }, 400);
+      }
+      await env.DB.prepare(
+        'UPDATE users SET bonus_points = bonus_points - ? WHERE id = ?'
+      ).bind(order.frozen_points, order.user_id).run();
+      await logActivity(env, orderId, order.user_id, 'refund_reverse',
+        '重新通过工单，扣除修仙币 ' + order.frozen_points + ' 个');
+    }
+
     // 更新用户统计（total_spent 使用 bonus_points 统一单位）
     await env.DB.prepare(
       'UPDATE users SET total_orders = total_orders + 1, total_spent = total_spent + ? WHERE id = ?'
@@ -94,8 +107,8 @@ export async function onRequest(context) {
 
   // ── rejected: 拒绝 ─────────────────────────────────
   else if (status === 'rejected') {
-    // 修仙币支付：退还冻结的积分
-    if (order.payment_method === 'coin' && order.frozen_points > 0) {
+    // 修仙币支付：退还冻结的积分（仅首次拒绝时退，status 变化保护防重复）
+    if (order.payment_method === 'coin' && order.frozen_points > 0 && order.status !== 'rejected') {
       await env.DB.prepare(
         'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
       ).bind(order.frozen_points, order.user_id).run();

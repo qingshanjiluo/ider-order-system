@@ -44,8 +44,7 @@ export async function onRequest(context) {
     if (order.status !== 'pending') return json({ error: '订单已处理' }, 400);
 
     if (action === 'approve') {
-      // 1. 增加用户修仙币
-      await env.DB.prepare('UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?').bind(order.coins, order.user_id).run();
+      // 标记充值订单完成（修仙币通过兑换码发放，不直接加币，避免双倍到账）
       await env.DB.prepare(
         "UPDATE recharge_orders SET status = 'completed', admin_id = ?, completed_at = datetime('now') WHERE id = ?"
       ).bind(user.id, order_id).run();

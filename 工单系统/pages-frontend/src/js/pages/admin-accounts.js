@@ -4,6 +4,9 @@ import { toast } from '../components/toast.js';
 let _pollTimer = null;
 let _isLoading = false;
 let _lastUpdate = null;
+let _currentPage = 1;
+let _currentStatus = '';
+let _totalPages = 1;
 
 function fmtDate(d) {
   if (!d) return '-';
@@ -56,16 +59,15 @@ export async function renderAdminAccounts({ container }) {
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <span class="text-xs text-muted" id="admin-account-refresh-time"></span>
-          <button class="btn btn-sm btn-ghost" id="admin-account-refresh-btn" title="手动刷新">
-            <span id="admin-refresh-icon">↻</span>
-          </button>
+          <span class="text-xs text-muted" id="admin-account-total"></span>
+          <button class="btn btn-sm btn-ghost" id="admin-account-refresh-btn" title="手动刷新">↻</button>
           <label class="text-xs text-muted" style="display:flex;align-items:center;gap:4px;cursor:pointer;">
             <input type="checkbox" id="admin-auto-refresh" checked> 自动刷新
           </label>
         </div>
       </div>
     </div>
-    <div class="filter-bar">
+    <div class="filter-bar" style="margin-bottom:8px;">
       <select class="form-select" id="admin-account-status">
         <option value="">全部状态</option>
         <option value="creating">注册中</option>
@@ -75,22 +77,28 @@ export async function renderAdminAccounts({ container }) {
         <option value="banned">封禁</option>
         <option value="failed">失败</option>
       </select>
-      <select class="form-select" id="admin-account-setup">
-        <option value="">全部Setup</option>
-        <option value="pending">待Setup</option>
-        <option value="creating">创建中</option>
-        <option value="running">进行中</option>
-        <option value="done">已完成</option>
-        <option value="error">异常</option>
-      </select>
     </div>
     <div id="admin-accounts-list">
       <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div id="admin-accounts-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;">
+      <button class="btn btn-sm btn-ghost" id="page-prev" disabled>‹ 上一页</button>
+      <span class="text-sm text-muted" id="page-info">第 1 页</span>
+      <button class="btn btn-sm btn-ghost" id="page-next" disabled>下一页 ›</button>
     </div>`;
 
-  document.getElementById('admin-account-status').addEventListener('change', () => loadAccounts());
-  document.getElementById('admin-account-setup').addEventListener('change', () => loadAccounts());
+  document.getElementById('admin-account-status').addEventListener('change', (e) => {
+    _currentStatus = e.target.value;
+    _currentPage = 1;
+    loadAccounts();
+  });
   document.getElementById('admin-account-refresh-btn').addEventListener('click', () => loadAccounts());
+  document.getElementById('page-prev').addEventListener('click', () => {
+    if (_currentPage > 1) { _currentPage--; loadAccounts(); }
+  });
+  document.getElementById('page-next').addEventListener('click', () => {
+    if (_currentPage < _totalPages) { _currentPage++; loadAccounts(); }
+  });
   document.getElementById('admin-auto-refresh').addEventListener('change', (e) => {
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
     if (e.target.checked) startPoll();
@@ -104,9 +112,7 @@ function startPoll() {
   if (_pollTimer) clearInterval(_pollTimer);
   _pollTimer = setInterval(() => {
     if (_isLoading) return;
-    const cb = document.getElementById('admin-auto-refresh');
-    if (cb && !cb.checked) return;
-    loadAccounts();
+    if (document.getElementById('admin-auto-refresh')?.checked) loadAccounts();
   }, 15000);
 }
 
@@ -115,29 +121,30 @@ async function loadAccounts() {
   _isLoading = true;
 
   const btn = document.getElementById('admin-account-refresh-btn');
-  const icon = document.getElementById('admin-refresh-icon');
   if (btn) btn.disabled = true;
-  if (icon) icon.style.display = 'inline-block';
 
   const el = document.getElementById('admin-accounts-list');
   if (!el) { _isLoading = false; return; }
   const isFirstLoad = el.querySelector('.loading') !== null;
 
   try {
-    const res = await api.adminGetAccounts();
-    let accounts = res.accounts || res || [];
-
-    const statusFilter = document.getElementById('admin-account-status')?.value || '';
-    const setupFilter = document.getElementById('admin-account-setup')?.value || '';
-    if (statusFilter) accounts = accounts.filter(a => a.status === statusFilter);
-    if (setupFilter) accounts = accounts.filter(a => a.setup_status === setupFilter);
+    const res = await api.adminGetAccounts(_currentStatus, _currentPage);
+    const accounts = res.accounts || [];
+    const total = res.total || accounts.length;
+    _totalPages = res.totalPages || Math.ceil(total / 50);
 
     _lastUpdate = new Date().toISOString();
     const rt = document.getElementById('admin-account-refresh-time');
     if (rt) rt.textContent = '更新: ' + timeAgo(_lastUpdate);
+    const tt = document.getElementById('admin-account-total');
+    if (tt) tt.textContent = '共 ' + total + ' 条';
+
+    // 分页按钮
+    document.getElementById('page-prev').disabled = _currentPage <= 1;
+    document.getElementById('page-next').disabled = _currentPage >= _totalPages;
+    document.getElementById('page-info').textContent = '第 ' + _currentPage + '/' + _totalPages + ' 页';
 
     if (!accounts.length) {
-      // 只在首次或无内容时替换，避免闪烁
       if (isFirstLoad || !el.querySelector('table')) {
         el.innerHTML = `<div class="empty-state"><p>暂无账号</p></div>`;
       }
@@ -170,10 +177,7 @@ async function loadAccounts() {
         </tr>`;
     }).join('');
 
-    // 无闪烁更新：保留 scrollTop
     const existingTable = el.querySelector('table');
-    const scrollTop = el.scrollTop || 0;
-
     if (existingTable) {
       const tbody = existingTable.querySelector('tbody');
       if (tbody) tbody.innerHTML = rows;
@@ -201,8 +205,6 @@ async function loadAccounts() {
         </div>`;
     }
 
-    el.scrollTop = scrollTop;
-
   } catch (err) {
     if (isFirstLoad || !el.querySelector('table')) {
       el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
@@ -220,17 +222,8 @@ window.__retryAccount = async function(el) {
   try {
     el.disabled = true; el.textContent = '重试中...';
     const res = await api.adminRetryAccount(accountId);
-    if (res.ok) { toast.success('已提交重试，下次扫描将重新处理'); loadAccounts(); }
+    if (res.ok) { toast.success('已提交重试'); loadAccounts(); }
     else { toast.error(res.error || '重试失败'); }
   } catch (err) { toast.error('重试失败: ' + err.message); }
   finally { el.disabled = false; el.textContent = '重试'; }
 };
-
-function parseSpiritRoots(str) {
-  if (!str) return null;
-  try {
-    const parsed = typeof str === 'string' ? JSON.parse(str) : str;
-    if (parsed && typeof parsed === 'object' && ('metal' in parsed || 'wood' in parsed)) return parsed;
-    return null;
-  } catch { return null; }
-}

@@ -156,8 +156,8 @@ class ApiClient {
   adminReplyAppeal(id, reply, status) {
     return this.post(`/admin/appeals/${id}/reply`, { reply, status });
   }
-  adminGetAccounts(status) {
-    const q = status ? `?status=${status}` : '';
+  adminGetAccounts(status, page = 1) {
+    const q = status ? `?status=${status}&page=${page}` : `?page=${page}`;
     return this.get(`/admin/accounts${q}`);
   }
   adminRetryAccount(id) { return this.post(`/admin/accounts/${id}/retry`); }

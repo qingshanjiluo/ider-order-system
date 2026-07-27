@@ -267,6 +267,57 @@ CREATE TABLE IF NOT EXISTS contact_messages (
 -- 迁移 v4.0: 旧管理员 is_admin=1 自动升级为 admin 角色
 UPDATE users SET role = 'admin' WHERE is_admin = 1 AND role = 'user';
 
+-- v5.0: 皮肤系统
+CREATE TABLE IF NOT EXISTS skins (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  key TEXT UNIQUE NOT NULL,
+  label TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  price REAL NOT NULL DEFAULT 0,
+  preview_url TEXT DEFAULT '',
+  css_url TEXT DEFAULT '',
+  is_active INTEGER DEFAULT 1,
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS user_skins (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  skin_id INTEGER NOT NULL,
+  order_id INTEGER DEFAULT 0,
+  is_active INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (skin_id) REFERENCES skins(id)
+);
+
+CREATE TABLE IF NOT EXISTS activation_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE NOT NULL,
+  skin_id INTEGER NOT NULL,
+  user_id INTEGER DEFAULT 0,
+  used_at TEXT,
+  expires_at TEXT,
+  created_by INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (skin_id) REFERENCES skins(id),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_skins_user ON user_skins(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_skins_active ON user_skins(is_active);
+CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes(code);
+CREATE INDEX IF NOT EXISTS idx_activation_codes_skin ON activation_codes(skin_id);
+
+INSERT OR IGNORE INTO skins (name, key, label, description, price, sort_order, is_active) VALUES
+('金碧辉煌', 'golden', '金碧辉煌', '金色奢华风格，尽显尊贵身份', 0, 0, 1),
+('水墨丹青', 'ink', '水墨丹青', '水墨国风意境，淡雅出尘', 0, 1, 1),
+('赛博修仙', 'cyber', '赛博修仙', '赛博朋克风格，霓虹光影修仙', 0, 2, 1),
+('毛玻璃', 'glass', '毛玻璃', '毛玻璃质感，现代简约毛玻璃效果', 0, 3, 1),
+('暗黑符文', 'rune', '暗黑符文', '暗黑符文风格，神秘深邃符文之力', 0, 4, 1);
+
 -- Seed admin user (最中幻想 / Pipi20100817)
 INSERT OR IGNORE INTO users (username, password_hash, display_name, invite_code, is_admin, role, level, xp, created_at)
 VALUES ('zzhx', 'ce768490e42a23ffdbd585e0a437293f9cf91d6dc7d2f8c55887ad0c4063d982', '最中幻想', 'ADMIN01', 1, 'super_admin', 10, 9999, datetime('now'));

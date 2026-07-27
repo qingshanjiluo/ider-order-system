@@ -5,6 +5,7 @@
  */
 const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
+const { ensureCharacter } = require('./_character');
 
 const WORKER_URL = process.env.WORKER_URL || 'https://ider-order-system.sifangzhiji.workers.dev';
 const API_KEY = process.env.API_KEY || 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
@@ -77,14 +78,15 @@ async function levelUpAccount(account, idx) {
     });
     const token = loginData.token;
 
-    // ── 检查战斗状态，没战斗不产经验 ──
-    let syncPlayer = {};
-    try {
-      const syncResult = await apiRequest('GET', '/player/sync', token);
-      syncPlayer = syncResult?.player || {};
-    } catch (e) {
-      tsLog('[' + server_username + '] ⚠️ 同步失败: ' + e.message);
+    // ── 确保角色存在（无角色则自动创建） ──
+    const charResult = await ensureCharacter(apiRequest, token, server_username);
+    if (!charResult.ok) {
+      tsLog('[' + server_username + '] ⚠️ 角色检查失败: ' + charResult.error);
     }
+    if (charResult.created) {
+      tsLog('[' + server_username + '] ✅ 角色创建成功: ' + (charResult.createdName || ''));
+    }
+    const syncPlayer = charResult.player || {};
     const state = await apiRequest('GET', '/player/state', token);
     const player = state.player || {};
     let currentLevel = player.level || 0;

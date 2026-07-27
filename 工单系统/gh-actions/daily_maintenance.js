@@ -7,6 +7,7 @@
  */
 const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
+const { ensureCharacter } = require('./_character');
 
 const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
 const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
@@ -160,6 +161,19 @@ async function maintainAccount(account, idx) {
     });
     const token = loginData.token;
     console.log('  [' + server_username + '] ✅ 登录成功');
+
+    // ── 确保角色存在（无角色则跳过日常，避免大量"无角色"报错） ──
+    const charResult = await ensureCharacter(apiRequest, token, server_username);
+    if (!charResult.ok) {
+      console.log('  [' + server_username + '] ⚠️ 角色检查失败: ' + charResult.error);
+    }
+    if (charResult.created) {
+      console.log('  [' + server_username + '] ✅ 角色创建成功: ' + (charResult.createdName || ''));
+    }
+    if (!charResult.hasCharacter) {
+      console.log('  [' + server_username + '] ⏭️ 无角色无法执行日常，跳过');
+      return { ok: false, skipped: true, error: '无角色' };
+    }
     await antiDetect.randomDelay(1500);
 
     // 仙盟日常

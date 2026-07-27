@@ -266,6 +266,21 @@ class ApiClient {
   adminUpdateRechargeCode(id, data) { return this.put('/admin/recharge-codes', { id, ...data }); }
   adminDeleteRechargeCode(id) { return this.del('/admin/recharge-codes', { id }); }
 
+  // ── Skins ────────────────────────────────
+  getSkins() { return this.get('/skins'); }
+  getMySkins() { return this.get('/skins/mine'); }
+  activateSkin(code) { return this.post('/skins/activate', { code }); }
+  useSkin(skin_id) { return this.post('/skins/use', { skin_id }); }
+
+  // ── Admin: Skins ─────────────────────────
+  adminGetSkins() { return this.get('/admin/skins'); }
+  adminCreateSkin(data) { return this.post('/admin/skins', data); }
+  adminUpdateSkin(id, data) { return this.put(`/admin/skins/${id}`, data); }
+  adminDeleteSkin(id) { return this.del(`/admin/skins/${id}`); }
+  adminGenerateCodes(skin_id, count, expires_at) {
+    return this.post('/admin/skins/codes', { skin_id, count, expires_at });
+  }
+
   // ── Admin: AI Config ─────────────────────
   adminGetAiConfig() { return this.get('/admin/ai-config'); }
   adminSetAiConfig(data) { return this.post('/admin/ai-config', data); }

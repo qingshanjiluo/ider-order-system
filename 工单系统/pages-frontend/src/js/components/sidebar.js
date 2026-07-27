@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { section: '坊市', items: [
     { id: 'market', label: '修仙坊市', icon: 'star', hash: '#/market' },
     { id: 'recharge', label: '修仙币充值', icon: 'diamondSolid', hash: '#/recharge' },
+    { id: 'skins', label: '皮肤管理', icon: 'gem', hash: '#/skins' },
   ]},
   { section: '支持', items: [
     { id: 'appeals', label: '申诉中心', icon: 'circle', hash: '#/appeals' },
@@ -47,6 +48,7 @@ export function getAdminItems() {
       { id: 'admin-recharge', label: '充值审核', icon: 'diamondSolid', hash: '#/admin/recharge' },
       { id: 'admin-recharge-codes', label: '兑换码管理', icon: 'star', hash: '#/admin/recharge-codes' },
       { id: 'admin-ai-config', label: 'AI 设置', icon: 'robot', hash: '#/admin/ai-config' },
+      { id: 'admin-skins', label: '皮肤管理', icon: 'gem', hash: '#/admin/skins' },
       { id: 'admin-announcements', label: '公告管理', icon: 'triangleUp', hash: '#/admin/announcements' },
       { id: 'admin-ads', label: '广告管理', icon: 'arrowRight', hash: '#/admin/ads' },
     ]},

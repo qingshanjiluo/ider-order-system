@@ -7,6 +7,7 @@
  */
 const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
+const { ensureCharacter } = require('./_character');
 
 const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
 const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
@@ -205,15 +206,15 @@ async function checkAndLevelUp(account, idx) {
     const token = loginData.token;
     tsLog('[' + server_username + '] ✅ 登录成功');
 
-    // 用 /player/sync 获取完整玩家数据（含技能/功法/装备/背包）
-    let syncPlayer = {};
-    try {
-      const syncResult = await apiRequest('GET', '/player/sync', token);
-      syncPlayer = syncResult?.player || {};
-    } catch (e) {
-      tsLog('[' + server_username + '] ⚠️ 同步失败: ' + e.message);
+    // ── 确保角色存在（无角色则自动创建） ──
+    const charResult = await ensureCharacter(apiRequest, token, server_username);
+    if (!charResult.ok) {
+      tsLog('[' + server_username + '] ⚠️ 角色检查失败: ' + charResult.error);
     }
-
+    if (charResult.created) {
+      tsLog('[' + server_username + '] ✅ 角色创建成功: ' + (charResult.createdName || ''));
+    }
+    const syncPlayer = charResult.player || {};
     const playerName = syncPlayer.name || syncPlayer.nickname || '';
     const playerRoots = syncPlayer.spirit_roots || {};
 

@@ -46,6 +46,8 @@ import { renderAdminRechargeCodes } from './pages/admin-recharge-codes.js';
 import { renderAdminAiConfig } from './pages/admin-ai-config.js';
 import { renderAdminMarketOrders } from './pages/admin-market-orders.js';
 import { renderAdminMarketPurchases } from './pages/admin-market-purchases.js';
+import { renderSkins } from './pages/skins.js';
+import { renderAdminSkins } from './pages/admin-skins.js';
 
 // ── 全局 DOM ──────────────────────────
 const appEl = document.getElementById('app');
@@ -137,6 +139,7 @@ router.register('/accounts', (ctx) => renderLayout('/accounts', renderAccounts))
 router.register('/accounts/:id', (ctx) => renderLayout('/accounts', renderAccountDetail, { params: ctx.params }));
 router.register('/market', (ctx) => renderLayout('/market', renderMarket));
 router.register('/recharge', (ctx) => renderLayout('/recharge', renderRecharge));
+router.register('/skins', (ctx) => renderLayout('/skins', renderSkins));
 router.register('/invite', (ctx) => renderLayout('/invite', renderInvite));
 router.register('/leaderboard', (ctx) => renderLayout('/leaderboard', renderLeaderboard));
 router.register('/settings', (ctx) => renderLayout('/settings', renderSettings));
@@ -159,6 +162,7 @@ router.register('/admin/announcements', (ctx) => renderLayout('/admin/announceme
 router.register('/admin/recharge-codes', (ctx) => renderLayout('/admin/recharge-codes', renderAdminRechargeCodes));
 router.register('/admin/ai-config', (ctx) => renderLayout('/admin/ai-config', renderAdminAiConfig));
 router.register('/admin/ads', (ctx) => renderLayout('/admin/ads', renderAdminAds));
+router.register('/admin/skins', (ctx) => renderLayout('/admin/skins', renderAdminSkins));
 router.register('/admin/market-orders', (ctx) => renderLayout('/admin/market-orders', renderAdminMarketOrders));
 router.register('/admin/market-purchases', (ctx) => renderLayout('/admin/market-purchases', renderAdminMarketPurchases));
 

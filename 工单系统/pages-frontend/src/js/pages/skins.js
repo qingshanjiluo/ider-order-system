@@ -108,6 +108,10 @@ async function loadShop(el, container) {
     }
 
     el.innerHTML = `
+      <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-3);margin-top:var(--space-4);border:1px solid var(--accent-amber);font-size:var(--text-xs);color:var(--text-secondary);display:flex;align-items:center;gap:var(--space-2);">
+        <span style="font-size:16px;">💡</span>
+        <span>当前预览仅是在系统展现效果，非最终效果。购买后可查看完整使用教程。</span>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-4);margin-top:var(--space-4);">
         ${skins.map(skin => {
           const o = owned.find(x => x.id === skin.id);
@@ -130,6 +134,7 @@ async function loadShop(el, container) {
                   <button class="btn btn-primary btn-sm" data-buy-skin="${skin.id}" data-price="${price}">${price > 0 ? `购买 ${price}币` : '免费领取'}</button>
                 `}
                 <button class="btn btn-ghost btn-sm" data-preview-skin="${skin.key}">预览</button>
+                <button class="btn btn-ghost btn-sm" data-tutorial-skin="${skin.key}">教程</button>
               </div>
             </div>`;
         }).join('')}
@@ -175,6 +180,10 @@ async function loadShop(el, container) {
           })
           .catch(() => toast.error('预览加载失败'));
       });
+    });
+
+    el.querySelectorAll('[data-tutorial-skin]').forEach(btn => {
+      btn.addEventListener('click', () => showTutorialModal());
     });
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
@@ -233,6 +242,97 @@ function refreshBalance(container) {
     const el = container.querySelector('#skin-coins-balance');
     if (el) el.textContent = userBalance;
   }).catch(() => {});
+}
+
+function showTutorialModal() {
+  showModal('完整使用教程', `
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📱 在手机上使用</h4>
+      <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
+        <li>Android：安装 <strong>Kiwi Browser</strong>，从 Chrome 商店安装 Tampermonkey 扩展</li>
+        <li>iOS：安装 <strong>Userscripts</strong> App（App Store 免费）</li>
+        <li>下载脚本文件 <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a></li>
+        <li>Tampermonkey 会自动弹出安装提示，点击「安装」</li>
+        <li>Userscripts 需将 .user.js 文件放入 Safari 共享菜单中的 Userscripts 扩展</li>
+      </ol>
+    </div>
+
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">💻 在电脑上使用</h4>
+      <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
+        <li>安装 <strong>Tampermonkey</strong> 浏览器扩展（Chrome/Firefox/Edge 均可）</li>
+        <li>点击 <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a> 下载脚本</li>
+        <li>Tampermonkey 自动弹出安装页面，点击「安装」</li>
+        <li>打开游戏网站 <strong>idlexiuxianzhuan.cn</strong>，脚本会自动运行</li>
+      </ol>
+    </div>
+
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">🎨 切换皮肤</h4>
+      <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
+        <li>脚本安装后，游戏页面右下角会出现 <strong>🧩 皮肤</strong> 按钮</li>
+        <li>点击可打开皮肤选择面板，选择你拥有的皮肤</li>
+        <li>脚本会自动同步你在工单系统选择的皮肤（每 30 分钟同步一次）</li>
+        <li>也可在工单系统「我的皮肤」中切换，脚本会同步更新</li>
+      </ol>
+    </div>
+
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);">
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">❓ 常见问题</h4>
+      <ul style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
+        <li><strong>皮肤不生效？</strong> 确认脚本已启用，刷新游戏页面重试</li>
+        <li><strong>脚本设置在哪？</strong> 页面右下角 🧩 图标打开皮肤面板</li>
+        <li><strong>手机怎么装？</strong> Kiwi Browser (Android) 或 Userscripts (iOS)</li>
+        <li><strong>如何恢复默认？</strong> 皮肤面板选择「无」或禁用脚本</li>
+      </ol>
+    </div>
+  `.trim());
+}
+
+function showPurchaseSuccessModal(skin, message) {
+  showModal('🎉 购买成功', `
+    <p style="font-size:var(--text-sm);color:var(--accent-green);text-align:center;margin-bottom:var(--space-4);">${message}</p>
+    <p style="font-size:var(--text-xs);color:var(--text-secondary);text-align:center;margin-bottom:var(--space-4);">皮肤已自动启用，工单系统界面已更换新外观。</p>
+
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-3);">
+      <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📖 在游戏内使用该皮肤</h4>
+      <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
+        <li>安装 Tampermonkey 脚本
+          <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a>
+        </li>
+        <li>脚本会自动同步你在工单系统选择的皮肤</li>
+        <li>支持 Kiwi Browser (Android) 和 Userscripts (iOS)</li>
+        <li>游戏页面右下角会出现 🧩 皮肤按钮可切换</li>
+      </ol>
+    </div>
+
+    <p style="font-size:var(--text-xs);color:var(--text-tertiary);text-align:center;">详细教程请点击「教程」按钮或查看页面教程</p>
+  `.trim(), '知道了');
+}
+
+function showModal(title, bodyHtml, confirmText) {
+  const m = document.createElement('div');
+  m.className = 'modal-overlay';
+  m.innerHTML = `
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header">
+        <h3>${title}</h3>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body" style="padding:var(--space-5);max-height:70vh;overflow-y:auto;">
+        ${bodyHtml}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" data-close-modal>${confirmText || '关闭'}</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(m);
+  requestAnimationFrame(() => m.classList.add('active'));
+
+  function close() { m.classList.remove('active'); setTimeout(() => m.remove(), 200); }
+  m.querySelectorAll('[data-close-modal]').forEach(el => el.addEventListener('click', close));
+  m.addEventListener('click', e => { if (e.target === m) close(); });
 }
 
 function showBuyModal(container, skin, onSuccess) {
@@ -309,8 +409,8 @@ function showBuyModal(container, skin, onSuccess) {
     confirmBtn.textContent = '处理中...';
     try {
       const res = await api.buySkin(skin.id);
-      toast.success(res.message);
       closeModal();
+      showPurchaseSuccessModal(skin, res.message);
       if (onSuccess) onSuccess();
     } catch (err) {
       toast.error(err.message);

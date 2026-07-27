@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         艾德尔修仙传 - 完整皮肤系统 v3
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      3.1
 // @description  完整皮肤系统 + 工单系统集成（自动同步激活的皮肤）
 // @author       Ider
 // @match        https://idlexiuxianzhuan.cn/*
@@ -821,7 +821,34 @@ function injectSkinBtn() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-// ══ 皮肤选择面板 ══
+// ══ 皮肤选择面板（仅显示已拥有的皮肤） ══
+let ownedSkinsCache = null; // { key: label } 已拥有皮肤缓存
+
+async function fetchOwnedSkins() {
+  const token = getApiToken();
+  const apiUrl = getOrderSystemUrl();
+  if (!token || !apiUrl) return null;
+  return new Promise((resolve) => {
+    GM_xmlhttpRequest({
+      method: 'GET',
+      url: apiUrl + '/api/skins/mine',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      onload: function(res) {
+        try {
+          const data = JSON.parse(res.responseText);
+          if (data.ok && data.owned) {
+            const map = {};
+            (data.owned || []).forEach(s => { map[s.key] = s.label; });
+            resolve(map);
+          } else { resolve(null); }
+        } catch (e) { resolve(null); }
+      },
+      onerror: function() { resolve(null); },
+      ontimeout: function() { resolve(null); },
+    });
+  });
+}
+
 function showSkinPicker() {
   const existing = document.querySelector('.ider-skin-panel');
   if (existing) { existing.remove(); document.querySelector('.ider-skin-overlay')?.remove(); return; }
@@ -843,6 +870,7 @@ function showSkinPicker() {
     color:#d4d4e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;
   `;
 
+  const token = getApiToken();
   let html = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <span style="font-size:16px;font-weight:600;color:#d4a844">🎨 皮肤切换</span>
@@ -851,10 +879,10 @@ function showSkinPicker() {
         <span class="ider-skin-close" style="font-size:20px;color:#888;cursor:pointer;line-height:1">✕</span>
       </div>
     </div>
-    <div id="ider-os-status" style="font-size:11px;color:#666;margin-bottom:12px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.03);display:${getApiToken() ? 'block' : 'none'}">
-      <span id="ider-os-status-text">${getApiToken() ? '工单系统已连接' : ''}</span>
+    <div id="ider-os-status" style="font-size:11px;color:#666;margin-bottom:12px;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.03);display:${token ? 'block' : 'none'}">
+      <span id="ider-os-status-text">${token ? '工单系统已连接' : ''}</span>
     </div>
-    <div style="display:grid;gap:8px">
+    <div style="display:grid;gap:8px" id="ider-skin-list">
       <div class="ider-skin-opt ${!current?'active':''}" data-skin=""
            style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${!current?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
         <div style="font-weight:600;font-size:14px;color:${!current?'#d4a844':'#ccc'}">🔄 默认样式</div>
@@ -862,19 +890,21 @@ function showSkinPicker() {
       </div>
   `;
 
-  for (const [key, skin] of Object.entries(SKINS)) {
-    const act = current === key || (current === '__os_' + (SKIN_KEY_MAP[key] || ''));
+  // 有 token 时从 API 获取已拥有皮肤列表
+  if (token) {
+    html += `<div style="text-align:center;padding:16px;color:#888;font-size:12px;" id="ider-skin-loading">⏳ 加载已拥有的皮肤...</div>`;
+  } else {
     html += `
-      <div class="ider-skin-opt ${act?'active':''}" data-skin="${key}"
-           style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
-        <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.name}</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">${skin.desc}</div>
-      </div>
-    `;
+      <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
+        <div style="font-size:32px;margin-bottom:8px;">🔒</div>
+        <div>请在 ⚙ 设置中配置工单系统 Token</div>
+        <div style="font-size:11px;margin-top:8px;color:#555;">登录工单系统 → 设置 → 获取 Token</div>
+      </div>`;
   }
+
   html += `</div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:#555;">
-      <span>💡 在工单系统激活皮肤后，在 ⚙ 设置 token 即可自动同步</span>
+      <span>💡 仅显示你在工单系统已购买的皮肤</span>
     </div>`;
   panel.innerHTML = html;
 
@@ -885,17 +915,159 @@ function showSkinPicker() {
     showConfigPanel(panel);
   });
 
-  panel.querySelectorAll('.ider-skin-opt').forEach(el => {
+  // 默认样式按钮
+  panel.querySelectorAll('.ider-skin-opt[data-skin=""]').forEach(el => {
     el.addEventListener('click', () => {
-      const skin = el.dataset.skin;
-      applySkin(skin);
+      applySkin('');
       closeSkinPicker();
-      showToast(skin ? '已切换为「' + SKINS[skin].name + '」' : '已恢复默认样式');
+      showToast('已恢复默认样式');
     });
   });
 
   document.body.appendChild(overlay);
   document.body.appendChild(panel);
+
+  // 有 token 时异步加载已拥有皮肤
+  if (token) {
+    loadOwnedSkins(panel);
+  }
+}
+
+function loadOwnedSkins(panel) {
+  fetchOwnedSkins().then(owned => {
+    const listEl = panel.querySelector('#ider-skin-list');
+    const loadingEl = panel.querySelector('#ider-skin-loading');
+    if (loadingEl) loadingEl.remove();
+
+    if (!owned || Object.keys(owned).length === 0) {
+      listEl.insertAdjacentHTML('beforeend', `
+        <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
+          <div style="font-size:32px;margin-bottom:8px;">🎨</div>
+          <div>你还没有购买任何皮肤</div>
+          <div style="font-size:11px;margin-top:8px;color:#555;">前往工单系统皮肤商城购买</div>
+        </div>`);
+      return;
+    }
+
+    // 先用 API 获取完整的皮肤信息（名称、描述）
+    const apiUrl = getOrderSystemUrl();
+    GM_xmlhttpRequest({
+      method: 'GET',
+      url: apiUrl + '/api/skins',
+      headers: { 'Authorization': 'Bearer ' + getApiToken(), 'Content-Type': 'application/json' },
+      onload: function(res) {
+        try {
+          const data = JSON.parse(res.responseText);
+          const allSkins = (data.skins || []).filter(s => owned[s.key]);
+          const current = getActiveSkin();
+
+          allSkins.forEach(skin => {
+            const act = current === '__os_' + skin.key;
+            listEl.insertAdjacentHTML('beforeend', `
+              <div class="ider-skin-opt ${act?'active':''}" data-skin-key="${skin.key}"
+                   style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
+                <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.label}</div>
+                <div style="font-size:12px;color:#888;margin-top:2px">${skin.description || ''}</div>
+              </div>`);
+          });
+
+          listEl.querySelectorAll('.ider-skin-opt[data-skin-key]').forEach(el => {
+            el.addEventListener('click', () => {
+              const key = el.dataset.skinKey;
+              applyOrderSystemSkinFromApi(key, panel);
+            });
+          });
+        } catch (e) {
+          // 回退：用 owned 的 key 和本地 SKINS 匹配
+          renderFallbackSkins(listEl, owned, current, panel);
+        }
+      },
+      onerror: function() {
+        renderFallbackSkins(listEl, owned, current, panel);
+      },
+    });
+  }).catch(() => {
+    const loadingEl = panel.querySelector('#ider-skin-loading');
+    if (loadingEl) loadingEl.textContent = '❌ 加载失败，请检查网络';
+  });
+}
+
+// 反向映射：工单系统 key → 本地 key
+const API_KEY_TO_LOCAL = {};
+for (const [local, api] of Object.entries(SKIN_KEY_MAP)) {
+  API_KEY_TO_LOCAL[api] = local;
+}
+
+function renderFallbackSkins(listEl, owned, current, panel) {
+  let count = 0;
+  for (const [apiKey] of Object.entries(owned)) {
+    const localKey = API_KEY_TO_LOCAL[apiKey] || apiKey;
+    const skin = SKINS[localKey];
+    if (!skin) continue;
+    count++;
+    const act = current === localKey || current === '__os_' + apiKey;
+    listEl.insertAdjacentHTML('beforeend', `
+      <div class="ider-skin-opt ${act?'active':''}" data-skin-key="${apiKey}"
+           style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
+        <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.name}</div>
+        <div style="font-size:12px;color:#888;margin-top:2px">${skin.desc}（本地缓存）</div>
+      </div>`);
+  }
+  if (count === 0) {
+    listEl.insertAdjacentHTML('beforeend', `
+      <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
+        <div>你还没有购买任何皮肤</div>
+      </div>`);
+    return;
+  }
+  listEl.querySelectorAll('.ider-skin-opt[data-skin-key]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.skinKey;
+      applyOrderSystemSkinFromApi(key, panel);
+    });
+  });
+}
+
+function applyOrderSystemSkinFromApi(skinKey, panel) {
+  const apiUrl = getOrderSystemUrl();
+  const token = getApiToken();
+  if (!apiUrl || !token) return;
+
+  const localKey = API_KEY_TO_LOCAL[skinKey];
+  const localSkin = localKey ? SKINS[localKey] : null;
+
+  const msgEl = panel.querySelector('#ider-os-status-text');
+  if (msgEl) msgEl.textContent = '⏳ 应用皮肤...';
+
+  GM_xmlhttpRequest({
+    method: 'GET',
+    url: apiUrl + '/api/skins/css/' + skinKey,
+    onload: function(cssRes) {
+      if (cssRes.status === 200 && cssRes.responseText) {
+        applyOrderSystemSkin(skinKey, cssRes.responseText);
+        closeSkinPicker();
+        showToast('已切换皮肤');
+      } else if (localSkin) {
+        applySkin(localKey);
+        closeSkinPicker();
+        showToast('已切换为「' + localSkin.name + '」（离线模式）');
+      }
+    },
+    onerror: function() {
+      if (localSkin) {
+        applySkin(localKey);
+        closeSkinPicker();
+        showToast('已切换为「' + localSkin.name + '」（离线模式）');
+      }
+    },
+    ontimeout: function() {
+      if (localSkin) {
+        applySkin(localKey);
+        closeSkinPicker();
+        showToast('已切换为「' + localSkin.name + '」（离线模式）');
+      }
+    },
+  });
 }
 
 function showConfigPanel(panel) {

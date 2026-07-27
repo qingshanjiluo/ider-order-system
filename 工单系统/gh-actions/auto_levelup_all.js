@@ -1,7 +1,8 @@
 /**
- * 艾德尔工单系统 - 全账号升级（每2h）
- * 遍历所有未完成工单的账号，反复升级直到经验不足
+ * 艾德尔工单系统 - 全账号升级（每2h）并发版
+ * 遍历所有未完成工单的账号，并发处理，反复升级直到经验不足
  * 纯升级，不修战斗/功法，极限速度
+ * 防封：每账号独立IP/机器码/指纹、随机延迟、智能暂停
  */
 const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
@@ -13,13 +14,11 @@ const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const MAX_LEVEL = 120;
+const CONCURRENCY = Math.min(Math.max(parseInt(process.env.CONCURRENCY) || 8, 1), 20);
 
 for (const [n, v] of Object.entries({ WORKER_URL, API_KEY, API_BASE, SIGN_KEY })) {
   if (!v) { console.error('错误: 环境变量 ' + n + ' 未设置'); process.exit(1); }
 }
-
-let _apiIdx = 0;
-function setApiIdx(idx) { _apiIdx = idx; }
 
 function makeSign(method, path, timestamp, bodyStr) {
   const hmac = crypto.createHmac('sha256', SIGN_KEY);
@@ -27,7 +26,7 @@ function makeSign(method, path, timestamp, bodyStr) {
   return hmac.digest('hex');
 }
 
-async function apiRequest(method, path, token, body) {
+async function apiRequest(method, path, token, body, apiIdx) {
   const timestamp = Math.floor(Date.now() / 1000);
   const bodyStr = body ? JSON.stringify(body) : '';
   const sign = makeSign(method, path, timestamp, bodyStr);
@@ -38,7 +37,8 @@ async function apiRequest(method, path, token, body) {
     'X-Sign': sign,
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  Object.assign(headers, antiDetect.buildAntiDetectHeaders(_apiIdx++));
+  // 每账号使用固定偏移，确保同一账号始终不同指纹
+  Object.assign(headers, antiDetect.buildAntiDetectHeaders(apiIdx));
   const r = await fetch(API_BASE + path, { method, headers, body: bodyStr || undefined, signal: AbortSignal.timeout(20000) });
   const text = await r.text();
   let data;
@@ -62,8 +62,15 @@ async function workerApi(path, method, body) {
   return r.json();
 }
 
-async function levelUpAccount(account, idx) {
-  setApiIdx(idx * 10);
+/**
+ * 升级单个账号（每个账号在独立协程中运行）
+ * @param {object} account - 账号信息
+ * @param {number} globalIdx - 全局序号（决定反检测指纹）
+ * @returns {object} 升级结果
+ */
+async function levelUpAccount(account, globalIdx) {
+  // 每个账号使用独立但固定的指纹偏移
+  const apiIdx = globalIdx * 10 + Math.floor(Math.random() * 7);
 
   const { id, server_username, server_password, order_id, username } = account;
   if (!server_username || !server_password) {
@@ -72,14 +79,17 @@ async function levelUpAccount(account, idx) {
   }
 
   try {
-    const machineId = 'lvlall_' + idx + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const machineId = 'lvlall_' + globalIdx + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const loginData = await apiRequest('POST', '/auth/login', '', {
       username: server_username, password: server_password, machine_id: machineId,
-    });
+    }, apiIdx);
     const token = loginData.token;
 
     // ── 确保角色存在（无角色则自动创建） ──
-    const charResult = await ensureCharacter(apiRequest, token, server_username);
+    const charResult = await ensureCharacter(
+      (method, path, token, body) => apiRequest(method, path, token, body, apiIdx),
+      token, server_username
+    );
     if (!charResult.ok) {
       tsLog('[' + server_username + '] ⚠️ 角色检查失败: ' + charResult.error);
     }
@@ -87,7 +97,7 @@ async function levelUpAccount(account, idx) {
       tsLog('[' + server_username + '] ✅ 角色创建成功: ' + (charResult.createdName || ''));
     }
     const syncPlayer = charResult.player || {};
-    const state = await apiRequest('GET', '/player/state', token);
+    const state = await apiRequest('GET', '/player/state', token, null, apiIdx);
     const player = state.player || {};
     let currentLevel = player.level || 0;
 
@@ -107,9 +117,9 @@ async function levelUpAccount(account, idx) {
         try {
           const mapId = syncPlayer?.current_map_id || 1;
           tsLog('[' + server_username + '] 🔧 启动战斗 mapId=' + mapId);
-          await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false });
+          await apiRequest('POST', '/battle/start', token, { mapId, poll_mode: false, auto_restart: false }, apiIdx);
           await sleep(800);
-          await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId });
+          await apiRequest('POST', '/battle/auto_restart', token, { enabled: true, map_id: mapId }, apiIdx);
           battleFixed = true;
           await antiDetect.randomDelay(800, 1500);
         } catch (e) {
@@ -120,9 +130,7 @@ async function levelUpAccount(account, idx) {
               message: '战斗启动失败: ' + e.message,
               raw_output: e.message,
             });
-          } catch (e2) {
-            tsLog('[' + server_username + '] ⚠️ 错误上报失败: ' + e2.message);
-          }
+          } catch (e2) {}
         }
       }
     }
@@ -130,24 +138,19 @@ async function levelUpAccount(account, idx) {
       tsLog('[' + server_username + '] 🔧 战斗已启动');
       await sleep(500);
       try {
-        const st2 = await apiRequest('GET', '/player/state', token);
+        const st2 = await apiRequest('GET', '/player/state', token, null, apiIdx);
         if (st2?.player) Object.assign(player, st2.player);
         tsLog('[' + server_username + '] ✅ 战后确认: 战斗中=' + (st2?.active_battle ? '✅' : '❌') + ' exp=' + ((st2?.player?.exp) || 0));
-      } catch (e) {
-        tsLog('[' + server_username + '] ⚠️ 战后状态获取失败: ' + e.message);
-      }
+      } catch (e) {}
     }
 
     // 重新获取最新状态
     let stCheck;
     try {
-      stCheck = await apiRequest('GET', '/player/state', token);
-    } catch (e) {
-      tsLog('[' + server_username + '] ⚠️ 状态再确认失败: ' + e.message);
-    }
+      stCheck = await apiRequest('GET', '/player/state', token, null, apiIdx);
+    } catch (e) {}
     const finalPlayer = stCheck?.player || player;
     currentLevel = finalPlayer.level || currentLevel;
-    const hasExp = (finalPlayer.exp || 0) > 0;
     tsLog('[' + server_username + '] 📊 Lv.' + currentLevel + ' 战斗中=' + (stCheck?.active_battle ? '✅' : '❌') + ' exp=' + (finalPlayer.exp || 0));
 
     if (currentLevel >= MAX_LEVEL) {
@@ -163,12 +166,12 @@ async function levelUpAccount(account, idx) {
     let levelsGained = 0;
     for (let i = 0; i < 100; i++) {
       try {
-        const upRes = await apiRequest('POST', '/player/level_up', token, {});
+        const upRes = await apiRequest('POST', '/player/level_up', token, {}, apiIdx);
         if (!upRes || !upRes.player || !upRes.player.level) break;
         newLevel = upRes.player.level;
         levelsGained++;
         if (newLevel >= MAX_LEVEL) { tsLog('[' + server_username + '] 🏆 满级!'); break; }
-        await antiDetect.randomDelay(500);
+        await antiDetect.randomDelay(400, 800);
       } catch (e) {
         if (e.message.includes('经验不足') || e.message.includes('exp')) {
           tsLog('[' + server_username + '] 经验不足，升级停止');
@@ -181,8 +184,8 @@ async function levelUpAccount(account, idx) {
 
     if (newLevel >= 100 && newLevel < MAX_LEVEL) {
       try {
-        await apiRequest('POST', '/player/breakthrough', token, {});
-        await antiDetect.randomDelay(1000);
+        await apiRequest('POST', '/player/breakthrough', token, {}, apiIdx);
+        await antiDetect.randomDelay(800, 1500);
       } catch (e) {
         tsLog('[' + server_username + '] 突破跳过: ' + e.message);
       }
@@ -191,11 +194,9 @@ async function levelUpAccount(account, idx) {
     // 取最终状态
     let finalLevel = newLevel;
     try {
-      const st3 = await apiRequest('GET', '/player/state', token);
+      const st3 = await apiRequest('GET', '/player/state', token, null, apiIdx);
       finalLevel = st3.player?.level || newLevel;
-    } catch (e) {
-      tsLog('[' + server_username + '] ⚠️ 最终状态获取失败: ' + e.message);
-    }
+    } catch (e) {}
 
     const isCompleted = finalLevel >= MAX_LEVEL;
     tsLog('[' + server_username + '] 📈 Lv.' + currentLevel + ' → Lv.' + finalLevel + (levelsGained > 0 ? ' (+' + levelsGained + ')' : ' 无变化'));
@@ -220,17 +221,16 @@ async function levelUpAccount(account, idx) {
         order_id, username, status: 'error', level: account.level || 0,
         error_msg: e.message || '', health_status: 'error',
       });
-    } catch (e2) {
-      tsLog('[' + server_username + '] ⚠️ 错误上报失败: ' + e2.message);
-    }
+    } catch (e2) {}
     return { ok: false, error: e.message };
   }
 }
 
 async function main() {
   console.log('═══════════════════════════════════════');
-  console.log('  艾德尔 - 全账号自动升级');
+  console.log('  艾德尔 - 全账号自动升级 (并发版)');
   console.log('  时间: ' + new Date().toISOString());
+  console.log('  并发数: ' + CONCURRENCY);
   console.log('═══════════════════════════════════════');
 
   tsLog('获取所有未完成订单的账号...');
@@ -240,7 +240,7 @@ async function main() {
     return;
   }
   if (!data.accounts || !data.accounts.length) {
-    tsLog('没有可升级的账号 (返回: ' + JSON.stringify(data).slice(0, 200) + ')');
+    tsLog('没有可升级的账号');
     return;
   }
 
@@ -252,37 +252,70 @@ async function main() {
   let failed = 0;
   const processedOrders = new Set();
 
-  for (let i = 0; i < accounts.length; i++) {
-    const acc = accounts[i];
-    console.log('──── [' + (i + 1) + '/' + accounts.length + '] ' + (acc.server_username || acc.username) + ' (Lv.' + (acc.level || 0) + ') ────');
+  // ── 并发池：分批处理 ──
+  const totalBatches = Math.ceil(accounts.length / CONCURRENCY);
+  for (let batch = 0; batch < totalBatches; batch++) {
+    const start = batch * CONCURRENCY;
+    const end = Math.min(start + CONCURRENCY, accounts.length);
+    const batchAccounts = accounts.slice(start, end);
 
-    const result = await levelUpAccount(acc, i);
-    if (result.ok && !result.skipped) {
-      if (result.gained > 0) leveled++;
-      if (result.completed) completed++;
+    console.log(`\n📦 批次 ${batch + 1}/${totalBatches} (账号 ${start + 1}-${end}/${accounts.length})`);
+
+    // 每个账号错开启动时间（2~4秒间隔），模仿真实多设备
+    const tasks = batchAccounts.map((acc, offset) => {
+      const globalIdx = start + offset;
+      const delay = offset * (2000 + Math.floor(Math.random() * 2000));
+      return sleep(delay).then(() => {
+        console.log('──── [' + (globalIdx + 1) + '/' + accounts.length + '] ' + (acc.server_username || acc.username) + ' (Lv.' + (acc.level || 0) + ') ────');
+        return levelUpAccount(acc, globalIdx);
+      });
+    });
+
+    const results = await Promise.allSettled(tasks);
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        const res = result.value;
+        if (res.ok && !res.skipped) {
+          if (res.gained > 0) leveled++;
+          if (res.completed) completed++;
+        }
+        if (!res.ok) failed++;
+        if (res.order_id) processedOrders.add(res.order_id);
+      } else {
+        failed++;
+      }
     }
-    if (!result.ok) failed++;
-    processedOrders.add(acc.order_id);
 
-    await antiDetect.smartPause(i, 5, 8);
-    await antiDetect.randomDelay(1000);
+    // 每批次结束后智能暂停：批次数越大、暂停越长
+    if (batch < totalBatches - 1) {
+      const current = batch * CONCURRENCY + CONCURRENCY;
+      await antiDetect.smartPause(current, 999, 8 + Math.floor(Math.random() * 5)); // 8~12秒
+      // 额外批次间延迟
+      const interBatchDelay = 3000 + Math.floor(Math.random() * 4000);
+      console.log(`  批次间等待 ${Math.round(interBatchDelay / 1000)}s...`);
+      await sleep(interBatchDelay);
+    }
   }
 
   if (processedOrders.size > 0) {
     tsLog('检查 ' + processedOrders.size + ' 个工单完成状态...');
-    for (const oid of processedOrders) {
+    const orderIds = [...processedOrders];
+    for (const oid of orderIds) {
       try {
         const res = await workerApi('/api/gh/complete-order', 'POST', { order_id: oid });
         if (res.ok) tsLog('✅ 工单 #' + oid + ': ' + (res.message || res.status || 'ok'));
       } catch (e) {
         tsLog('⚠️ 工单 #' + oid + ' 推进失败: ' + e.message);
       }
+      await sleep(300 + Math.floor(Math.random() * 500));
     }
   }
 
   console.log('\n═══════════════════════════════════════');
   console.log('  全账号升级完成 ✓');
   console.log('  总数: ' + accounts.length + ' | 升级: ' + leveled + ' | 满级: ' + completed + ' | 失败: ' + failed);
+  console.log('  并发数: ' + CONCURRENCY);
   console.log('═══════════════════════════════════════');
 }
 

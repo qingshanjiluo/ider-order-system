@@ -1,8 +1,8 @@
-name: ⬆️ 全账号自动升级（每2h）
+name: ⬆️ 全账号自动升级（每30min）
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -26,3 +26,4 @@ jobs:
           API_BASE: ${{ secrets.API_BASE }}
           CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
           SIGN_KEY: ${{ secrets.SIGN_KEY }}
+          CONCURRENCY: 10

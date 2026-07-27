@@ -150,7 +150,8 @@ async function loadShop(el, container) {
       btn.addEventListener('click', () => {
         const skinId = parseInt(btn.dataset.buySkin);
         const skin = skins.find(s => s.id === skinId);
-        if (skin) showBuyModal(container, skin, () => {
+        if (!skin) return toast.error('皮肤数据异常，请刷新重试');
+        showBuyModal(container, skin, () => {
           loadShop(el, container);
           loadMine(container.querySelector('#skin-mine'));
           refreshBalance(container);

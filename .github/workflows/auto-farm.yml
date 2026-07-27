@@ -1,10 +1,10 @@
-name: 一键刷�?
+name: 一键刷怪
 
 on:
   workflow_dispatch:
     inputs:
       username:
-        description: '游戏账号（留空使用默�?zzhx�?
+        description: '游戏账号（留空使用默认 zzhx）'
         required: false
         default: ''
         type: string
@@ -34,7 +34,7 @@ on:
 
 jobs:
   auto-farm:
-    name: 一键刷�?
+    name: 一键刷怪
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: 运行一键刷�?
+      - name: 运行一键刷怪
         env:
           FARM_USERNAME: ${{ inputs.username || secrets.FARM_USERNAME }}
           FARM_PASSWORD: ${{ inputs.password || secrets.FARM_PASSWORD }}

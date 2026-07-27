@@ -4,17 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       plan_prompt:
-        description: 'AI规划提示（自然语言描述任务�?
+        description: 'AI规划提示（自然语言描述任务）'
         required: true
-        default: '自动战斗30分钟，然后卖出所有材�?
+        default: '自动战斗30分钟，然后卖出所有材料'
         type: string
       max_accounts:
-        description: '处理的账号数量（默认全部�?
+        description: '处理的账号数量（默认全部）'
         required: false
         default: ''
         type: string
       accounts_data:
-        description: '账号数据（格�? username,password，每行一个）'
+        description: '账号数据（格式: username,password，每行一个）'
         required: true
         type: string
       deepseek_api_key:
@@ -22,7 +22,7 @@ on:
         required: true
         type: string
   schedule:
-    - cron: '0 */6 * * *'  # �?小时运行一�?
+    - cron: '0 */6 * * *'  # 每6小时运行一次
   push:
     branches: [ main ]
     paths:
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: 检出代�?
+    - name: 检出代码
       uses: actions/checkout@v4
 
     - name: 设置 Node.js
@@ -56,16 +56,16 @@ jobs:
         echo "📋 账号文件内容:"
         cat planner_accounts.txt
 
-    - name: 运行 AI 规划�?
+    - name: 运行 AI 规划器
       run: |
         cd 批量注册工具
         export DEEPSEEK_API_KEY="${{ github.event.inputs.deepseek_api_key || secrets.DEEPSEEK_API_KEY }}"
-        export PLAN_PROMPT="${{ github.event.inputs.plan_prompt || '自动战斗30分钟，然后卖出所有材�? }}"
+        export PLAN_PROMPT="${{ github.event.inputs.plan_prompt || '自动战斗30分钟，然后卖出所有材料' }}"
         export MAX_ACCOUNTS="${{ github.event.inputs.max_accounts || '' }}"
         export CI=true
         export ACCOUNTS_DATA="${{ github.event.inputs.accounts_data || secrets.ACCOUNTS_DATA || '' }}"
         
-        echo "🧠 运行 AI 规划�?.."
+        echo "🧠 运行 AI 规划器..."
         echo "📝 提示: $PLAN_PROMPT"
         node ai_planner.js
 
@@ -82,7 +82,7 @@ jobs:
       run: |
         cd 批量注册工具
         echo "📊 执行结果:"
-        ls -la ai_plan_result_*.json 2>/dev/null || echo "无结果文�?
+        ls -la ai_plan_result_*.json 2>/dev/null || echo "无结果文件"
         echo ""
-        echo "📋 最新结果预�?"
-        cat ai_plan_result_*.json 2>/dev/null | head -100 || echo "无结果内�?
+        echo "📋 最新结果预览:"
+        cat ai_plan_result_*.json 2>/dev/null | head -100 || echo "无结果内容"

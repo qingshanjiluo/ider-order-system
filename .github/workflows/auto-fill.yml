@@ -1,4 +1,5 @@
-name: 自动补齐工单（每2h�?
+name: 自动补齐工单（每2h）
+
 on:
   schedule:
     - cron: '30 */2 * * *'

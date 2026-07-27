@@ -1,4 +1,5 @@
-name: ⬆️ 一键升�?
+name: ⬆️ 一键升级
+
 on:
   schedule:
     - cron: '0 */3 * * *'
@@ -16,7 +17,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: 运行一键升�?        run: node 工单系统/gh-actions/level_up.js
+      - name: 运行一键升级
+        run: node 工单系统/gh-actions/level_up.js
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}
           API_KEY: ${{ secrets.API_KEY }}

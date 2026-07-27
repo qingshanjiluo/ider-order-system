@@ -1,4 +1,4 @@
-name: 健康检�?- 自动升级�?20�?
+name: 健康检测 - 自动升级到120级
 
 on:
   schedule:
@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      - name: 检出代�?
+      - name: 检出代码
         uses: actions/checkout@v4
 
       - name: 安装 Node.js
@@ -29,7 +29,7 @@ jobs:
         working-directory: 工单系统
         run: npm install
 
-      - name: 执行健康检�?
+      - name: 执行健康检测
         working-directory: 工单系统
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       username:
-        description: '游戏账号（留空使用默�?zzhx�?
+        description: '游戏账号（留空使用默认 zzhx）'
         required: false
         default: ''
         type: string

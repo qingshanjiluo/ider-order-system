@@ -48,6 +48,8 @@ import { renderAdminMarketOrders } from './pages/admin-market-orders.js';
 import { renderAdminMarketPurchases } from './pages/admin-market-purchases.js';
 import { renderSkins } from './pages/skins.js';
 import { renderAdminSkins } from './pages/admin-skins.js';
+import { renderCsDialog } from './pages/cs-dialog.js';
+import { renderAdminCs } from './pages/admin-cs.js';
 
 // ── 全局 DOM ──────────────────────────
 const appEl = document.getElementById('app');
@@ -145,11 +147,13 @@ router.register('/leaderboard', (ctx) => renderLayout('/leaderboard', renderLead
 router.register('/settings', (ctx) => renderLayout('/settings', renderSettings));
 router.register('/appeals', (ctx) => renderLayout('/appeals', renderAppeals));
 router.register('/after-sales', (ctx) => renderLayout('/after-sales', renderAfterSales));
+router.register('/cs', (ctx) => renderLayout('/cs', renderCsDialog));
 router.register('/chat', (ctx) => renderLayout('/chat', renderChat));
 
 // Admin pages
 router.register('/admin/stats', (ctx) => renderLayout('/admin/stats', renderAdminStats));
 router.register('/admin/users', (ctx) => renderLayout('/admin/users', renderAdminUsers));
+router.register('/admin/cs', (ctx) => renderLayout('/admin/cs', renderAdminCs));
 router.register('/admin/market', (ctx) => renderLayout('/admin/market', renderAdminMarket));
 router.register('/admin/recharge', (ctx) => renderLayout('/admin/recharge', renderAdminRecharge));
 router.register('/admin/orders', (ctx) => renderLayout('/admin/orders', renderAdminOrders));

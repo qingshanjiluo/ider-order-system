@@ -20,8 +20,9 @@ const NAV_ITEMS = [
     { id: 'skins', label: '皮肤管理', icon: 'gem', hash: '#/skins' },
   ]},
   { section: '支持', items: [
+    { id: 'cs', label: '在线客服', icon: 'star', hash: '#/cs' },
     { id: 'appeals', label: '申诉中心', icon: 'circle', hash: '#/appeals' },
-    { id: 'after-sales', label: '售后服务', icon: 'diamondOutline', hash: '#/after-sales' },
+    { id: 'after-sales', label: '售后服务', icon: 'diamondOutline', hash: '#/cs' },
     { id: 'help', label: '帮助文档', icon: 'question', hash: '#/help' },
     { id: 'contact', label: '联系站长', icon: 'mail', hash: '#/contact' },
     { id: 'changelog', label: '更新日志', icon: 'star', hash: '#/changelog' },
@@ -36,6 +37,7 @@ export function getAdminItems() {
   const items = [
     { section: '管理', items: [
       { id: 'admin-stats', label: '数据统计', icon: 'diamond', hash: '#/admin/stats' },
+      { id: 'admin-cs', label: '客服对话', icon: 'star', hash: '#/admin/cs' },
       { id: 'admin-users', label: '用户管理', icon: 'diamondSolid', hash: '#/admin/users' },
       { id: 'admin-orders', label: '工单管理', icon: 'diamondOutline', hash: '#/admin/orders' },
       { id: 'admin-accounts', label: '账号管理', icon: 'star', hash: '#/admin/accounts' },

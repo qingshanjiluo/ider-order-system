@@ -6,11 +6,14 @@ let currentActive = null;
 let userBalance = 0;
 
 const SKIN_PREVIEWS = {
-  golden: 'linear-gradient(135deg,#1a1100,#2d1f00)',
-  ink: 'linear-gradient(135deg,#0d0d1a,#1a1a2e)',
-  cyber: 'linear-gradient(135deg,#0a0a1a,#1a0033)',
-  glass: 'linear-gradient(135deg,#1a1a2e,#0f3460)',
-  rune: 'linear-gradient(135deg,#050505,#0f0a05)',
+  ink: 'linear-gradient(135deg,#f5f0e8,#e8dfd0)',
+  cyber: 'linear-gradient(135deg,#03030a,#0c0c28)',
+  luxe: 'linear-gradient(135deg,#0d0b08,#3a3022)',
+  magazine: 'linear-gradient(135deg,#f8f6f2,#e8e2da)',
+  wabi: 'linear-gradient(135deg,#e8ddd0,#c4b4a0)',
+  minimal: 'linear-gradient(135deg,#ffffff,#e8e8e8)',
+  frost: 'linear-gradient(135deg,#0e0e14,#2c2e44)',
+  brutal: 'linear-gradient(135deg,#f0f0f0,#d0d0d0)',
 };
 
 export async function renderSkins({ container }) {

@@ -3,14 +3,32 @@ import { api } from '../api.js';
 import { toast } from '../components/toast.js';
 
 let currentActive = null;
+let userBalance = 0;
+
+const SKIN_PREVIEWS = {
+  golden: 'linear-gradient(135deg,#1a1100,#2d1f00)',
+  ink: 'linear-gradient(135deg,#0d0d1a,#1a1a2e)',
+  cyber: 'linear-gradient(135deg,#0a0a1a,#1a0033)',
+  glass: 'linear-gradient(135deg,#1a1a2e,#0f3460)',
+  rune: 'linear-gradient(135deg,#050505,#0f0a05)',
+};
 
 export async function renderSkins({ container }) {
+  try {
+    const userRes = await api.getUserInfo();
+    userBalance = userRes.user?.bonus_points || 0;
+  } catch { userBalance = 0; }
+
   container.innerHTML = `
     <div class="page-header">
       <div class="flex justify-between items-center">
         <div>
           <h2>皮肤管理</h2>
           <p>管理你的游戏皮肤外观</p>
+        </div>
+        <div>
+          <span style="font-size:var(--text-sm);color:var(--text-secondary);">修仙币：</span>
+          <strong style="color:var(--accent-amber);font-size:1.1em;" id="skin-coins-balance">${userBalance}</strong>
         </div>
       </div>
     </div>
@@ -89,32 +107,28 @@ async function loadShop(el, container) {
       return;
     }
 
-    const previewColors = {
-      golden: 'linear-gradient(135deg,#1a1100,#2d1f00)',
-      ink: 'linear-gradient(135deg,#0d0d1a,#1a1a2e)',
-      cyber: 'linear-gradient(135deg,#0a0a1a,#1a0033)',
-      glass: 'linear-gradient(135deg,#1a1a2e,#0f3460)',
-      rune: 'linear-gradient(135deg,#050505,#0f0a05)',
-    };
-
     el.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-4);margin-top:var(--space-4);">
         ${skins.map(skin => {
           const o = owned.find(x => x.id === skin.id);
           const active = currentActive && currentActive.id === skin.id;
+          const price = skin.price || 0;
           return `
             <div class="card" style="display:flex;flex-direction:column;${active ? 'outline:2px solid var(--accent-green);outline-offset:-2px;' : ''}">
-              <div style="height:120px;border-radius:var(--radius-md);background:${previewColors[skin.key] || '#1a1a2e'};display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);border:1px solid rgba(255,255,255,0.1);">
+              <div style="height:120px;border-radius:var(--radius-md);background:${SKIN_PREVIEWS[skin.key] || '#1a1a2e'};display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);border:1px solid rgba(255,255,255,0.1);">
                 <span style="color:rgba(255,255,255,0.6);font-size:var(--text-sm);">${skin.label}</span>
               </div>
               <div style="flex:1;">
                 <h3 style="font-size:var(--text-base);font-weight:var(--font-semibold);margin-bottom:var(--space-1);">${skin.label}</h3>
                 <p style="font-size:var(--text-sm);color:var(--text-secondary);">${skin.description || ''}</p>
+                ${price > 0 ? `<p style="font-size:var(--text-sm);color:var(--accent-amber);margin-top:var(--space-1);">价格：${price} 修仙币</p>` : '<p style="font-size:var(--text-sm);color:var(--accent-green);margin-top:var(--space-1);">免费</p>'}
               </div>
               <div style="margin-top:var(--space-3);display:flex;gap:var(--space-2);flex-wrap:wrap;">
                 ${o ? `
                   <button class="btn ${active ? 'btn-success' : 'btn-primary'} btn-sm" data-use-skin="${skin.id}">${active ? '使用中' : '使用'}</button>
-                ` : `<button class="btn btn-secondary btn-sm" disabled>未拥有</button>`}
+                ` : `
+                  <button class="btn btn-primary btn-sm" data-buy-skin="${skin.id}" data-price="${price}">${price > 0 ? `购买 ${price}币` : '免费领取'}</button>
+                `}
                 <button class="btn btn-ghost btn-sm" data-preview-skin="${skin.key}">预览</button>
               </div>
             </div>`;
@@ -129,6 +143,18 @@ async function loadShop(el, container) {
           loadShop(el, container);
           loadMine(container.querySelector('#skin-mine'));
         } catch (err) { toast.error(err.message); }
+      });
+    });
+
+    el.querySelectorAll('[data-buy-skin]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const skinId = parseInt(btn.dataset.buySkin);
+        const skin = skins.find(s => s.id === skinId);
+        if (skin) showBuyModal(container, skin, () => {
+          loadShop(el, container);
+          loadMine(container.querySelector('#skin-mine'));
+          refreshBalance(container);
+        });
       });
     });
 
@@ -172,6 +198,9 @@ async function loadMine(el) {
           const active = currentActive && currentActive.id === o.id;
           return `
             <div class="card" style="${active ? 'outline:2px solid var(--accent-green);outline-offset:-2px;' : ''}">
+              <div style="height:100px;border-radius:var(--radius-md);background:${SKIN_PREVIEWS[o.key] || '#1a1a2e'};display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-3);border:1px solid rgba(255,255,255,0.1);">
+                <span style="color:rgba(255,255,255,0.6);font-size:var(--text-sm);">${o.label}</span>
+              </div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
                 <h3 style="font-size:var(--text-base);font-weight:var(--font-semibold);">${o.label}</h3>
                 ${active ? '<span class="badge badge-approved">使用中</span>' : ''}
@@ -195,4 +224,91 @@ async function loadMine(el) {
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }
+}
+
+function refreshBalance(container) {
+  api.getUserInfo().then(res => {
+    userBalance = res.user?.bonus_points || 0;
+    const el = container.querySelector('#skin-coins-balance');
+    if (el) el.textContent = userBalance;
+  }).catch(() => {});
+}
+
+function showBuyModal(container, skin, onSuccess) {
+  const price = skin.price || 0;
+  const canAfford = userBalance >= price;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header">
+        <h3>确认购买皮肤</h3>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body" style="padding:var(--space-5);">
+        <div style="height:100px;border-radius:var(--radius-md);background:${SKIN_PREVIEWS[skin.key] || '#1a1a2e'};display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-4);border:1px solid rgba(255,255,255,0.1);">
+          <span style="color:rgba(255,255,255,0.6);font-size:var(--text-base);">${skin.label}</span>
+        </div>
+        <h3 style="font-size:var(--text-lg);font-weight:var(--font-semibold);text-align:center;margin-bottom:var(--space-2);">${skin.label}</h3>
+        <p style="font-size:var(--text-sm);color:var(--text-secondary);text-align:center;margin-bottom:var(--space-4);">${skin.description || ''}</p>
+
+        <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">
+            <span style="font-size:var(--text-sm);color:var(--text-secondary);">价格</span>
+            <span style="font-size:var(--text-base);font-weight:var(--font-semibold);color:${price > 0 ? 'var(--accent-amber)' : 'var(--accent-green)'};">${price > 0 ? `${price} 修仙币` : '免费'}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:var(--text-sm);color:var(--text-secondary);">当前余额</span>
+            <span style="font-size:var(--text-base);font-weight:var(--font-semibold);color:${canAfford ? 'var(--accent-amber)' : 'var(--accent-red)'};">${userBalance} 修仙币</span>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);margin-bottom:var(--space-4);">
+          <h4 style="font-size:var(--text-sm);font-weight:var(--font-semibold);margin-bottom:var(--space-2);">📖 使用教程</h4>
+          <ol style="font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;padding-left:var(--space-4);">
+            <li>购买后皮肤将自动启用，整个工单系统界面会立即换上新外观</li>
+            <li>可在"我的皮肤"中随时切换已拥有的皮肤</li>
+            <li>如需在游戏内也使用该皮肤，请安装 Tampermonkey 脚本
+              <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);">ider_skin_full.user.js</a>
+            </li>
+            <li>脚本安装后会自动同步你在工单系统选择的皮肤</li>
+            <li>支持 Kiwi Browser (Android) 和 Userscripts (iOS)</li>
+          </ol>
+        </div>
+
+        ${!canAfford ? `<p style="font-size:var(--text-sm);color:var(--accent-red);text-align:center;margin-bottom:var(--space-3);">修仙币不足，请先<a href="#/recharge" style="color:var(--accent-blue);">充值</a></p>` : ''}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal>取消</button>
+        <button class="btn btn-primary" id="confirm-buy-btn" ${!canAfford ? 'disabled' : ''}>
+          ${price > 0 ? `确认支付 ${price} 修仙币` : '免费领取'}
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  modal.querySelectorAll('[data-close-modal]').forEach(btn => {
+    btn.addEventListener('click', () => modal.remove());
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  const confirmBtn = modal.querySelector('#confirm-buy-btn');
+  confirmBtn.addEventListener('click', async () => {
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = '处理中...';
+    try {
+      const res = await api.buySkin(skin.id);
+      toast.success(res.message);
+      modal.remove();
+      if (onSuccess) onSuccess();
+    } catch (err) {
+      toast.error(err.message);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = price > 0 ? `确认支付 ${price} 修仙币` : '免费领取';
+    }
+  });
 }

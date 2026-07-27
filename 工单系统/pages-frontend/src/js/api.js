@@ -271,6 +271,7 @@ class ApiClient {
   getMySkins() { return this.get('/skins/mine'); }
   activateSkin(code) { return this.post('/skins/activate', { code }); }
   useSkin(skin_id) { return this.post('/skins/use', { skin_id }); }
+  buySkin(skin_id) { return this.post('/skins/buy', { skin_id }); }
 
   // ── Admin: Skins ─────────────────────────
   adminGetSkins() { return this.get('/admin/skins'); }

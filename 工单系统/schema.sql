@@ -312,11 +312,11 @@ CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes(code);
 CREATE INDEX IF NOT EXISTS idx_activation_codes_skin ON activation_codes(skin_id);
 
 INSERT OR IGNORE INTO skins (name, key, label, description, price, sort_order, is_active) VALUES
-('金碧辉煌', 'golden', '金碧辉煌', '金色奢华风格，尽显尊贵身份', 0, 0, 1),
-('水墨丹青', 'ink', '水墨丹青', '水墨国风意境，淡雅出尘', 0, 1, 1),
-('赛博修仙', 'cyber', '赛博修仙', '赛博朋克风格，霓虹光影修仙', 0, 2, 1),
-('毛玻璃', 'glass', '毛玻璃', '毛玻璃质感，现代简约毛玻璃效果', 0, 3, 1),
-('暗黑符文', 'rune', '暗黑符文', '暗黑符文风格，神秘深邃符文之力', 0, 4, 1);
+('金碧辉煌', 'golden', '金碧辉煌', '金色奢华风格，尽显尊贵身份', 588, 0, 1),
+('水墨丹青', 'ink', '水墨丹青', '水墨国风意境，淡雅出尘', 388, 1, 1),
+('赛博修仙', 'cyber', '赛博修仙', '赛博朋克风格，霓虹光影修仙', 688, 2, 1),
+('毛玻璃', 'glass', '毛玻璃', '毛玻璃质感，现代简约毛玻璃效果', 288, 3, 1),
+('暗黑符文', 'rune', '暗黑符文', '暗黑符文风格，神秘深邃符文之力', 488, 4, 1);
 
 -- Seed admin user (最中幻想 / Pipi20100817)
 INSERT OR IGNORE INTO users (username, password_hash, display_name, invite_code, is_admin, role, level, xp, created_at)

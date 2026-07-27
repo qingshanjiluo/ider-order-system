@@ -1473,6 +1473,22 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, accounts: accounts.results });
   }
 
+  // ── GH: Account Count for Order ──────────────────────
+  if (path.startsWith('/api/gh/account-count') && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const url = new URL(request.url);
+    const order_id = url.searchParams.get('order_id');
+    if (!order_id) return json({ error: '缺少 order_id' }, 400);
+    const stats = await env.DB.prepare(
+      "SELECT status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status"
+    ).bind(order_id).all();
+    const rows = stats.results || [];
+    const total = rows.reduce((s, r) => s + r.cnt, 0);
+    const byStatus = {};
+    for (const r of rows) byStatus[r.status] = r.cnt;
+    return json({ ok: true, order_id: parseInt(order_id), total, by_status: byStatus });
+  }
+
   // ── GH: All Accounts from Unfinished Orders ──────────
   if (path === '/api/gh/all-accounts' && method === 'GET') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);

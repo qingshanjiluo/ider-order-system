@@ -161,6 +161,7 @@ class ApiClient {
     return this.get(`/admin/accounts${q}`);
   }
   adminRetryAccount(id) { return this.post(`/admin/accounts/${id}/retry`); }
+  adminRetryAllFailed() { return this.post('/admin/accounts/retry-all'); }
   adminReissueOrder(id) { return this.post(`/admin/orders/${id}/reissue`); }
   adminGetConfig() { return this.get('/admin/config'); }
   adminSetConfig(key, value) { return this.post('/admin/config', { key, value }); }

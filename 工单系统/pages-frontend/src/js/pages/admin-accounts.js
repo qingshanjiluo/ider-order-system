@@ -77,6 +77,7 @@ export async function renderAdminAccounts({ container }) {
         <option value="banned">封禁</option>
         <option value="failed">失败</option>
       </select>
+      <button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;margin-left:auto;" id="btn-retry-all" title="一键重置所有失败账号为重试状态">一键重试</button>
     </div>
     <div id="admin-accounts-list">
       <div class="loading"><div class="spinner"></div></div>
@@ -103,6 +104,7 @@ export async function renderAdminAccounts({ container }) {
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
     if (e.target.checked) startPoll();
   });
+  document.getElementById('btn-retry-all').addEventListener('click', retryAllFailed);
 
   await loadAccounts();
   startPoll();
@@ -214,6 +216,22 @@ async function loadAccounts() {
 
   _isLoading = false;
   if (btn) btn.disabled = false;
+}
+
+async function retryAllFailed() {
+  if (!confirm('确定要一键重试所有失败账号吗？将重置所有失败账号为「注册中」状态。')) return;
+  const btn = document.getElementById('btn-retry-all');
+  try {
+    btn.disabled = true; btn.textContent = '重试中...';
+    const res = await api.adminRetryAllFailed();
+    if (res.ok) {
+      toast.success(res.message || '操作成功');
+      loadAccounts();
+    } else {
+      toast.error(res.error || '操作失败');
+    }
+  } catch (err) { toast.error('操作失败: ' + err.message); }
+  finally { btn.disabled = false; btn.textContent = '一键重试'; }
 }
 
 window.__retryAccount = async function(el) {

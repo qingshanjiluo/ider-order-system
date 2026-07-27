@@ -58,6 +58,54 @@ export async function renderSettings({ container }) {
       </form>
     </div>
 
+    <!-- API Token -->
+    <div class="card mb-6">
+      <div class="card-header">
+        <h3>API Token <span style="font-size:var(--text-xs);color:var(--text-tertiary);font-weight:normal;">（用于 Tampermonkey 脚本连接工单系统）</span></h3>
+      </div>
+      <div id="token-section">
+        <p style="font-size:var(--text-xs);color:var(--text-secondary);margin-bottom:var(--space-3);">
+          Token 是脚本连接工单系统的凭证。在游戏中安装 Tampermonkey 皮肤脚本后，需要在此获取 Token 并在脚本中配置。
+        </p>
+        <div style="display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap;">
+          <input type="text" class="form-input font-mono" id="api-token-display" readonly
+                 style="flex:1;min-width:200px;background:var(--bg-base);cursor:text;font-size:var(--text-xs);"
+                 value="加载中...">
+          <button class="btn btn-primary btn-sm" id="token-copy-btn">复制</button>
+          <button class="btn btn-ghost btn-sm" id="token-regenerate-btn">重新生成</button>
+        </div>
+        <div id="token-msg" style="margin-top:var(--space-2);font-size:var(--text-xs);"></div>
+
+        <details style="margin-top:var(--space-4);">
+          <summary style="font-size:var(--text-sm);color:var(--accent-blue);cursor:pointer;font-weight:var(--font-semibold);">
+            📖 如何在 Tampermonkey 脚本中使用 Token
+          </summary>
+          <div style="margin-top:var(--space-3);background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-4);font-size:var(--text-xs);color:var(--text-secondary);line-height:1.8;">
+            <ol style="padding-left:var(--space-4);">
+              <li>在浏览器安装 <strong>Tampermonkey</strong> 扩展（<a href="https://www.tampermonkey.net/" target="_blank" style="color:var(--accent-blue);">官网下载</a>）</li>
+              <li>下载皮肤脚本：
+                <a href="/docs/ider_skin_full.user.js" target="_blank" style="color:var(--accent-blue);display:inline-block;margin:var(--space-1) 0;">
+                  ⬇️ ider_skin_full.user.js
+                </a>
+              </li>
+              <li>安装脚本后，进入游戏页面，点击右下角 🎨 按钮打开皮肤面板</li>
+              <li>点击 ⚙ 按钮打开设置，在 Token 输入框中粘贴上方复制的 Token</li>
+              <li>点击「保存」即可自动同步你在工单系统选择的皮肤</li>
+            </ol>
+
+            <div style="margin-top:var(--space-3);padding:var(--space-3);background:rgba(212,168,68,0.1);border-radius:var(--radius-sm);border:1px solid rgba(212,168,68,0.2);">
+              <strong style="color:var(--accent-amber);">💡 提示</strong>
+              <ul style="margin-top:var(--space-1);padding-left:var(--space-4);">
+                <li>Token 有效期 7 天，到期后需要重新登录获取</li>
+                <li>「重新生成」会使旧 Token 立即失效，脚本需要更新配置</li>
+                <li>如果 Token 泄露，请立即「重新生成」</li>
+              </ul>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+
     <!-- 兑换码 -->
     <div class="card mb-6">
       <div class="card-header">
@@ -128,6 +176,72 @@ export async function renderSettings({ container }) {
       document.getElementById('set-new-pw2').value = '';
     } catch (err) {
       toast.error(err.message || '修改失败');
+    }
+  });
+
+  // Token 显示
+  async function loadToken() {
+    try {
+      const res = await api.getTokenInfo();
+      const input = document.getElementById('api-token-display');
+      if (input) {
+        input.value = res.token || '获取失败';
+        input.title = res.token || '';
+      }
+    } catch {
+      const input = document.getElementById('api-token-display');
+      if (input) input.value = '获取失败，请刷新页面';
+    }
+  }
+  loadToken();
+
+  // 复制 Token
+  document.getElementById('token-copy-btn')?.addEventListener('click', () => {
+    const input = document.getElementById('api-token-display');
+    if (!input || !input.value || input.value === '加载中...' || input.value === '获取失败，请刷新页面') {
+      toast.error('Token 未加载完成');
+      return;
+    }
+    navigator.clipboard.writeText(input.value).then(() => {
+      toast.success('已复制到剪贴板');
+    }).catch(() => {
+      input.select();
+      document.execCommand('copy');
+      toast.success('已复制到剪贴板');
+    });
+  });
+
+  // 重新生成 Token
+  document.getElementById('token-regenerate-btn')?.addEventListener('click', async () => {
+    if (!confirm('重新生成 Token 会使旧 Token 立即失效，正在使用旧 Token 的脚本将无法连接。确定继续？')) return;
+    const btn = document.getElementById('token-regenerate-btn');
+    btn.disabled = true;
+    btn.textContent = '生成中...';
+    try {
+      const res = await api.regenerateToken();
+      const msgEl = document.getElementById('token-msg');
+      if (msgEl) {
+        msgEl.textContent = '✅ ' + (res.message || 'Token 已重新生成');
+        msgEl.style.color = 'var(--accent-green)';
+      }
+      const input = document.getElementById('api-token-display');
+      if (input) {
+        input.value = res.token;
+        input.title = res.token;
+      }
+      api.setToken(res.token);
+      store.saveUserToStorage(store.getUser(), res.token);
+      toast.success('Token 已重新生成');
+    } catch (err) {
+      toast.error(err.message || '生成失败');
+      const msgEl = document.getElementById('token-msg');
+      if (msgEl) {
+        msgEl.textContent = '❌ ' + (err.message || '生成失败');
+        msgEl.style.color = 'var(--accent-red)';
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '重新生成';
     }
   });
 

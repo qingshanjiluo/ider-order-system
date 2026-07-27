@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         艾德尔修仙传 - 完整皮肤系统 v3
 // @namespace    http://tampermonkey.net/
-// @version      3.1
-// @description  完整皮肤系统 + 工单系统集成（自动同步激活的皮肤）
+// @version      4.0
+// @description  完整皮肤系统 v4 - 个性化定制 + Token 管理 + 自定义皮肤 + 工单集成
 // @author       Ider
 // @match        https://idlexiuxianzhuan.cn/*
 // @match        http://idlexiuxianzhuan.cn/*
@@ -714,19 +714,6 @@ function applySkin(skinName) {
   }
 }
 
-function applyOrderSystemSkin(skinKey, cssText) {
-  clearActiveStyle();
-  isOrderSystemMode = true;
-
-  const style = document.createElement('style');
-  style.textContent = cssText;
-  style.setAttribute('data-ider-skin-os', skinKey);
-  document.head.appendChild(style);
-  activeStyleEl = style;
-  setActiveSkin('__os_' + skinKey);
-  console.log('[皮肤] 已应用工单系统皮肤: ' + skinKey);
-}
-
 // ══ 从工单系统 API 获取皮肤 ══
 function fetchOrderSystemSkin() {
   const token = getApiToken();
@@ -787,6 +774,29 @@ async function applySavedSkin() {
   if (savedSkin && savedSkin.startsWith('__os_')) {
     // 之前用的是工单系统皮肤但获取失败了，恢复默认
     setActiveSkin('');
+    return;
+  }
+
+  if (savedSkin === '__ider_custom') {
+    const customDef = getCustomSkinDef();
+    if (customDef && customDef.colors) {
+      const css = buildCustomSkinCss(customDef);
+      const applyIt = () => {
+        clearActiveStyle();
+        const style = document.createElement('style');
+        style.textContent = css;
+        style.setAttribute('data-ider-skin', 'custom');
+        document.head.appendChild(style);
+        activeStyleEl = style;
+      };
+      if (document.querySelector('.game-header')) {
+        applyIt();
+      } else {
+        const iv = setInterval(() => {
+          if (document.querySelector('.game-header')) { applyIt(); clearInterval(iv); }
+        }, 200);
+      }
+    }
     return;
   }
 
@@ -933,101 +943,6 @@ function showSkinPicker() {
   }
 }
 
-function loadOwnedSkins(panel) {
-  fetchOwnedSkins().then(owned => {
-    const listEl = panel.querySelector('#ider-skin-list');
-    const loadingEl = panel.querySelector('#ider-skin-loading');
-    if (loadingEl) loadingEl.remove();
-
-    if (!owned || Object.keys(owned).length === 0) {
-      listEl.insertAdjacentHTML('beforeend', `
-        <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
-          <div style="font-size:32px;margin-bottom:8px;">🎨</div>
-          <div>你还没有购买任何皮肤</div>
-          <div style="font-size:11px;margin-top:8px;color:#555;">前往工单系统皮肤商城购买</div>
-        </div>`);
-      return;
-    }
-
-    // 先用 API 获取完整的皮肤信息（名称、描述）
-    const apiUrl = getOrderSystemUrl();
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: apiUrl + '/api/skins',
-      headers: { 'Authorization': 'Bearer ' + getApiToken(), 'Content-Type': 'application/json' },
-      onload: function(res) {
-        try {
-          const data = JSON.parse(res.responseText);
-          const allSkins = (data.skins || []).filter(s => owned[s.key]);
-          const current = getActiveSkin();
-
-          allSkins.forEach(skin => {
-            const act = current === '__os_' + skin.key;
-            listEl.insertAdjacentHTML('beforeend', `
-              <div class="ider-skin-opt ${act?'active':''}" data-skin-key="${skin.key}"
-                   style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
-                <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.label}</div>
-                <div style="font-size:12px;color:#888;margin-top:2px">${skin.description || ''}</div>
-              </div>`);
-          });
-
-          listEl.querySelectorAll('.ider-skin-opt[data-skin-key]').forEach(el => {
-            el.addEventListener('click', () => {
-              const key = el.dataset.skinKey;
-              applyOrderSystemSkinFromApi(key, panel);
-            });
-          });
-        } catch (e) {
-          // 回退：用 owned 的 key 和本地 SKINS 匹配
-          renderFallbackSkins(listEl, owned, current, panel);
-        }
-      },
-      onerror: function() {
-        renderFallbackSkins(listEl, owned, current, panel);
-      },
-    });
-  }).catch(() => {
-    const loadingEl = panel.querySelector('#ider-skin-loading');
-    if (loadingEl) loadingEl.textContent = '❌ 加载失败，请检查网络';
-  });
-}
-
-// 反向映射：工单系统 key → 本地 key
-const API_KEY_TO_LOCAL = {};
-for (const [local, api] of Object.entries(SKIN_KEY_MAP)) {
-  API_KEY_TO_LOCAL[api] = local;
-}
-
-function renderFallbackSkins(listEl, owned, current, panel) {
-  let count = 0;
-  for (const [apiKey] of Object.entries(owned)) {
-    const localKey = API_KEY_TO_LOCAL[apiKey] || apiKey;
-    const skin = SKINS[localKey];
-    if (!skin) continue;
-    count++;
-    const act = current === localKey || current === '__os_' + apiKey;
-    listEl.insertAdjacentHTML('beforeend', `
-      <div class="ider-skin-opt ${act?'active':''}" data-skin-key="${apiKey}"
-           style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
-        <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.name}</div>
-        <div style="font-size:12px;color:#888;margin-top:2px">${skin.desc}（本地缓存）</div>
-      </div>`);
-  }
-  if (count === 0) {
-    listEl.insertAdjacentHTML('beforeend', `
-      <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
-        <div>你还没有购买任何皮肤</div>
-      </div>`);
-    return;
-  }
-  listEl.querySelectorAll('.ider-skin-opt[data-skin-key]').forEach(el => {
-    el.addEventListener('click', () => {
-      const key = el.dataset.skinKey;
-      applyOrderSystemSkinFromApi(key, panel);
-    });
-  });
-}
-
 function applyOrderSystemSkinFromApi(skinKey, panel) {
   const apiUrl = getOrderSystemUrl();
   const token = getApiToken();
@@ -1070,99 +985,59 @@ function applyOrderSystemSkinFromApi(skinKey, panel) {
   });
 }
 
-function showConfigPanel(panel) {
-  const cfg = getConfig();
-  const configHtml = `
-    <div id="ider-config-form" style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:12px;">
-      <div style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:10px;">⚙ 工单系统设置</div>
-      <div style="margin-bottom:8px;">
-        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">API 地址</label>
-        <input id="ider-cfg-url" type="text" value="${cfg.apiUrl || 'https://ider-order-system.pages.dev'}" style="width:100%;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;font-size:12px;">
-      </div>
-      <div style="margin-bottom:12px;">
-        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Token（登录工单系统后从设置页面获取）</label>
-        <input id="ider-cfg-token" type="text" value="${cfg.token || ''}" placeholder="输入你的 Bearer Token" style="width:100%;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;font-size:12px;font-family:monospace;">
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button id="ider-cfg-save" style="flex:1;padding:6px 12px;background:rgba(212,168,68,0.2);border:1px solid rgba(212,168,68,0.3);border-radius:8px;color:#d4a844;cursor:pointer;font-size:12px;">保存</button>
-        <button id="ider-cfg-test" style="padding:6px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;cursor:pointer;font-size:12px;">测试连接</button>
-      </div>
-      <div id="ider-cfg-msg" style="margin-top:8px;font-size:11px;color:#666;"></div>
-    </div>
-  `;
-
-  const existingForm = panel.querySelector('#ider-config-form');
-  if (existingForm) {
-    existingForm.remove();
-    return;
-  }
-
-  const target = panel.querySelector('#ider-os-status') || panel.lastElementChild;
-  target.insertAdjacentHTML('afterend', configHtml);
-
-  panel.querySelector('#ider-cfg-save').addEventListener('click', () => {
-    const apiUrl = panel.querySelector('#ider-cfg-url').value.trim();
-    const token = panel.querySelector('#ider-cfg-token').value.trim();
-    setConfig({ apiUrl, token });
-    panel.querySelector('#ider-cfg-msg').textContent = '✅ 已保存';
-    panel.querySelector('#ider-cfg-msg').style.color = '#40a040';
-    const statusEl = panel.querySelector('#ider-os-status');
-    if (statusEl) {
-      statusEl.style.display = token ? 'block' : 'none';
-      const statusText = panel.querySelector('#ider-os-status-text');
-      if (statusText) statusText.textContent = token ? '工单系统已连接' : '';
-    }
-    // 立即尝试同步
-    if (token) {
-      panel.querySelector('#ider-cfg-msg').textContent = '⏳ 正在同步...';
-      fetchOrderSystemSkin().then(result => {
-        if (result) {
-          applyOrderSystemSkin(result.key, result.css);
-          panel.querySelector('#ider-cfg-msg').textContent = '✅ 已同步工单系统皮肤';
-          closeSkinPicker();
-          showToast('已同步工单系统皮肤');
-        } else {
-          panel.querySelector('#ider-cfg-msg').textContent = '⚠️ 未找到激活的皮肤或连接失败';
-          panel.querySelector('#ider-cfg-msg').style.color = '#d4a844';
-        }
-      });
-    }
-  });
-
-  panel.querySelector('#ider-cfg-test').addEventListener('click', () => {
-    const apiUrl = panel.querySelector('#ider-cfg-url').value.trim();
-    const token = panel.querySelector('#ider-cfg-token').value.trim();
-    const msgEl = panel.querySelector('#ider-cfg-msg');
-    msgEl.textContent = '⏳ 测试中...';
-    msgEl.style.color = '#666';
-
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: apiUrl + '/api/user/info',
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Content-Type': 'application/json',
-      },
-      onload: function(res) {
-        if (res.status === 200) {
-          msgEl.textContent = '✅ 连接成功';
-          msgEl.style.color = '#40a040';
-        } else {
-          msgEl.textContent = '❌ 连接失败: HTTP ' + res.status;
-          msgEl.style.color = '#d04040';
-        }
-      },
-      onerror: function() {
-        msgEl.textContent = '❌ 网络错误';
-        msgEl.style.color = '#d04040';
-      },
-    });
-  });
-}
-
 function closeSkinPicker() {
   document.querySelector('.ider-skin-panel')?.remove();
   document.querySelector('.ider-skin-overlay')?.remove();
+}
+
+// 反向映射：工单系统 key → 本地 key
+const API_KEY_TO_LOCAL = {};
+for (const [local, api] of Object.entries(SKIN_KEY_MAP)) {
+  API_KEY_TO_LOCAL[api] = local;
+}
+
+function renderFallbackSkins(listEl, owned, current, panel) {
+  let count = 0;
+  for (const [apiKey] of Object.entries(owned)) {
+    const localKey = API_KEY_TO_LOCAL[apiKey] || apiKey;
+    const skin = SKINS[localKey];
+    if (!skin) continue;
+    count++;
+    const act = current === localKey || current === '__os_' + apiKey;
+    const containerId = 'ider-fb-' + apiKey;
+    listEl.insertAdjacentHTML('beforeend', `
+      <div class="ider-skin-opt ${act?'active':''}" id="${containerId}"
+           style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.name}</div>
+            <div style="font-size:12px;color:#888;margin-top:2px">${skin.desc}（本地缓存）</div>
+          </div>
+          <span class="ider-skin-customize-btn" data-skin-key="${apiKey}" data-skin-label="${skin.name}"
+                style="font-size:14px;opacity:0.4;cursor:pointer;transition:opacity 0.2s;" title="个性化">✏️</span>
+        </div>
+      </div>`);
+  }
+  if (count === 0) {
+    listEl.insertAdjacentHTML('beforeend', `
+      <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
+        <div>你还没有购买任何皮肤</div>
+      </div>`);
+    return;
+  }
+  listEl.querySelectorAll('.ider-skin-opt[id^="ider-fb-"]').forEach(el => {
+    const key = el.id.replace('ider-fb-', '');
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.ider-skin-customize-btn')) return;
+      applyOrderSystemSkinFromApi(key, panel);
+    });
+  });
+  listEl.querySelectorAll('#ider-skin-list .ider-skin-customize-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showCustomizeModal(btn.dataset.skinKey, btn.dataset.skinLabel);
+    });
+  });
 }
 
 function showToast(msg) {
@@ -1176,9 +1051,723 @@ function showToast(msg) {
   setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2500);
 }
 
+// ═══════════════════════════════════════════════════════════
+// 皮肤个性化定制系统
+// ═══════════════════════════════════════════════════════════
+
+const CUSTOM_KEY = 'ider_skin_custom_v1';
+
+const FONT_OPTIONS = [
+  { value: '', label: '默认字体' },
+  { value: "'STKaiti','KaiTi','楷体',serif", label: '楷体 (KaiTi)' },
+  { value: "'STSong','SimSun','宋体',serif", label: '宋体 (Songti)' },
+  { value: "'Orbitron','Rajdhani',sans-serif", label: '赛博朋克 (Cyber)' },
+  { value: "'Noto Sans SC','Microsoft YaHei',sans-serif", label: '黑体 (YaHei)' },
+  { value: "'Ma Shan Zheng','STKaiti',cursive", label: '马善政手写体' },
+  { value: "'ZCOOL XiaoWei',serif", label: '少年体 (ZCOOL)' },
+];
+
+function getCustom() {
+  const raw = GM_getValue(CUSTOM_KEY, '{}');
+  try { return JSON.parse(raw); } catch { return {}; }
+}
+
+function setCustom(c) {
+  GM_setValue(CUSTOM_KEY, JSON.stringify(c));
+}
+
+function getSkinOverrides(skinKey) {
+  const custom = getCustom();
+  return custom.overrides && custom.overrides[skinKey] ? custom.overrides[skinKey] : {};
+}
+
+function setSkinOverrides(skinKey, overrides) {
+  const custom = getCustom();
+  if (!custom.overrides) custom.overrides = {};
+  custom.overrides[skinKey] = overrides;
+  setCustom(custom);
+}
+
+function getCustomSkinDef() {
+  const custom = getCustom();
+  return custom.customSkin || null;
+}
+
+function setCustomSkinDef(def) {
+  const custom = getCustom();
+  custom.customSkin = def;
+  setCustom(custom);
+}
+
+// 生成覆盖 CSS 变量
+function buildOverrideCss(overrides) {
+  const parts = [];
+  if (overrides.accent) parts.push(`--gold:${overrides.accent}!important`);
+  if (overrides.accent2) parts.push(`--gold2:${overrides.accent2}!important`);
+  if (overrides.bg) parts.push(`--bg:${overrides.bg}!important`);
+  if (overrides.bg2) parts.push(`--bg2:${overrides.bg2}!important`);
+  if (overrides.radius) parts.push(`--radius:${overrides.radius}px!important`);
+  if (overrides.font) parts.push(`body{font-family:${overrides.font}!important}`);
+  if (overrides.textColor) parts.push(`--text:${overrides.textColor}!important`);
+  if (overrides.text2Color) parts.push(`--text2:${overrides.text2Color}!important`);
+  if (overrides.borderColor) parts.push(`--border:${overrides.borderColor}!important`);
+  if (overrides.headerBg) parts.push(`.game-header{background:${overrides.headerBg}!important}`);
+  return parts.join('\n');
+}
+
+// 应用个性化覆盖
+function applyCustomOverrides(baseCss, skinKey) {
+  const overrides = getSkinOverrides(skinKey);
+  const overrideCss = buildOverrideCss(overrides);
+  if (!overrideCss) return baseCss;
+  return baseCss + '\n/* 个性化覆盖 */\n' + overrideCss;
+}
+
+// 生成自定义皮肤 CSS
+function buildCustomSkinCss(def) {
+  if (!def || !def.colors) return '';
+  const c = def.colors;
+  return `
+:root {
+  --bg: ${c.bg || '#0d0d14'} !important;
+  --bg2: ${c.bg2 || '#1a1a24'} !important;
+  --bg3: ${c.bg3 || '#22223a'} !important;
+  --bg4: ${c.bg4 || '#2a2a46'} !important;
+  --border: ${c.border || '#3a3a5a'} !important;
+  --text: ${c.text || '#d4d4e8'} !important;
+  --text2: ${c.text2 || '#8888aa'} !important;
+  --gold: ${c.gold || '#d4a844'} !important;
+  --gold2: ${c.gold2 || '#b8860b'} !important;
+  --accent: ${c.accent || '#6366f1'} !important;
+  --red: ${c.red || '#dc2626'} !important;
+  --green: ${c.green || '#22c55e'} !important;
+  --radius: ${c.radius || '8'}px !important;
+}
+body { font-family: ${c.font || "'Noto Sans SC',sans-serif"} !important; }
+${c.headerBg ? `.game-header { background: ${c.headerBg} !important; }` : ''}
+${c.headerBorder ? `.game-header { border-bottom: 2px solid ${c.headerBorder} !important; }` : ''}
+${c.accent ? `
+.tab-btn.active { color: ${c.gold || '#d4a844'} !important; border-bottom-color: ${c.gold || '#d4a844'} !important; }
+.section-title { color: ${c.gold || '#d4a844'} !important; }
+.sidebar-char-name { color: ${c.gold || '#d4a844'} !important; }
+.hdr-name { color: ${c.gold || '#d4a844'} !important; }
+` : ''}
+.stat-card, .skill-card, .modal-panel {
+  background: ${c.bg2 || '#1a1a24'} !important;
+  border: 1px solid ${c.border || '#3a3a5a'} !important;
+  border-radius: ${c.radius || '8'}px !important;
+}
+.btn-action { background: ${c.bg3 || '#22223a'} !important; border: 1px solid ${c.border || '#3a3a5a'} !important; }
+.btn-action.gold {
+  background: linear-gradient(135deg, ${c.bg2 || '#1a1a24'}, ${c.bg3 || '#22223a'}) !important;
+  border-color: ${c.gold || '#d4a844'} !important;
+  color: ${c.gold || '#d4a844'} !important;
+}
+.btn-primary { background: linear-gradient(135deg, ${c.gold2 || '#b8860b'}, ${c.gold || '#d4a844'}) !important; }
+.hp-bar-red { background: linear-gradient(90deg, #4a1a1a, ${c.red || '#dc2626'}) !important; }
+.hp-bar-green { background: linear-gradient(90deg, #1a4a2a, ${c.green || '#22c55e'}) !important; }
+.exp-fill { background: linear-gradient(90deg, ${c.gold2 || '#b8860b'}, ${c.gold || '#d4a844'}) !important; }
+.toast { background: ${c.bg2 || '#1a1a24'}e8 !important; border-color: ${c.gold || '#d4a844'} !important; color: ${c.gold || '#d4a844'} !important; }
+.bar-track { background: ${c.bg || '#0d0d14'} !important; border: 1px solid ${c.border || '#3a3a5a'} !important; }
+.map-card { background: ${c.bg2 || '#1a1a24'} !important; border: 1px solid ${c.border || '#3a3a5a'} !important; }
+.inv-slot { background: ${c.bg2 || '#1a1a24'} !important; border: 1px solid ${c.border || '#3a3a5a'} !important; }
+::-webkit-scrollbar-thumb { background: ${c.border || '#3a3a5a'} !important; }
+::-webkit-scrollbar-track { background: ${c.bg || '#0d0d14'} !important; }
+.tab-nav { background: ${c.bg || '#0d0d14'} !important; border-bottom: 1px solid ${c.border || '#3a3a5a'} !important; }
+.battle-sidebar { background: ${c.bg || '#0d0d14'} !important; border-right: 1px solid ${c.border || '#3a3a5a'} !important; }
+.game-header { background: linear-gradient(135deg, ${c.bg || '#0d0d14'}, ${c.bg2 || '#1a1a24'}) !important; }
+.panel { animation: iderCustomIn 0.3s ease !important; }
+@keyframes iderCustomIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+`;
+}
+
+// ══ 个性化定制面板 ══
+function showCustomizeModal(skinKey, skinLabel) {
+  const overrides = getSkinOverrides(skinKey);
+  const custom = getCustom();
+
+  const modal = document.createElement('div');
+  modal.className = 'ider-skin-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+  const colors = ['#d4a844','#ff6b6b','#22d3ee','#a855f7','#22c55e','#f97316','#ec4899','#06b6d4','#eab308','#8b5cf6'];
+
+  modal.innerHTML = `
+    <div style="background:rgba(20,22,32,0.96);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;max-width:440px;width:90vw;max-height:80vh;overflow-y:auto;color:#d4d4e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-size:15px;font-weight:600;color:#d4a844;">✏️ 个性化 — ${skinLabel}</span>
+        <span class="ider-custom-close" style="font-size:20px;color:#888;cursor:pointer;">✕</span>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">强调色（主色调）</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${colors.map(c => `
+            <div class="ider-color-swatch" data-color="${c}" style="width:28px;height:28px;border-radius:6px;background:${c};cursor:pointer;border:2px solid ${overrides.accent === c ? '#fff' : 'transparent'};"></div>
+          `).join('')}
+          <input type="color" id="ider-custom-accent" value="${overrides.accent || '#d4a844'}" style="width:28px;height:28px;border:none;border-radius:6px;cursor:pointer;padding:0;background:none;">
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">背景深度</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:10px;color:#666;">亮</span>
+          <input type="range" id="ider-custom-bg" min="0" max="100" value="${overrides.bgDarkness !== undefined ? overrides.bgDarkness : 50}" style="flex:1;">
+          <span style="font-size:10px;color:#666;">暗</span>
+          <span id="ider-custom-bg-val" style="font-size:11px;color:#888;min-width:24px;">${overrides.bgDarkness !== undefined ? overrides.bgDarkness : 50}</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">圆角大小</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:10px;color:#666;">方</span>
+          <input type="range" id="ider-custom-radius" min="0" max="24" value="${overrides.radius || 8}" style="flex:1;">
+          <span style="font-size:10px;color:#666;">圆</span>
+          <span id="ider-custom-radius-val" style="font-size:11px;color:#888;min-width:16px;">${overrides.radius || 8}</span>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">字体</label>
+        <select id="ider-custom-font" style="width:100%;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;font-size:12px;">
+          ${FONT_OPTIONS.map(f => `<option value="${f.value}" ${(overrides.font || '') === f.value ? 'selected' : ''}>${f.label}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button id="ider-custom-save" style="flex:1;padding:7px 12px;background:rgba(212,168,68,0.2);border:1px solid rgba(212,168,68,0.3);border-radius:8px;color:#d4a844;cursor:pointer;font-size:12px;">保存设置</button>
+        <button id="ider-custom-reset" style="padding:7px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;cursor:pointer;font-size:12px;">重置</button>
+      </div>
+      <div id="ider-custom-msg" style="margin-top:8px;font-size:11px;color:#666;"></div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  function closeModal() { modal.remove(); }
+
+  modal.querySelector('.ider-custom-close').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  // 色块点击
+  modal.querySelectorAll('.ider-color-swatch').forEach(el => {
+    el.addEventListener('click', () => {
+      const color = el.dataset.color;
+      modal.querySelectorAll('.ider-color-swatch').forEach(s => s.style.borderColor = 'transparent');
+      el.style.borderColor = '#fff';
+      modal.querySelector('#ider-custom-accent').value = color;
+    });
+  });
+
+  // 颜色选择器实时更新
+  modal.querySelector('#ider-custom-accent').addEventListener('input', (e) => {
+    const v = e.target.value;
+    modal.querySelectorAll('.ider-color-swatch').forEach(s => {
+      s.style.borderColor = s.dataset.color === v ? '#fff' : 'transparent';
+    });
+  });
+
+  // 滑块显示值
+  const bgSlider = modal.querySelector('#ider-custom-bg');
+  const bgVal = modal.querySelector('#ider-custom-bg-val');
+  bgSlider.addEventListener('input', () => { bgVal.textContent = bgSlider.value; });
+
+  const radiusSlider = modal.querySelector('#ider-custom-radius');
+  const radiusVal = modal.querySelector('#ider-custom-radius-val');
+  radiusSlider.addEventListener('input', () => { radiusVal.textContent = radiusSlider.value; });
+
+  // 保存
+  modal.querySelector('#ider-custom-save').addEventListener('click', () => {
+    const newOverrides = {
+      accent: modal.querySelector('#ider-custom-accent').value,
+      bgDarkness: parseInt(bgSlider.value),
+      radius: parseInt(radiusSlider.value),
+      font: modal.querySelector('#ider-custom-font').value,
+    };
+    // 根据背景深度计算具体颜色
+    const d = newOverrides.bgDarkness / 100;
+    const baseBright = Math.round(8 + d * 12);
+    const bgStr = `rgb(${baseBright},${baseBright},${baseBright+4})`;
+    newOverrides.bg = bgStr;
+    newOverrides.bg2 = `rgb(${baseBright+8},${baseBright+8},${baseBright+14})`;
+
+    setSkinOverrides(skinKey, newOverrides);
+
+    const msgEl = modal.querySelector('#ider-custom-msg');
+    msgEl.textContent = '✅ 已保存，重新选择该皮肤生效';
+    msgEl.style.color = '#40a040';
+
+    // 如果当前正在使用该皮肤，立即重新应用
+    const current = getActiveSkin();
+    const localKey = API_KEY_TO_LOCAL[skinKey] || skinKey;
+    if (current === localKey || current === '__os_' + skinKey) {
+      if (current.startsWith('__os_')) {
+        // 对 OS 皮肤，重新从 API 加载
+        GM_xmlhttpRequest({
+          method: 'GET',
+          url: getOrderSystemUrl() + '/api/skins/css/' + skinKey,
+          onload: function(cssRes) {
+            if (cssRes.status === 200 && cssRes.responseText) {
+              applyOrderSystemSkin(skinKey, cssRes.responseText);
+            }
+          },
+        });
+      } else if (SKINS[localKey]) {
+        applySkin(localKey);
+      }
+    }
+  });
+
+  // 重置
+  modal.querySelector('#ider-custom-reset').addEventListener('click', () => {
+    const custom = getCustom();
+    if (custom.overrides) delete custom.overrides[skinKey];
+    setCustom(custom);
+    modal.querySelector('#ider-custom-accent').value = '#d4a844';
+    bgSlider.value = '50';
+    bgVal.textContent = '50';
+    radiusSlider.value = '8';
+    radiusVal.textContent = '8';
+    modal.querySelector('#ider-custom-font').value = '';
+    modal.querySelector('.ider-custom-msg') && (modal.querySelector('.ider-custom-msg').textContent = '✅ 已重置');
+    const msgEl = modal.querySelector('#ider-custom-msg');
+    msgEl.textContent = '✅ 已重置该皮肤的自定义设置';
+    msgEl.style.color = '#40a040';
+    // 重新应用
+    const current = getActiveSkin();
+    const localKey = API_KEY_TO_LOCAL[skinKey] || skinKey;
+    if (current === localKey || current === '__os_' + skinKey) {
+      if (SKINS[localKey]) { applySkin(localKey); }
+    }
+  });
+}
+
+// ══ 自定义皮肤创建器 ══
+function showCustomSkinCreator() {
+  const def = getCustomSkinDef();
+  const c = def && def.colors ? def.colors : {};
+
+  const modal = document.createElement('div');
+  modal.className = 'ider-skin-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+  modal.innerHTML = `
+    <div style="background:rgba(20,22,32,0.96);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;max-width:480px;width:90vw;max-height:80vh;overflow-y:auto;color:#d4d4e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-size:15px;font-weight:600;color:#d4a844;">🎨 自定义皮肤</span>
+        <span class="ider-custom-close" style="font-size:20px;color:#888;cursor:pointer;">✕</span>
+      </div>
+      <p style="font-size:11px;color:#888;margin-bottom:16px;">完全自定义你的游戏外观，所有颜色均可调整</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">背景色</label><input type="color" id="cc-bg" value="${c.bg || '#0d0d14'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">卡片背景</label><input type="color" id="cc-bg2" value="${c.bg2 || '#1a1a24'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">按钮背景</label><input type="color" id="cc-bg3" value="${c.bg3 || '#22223a'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">边框色</label><input type="color" id="cc-border" value="${c.border || '#3a3a5a'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">主文字</label><input type="color" id="cc-text" value="${c.text || '#d4d4e8'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">次要文字</label><input type="color" id="cc-text2" value="${c.text2 || '#8888aa'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">金色（强调色）</label><input type="color" id="cc-gold" value="${c.gold || '#d4a844'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">金色暗色</label><input type="color" id="cc-gold2" value="${c.gold2 || '#b8860b'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">强调色（紫/蓝）</label><input type="color" id="cc-accent" value="${c.accent || '#6366f1'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">红色（危险）</label><input type="color" id="cc-red" value="${c.red || '#dc2626'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">绿色（安全）</label><input type="color" id="cc-green" value="${c.green || '#22c55e'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+        <div><label style="font-size:10px;color:#888;display:block;margin-bottom:2px;">页眉背景</label><input type="color" id="cc-header" value="${c.headerBg || '#0d0d14'}" style="width:100%;height:32px;border:none;border-radius:6px;cursor:pointer;background:none;"></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">圆角大小</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:10px;color:#666;">方</span>
+          <input type="range" id="cc-radius" min="0" max="24" value="${c.radius || 8}" style="flex:1;">
+          <span style="font-size:10px;color:#666;">圆</span>
+          <span id="cc-radius-val" style="font-size:11px;color:#888;min-width:16px;">${c.radius || 8}</span>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">字体</label>
+        <select id="cc-font" style="width:100%;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;font-size:12px;">
+          ${FONT_OPTIONS.map(f => `<option value="${f.value}" ${(c.font || '') === f.value ? 'selected' : ''}>${f.label}</option>`).join('')}
+        </select>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <button id="cc-save" style="flex:1;padding:7px 12px;background:rgba(212,168,68,0.2);border:1px solid rgba(212,168,68,0.3);border-radius:8px;color:#d4a844;cursor:pointer;font-size:12px;">💾 创建自定义皮肤</button>
+        <button id="cc-preview" style="padding:7px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;cursor:pointer;font-size:12px;">预览</button>
+      </div>
+      <div id="cc-msg" style="margin-top:8px;font-size:11px;color:#666;"></div>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  function closeModal() { modal.remove(); }
+  modal.querySelector('.ider-custom-close').addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+  const radiusSlider = modal.querySelector('#cc-radius');
+  const radiusVal = modal.querySelector('#cc-radius-val');
+  radiusSlider.addEventListener('input', () => { radiusVal.textContent = radiusSlider.value; });
+
+  modal.querySelector('#cc-save').addEventListener('click', () => {
+    const colors = {
+      bg: modal.querySelector('#cc-bg').value,
+      bg2: modal.querySelector('#cc-bg2').value,
+      bg3: modal.querySelector('#cc-bg3').value,
+      border: modal.querySelector('#cc-border').value,
+      text: modal.querySelector('#cc-text').value,
+      text2: modal.querySelector('#cc-text2').value,
+      gold: modal.querySelector('#cc-gold').value,
+      gold2: modal.querySelector('#cc-gold2').value,
+      accent: modal.querySelector('#cc-accent').value,
+      red: modal.querySelector('#cc-red').value,
+      green: modal.querySelector('#cc-green').value,
+      headerBg: modal.querySelector('#cc-header').value,
+      radius: parseInt(radiusSlider.value),
+      font: modal.querySelector('#cc-font').value,
+    };
+    setCustomSkinDef({ colors });
+    closeModal();
+    showToast('自定义皮肤已创建，在皮肤面板选择"✨ 自定义"使用');
+  });
+
+  modal.querySelector('#cc-preview').addEventListener('click', () => {
+    const colors = {
+      bg: modal.querySelector('#cc-bg').value,
+      bg2: modal.querySelector('#cc-bg2').value,
+      bg3: modal.querySelector('#cc-bg3').value,
+      border: modal.querySelector('#cc-border').value,
+      text: modal.querySelector('#cc-text').value,
+      text2: modal.querySelector('#cc-text2').value,
+      gold: modal.querySelector('#cc-gold').value,
+      gold2: modal.querySelector('#cc-gold2').value,
+      accent: modal.querySelector('#cc-accent').value,
+      red: modal.querySelector('#cc-red').value,
+      green: modal.querySelector('#cc-green').value,
+      headerBg: modal.querySelector('#cc-header').value,
+      radius: parseInt(radiusSlider.value),
+      font: modal.querySelector('#cc-font').value,
+    };
+    const css = buildCustomSkinCss({ colors });
+    clearActiveStyle();
+    const style = document.createElement('style');
+    style.textContent = css;
+    style.setAttribute('data-ider-skin', 'custom_preview');
+    document.head.appendChild(style);
+    activeStyleEl = style;
+    isOrderSystemMode = false;
+    modal.querySelector('#cc-msg').textContent = '✅ 预览已应用，关闭后刷新恢复';
+    modal.querySelector('#cc-msg').style.color = '#40a040';
+  });
+}
+
+// ══ Token 获取教程 ══
+function showTokenTutorial() {
+  const apiUrl = getOrderSystemUrl();
+
+  const modal = document.createElement('div');
+  modal.className = 'ider-skin-overlay';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+
+  modal.innerHTML = `
+    <div style="background:rgba(20,22,32,0.96);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;max-width:480px;width:90vw;max-height:80vh;overflow-y:auto;color:#d4d4e0;font-family:'PingFang SC','Microsoft YaHei',sans-serif;box-shadow:0 24px 80px rgba(0,0,0,0.5);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span style="font-size:15px;font-weight:600;color:#d4a844;">🔑 获取 API Token</span>
+        <span class="ider-custom-close" style="font-size:20px;color:#888;cursor:pointer;">✕</span>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-bottom:12px;">
+        <h4 style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:8px;">📋 步骤</h4>
+        <ol style="font-size:12px;color:#aaa;line-height:2;padding-left:16px;">
+          <li>点击下方按钮打开 <strong>工单系统 → 设置页面</strong></li>
+          <li>登录你的账号（如未登录）</li>
+          <li>找到「<strong>API Token</strong>」区域</li>
+          <li>点击「<strong>复制</strong>」按钮复制 Token</li>
+          <li>回到游戏页面，打开 🎨 皮肤面板</li>
+          <li>点击 ⚙ 设置，将 Token 粘贴到输入框中</li>
+          <li>点击「保存」，脚本将自动同步你的皮肤</li>
+        </ol>
+      </div>
+
+      <a href="${apiUrl}/#/settings" target="_blank" style="display:block;text-align:center;padding:10px 16px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:8px;color:#818cf8;text-decoration:none;font-size:13px;font-weight:600;margin-bottom:12px;">
+        🔗 打开工单系统设置页面
+      </a>
+
+      <div style="background:rgba(212,168,68,0.08);border:1px solid rgba(212,168,68,0.15);border-radius:8px;padding:12px;font-size:11px;color:#b8963a;">
+        <strong>⚠️ 安全提醒</strong>
+        <ul style="margin:4px 0 0 12px;padding:0;line-height:1.6;">
+          <li>Token 相当于你的账号密码，请勿分享给他人</li>
+          <li>如 Token 泄露，请立即在工单系统设置页面重新生成</li>
+          <li>Token 有效期 7 天，到期后需要重新登录获取</li>
+        </ul>
+      </div>
+    </div>`;
+
+  document.body.appendChild(modal);
+  modal.querySelector('.ider-custom-close').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+// ══ 更新 config panel 添加 Token 教程按钮和自定义按钮 ══
+// 在 showConfigPanel 中插入额外按钮
+function showConfigPanel(panel) {
+  const existingForm = panel.querySelector('#ider-config-form');
+  if (existingForm) {
+    existingForm.remove();
+    return;
+  }
+
+  const cfg = getConfig();
+  const configHtml = `
+    <div id="ider-config-form" style="margin-top:12px;padding:12px;background:rgba(255,255,255,0.03);border-radius:12px;">
+      <div style="font-size:13px;font-weight:600;color:#ccc;margin-bottom:10px;">⚙ 设置</div>
+
+      <div style="margin-bottom:8px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">API 地址</label>
+        <input id="ider-cfg-url" type="text" value="${cfg.apiUrl || 'https://ider-order-system.pages.dev'}" style="width:100%;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;font-size:12px;">
+      </div>
+      <div style="margin-bottom:8px;">
+        <label style="font-size:11px;color:#888;display:block;margin-bottom:4px;">Token</label>
+        <input id="ider-cfg-token" type="text" value="${cfg.token || ''}" placeholder="输入你的 Token" style="width:100%;padding:6px 8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;font-size:12px;font-family:monospace;">
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+        <button id="ider-cfg-save" style="flex:1;min-width:60px;padding:6px 12px;background:rgba(212,168,68,0.2);border:1px solid rgba(212,168,68,0.3);border-radius:8px;color:#d4a844;cursor:pointer;font-size:12px;">保存</button>
+        <button id="ider-cfg-test" style="padding:6px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;cursor:pointer;font-size:12px;">测试连接</button>
+        <button id="ider-cfg-token-help" style="padding:6px 12px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:8px;color:#818cf8;cursor:pointer;font-size:12px;">🔑 获取 Token</button>
+      </div>
+
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button id="ider-cfg-custom-skin" style="flex:1;padding:6px 12px;background:rgba(168,85,247,0.1);border:1px solid rgba(168,85,247,0.2);border-radius:8px;color:#a855f7;cursor:pointer;font-size:12px;">🎨 创建自定义皮肤</button>
+      </div>
+
+      <div id="ider-cfg-msg" style="margin-top:8px;font-size:11px;color:#666;"></div>
+    </div>`;
+
+  const target = panel.querySelector('#ider-os-status') || panel.lastElementChild;
+  target.insertAdjacentHTML('afterend', configHtml);
+
+  // 保存
+  panel.querySelector('#ider-cfg-save').addEventListener('click', () => {
+    const apiUrl = panel.querySelector('#ider-cfg-url').value.trim();
+    const token = panel.querySelector('#ider-cfg-token').value.trim();
+    setConfig({ apiUrl, token });
+    const msgEl = panel.querySelector('#ider-cfg-msg');
+    msgEl.textContent = '✅ 已保存';
+    msgEl.style.color = '#40a040';
+    const statusEl = panel.querySelector('#ider-os-status');
+    if (statusEl) {
+      statusEl.style.display = token ? 'block' : 'none';
+      const statusText = panel.querySelector('#ider-os-status-text');
+      if (statusText) statusText.textContent = token ? '工单系统已连接' : '';
+    }
+    if (token) {
+      msgEl.textContent = '⏳ 正在同步...';
+      fetchOrderSystemSkin().then(result => {
+        if (result) {
+          applyOrderSystemSkin(result.key, result.css);
+          msgEl.textContent = '✅ 已同步工单系统皮肤';
+          closeSkinPicker();
+          showToast('已同步工单系统皮肤');
+        } else {
+          msgEl.textContent = '⚠️ 未找到激活的皮肤或连接失败';
+          msgEl.style.color = '#d4a844';
+        }
+      });
+    }
+  });
+
+  // 测试连接
+  panel.querySelector('#ider-cfg-test').addEventListener('click', () => {
+    const apiUrl = panel.querySelector('#ider-cfg-url').value.trim();
+    const token = panel.querySelector('#ider-cfg-token').value.trim();
+    const msgEl = panel.querySelector('#ider-cfg-msg');
+    msgEl.textContent = '⏳ 测试中...';
+    msgEl.style.color = '#666';
+    GM_xmlhttpRequest({
+      method: 'GET',
+      url: apiUrl + '/api/user/info',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      onload: function(res) {
+        if (res.status === 200) {
+          msgEl.textContent = '✅ 连接成功';
+          msgEl.style.color = '#40a040';
+        } else {
+          msgEl.textContent = '❌ 连接失败: HTTP ' + res.status;
+          msgEl.style.color = '#d04040';
+        }
+      },
+      onerror: function() { msgEl.textContent = '❌ 网络错误'; msgEl.style.color = '#d04040'; },
+    });
+  });
+
+  // Token 获取教程
+  panel.querySelector('#ider-cfg-token-help').addEventListener('click', () => showTokenTutorial());
+
+  // 自定义皮肤创建器
+  panel.querySelector('#ider-cfg-custom-skin').addEventListener('click', () => showCustomSkinCreator());
+}
+
+// ══ 更新 loadOwnedSkins 添加自定义皮肤和个性化按钮 ══
+function loadOwnedSkins(panel) {
+  fetchOwnedSkins().then(owned => {
+    const listEl = panel.querySelector('#ider-skin-list');
+    const loadingEl = panel.querySelector('#ider-skin-loading');
+    if (loadingEl) loadingEl.remove();
+
+    // 自定义皮肤选项（始终显示）
+    const customDef = getCustomSkinDef();
+    if (customDef && customDef.colors) {
+      const current = getActiveSkin();
+      const act = current === '__ider_custom';
+      listEl.insertAdjacentHTML('beforeend', `
+        <div class="ider-skin-opt ${act?'active':''}" data-skin-custom="1"
+             style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(168,85,247,0.6)':'transparent'};background:rgba(168,85,247,0.05);transition:all 0.2s;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:600;font-size:14px;color:${act?'#a855f7':'#ccc'}">✨ 自定义皮肤</div>
+              <div style="font-size:12px;color:#888;margin-top:2px">你的专属配色方案</div>
+            </div>
+            <span style="font-size:18px;opacity:0.6;">🎨</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:4px;">
+          <button id="ider-edit-custom-skin" style="flex:1;padding:4px 8px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.15);border-radius:6px;color:#a855f7;cursor:pointer;font-size:10px;">✏️ 编辑自定义皮肤</button>
+          <button id="ider-delete-custom-skin" style="padding:4px 8px;background:rgba(208,64,64,0.08);border:1px solid rgba(208,64,64,0.15);border-radius:6px;color:#d04040;cursor:pointer;font-size:10px;">🗑️ 删除</button>
+        </div>`);
+    }
+
+    if (!owned || Object.keys(owned).length === 0) {
+      if (!customDef) {
+        listEl.insertAdjacentHTML('beforeend', `
+          <div style="text-align:center;padding:24px 16px;color:#666;font-size:13px;">
+            <div style="font-size:32px;margin-bottom:8px;">🎨</div>
+            <div>你还没有购买任何皮肤</div>
+            <div style="font-size:11px;margin-top:8px;color:#555;">前往工单系统皮肤商城购买</div>
+          </div>`);
+      }
+    } else {
+      // 从 API 获取完整皮肤信息
+      const apiUrl = getOrderSystemUrl();
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: apiUrl + '/api/skins',
+        headers: { 'Authorization': 'Bearer ' + getApiToken(), 'Content-Type': 'application/json' },
+        onload: function(res) {
+          try {
+            const data = JSON.parse(res.responseText);
+            const allSkins = (data.skins || []).filter(s => owned[s.key]);
+            const current = getActiveSkin();
+
+            allSkins.forEach(skin => {
+              const act = current === '__os_' + skin.key;
+              const containerId = 'ider-skin-item-' + skin.key;
+              listEl.insertAdjacentHTML('beforeend', `
+                <div class="ider-skin-opt ${act?'active':''}" id="${containerId}"
+                     style="padding:12px 16px;border-radius:12px;cursor:pointer;border:2px solid ${act?'rgba(212,168,68,0.6)':'transparent'};background:rgba(255,255,255,0.03);transition:all 0.2s;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                      <div style="font-weight:600;font-size:14px;color:${act?'#d4a844':'#ccc'}">${skin.label}</div>
+                      <div style="font-size:12px;color:#888;margin-top:2px">${skin.description || ''}</div>
+                    </div>
+                    <span class="ider-skin-customize-btn" data-skin-key="${skin.key}" data-skin-label="${skin.label}"
+                          style="font-size:14px;opacity:0.4;cursor:pointer;transition:opacity 0.2s;" title="个性化">✏️</span>
+                  </div>
+                </div>`);
+            });
+
+            // 点击皮肤应用
+            listEl.querySelectorAll('.ider-skin-opt[id^="ider-skin-item-"]').forEach(el => {
+              const id = el.id;
+              const key = id.replace('ider-skin-item-', '');
+              el.addEventListener('click', (e) => {
+                if (e.target.closest('.ider-skin-customize-btn')) return;
+                applyOrderSystemSkinFromApi(key, panel);
+              });
+            });
+
+            // 个性化按钮
+            listEl.querySelectorAll('.ider-skin-customize-btn').forEach(btn => {
+              btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showCustomizeModal(btn.dataset.skinKey, btn.dataset.skinLabel);
+              });
+            });
+          } catch (e) {
+            renderFallbackSkins(listEl, owned, getActiveSkin(), panel);
+          }
+        },
+        onerror: function() {
+          renderFallbackSkins(listEl, owned, getActiveSkin(), panel);
+        },
+      });
+    }
+
+    // 自定义皮肤按钮事件
+    setTimeout(() => {
+      const customOpt = listEl.querySelector('[data-skin-custom="1"]');
+      if (customOpt) {
+        customOpt.addEventListener('click', () => {
+          const def = getCustomSkinDef();
+          if (def && def.colors) {
+            const css = buildCustomSkinCss(def);
+            clearActiveStyle();
+            const style = document.createElement('style');
+            style.textContent = css;
+            style.setAttribute('data-ider-skin', 'custom');
+            document.head.appendChild(style);
+            activeStyleEl = style;
+            isOrderSystemMode = false;
+            setActiveSkin('__ider_custom');
+            closeSkinPicker();
+            showToast('已应用自定义皮肤');
+          }
+        });
+      }
+      const editBtn = document.getElementById('ider-edit-custom-skin');
+      if (editBtn) editBtn.addEventListener('click', () => showCustomSkinCreator());
+      const delBtn = document.getElementById('ider-delete-custom-skin');
+      if (delBtn) delBtn.addEventListener('click', () => {
+        if (confirm('确定删除自定义皮肤吗？')) {
+          const custom = getCustom();
+          delete custom.customSkin;
+          setCustom(custom);
+          const current = getActiveSkin();
+          if (current === '__ider_custom') {
+            clearActiveStyle();
+            setActiveSkin('');
+          }
+          closeSkinPicker();
+          showToast('自定义皮肤已删除');
+        }
+      });
+    }, 0);
+  }).catch(() => {
+    const loadingEl = panel.querySelector('#ider-skin-loading');
+    if (loadingEl) loadingEl.textContent = '❌ 加载失败，请检查网络';
+  });
+}
+
+// ══ 更新 applyOrderSystemSkin 应用个性化覆盖 ══
+function applyOrderSystemSkin(skinKey, cssText) {
+  clearActiveStyle();
+  isOrderSystemMode = true;
+
+  const overrides = getSkinOverrides(skinKey);
+  const finalCss = buildOverrideCss(overrides) ? cssText + '\n' + buildOverrideCss(overrides) : cssText;
+
+  const style = document.createElement('style');
+  style.textContent = finalCss;
+  style.setAttribute('data-ider-skin-os', skinKey);
+  document.head.appendChild(style);
+  activeStyleEl = style;
+  setActiveSkin('__os_' + skinKey);
+  console.log('[皮肤] 已应用工单系统皮肤: ' + skinKey);
+}
+
 // 注入全局动画关键帧
 const animStyle = document.createElement('style');
-animStyle.textContent = `@keyframes iderTIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}`;
+animStyle.textContent = `@keyframes iderTIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}@keyframes iderCustomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`;
 document.head.appendChild(animStyle);
 
 // ══ 启动 ══

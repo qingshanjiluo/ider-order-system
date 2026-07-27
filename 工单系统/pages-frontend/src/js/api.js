@@ -266,6 +266,10 @@ class ApiClient {
   adminUpdateRechargeCode(id, data) { return this.put('/admin/recharge-codes', { id, ...data }); }
   adminDeleteRechargeCode(id) { return this.del('/admin/recharge-codes', { id }); }
 
+  // ── Token ───────────────────────────────
+  getTokenInfo() { return this.get('/user/token'); }
+  regenerateToken() { return this.post('/user/token', {}); }
+
   // ── Skins ────────────────────────────────
   getSkins() { return this.get('/skins'); }
   getMySkins() { return this.get('/skins/mine'); }

@@ -20,22 +20,32 @@ export async function onRequest(context) {
   if (ids && Array.isArray(ids) && ids.length > 0) {
     conditions.push(`id IN (${ids.map(() => '?').join(',')})`);
     params.push(...ids);
-  } else if (order_id) {
-    conditions.push('order_id = ?');
-    params.push(order_id);
-    if (excess_only) {
-      // 只删除超出目标数量的账号
-      const order = await env.DB.prepare('SELECT quantity FROM orders WHERE id = ?').bind(order_id).first();
-      if (order?.quantity > 0) {
-        conditions.push('id NOT IN (SELECT id FROM game_accounts WHERE order_id = ? ORDER BY id ASC LIMIT ?)');
-        params.push(order_id, order.quantity);
+    } else if (order_id) {
+      conditions.push('order_id = ?');
+      params.push(order_id);
+      if (excess_only) {
+        // 超额清理：先删注册失败的，再删等级最低的
+        const order = await env.DB.prepare('SELECT quantity FROM orders WHERE id = ?').bind(order_id).first();
+        if (order?.quantity > 0) {
+          // 获取该工单所有账号，按 失败优先→等级升序 排列
+          const allAcc = await env.DB.prepare(
+            "SELECT id, status, level, username FROM game_accounts WHERE order_id = ? ORDER BY CASE WHEN status IN ('failed','error') THEN 0 ELSE 1 END, COALESCE(level,0) ASC, id ASC"
+          ).bind(order_id).all();
+          const allRows = allAcc.results || [];
+          // 保留前 quantity 个，其余删除
+          const keepIds = allRows.slice(0, order.quantity).map(a => a.id);
+          if (keepIds.length > 0) {
+            conditions.push(`id NOT IN (${keepIds.map(() => '?').join(',')})`);
+            params.push(...keepIds);
+          }
+          // 如果 keepIds 为空（quantity=0），删除全部
+        }
       }
-    }
   } else {
     return json({ error: '请指定要删除的账号' }, 400);
   }
 
-  const query = `SELECT id, username, server_username, order_id, level FROM game_accounts WHERE ${conditions.join(' AND ')}`;
+  const query = `SELECT id, username, server_username, order_id, level, status FROM game_accounts WHERE ${conditions.join(' AND ')}`;
   const accounts = await env.DB.prepare(query).bind(...params).all();
   const rows = accounts.results || [];
 

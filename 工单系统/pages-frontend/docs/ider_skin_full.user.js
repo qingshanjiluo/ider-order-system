@@ -264,9 +264,13 @@ const INKWASH = {
   },
 
   // ── 背景装饰层 ──
-  MOUNTAIN_SVG: '<svg viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.05"/><stop offset="60%" style="stop-color:#1a1a1a;stop-opacity:0.02"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><linearGradient id="mg2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.04"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><filter id="mb1"><feGaussianBlur stdDeviation="2"/></filter></defs><path d="M0,340 Q200,280 400,310 T800,270 T1200,300 T1440,280 L1440,420 L0,420 Z" fill="url(#mg1)" filter="url(#mb1)"/><path d="M0,370 Q240,320 480,345 T960,315 T1440,340 L1440,420 L0,420 Z" fill="url(#mg2)"/><path d="M-60,420 Q240,360 520,390 T1040,370 T1500,400 L1500,420 L-60,420 Z" fill="rgba(26,26,26,0.02)"/><path d="M620,420 Q640,240 670,210 Q700,240 720,420 Z" fill="rgba(26,26,26,0.025)"/><path d="M900,420 Q1000,320 1100,300 Q1200,320 1300,420 Z" fill="rgba(26,26,26,0.02)"/><path d="M0,400 Q360,390 720,400 T1440,395" stroke="rgba(26,26,26,0.03)" stroke-width="0.5" fill="none"/><path d="M0,408 Q360,398 720,408 T1440,403" stroke="rgba(26,26,26,0.025)" stroke-width="0.5" fill="none"/><path d="M0,415 Q360,405 720,415 T1440,410" stroke="rgba(26,26,26,0.02)" stroke-width="0.5" fill="none"/></svg>',
+  MOUNTAIN_SVG: '<svg viewBox="0 0 1440 420" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.08"/><stop offset="40%" style="stop-color:#1a1a1a;stop-opacity:0.03"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><linearGradient id="mg2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.05"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><linearGradient id="mg3" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.025"/><stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:0"/></linearGradient><filter id="mb1"><feGaussianBlur stdDeviation="3"/></filter><filter id="mb2"><feGaussianBlur stdDeviation="1.5"/></filter><filter id="mb3"><feGaussianBlur stdDeviation="4"/></filter></defs><path d="M0,320 Q120,260 240,290 Q360,250 480,280 Q540,260 600,270 Q720,220 840,260 Q960,230 1080,270 Q1200,250 1320,280 Q1380,260 1440,270 L1440,420 L0,420 Z" fill="url(#mg1)" filter="url(#mb1)"/><path d="M0,360 Q180,310 360,340 T720,310 T1080,340 T1440,320 L1440,420 L0,420 Z" fill="url(#mg2)" filter="url(#mb2)"/><path d="M0,390 Q200,350 400,370 T800,350 T1200,380 T1440,360 L1440,420 L0,420 Z" fill="url(#mg3)" filter="url(#mb3)"/><path d="M500,420 Q520,200 560,160 Q600,200 620,420 Z" fill="rgba(26,26,26,0.03)"/><path d="M720,420 Q780,260 840,220 Q900,260 960,420 Z" fill="rgba(26,26,26,0.025)"/><path d="M200,420 Q220,280 260,260 Q300,280 320,420 Z" fill="rgba(26,26,26,0.02)"/><path d="M1050,420 Q1100,300 1150,280 Q1200,300 1250,420 Z" fill="rgba(26,26,26,0.015)"/><path d="M0,400 Q180,385 360,400 T720,390 T1080,400 T1440,395" stroke="rgba(26,26,26,0.04)" stroke-width="0.6" fill="none"/><path d="M0,408 Q180,395 360,408 T720,398 T1080,408 T1440,403" stroke="rgba(26,26,26,0.03)" stroke-width="0.4" fill="none"/><path d="M0,415 Q180,405 360,415 T720,405 T1080,415 T1440,410" stroke="rgba(26,26,26,0.02)" stroke-width="0.3" fill="none"/><path d="M60,310 Q80,280 100,310 Q120,280 140,310 Q160,280 180,310" stroke="rgba(26,26,26,0.015)" stroke-width="0.4" fill="none" opacity="0.5"/><path d="M1150,290 Q1180,250 1210,290 Q1240,250 1270,290" stroke="rgba(26,26,26,0.012)" stroke-width="0.3" fill="none" opacity="0.4"/></svg>',
 
-  BIRDS_SVG: '<svg viewBox="0 0 120 30" xmlns="http://www.w3.org/2000/svg"><path d="M20 15Q25 8 30 15Q35 8 40 15" stroke="#1a1a1a" stroke-width="0.8" fill="none" opacity="0.08"/><path d="M70 12Q74 6 78 12Q82 6 86 12" stroke="#1a1a1a" stroke-width="0.6" fill="none" opacity="0.06"/><path d="M50 18Q53 13 56 18Q59 13 62 18" stroke="#1a1a1a" stroke-width="0.5" fill="none" opacity="0.04"/></svg>',
+  BAMBOO_SVG: '<svg viewBox="0 0 60 120" xmlns="http://www.w3.org/2000/svg"><g opacity="0.06" stroke="#1a1a1a" fill="none" stroke-linecap="round"><path d="M15,10 Q12,30 16,50 Q20,70 14,90 Q10,105 15,115" stroke-width="2"/><path d="M15,30 Q20,35 18,40" stroke-width="1.5"/><path d="M16,55 Q22,60 18,65" stroke-width="1.5"/><path d="M14,80 Q8,85 12,90" stroke-width="1.5"/><path d="M38,18 Q35,35 40,55 Q44,75 38,95 Q34,110 40,118" stroke-width="1.8"/><path d="M38,40 Q44,45 40,50" stroke-width="1.2"/><path d="M39,65 Q45,68 42,73" stroke-width="1.2"/><path d="M24,5 Q22,15 24,25 Q26,15 24,5" fill="#1a1a1a" opacity="0.4" stroke="none"/><path d="M50,8 Q48,18 50,28 Q52,18 50,8" fill="#1a1a1a" opacity="0.3" stroke="none"/></g></svg>',
+
+  PAPER_TEXTURE: '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="pt1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="matrix" values="1 0 0 0 0  0 0.97 0 0 0  0 0.94 0 0 0  0 0 0 0.12 0"/></filter><rect width="200" height="200" fill="transparent" filter="url(#pt1)"/></svg>',
+
+  BIRDS_SVG: '<svg viewBox="0 0 120 30" xmlns="http://www.w3.org/2000/svg"><path d="M20 15Q25 8 30 15Q35 8 40 15" stroke="#1a1a1a" stroke-width="0.8" fill="none" opacity="0.08"/><path d="M70 12Q74 6 78 12Q82 6 86 12" stroke="#1a1a1a" stroke-width="0.6" fill="none" opacity="0.06"/><path d="M50 18Q53 13 56 18Q59 13 62 18" stroke="#1a1a1a" stroke-width="0.5" fill="none" opacity="0.04"/><path d="M30 20Q33 14 36 20Q39 14 42 20" stroke="#1a1a1a" stroke-width="0.4" fill="none" opacity="0.03"/></svg>',
 
   createDecorations() {
     if (this.decorEl) return;
@@ -281,7 +285,9 @@ const INKWASH = {
       { tag: 'div', cls: 'ider-ink-corner tr' },
       { tag: 'div', cls: 'ider-ink-corner bl' },
       { tag: 'div', cls: 'ider-ink-corner br' },
+      { tag: 'div', cls: 'ider-ink-bamboo', html: this.BAMBOO_SVG },
       { tag: 'div', cls: 'ider-ink-birds', html: this.BIRDS_SVG },
+      { tag: 'div', cls: 'ider-ink-paper-texture', html: this.PAPER_TEXTURE },
     ];
     for (const l of layers) {
       const el = document.createElement(l.tag);
@@ -291,9 +297,10 @@ const INKWASH = {
     }
 
     const positions = [
-      {w:5,t:'12%',l:'10%'},{w:3,t:'28%',r:'12%'},{w:7,b:'30%',l:'15%'},
-      {w:4,t:'55%',r:'18%'},{w:6,b:'45%',r:'8%'},{w:2,t:'42%',l:'22%'},
-      {w:5,b:'20%',r:'25%'},{w:3,t:'70%',l:'30%'}
+      {w:5,t:'10%',l:'8%'},{w:3,t:'25%',r:'10%'},{w:7,b:'28%',l:'12%'},
+      {w:4,t:'52%',r:'15%'},{w:6,b:'42%',r:'6%'},{w:2,t:'40%',l:'20%'},
+      {w:5,b:'18%',r:'22%'},{w:3,t:'68%',l:'28%'},{w:4,t:'15%',r:'35%'},
+      {w:8,b:'50%',l:'5%'},{w:3,b:'60%',r:'30%'},{w:6,t:'35%',l:'40%'}
     ];
     for (const p of positions) {
       const dot = document.createElement('div');
@@ -449,9 +456,15 @@ const CYBERWASH = {
 const DUNHUANGWASH = {
   active: false, decorEl: null, observer: null,
 
-  RIBBON_SVG: '<svg viewBox="0 0 1440 800" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rib1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#D4432A" stop-opacity="0.06"/><stop offset="50%" stop-color="#D4A844" stop-opacity="0.04"/><stop offset="100%" stop-color="#2AA8A8" stop-opacity="0.06"/></linearGradient><linearGradient id="rib2" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2AA8A8" stop-opacity="0.05"/><stop offset="50%" stop-color="#D4A844" stop-opacity="0.03"/><stop offset="100%" stop-color="#D4432A" stop-opacity="0.05"/></linearGradient></defs><path d="M0,400 Q200,350 400,420 T800,360 T1200,430 T1440,380 L1440,800 L0,800 Z" fill="url(#rib1)"><animate attributeName="d" dur="20s" repeatCount="indefinite" values="M0,400 Q200,350 400,420 T800,360 T1200,430 T1440,380 L1440,800 L0,800 Z;M0,420 Q200,380 400,400 T800,440 T1200,390 T1440,410 L1440,800 L0,800 Z;M0,400 Q200,350 400,420 T800,360 T1200,430 T1440,380 L1440,800 L0,800 Z"/></path><path d="M0,500 Q250,440 500,510 T1000,470 T1440,500 L1440,800 L0,800 Z" fill="url(#rib2)" opacity="0.6"><animate attributeName="d" dur="25s" repeatCount="indefinite" values="M0,500 Q250,440 500,510 T1000,470 T1440,500 L1440,800 L0,800 Z;M0,480 Q250,520 500,480 T1000,520 T1440,490 L1440,800 L0,800 Z;M0,500 Q250,440 500,510 T1000,470 T1440,500 L1440,800 L0,800 Z"/></path></svg>',
+  RIBBON_SVG: '<svg viewBox="0 0 1440 800" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rib1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#D4432A" stop-opacity="0.08"/><stop offset="30%" stop-color="#D4A844" stop-opacity="0.06"/><stop offset="60%" stop-color="#2AA8A8" stop-opacity="0.05"/><stop offset="100%" stop-color="#D4432A" stop-opacity="0.04"/></linearGradient><linearGradient id="rib2" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2AA8A8" stop-opacity="0.06"/><stop offset="40%" stop-color="#D4A844" stop-opacity="0.04"/><stop offset="100%" stop-color="#D4432A" stop-opacity="0.06"/></linearGradient><linearGradient id="rib3" x1="0.5" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="#D4A844" stop-opacity="0.03"/><stop offset="100%" stop-color="#2AA8A8" stop-opacity="0.05"/></linearGradient></defs><path d="M0,380 Q150,320 300,400 T600,340 T900,410 T1200,350 T1440,390 L1440,800 L0,800 Z" fill="url(#rib1)"><animate attributeName="d" dur="20s" repeatCount="indefinite" values="M0,380 Q150,320 300,400 T600,340 T900,410 T1200,350 T1440,390 L1440,800 L0,800 Z;M0,400 Q150,360 300,380 T600,420 T900,370 T1200,410 T1440,390 L1440,800 L0,800 Z;M0,380 Q150,320 300,400 T600,340 T900,410 T1200,350 T1440,390 L1440,800 L0,800 Z"/></path><path d="M0,500 Q200,430 400,490 T800,440 T1200,500 T1440,470 L1440,800 L0,800 Z" fill="url(#rib2)" opacity="0.7"><animate attributeName="d" dur="25s" repeatCount="indefinite" values="M0,500 Q200,430 400,490 T800,440 T1200,500 T1440,470 L1440,800 L0,800 Z;M0,480 Q200,520 400,470 T800,520 T1200,480 T1440,510 L1440,800 L0,800 Z;M0,500 Q200,430 400,490 T800,440 T1200,500 T1440,470 L1440,800 L0,800 Z"/></path><path d="M0,600 Q300,550 600,620 T1200,570 T1440,600 L1440,800 L0,800 Z" fill="url(#rib3)" opacity="0.4"><animate attributeName="d" dur="30s" repeatCount="indefinite" values="M0,600 Q300,550 600,620 T1200,570 T1440,600 L1440,800 L0,800 Z;M0,580 Q300,620 600,580 T1200,610 T1440,590 L1440,800 L0,800 Z;M0,600 Q300,550 600,620 T1200,570 T1440,600 L1440,800 L0,800 Z"/></path></svg>',
 
   PETAL_SVG: '<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M5,0 Q7,3 5,5 Q3,3 5,0" fill="currentColor"/></svg>',
+
+  APSARAS_SVG: '<svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg"><g opacity="0.05" fill="none" stroke="#D4432A" stroke-width="0.8" stroke-linecap="round"><path d="M20,50 Q40,20 60,40 Q80,15 100,35 Q120,10 140,30 Q160,15 180,25" opacity="0.6"/><path d="M30,55 Q45,30 65,45 Q85,25 105,40 Q125,20 145,35 Q165,25 185,30" opacity="0.4" stroke="#D4A844" stroke-width="0.6"/><path d="M15,60 Q35,40 55,55 Q75,35 95,50 Q115,30 135,45 Q155,35 175,40" opacity="0.3" stroke="#2AA8A8" stroke-width="0.5"/><path d="M40,65 Q55,50 70,60 Q90,45 110,55 Q130,40 150,50" opacity="0.2" stroke="#C49B5E" stroke-width="0.4"/><path d="M50,10 Q60,5 70,12 Q80,5 90,10 Q100,5 110,12 Q120,5 130,10" opacity="0.25" stroke="#D4A844" stroke-width="0.5"/><path d="M60,15 Q70,10 80,18 Q90,10 100,15" opacity="0.15" stroke="#D4432A" stroke-width="0.4"/></g><g opacity="0.04" fill="none" stroke="#D4A844" stroke-width="0.6"><path d="M40,70 Q50,55 60,65 Q75,50 85,60 Q100,45 110,55 Q125,40 135,50 Q150,45 160,50"/><path d="M50,75 Q60,65 70,72 Q85,60 95,68 Q110,55 120,63 Q135,55 145,60"/></g></svg>',
+
+  GOLDEN_DUST: '<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"><g opacity="0.04" fill="#D4A844"><circle cx="50" cy="60" r="1.5"/><circle cx="120" cy="30" r="1"/><circle cx="200" cy="80" r="2"/><circle cx="280" cy="45" r="1.2"/><circle cx="350" cy="70" r="1.8"/><circle cx="80" cy="150" r="1"/><circle cx="180" cy="130" r="1.5"/><circle cx="300" cy="160" r="1.3"/><circle cx="40" cy="250" r="2"/><circle cx="160" cy="220" r="1"/><circle cx="260" cy="280" r="1.8"/><circle cx="360" cy="240" r="1.2"/><circle cx="100" cy="330" r="1.5"/><circle cx="220" cy="360" r="1"/><circle cx="340" cy="320" r="2"/></g></svg>',
+
+  CAVE_TEXTURE: 'radial-gradient(ellipse at 20% 30%, rgba(196,155,94,0.06), transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(212,67,42,0.04), transparent 50%), radial-gradient(ellipse at 50% 50%, rgba(42,168,168,0.03), transparent 50%), repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(196,155,94,0.012) 80px, rgba(196,155,94,0.012) 81px), repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(196,155,94,0.008) 80px, rgba(196,155,94,0.008) 81px)',
 
   apply() {
     if (this.active) return;
@@ -474,28 +487,65 @@ const DUNHUANGWASH = {
     w.id = 'dunhuang-decor';
     w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
 
-    // 壁画纹理背景
+    // 壁画纹理背景（增强版）
     const mural = document.createElement('div');
-    mural.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(212,168,68,0.04),transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(212,67,42,0.03),transparent 50%),radial-gradient(ellipse at 50% 50%,rgba(42,168,168,0.02),transparent 50%)';
+    mural.style.cssText = 'position:absolute;inset:0;background:' + this.CAVE_TEXTURE;
     w.appendChild(mural);
 
-    // 飘带
+    // 飞天（天女散花）剪影
+    const apsaras = document.createElement('div');
+    apsaras.innerHTML = this.APSARAS_SVG;
+    apsaras.style.cssText = 'position:absolute;top:5%;left:0;width:100%;height:20vh;opacity:0.8;animation:dunhuangDrift 30s ease-in-out infinite';
+    w.appendChild(apsaras);
+
+    // 飘带（增强版）
     const ribbon = document.createElement('div');
     ribbon.innerHTML = this.RIBBON_SVG;
-    ribbon.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:60vh;opacity:0.8';
+    ribbon.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:70vh;opacity:0.8';
     w.appendChild(ribbon);
 
-    // 花瓣粒子
-    for (let i = 0; i < 15; i++) {
+    // 金色尘埃背景
+    const goldDust = document.createElement('div');
+    goldDust.innerHTML = this.GOLDEN_DUST;
+    goldDust.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0.6;animation:dunhuangGlow 8s ease-in-out infinite alternate';
+    w.appendChild(goldDust);
+
+    // 花瓣粒子（20个）
+    for (let i = 0; i < 20; i++) {
       const p = document.createElement('div');
       p.innerHTML = this.PETAL_SVG;
-      const size = 4 + Math.random() * 8;
+      const size = 4 + Math.random() * 10;
       const x = Math.random() * 100;
       const delay = Math.random() * 20;
       const dur = 15 + Math.random() * 20;
-      p.style.cssText = `position:absolute;left:${x}%;top:-20px;width:${size}px;height:${size}px;color:${['#D4A844','#D4432A','#2AA8A8','#C49B5E'][i%4]};animation:dunhuangFall ${dur}s linear ${delay}s infinite;opacity:0.4`;
+      const colors = ['#D4A844','#D4432A','#2AA8A8','#C49B5E','#E8C87A'];
+      p.style.cssText = `position:absolute;left:${x}%;top:-20px;width:${size}px;height:${size}px;color:${colors[i%5]};animation:dunhuangFall ${dur}s linear ${delay}s infinite;opacity:${0.3 + Math.random() * 0.3}`;
       w.appendChild(p);
     }
+
+    // 金色浮动粒子
+    for (let i = 0; i < 12; i++) {
+      const g = document.createElement('div');
+      const gs = 2 + Math.random() * 4;
+      const gx = Math.random() * 100;
+      const gy = Math.random() * 100;
+      const gd = Math.random() * 15;
+      const gdur = 10 + Math.random() * 20;
+      g.style.cssText = `position:absolute;left:${gx}%;top:${gy}%;width:${gs}px;height:${gs}px;border-radius:50%;background:#D4A844;opacity:${0.1 + Math.random() * 0.2};animation:dunhuangFloat ${gdur}s ease-in-out ${gd}s infinite`;
+      w.appendChild(g);
+    }
+
+    // 莲花元素
+    for (let i = 0; i < 3; i++) {
+      const lotus = document.createElement('div');
+      const lx = 20 + i * 30;
+      const ly = 70 + Math.random() * 15;
+      const ls = 16 + Math.random() * 12;
+      lotus.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12,2 Q16,8 12,14 Q8,8 12,2" fill="currentColor" opacity="0.5"/><path d="M12,6 Q15,10 12,14 Q9,10 12,6" fill="currentColor" opacity="0.3"/><path d="M12,8 Q14,11 12,14 Q10,11 12,8" fill="currentColor" opacity="0.2"/><path d="M10,14 Q12,18 14,14" fill="currentColor" opacity="0.15"/></svg>';
+      lotus.style.cssText = `position:absolute;left:${lx}%;top:${ly}%;width:${ls}px;height:${ls}px;color:${['#D4A844','#C49B5E','#2AA8A8'][i]};opacity:0.25;animation:dunhuangLotus ${8 + i * 3}s ease-in-out ${i * 4}s infinite`;
+      w.appendChild(lotus);
+    }
+
     document.body.prepend(w);
     this.decorEl = w;
   },
@@ -537,24 +587,51 @@ const TAIJIWASH = {
     w.id = 'taiji-decor';
     w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
 
-    // 太极图背景（旋转）
+    // 径向渐变叠加层
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,0.03),transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(0,0,0,0.02),transparent 50%)';
+    w.appendChild(overlay);
+
+    // 太极图背景（旋转）- 增强版
     const taiji = document.createElement('div');
-    taiji.innerHTML = '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="half"><rect x="0" y="0" width="100" height="200"/></clipPath></defs><circle cx="100" cy="100" r="95" fill="#0A0A0A" opacity="0.03"/><circle cx="100" cy="100" r="95" fill="none" stroke="rgba(0,0,0,0.04)" stroke-width="0.5"/><path d="M100,5 A95,95 0 0,1 100,195 A47.5,47.5 0 0,1 100,100 A47.5,47.5 0 0,0 100,5" fill="#FFF" opacity="0.04"/><path d="M100,5 A95,95 0 0,0 100,195 A47.5,47.5 0 0,0 100,100 A47.5,47.5 0 0,1 100,5" fill="#000" opacity="0.03"/><circle cx="100" cy="52.5" r="12" fill="#FFF" opacity="0.04"/><circle cx="100" cy="147.5" r="12" fill="#000" opacity="0.03"/></svg>';
+    taiji.innerHTML = '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="tg1" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.05"/><stop offset="100%" stop-color="#FFF" stop-opacity="0.01"/></radialGradient><radialGradient id="tg2" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.04"/><stop offset="100%" stop-color="#000" stop-opacity="0.01"/></radialGradient></defs><circle cx="100" cy="100" r="95" fill="#0A0A0A" opacity="0.04"/><circle cx="100" cy="100" r="95" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="0.8"/><circle cx="100" cy="100" r="90" fill="none" stroke="rgba(0,0,0,0.02)" stroke-width="0.3" stroke-dasharray="4 3"/><path d="M100,5 A95,95 0 0,1 100,195 A47.5,47.5 0 0,1 100,100 A47.5,47.5 0 0,0 100,5" fill="url(#tg1)"/><path d="M100,5 A95,95 0 0,0 100,195 A47.5,47.5 0 0,0 100,100 A47.5,47.5 0 0,1 100,5" fill="url(#tg2)"/><circle cx="100" cy="52.5" r="14" fill="#FFF" opacity="0.05"/><circle cx="100" cy="52.5" r="5" fill="#000" opacity="0.04"/><circle cx="100" cy="147.5" r="14" fill="#000" opacity="0.04"/><circle cx="100" cy="147.5" r="5" fill="#FFF" opacity="0.05"/><path d="M50,30 Q60,25 70,30" stroke="rgba(0,0,0,0.02)" stroke-width="0.5" fill="none"/><path d="M130,170 Q140,175 150,170" stroke="rgba(0,0,0,0.02)" stroke-width="0.5" fill="none"/></svg>';
     taiji.style.cssText = 'position:absolute;top:50%;left:50%;width:400px;height:400px;margin:-200px 0 0 -200px;animation:taijiSpin 30s linear infinite;opacity:0.5';
     w.appendChild(taiji);
 
-    // 阴阳鱼粒子
-    for (let i = 0; i < 20; i++) {
+    // 浮游小太极图
+    for (let i = 0; i < 5; i++) {
+      const mini = document.createElement('div');
+      const mx = 5 + Math.random() * 90;
+      const my = 5 + Math.random() * 90;
+      const ms = 20 + Math.random() * 30;
+      const md = Math.random() * 15;
+      mini.innerHTML = '<svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="18" fill="none" stroke="rgba(0,0,0,0.03)" stroke-width="0.5"/><path d="M20,2 A18,18 0 0,1 20,38 A9,9 0 0,1 20,20 A9,9 0 0,0 20,2" fill="rgba(255,255,255,0.03)"/><path d="M20,2 A18,18 0 0,0 20,38 A9,9 0 0,0 20,20 A9,9 0 0,1 20,2" fill="rgba(0,0,0,0.02)"/><circle cx="20" cy="11" r="2.5" fill="rgba(255,255,255,0.03)"/><circle cx="20" cy="29" r="2.5" fill="rgba(0,0,0,0.02)"/></svg>';
+      mini.style.cssText = `position:absolute;left:${mx}%;top:${my}%;width:${ms}px;height:${ms}px;animation:taijiFloat ${12 + i * 3}s ease-in-out ${md}s infinite,taijiSpin ${20 + i * 5}s linear infinite;opacity:0.3`;
+      w.appendChild(mini);
+    }
+
+    // 阴阳鱼粒子（30个，环状分布）
+    for (let i = 0; i < 30; i++) {
       const dot = document.createElement('div');
       const isDark = i % 2 === 0;
-      const size = 2 + Math.random() * 4;
-      const x = Math.random() * 100;
-      const y = Math.random() * 100;
-      const delay = Math.random() * 10;
-      const dur = 8 + Math.random() * 12;
-      dot.style.cssText = `position:absolute;left:${x}%;top:${y}%;width:${size}px;height:${size}px;border-radius:50%;background:${isDark?'rgba(0,0,0,0.04)':'rgba(255,255,255,0.06)'};animation:taijiFloat ${dur}s ease-in-out ${delay}s infinite`;
+      const size = 1.5 + Math.random() * 4;
+      const angle = (i / 30) * 2 * Math.PI;
+      const radius = 15 + Math.random() * 35;
+      const cx = 50 + Math.cos(angle) * radius;
+      const cy = 50 + Math.sin(angle) * radius;
+      const delay = Math.random() * 12;
+      const dur = 6 + Math.random() * 14;
+      dot.style.cssText = `position:absolute;left:${cx}%;top:${cy}%;width:${size}px;height:${size}px;border-radius:50%;background:${isDark?'rgba(0,0,0,0.05)':'rgba(255,255,255,0.07)'};animation:taijiPulse ${dur}s ease-in-out ${delay}s infinite;opacity:${0.2 + Math.random() * 0.3}`;
       w.appendChild(dot);
     }
+
+    // 能量波纹
+    for (let i = 0; i < 3; i++) {
+      const ring = document.createElement('div');
+      ring.style.cssText = `position:absolute;top:50%;left:50%;width:${200 + i * 100}px;height:${200 + i * 100}px;margin:-${100 + i * 50}px 0 0 -${100 + i * 50}px;border-radius:50%;border:1px solid rgba(0,0,0,0.015);animation:taijiRing ${6 + i * 2}s ease-out ${i * 2}s infinite`;
+      w.appendChild(ring);
+    }
+
     document.body.prepend(w);
     this.decorEl = w;
   },

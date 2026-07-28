@@ -201,12 +201,6 @@ const INKWASH = {
       } catch (e) { /* ignore */ }
     };
     setTimeout(applyBtnSvgs, 800);
-    if (!window.__inkwashBtnObs) {
-      const obs = new MutationObserver(() => applyBtnSvgs());
-      obs.observe(document.body, { childList: true, subtree: true });
-      window.__inkwashBtnObs = obs;
-      setTimeout(() => obs.disconnect(), 120000);
-    }
   },
 
   // ── Phase 2: 导航栏（禁用 SVG 图标）──
@@ -315,21 +309,16 @@ const INKWASH = {
     if (this.decorEl) { this.decorEl.remove(); this.decorEl = null; }
   },
 
-  // ── MutationObserver 抵抗 Vue 重渲染 ──
+  // ── 定时刷新布局（不监听 DOM 变化，避免干扰 Vue） ──
   startObserver() {
-    if (this.observer) return;
-    let timer = null;
-    this.observer = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (this.active && document.querySelector('.view-game')) this.layout();
-      }, 100);
-    });
-    this.observer.observe(document.body, { childList: true, subtree: true });
+    if (this._pollIv) return;
+    this._pollIv = setInterval(() => {
+      if (this.active && document.querySelector('.view-game')) this.layout();
+    }, 3000);
   },
 
   stopObserver() {
-    if (this.observer) { this.observer.disconnect(); this.observer = null; }
+    if (this._pollIv) { clearInterval(this._pollIv); this._pollIv = null; }
     document.querySelectorAll('.inkwash-done').forEach(el => el.classList.remove('inkwash-done'));
   },
 
@@ -510,19 +499,9 @@ const DUNHUANGWASH = {
   },
 
   startObserver() {
-    if (this.observer) return;
-    let timer = null;
-    this.observer = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (this.active && document.querySelector('.view-game')) {/* CSS handles it */}
-      }, 100);
-    });
-    this.observer.observe(document.body, { childList: true, subtree: true });
   },
 
   stopObserver() {
-    if (this.observer) { this.observer.disconnect(); this.observer = null; }
   },
 };
 
@@ -579,19 +558,9 @@ const TAIJIWASH = {
   },
 
   startObserver() {
-    if (this.observer) return;
-    let timer = null;
-    this.observer = new MutationObserver(() => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (this.active && document.querySelector('.view-game')) {/* CSS handles it */}
-      }, 100);
-    });
-    this.observer.observe(document.body, { childList: true, subtree: true });
   },
 
   stopObserver() {
-    if (this.observer) { this.observer.disconnect(); this.observer = null; }
   },
 };
 
@@ -1519,7 +1488,7 @@ async function applySavedSkin() {
 
 // ══ 注入切换按钮 ══
 function injectSkinBtn() {
-  const observer = new MutationObserver(() => {
+  const tryInsert = () => {
     const header = document.querySelector('.game-header');
     if (header && !document.querySelector('.ider-skin-btn')) {
       const btn = document.createElement('button');
@@ -1530,10 +1499,15 @@ function injectSkinBtn() {
       btn.style.cssText = `background:none!important;border:none!important;cursor:pointer!important;padding:4px!important;color:var(--text2)!important;font-size:16px!important;width:28px!important;height:28px!important;background-image:url("data:image/svg+xml;base64,${enc}")!important;background-size:18px!important;background-position:center!important;background-repeat:no-repeat!important`;
       btn.addEventListener('click', showSkinPicker);
       header.appendChild(btn);
-      observer.disconnect();
+      return true;
     }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+    return false;
+  };
+  // 轮询等待 header 出现，最多等10秒
+  let tries = 0;
+  const iv = setInterval(() => {
+    if (tryInsert() || ++tries > 20) clearInterval(iv);
+  }, 500);
 }
 
 // ══ 皮肤选择面板（仅显示已拥有的皮肤） ══

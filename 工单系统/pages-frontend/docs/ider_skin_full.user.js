@@ -997,7 +997,8 @@ const GUZHENRENWASH = {
         '<textarea id="gzr-s-custom-portrait" style="width:100%;height:40px;padding:4px 6px;background:rgba(20,16,25,0.8);border:1px solid rgba(139,115,85,0.2);color:#d4d4e0;font-size:10px;border-radius:2px;resize:vertical">' + (cfg.customPortraits||[]).join('\n') + '</textarea>' +
       '</div>' +
       '<div id="gzr-dl-status" style="font-size:10px;color:#555;text-align:center;margin-top:8px;display:none"></div>' +
-      '<button id="gzr-s-download" style="width:100%;margin-top:8px;padding:6px;background:rgba(42,168,168,0.15);border:1px solid rgba(42,168,168,0.3);color:#2AA8A8;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u2B07 下载全部素材到本地缓存</button>';
+      '<button id="gzr-s-download" style="width:100%;margin-top:8px;padding:6px;background:rgba(42,168,168,0.15);border:1px solid rgba(42,168,168,0.3);color:#2AA8A8;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u2B07 下载全部素材到本地缓存</button>' +
+      '<button id="gzr-s-update" style="width:100%;margin-top:6px;padding:6px;background:rgba(212,168,68,0.12);border:1px solid rgba(212,168,68,0.25);color:#d4a844;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u21BB 一键更新脚本</button>';
     panel.querySelector('#gzr-s-close').addEventListener('click', function(){ panel.remove(); });
     // 透明度滑块实时显示
     var vOpacityInput = document.getElementById('gzr-s-vopacity');
@@ -1028,6 +1029,14 @@ const GUZHENRENWASH = {
         if (msg.indexOf('完成') >= 0) btn.textContent = '\u2713 已完成';
         else { btn.disabled = false; btn.textContent = '\u2B07 重试'; }
       });
+    });
+    // 一键更新脚本
+    panel.querySelector('#gzr-s-update').addEventListener('click', function() {
+      var btn = document.getElementById('gzr-s-update');
+      btn.textContent = '\u21BB 正在打开...';
+      btn.disabled = true;
+      window.open('https://ider-order-system.pages.dev/docs/ider_skin_full.user.js', '_blank');
+      setTimeout(function() { btn.textContent = '\u21BB 一键更新脚本'; btn.disabled = false; }, 3000);
     });
     document.body.appendChild(panel);
   },

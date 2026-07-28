@@ -528,15 +528,15 @@ const DUNHUANGWASH = {
 
   BG_MAP: {
     announcement: "https://ider-order-system.pages.dev/docs/guzhenren/89-008.jpg",
-    character: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
-    inventory: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
-    equipment: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
-    skills: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
-    techniques: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+    character: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
+    inventory: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
+    equipment: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
+    skills: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
+    techniques: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
     map: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-    baiyi: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+    baiyi: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
     cave: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-    disciple: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+    disciple: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
     sect: "https://ider-order-system.pages.dev/docs/guzhenren/89-007.jpg",
     alliance: "https://ider-order-system.pages.dev/docs/guzhenren/89-006.jpg",
     exchange: "https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg",
@@ -549,6 +549,7 @@ const DUNHUANGWASH = {
     settings: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
   },
   BG_CYCLE: [
+    // 旧壁纸
     "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
     "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
     "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
@@ -556,6 +557,15 @@ const DUNHUANGWASH = {
     "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
     "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
     "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+    // 新壁纸
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
+    // 原始背景
     "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
   ],
   DEFAULT_BG: "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",

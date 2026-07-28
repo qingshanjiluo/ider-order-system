@@ -2,8 +2,9 @@
  * 艾德尔修仙传 - 每日全自动综合脚本 🏯
  *
  * 功能:
- *   登录 → 仙盟(沐浴/采摘/悟道) → 领取邮件 → 洞府(灵田采集) →
- *   派出传人 → 试炼(测试最佳配置/挑战10次) → 副本(混合/阵法/普通) →
+ *   登录 → 仙盟(沐浴/采摘/悟道) → 领取邮件(不清理) →
+ *   洞府(灵草/金属每日轮换) → 传人(最高地图) →
+ *   试炼(有记录跳过测试直接挑战N次) → 副本(混合/阵法/普通) →
  *   周6系统配对
  *
  * 输入（环境变量）:
@@ -98,45 +99,60 @@ async function doAlliance(token) {
   try { await api('POST', '/alliance/enlightenment_tree/meditate', token, { alliance_id: aId }); log('悟道完成'); } catch(e) { log('悟道跳过: ' + e.message); }
 }
 
-// 2. 邮件
+// 2. 邮件（只领取不清理）
 async function doMail(token) {
   log('--- 领取邮件 ---');
-  try { const r = await api('POST', '/mail/claim_all', token); log('邮件领取完成: ' + JSON.stringify(r)); } catch(e) { log('邮件跳过: ' + e.message); }
-  await sleep(1000);
-  try { await api('POST', '/mail/delete_claimed', token); log('已清理已领邮件'); } catch(e) {}
+  try { const r = await api('POST', '/mail/claim_all', token); log('邮件领取完成'); } catch(e) { log('邮件跳过: ' + e.message); }
 }
 
-// 3. 洞府
+// 3. 洞府（每日轮换采集类型）
 async function doCave(token) {
   log('--- 洞府采集 ---');
   const status = await api('GET', '/online/cave/status', token);
   if (status && status.gathering) { log('已有采集进行中'); return; }
-  try { await api('POST', '/online/cave/start', token, { type: 'field' }); log('灵田采集已开始'); } catch(e) { log('洞府跳过: ' + e.message); }
+  // 轮换类型
+  const stateFile = 'cave_state_' + (process.env.ACCOUNT_USERNAME || 'default') + '.txt';
+  let lastType = 'mine';
+  try { lastType = fs.readFileSync(stateFile, 'utf-8').trim(); } catch(e) {}
+  const types = ['field', 'mine'];
+  const labels = { field: '灵田(灵草)', mine: '灵矿(金属)' };
+  let nextType = 'field';
+  for (let i = 0; i < types.length; i++) {
+    if (types[i] === lastType) { nextType = types[(i + 1) % types.length]; break; }
+  }
+  try {
+    await api('POST', '/online/cave/start', token, { type: nextType });
+    log('采集开始: ' + labels[nextType]);
+    fs.writeFileSync(stateFile, nextType);
+  } catch(e) { log('洞府跳过: ' + e.message); }
 }
 
-// 4. 传人
+// 4. 传人（派出到最高级地图）
 async function doDisciple(token) {
   log('--- 派出传人 ---');
   try { await api('POST', '/online/disciple/recall', token); log('已召回传人'); await sleep(1500); } catch(e) {}
-  try { await api('POST', '/online/disciple/send', token, { map_id: 1, material_filter: 'all' }); log('传人已派出'); } catch(e) { log('传人跳过: ' + e.message); }
+  // 获取玩家数据找最高级地图
+  try {
+    const state = await api('GET', '/player/state', token);
+    const maxMapId = (state && state.player && state.player.max_map_id) ? state.player.max_map_id : 1;
+    log('最高地图ID: ' + maxMapId);
+    await api('POST', '/online/disciple/send', token, { map_id: maxMapId, material_filter: 'all' });
+    log('传人已派出到地图 ' + maxMapId);
+  } catch(e) { log('传人跳过: ' + e.message); }
 }
 
-// 5-6. 试炼
+// 5-6. 试炼（有记录就跳过测试直接挑战）
 async function doTrial(token) {
   log('--- 试炼 ---');
   let bestConfig = null;
-  const stateFile = 'trial_state_' + process.env.ACCOUNT_USERNAME + '.json';
+  const stateFile = 'trial_state_' + (process.env.ACCOUNT_USERNAME || 'default') + '.json';
   
   // 读取历史最佳配置
   try { bestConfig = JSON.parse(fs.readFileSync(stateFile, 'utf-8')); } catch(e) {}
   
-  // 测试/重测(每天一次)
-  const testedFile = 'trial_tested_' + process.env.ACCOUNT_USERNAME + '.txt';
-  let todayTested = false;
-  try { const d = fs.readFileSync(testedFile, 'utf-8').trim(); todayTested = d === new Date().toDateString(); } catch(e) {}
-  
-  if (!todayTested) {
-    log('开始测试试炼最佳配置...');
+  // 只有从未测试过才全量测试
+  if (!bestConfig || !bestConfig.config) {
+    log('无历史记录，开始测试试炼最佳配置...');
     try {
       const r = await api('POST', '/trial/start', token);
       if (r && r.battle_id) {
@@ -147,16 +163,15 @@ async function doTrial(token) {
           if (!adv || adv.state !== 'active') { result = adv; break; }
         }
         log('试炼测试完成');
-        fs.writeFileSync(testedFile, new Date().toDateString());
-        // 更新最佳配置
         if (result) {
           bestConfig = { score: result.score || 0, config: result.config || null, date: new Date().toISOString() };
           fs.writeFileSync(stateFile, JSON.stringify(bestConfig, null, 2));
+          log('最佳配置已保存');
         }
       }
     } catch(e) { log('试炼测试失败: ' + e.message); }
   } else {
-    log('今日已测试，跳过重测');
+    log('已有历史最佳配置，跳过测试，直接挑战');
   }
 
   // 挑战N次(用最佳配置)

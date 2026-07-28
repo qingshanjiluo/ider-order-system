@@ -1,0 +1,44 @@
+name: 每日自动化
+
+on:
+  schedule:
+    # 每天 UTC 0:00 / 北京时间 8:00
+    - cron: '0 0 * * *'
+  workflow_dispatch:  # 手动触发
+    inputs:
+      username:
+        description: '账号（留空使用 Secrets）'
+        required: false
+      password:
+        description: '密码'
+        required: false
+      trial_days:
+        description: '试炼挑战次数'
+        required: false
+        default: '10'
+
+jobs:
+  daily-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 安装依赖
+        run: |
+          cd "工单系统/gh-actions"
+          npm install node-fetch@2
+
+      - name: 执行每日自动化
+        env:
+          ACCOUNT_USERNAME: ${{ github.event.inputs.username || secrets.FARM_USERNAME }}
+          ACCOUNT_PASSWORD: ${{ github.event.inputs.password || secrets.FARM_PASSWORD }}
+          TRIAL_DAYS: ${{ github.event.inputs.trial_days || '10' }}
+          CI: true
+        run: |
+          cd "工单系统/gh-actions"
+          node daily_automation.js

@@ -594,9 +594,9 @@ const DUNHUANGWASH = {
         return;
       }
 
-      // Time-based cycle: same tab for >30s, rotate through wallpapers
+      // Time-based cycle: same tab for >15s, rotate through wallpapers
       var elapsed = Date.now() - self._lastBgTime;
-      if (elapsed > 30000) {
+      if (elapsed > 15000) {
         self._lastBgTime = Date.now();
         var current = bgEl.dataset.current || '';
         var cycle = self.BG_CYCLE;
@@ -616,7 +616,7 @@ const DUNHUANGWASH = {
     bgEl.style.opacity = '0';
     setTimeout(function() {
       bgEl.style.backgroundImage = 'url("' + url + '")';
-      bgEl.style.opacity = '0.15';
+      bgEl.style.opacity = '0.35';
     }, 200);
   },
   startObserver() {

@@ -49,7 +49,7 @@ async function workerApi(path, method, body) {
   return r.json();
 }
 
-// 尝试在游戏服删除账号角色（多个可能的端点）
+// 尝试在游戏服删除账号角色（需打开设置输入删档确认）
 async function tryDeleteGameAccount(server_username, server_password) {
   if (!server_username || !server_password) return false;
   try {
@@ -58,22 +58,25 @@ async function tryDeleteGameAccount(server_username, server_password) {
     if (!loginData.ok || !loginData.token) return false;
     const token = loginData.token;
 
-    // 2. 尝试多个可能的删号端点
+    // 2. 尝试删号端点，需传入确认文本"删档"
     const deleteEndpoints = [
-      { method: 'POST', path: '/player/delete', body: {} },
-      { method: 'POST', path: '/player/unregister', body: {} },
-      { method: 'POST', path: '/auth/unregister', body: {} },
+      { method: 'POST', path: '/player/delete', body: { confirm: '删档' } },
+      { method: 'POST', path: '/player/delete_account', body: { confirm: '删档' } },
+      { method: 'POST', path: '/player/delete', body: { code: '删档' } },
+      { method: 'POST', path: '/player/confirm_delete', body: { code: '删档' } },
+      { method: 'POST', path: '/player/unregister', body: { reason: '删档' } },
+      { method: 'POST', path: '/auth/unregister', body: { confirm: '删档' } },
       { method: 'POST', path: '/player/reset', body: {} },
       { method: 'DELETE', path: '/player/character', body: null },
     ];
     for (const ep of deleteEndpoints) {
       try {
         const res = await apiRequest(ep.method, ep.path, token, ep.body);
-        if (res && (res.ok === true || res.code === 0 || res.message?.includes('成功') || res.message?.includes('删除'))) {
+        if (res && (res.ok === true || res.code === 0 || String(res.message || '').includes('成功') || String(res.message || '').includes('删除'))) {
           return true;
         }
       } catch (e) { /* try next */ }
-      await sleep(200);
+      await sleep(300);
     }
     return false;
   } catch (e) {

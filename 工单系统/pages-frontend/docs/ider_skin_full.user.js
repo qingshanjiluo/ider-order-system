@@ -1500,11 +1500,17 @@ function injectSkinBtn() {
       const btn = document.createElement('button');
       btn.className = 'btn-icon ider-skin-btn';
       btn.title = '切换皮肤';
-      const palSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="7"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="11" cy="5" r="1.2" fill="currentColor"/><circle cx="3" cy="9" r="1" fill="currentColor"/><path d="M8 13a2 2 0 002-2" opacity="0.5"/></svg>';
+      const palSvg = '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8.5" stroke="#d4a844" stroke-width="1.2"/><circle cx="6.5" cy="6.5" r="1.5" fill="#d4a844"/><circle cx="14" cy="6.5" r="1.5" fill="#e88" stroke="none"/><circle cx="4" cy="11" r="1.2" fill="#8cf" stroke="none"/><path d="M10 15a2.5 2.5 0 002.5-2.5" stroke="#d4a844" stroke-width="1.2" opacity="0.6"/></svg>';
       const enc = btoa(unescape(encodeURIComponent(palSvg)));
-      btn.style.cssText = `background:none!important;border:none!important;cursor:pointer!important;padding:4px!important;color:var(--text2)!important;font-size:16px!important;width:28px!important;height:28px!important;background-image:url("data:image/svg+xml;base64,${enc}")!important;background-size:18px!important;background-position:center!important;background-repeat:no-repeat!important`;
+      btn.style.cssText = `border:none!important;cursor:pointer!important;padding:2px!important;width:28px!important;height:28px!important;background:transparent!important;background-image:url("data:image/svg+xml;base64,${enc}")!important;background-size:20px!important;background-position:center!important;background-repeat:no-repeat!important;flex-shrink:0!important;border-radius:4px!important`;
       btn.addEventListener('click', showSkinPicker);
-      header.appendChild(btn);
+      // 插入到灵石区域后面（和灵石并排）
+      const res = header.querySelector('.hdr-res');
+      if (res && res.nextSibling) {
+        header.insertBefore(btn, res.nextSibling);
+      } else {
+        header.appendChild(btn);
+      }
       return true;
     }
     return false;

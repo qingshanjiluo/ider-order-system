@@ -686,7 +686,7 @@ const GUZHENRENWASH = {
     // 单个背景层（JS自动切换+手动切换）
     var bg = document.createElement('div');
     bg.id = 'gzr-bg-img';
-    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
+    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:#07070A;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
     document.body.prepend(bg);
 
     var sigil = document.createElement('div');
@@ -730,6 +730,10 @@ const GUZHENRENWASH = {
     this.decorEl = w;
     this.createPortraitPanel();
     this.startBgSwitcher();
+    // 预加载所有背景图
+    var allBgs = [this.DEFAULT_BG];
+    for (var k in this.BG_MAP) { allBgs.push(this.BG_MAP[k]); }
+    for (var i = 0; i < allBgs.length; i++) { this.preloadImg(allBgs[i]); }
   },
 
   BG_MAP: {
@@ -845,6 +849,11 @@ const GUZHENRENWASH = {
     bgEl.dataset.current = url;
     bgEl.style.backgroundImage = 'url("' + url + '")';
     bgEl.style.opacity = '1';
+  },
+  // 预加载图片到浏览器缓存
+  preloadImg: function(url) {
+    var img = new Image();
+    img.src = url;
   },
 
   PORTRAITS: [

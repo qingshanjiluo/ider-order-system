@@ -694,8 +694,8 @@ const GUZHENRENWASH = {
     sigil.style.cssText = 'position:absolute;top:50%;left:50%;width:500px;height:500px;margin:-250px 0 0 -250px;opacity:0.35;animation:gzrSigilSpin 120s linear infinite';
     w.appendChild(sigil);
 
-    var chars = ['蛊','虫','禁','残','蚀','腐','骨','噬','影','咒','蛹','蜕'];
-    for (var i = 0; i < 16; i++) {
+    var chars = ['蛊','虫','禁','残','蚀','腐','骨','噬'];
+    for (var i = 0; i < 8; i++) {
       var g = document.createElement('div');
       g.textContent = chars[i % chars.length];
       var gx = 5 + Math.random() * 90;
@@ -703,17 +703,15 @@ const GUZHENRENWASH = {
       var gs = 10 + Math.random() * 16;
       var gd = Math.random() * 20;
       var gdur = 15 + Math.random() * 25;
-      g.style.cssText = 'position:absolute;left:' + gx + '%;top:' + gy + '%;font-size:' + gs + 'px;color:rgba(139,115,85,0.035);font-family:"Noto Serif SC",serif;font-weight:900;pointer-events:none;animation:gzrFloat ' + gdur + 's ease-in-out ' + gd + 's infinite';
+      g.style.cssText = 'position:absolute;left:' + gx + '%;top:' + gy + '%;font-size:' + gs + 'px;color:rgba(139,115,85,0.035);font-family:"Noto Serif SC",serif;font-weight:900;pointer-events:none;will-change:transform;animation:gzrFloat ' + gdur + 's ease-in-out ' + gd + 's infinite';
       w.appendChild(g);
     }
 
-    // 视频背景（极低透明度）
+    // 视频背景（不自动播放，节省性能）
     var vid = document.createElement('video');
     vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
-    vid.muted = true; vid.loop = true; vid.playsinline = true;
-    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none';
-    vid.play().catch(function(){});
-    document.body.prepend(vid);
+    vid.muted = true; vid.loop = true; vid.playsinline = true; vid.preload = 'none';
+    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none;display:none';
 
     // 书法字水印
     var wm = document.createElement('div');
@@ -793,7 +791,7 @@ const GUZHENRENWASH = {
         return;
       }
       var elapsed = Date.now() - self._lastBgTime;
-      if (elapsed > 15000) {
+      if (elapsed > 30000) {
         self._lastBgTime = Date.now();
         var current = bgEl.dataset.current || '';
         var cycle = self.BG_CYCLE;
@@ -803,7 +801,7 @@ const GUZHENRENWASH = {
         }
         self.setBg(cycle[nextIdx]);
       }
-    }, 1000);
+    }, 3000);
   },
 
   setBg: function(url) {
@@ -868,19 +866,10 @@ const GUZHENRENWASH = {
       var cycle = [
         "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
         "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
         "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
         "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
         "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
       ];
       var next = 0;
       for (var i = 0; i < cycle.length; i++) {

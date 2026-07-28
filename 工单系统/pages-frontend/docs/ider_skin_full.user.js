@@ -166,47 +166,60 @@ const INKWASH = {
     if (!header || header.classList.contains('inkwash-done')) return;
     header.classList.add('inkwash-done');
 
-    if (!header.querySelector('.inkwash-header-line')) {
-      const line = document.createElement('div');
-      line.className = 'inkwash-header-line';
-      header.prepend(line);
-    }
-
-    const nameEl = header.querySelector('.hdr-name');
-    if (nameEl) nameEl.classList.add('inkwash-seal-text');
-
-    const info = header.querySelector('.hdr-info');
-    const res = header.querySelector('.hdr-res');
-    if (info && !header.querySelector('.inkwash-divider')) {
-      const div = document.createElement('div');
-      div.className = 'inkwash-divider';
-      if (res) header.insertBefore(div, res);
-      else header.appendChild(div);
-    }
-
-    const btns = header.querySelectorAll('.btn-icon');
-    btns.forEach(btn => {
-      if (btn.querySelector('svg')) return;
-      const title = (btn.getAttribute('title') || '').toLowerCase();
-      let svgStr = null;
-      if (title.includes('退出') || title.includes('logout')) svgStr = this.ICONS.logout;
-      else if (title.includes('帮助') || title.includes('help')) svgStr = this.ICONS.scroll;
-      else if (title.includes('主题') || title.includes('theme') || title.includes('皮肤')) svgStr = this.ICONS.inkstone;
-      if (svgStr) {
-        // 使用 DOMParser 解析 SVG 字符串为真实 DOM 节点，避免 Vue 虚拟 DOM 冲突
-        btn.innerHTML = '';
-        try {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(svgStr, 'text/html');
-          const svgNode = doc.body.firstElementChild;
-          if (svgNode) btn.appendChild(svgNode);
-        } catch (e) {
-          // 降级方案：直接 innerHTML
-          btn.innerHTML = svgStr;
-        }
-        btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:4px;color:var(--text2);width:28px;height:28px';
+    try {
+      if (!header.querySelector('.inkwash-header-line')) {
+        const line = document.createElement('div');
+        line.className = 'inkwash-header-line';
+        header.insertAdjacentElement('afterbegin', line);
       }
-    });
+    } catch (e) { console.error('[inkwash] header-line跳过:', e.message); }
+
+    try {
+      const nameEl = header.querySelector('.hdr-name');
+      if (nameEl) nameEl.classList.add('inkwash-seal-text');
+    } catch (e) { /* ignore */ }
+
+    try {
+      const info = header.querySelector('.hdr-info');
+      const res = header.querySelector('.hdr-res');
+      if (info && !header.querySelector('.inkwash-divider')) {
+        const div = document.createElement('div');
+        div.className = 'inkwash-divider';
+        if (res) header.insertBefore(div, res);
+        else header.insertAdjacentElement('beforeend', div);
+      }
+    } catch (e) { console.error('[inkwash] divider跳过:', e.message); }
+
+    const applyBtnSvgs = () => {
+      try {
+        const btns = document.querySelectorAll('.game-header .btn-icon, header .btn-icon');
+        btns.forEach(btn => {
+          if (btn.dataset.inkwashBound) return;
+          const title = (btn.getAttribute('title') || '').toLowerCase();
+          let svgStr = null;
+          if (title.includes('退出') || title.includes('logout') || title.includes('换号')) svgStr = this.ICONS.logout;
+          else if (title.includes('帮助') || title.includes('help')) svgStr = this.ICONS.scroll;
+          else if (title.includes('主题') || title.includes('theme') || title.includes('切换')) svgStr = this.ICONS.talisman;
+          if (svgStr) {
+            btn.dataset.inkwashBound = '1';
+            // 用 DOMParser 解析 SVG 再插入，避免 innerHTML 触发 Vue 解析器
+            const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
+            const svgEl = doc.documentElement;
+            // 清空按钮文字并插入 SVG 元素
+            btn.textContent = '';
+            btn.appendChild(document.importNode(svgEl, true));
+            btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:4px;color:var(--text2);width:28px;height:28px';
+          }
+        });
+      } catch (e) { /* ignore */ }
+    };
+    setTimeout(applyBtnSvgs, 800);
+    if (!window.__inkwashBtnObs) {
+      const obs = new MutationObserver(() => applyBtnSvgs());
+      obs.observe(document.body, { childList: true, subtree: true });
+      window.__inkwashBtnObs = obs;
+      setTimeout(() => obs.disconnect(), 120000);
+    }
   },
 
   // ── Phase 2: 导航栏（禁用 SVG 图标）──
@@ -627,7 +640,7 @@ html.theme-inkwash{--paper:#F5F0E6;--paper-warm:#F0EBE0;--ink-deep:#1a1a1a;--ink
 .theme-inkwash .game-header .btn-icon{color:var(--text2)!important;font-size:14px!important;padding:2px 6px!important;background:none!important;border:none!important;cursor:pointer!important;width:24px!important;height:24px!important}
 .theme-inkwash .game-header .hdr-res{margin-right:auto!important}
 .theme-inkwash .game-header .btn-icon:hover{background:var(--cinnabar-faint)!important}
-.theme-inkwash .game-header .btn-icon[title*="帮助"],.theme-inkwash .game-header .btn-icon[title*="退出"]{display:none!important}
+.theme-inkwash .game-header .btn-icon[title*="退出"]{display:none!important}
 .theme-inkwash .tab-nav{justify-content:center!important;background:transparent!important;border-bottom:1px solid var(--border)!important;padding:4px 8px!important;gap:2px!important}
 .theme-inkwash .tab-btn{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.12em!important;padding:6px 12px!important;font-size:12px!important;border-bottom:1px solid transparent!important;transition:all 0.4s ease!important;color:var(--text2)!important}
 .theme-inkwash .tab-btn.active{color:var(--cinnabar)!important;border-bottom-color:var(--cinnabar)!important}

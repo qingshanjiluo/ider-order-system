@@ -22,7 +22,7 @@ const SKIN_CSS = {
 
 
 
-.theme-inkwash .game-header .btn-icon{color:var(--text2)!important;font-size:14px!important;padding:2px 6px!important;background:none!important;border:none!important;cursor:pointer!important;width:24px!important;height:24px!important}.theme-inkwash .game-header .hdr-res{margin-right:auto!important}.theme-inkwash .game-header .btn-icon[title*="帮助"],.theme-inkwash .game-header .btn-icon[title*="退出"]{display:none!important}
+.theme-inkwash .game-header .btn-icon{color:var(--text2)!important;font-size:14px!important;padding:2px 6px!important;background:none!important;border:none!important;cursor:pointer!important;width:24px!important;height:24px!important}.theme-inkwash .game-header .hdr-res{margin-right:auto!important}.theme-inkwash .game-header .btn-icon[title*="退出"]{display:none!important}
 
 .theme-inkwash .tab-nav{justify-content:center!important;background:transparent!important;border-bottom:1px solid var(--border)!important;padding:4px 8px!important;gap:2px!important}
 .theme-inkwash .tab-btn{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.12em!important;padding:6px 12px!important;font-size:12px!important;border-bottom:1px solid transparent!important;transition:all 0.4s ease!important;color:var(--text2)!important}

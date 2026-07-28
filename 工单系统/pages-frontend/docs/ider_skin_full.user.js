@@ -214,7 +214,7 @@ const INKWASH = {
     sidebar.classList.add('inkwash-done');
 
     const nameEl = sidebar.querySelector('.sidebar-char-name');
-    if (nameEl) nameEl.classList.add('inkwash-vertical-name');
+    if (nameEl) {/* 已移除竖排样式 */}
 
     sidebar.querySelectorAll('.exp-bar, .sr-bar, .bar-track').forEach(bar => {
       bar.classList.add('inkwash-bar-bg');
@@ -937,12 +937,15 @@ body { font-family: 'Noto Serif JP','STSong','Yu Mincho','游明朝',serif !impo
 .login-card { background: rgba(232,221,208,0.95) !important; border: 1px solid #b09880 !important; }
 .game-title { font-family: 'Noto Serif JP',serif !important; font-size: 28px !important; color: #3a3028 !important; letter-spacing: 8px !important; font-weight: 400 !important; }
 
-.game-header { background: #ddd0c0 !important; border-bottom: 1px solid #b09880 !important; }
+.game-header { background: #ddd0c0 !important; border-bottom: 1px solid #b09880 !important; display:flex!important; flex-direction:row!important; align-items:center!important; padding:2px 8px!important; gap:2px!important; flex-wrap:nowrap!important; overflow:hidden!important; min-height:32px!important; position:relative!important; }
 .game-header::before { content: '◇' !important; position: absolute !important; left: 50% !important; bottom: -8px !important; transform: translateX(-50%) !important; color: #b09880 !important; font-size: 12px !important; background: #e8ddd0 !important; padding: 0 8px !important; }
-.hdr-name { font-family: 'Noto Serif JP',serif !important; font-size: 15px !important; color: #3a3028 !important; letter-spacing: 4px !important; font-weight: 400 !important; }
+.hdr-name { font-family: 'Noto Serif JP',serif !important; font-size: 13px !important; color: #3a3028 !important; letter-spacing: 2px !important; font-weight: 400 !important; max-width:72px!important; overflow:hidden!important; text-overflow:ellipsis!important; flex-shrink:0!important; }
+.hdr-info { font-size:11px!important; flex-shrink:0!important; }
 .realm-badge { background: #d0c0ae !important; border: 1px solid #b09880 !important; color: #3a3028 !important; }
 .btn-icon { color: #7a6a5a !important; }
 .btn-icon:hover { color: #8b6f4c !important; }
+.hdr-res { font-size:12px!important; }
+.hdr-qq{display:none!important}
 
 .tab-nav { background: #ddd0c0 !important; border-bottom: 1px solid #b09880 !important; }
 .tab-btn { color: #7a6a5a !important; letter-spacing: 2px !important; padding: 8px 20px !important; border-bottom: 1px solid transparent !important; }
@@ -950,7 +953,8 @@ body { font-family: 'Noto Serif JP','STSong','Yu Mincho','游明朝',serif !impo
 .tab-btn:hover { background: rgba(0,0,0,0.02) !important; }
 
 .battle-sidebar { background: #ddd0c0 !important; border-right: 1px solid #b09880 !important; }
-.sidebar-char-name { color: #3a3028 !important; font-size: 16px !important; letter-spacing: 2px !important; }
+@media(min-width:1024px){.battle-sidebar{width:300px!important;padding:16px 14px!important}}
+.sidebar-char-name { color: #3a3028 !important; font-size: 15px !important; letter-spacing: 2px !important; }
 .sidebar-section-title { color: #8b6f4c !important; border-bottom: 1px solid #b09880 !important; letter-spacing: 2px !important; padding-bottom: 6px !important; }
 
 .stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {

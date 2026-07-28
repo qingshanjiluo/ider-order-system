@@ -85,18 +85,17 @@ async function login(username, password) {
 // 1. 仙盟日常
 async function doAlliance(token) {
   log('--- 仙盟日常 ---');
-  const list = await api('GET', '/alliance/list', token);
-  if (!list || !list.alliances || list.alliances.length === 0) {
-    log('未加入仙盟，跳过');
-    return;
-  }
-  const aId = list.alliances[0].id;
-  log('仙盟ID: ' + aId);
-  try { await api('POST', '/alliance/spirit_pool/bathe', token, { alliance_id: aId }); log('沐浴完成'); } catch(e) { log('沐浴跳过: ' + e.message); }
-  await sleep(1500);
-  try { await api('POST', '/alliance/garden/pick', token, { alliance_id: aId }); log('采摘完成'); } catch(e) { log('采摘跳过: ' + e.message); }
-  await sleep(1500);
-  try { await api('POST', '/alliance/enlightenment_tree/meditate', token, { alliance_id: aId }); log('悟道完成'); } catch(e) { log('悟道跳过: ' + e.message); }
+  try {
+    const detail = await api('GET', '/player/state', token);
+    const memberId = (detail && detail.player && detail.player.alliance_id) ? detail.player.alliance_id : null;
+    if (!memberId) { log('未加入仙盟，跳过'); return; }
+    log('仙盟ID: ' + memberId);
+    try { await api('POST', '/alliance/spirit_pool/bathe', token, { alliance_id: memberId }); log('沐浴完成'); } catch(e) { log('沐浴跳过: ' + e.message); }
+    await sleep(1500);
+    try { await api('POST', '/alliance/garden/pick', token, { alliance_id: memberId }); log('采摘完成'); } catch(e) { log('采摘跳过: ' + e.message); }
+    await sleep(1500);
+    try { await api('POST', '/alliance/enlightenment_tree/meditate', token, { alliance_id: memberId }); log('悟道完成'); } catch(e) { log('悟道跳过: ' + e.message); }
+  } catch(e) { log('仙盟出错: ' + e.message); }
 }
 
 // 2. 邮件（只领取不清理）
@@ -127,17 +126,26 @@ async function doCave(token) {
   } catch(e) { log('洞府跳过: ' + e.message); }
 }
 
-// 4. 传人（派出到最高级地图）
+// 4. 传人（派出到最高级地图，材料每日轮换）
 async function doDisciple(token) {
   log('--- 派出传人 ---');
   try { await api('POST', '/online/disciple/recall', token); log('已召回传人'); await sleep(1500); } catch(e) {}
-  // 获取玩家数据找最高级地图
   try {
     const state = await api('GET', '/player/state', token);
     const maxMapId = (state && state.player && state.player.max_map_id) ? state.player.max_map_id : 1;
     log('最高地图ID: ' + maxMapId);
-    await api('POST', '/online/disciple/send', token, { map_id: maxMapId, material_filter: 'all' });
-    log('传人已派出到地图 ' + maxMapId);
+    // 材质每日轮换
+    const mats = ['草木', '金属', '土石', '液体', '皮质', '玉质'];
+    const matFile = 'disciple_mat_' + (process.env.ACCOUNT_USERNAME || 'default') + '.txt';
+    let lastMat = '玉质';
+    try { lastMat = fs.readFileSync(matFile, 'utf-8').trim(); } catch(e) {}
+    let nextMat = mats[0];
+    for (let i = 0; i < mats.length; i++) {
+      if (mats[i] === lastMat) { nextMat = mats[(i + 1) % mats.length]; break; }
+    }
+    await api('POST', '/online/disciple/send', token, { map_id: maxMapId, material_filter: nextMat });
+    log('传人已派出到地图 ' + maxMapId + ' 采集: ' + nextMat);
+    fs.writeFileSync(matFile, nextMat);
   } catch(e) { log('传人跳过: ' + e.message); }
 }
 

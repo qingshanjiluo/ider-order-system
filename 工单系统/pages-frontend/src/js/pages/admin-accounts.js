@@ -1,5 +1,6 @@
 import { api } from '../api.js';
 import { toast } from '../components/toast.js';
+import { modal } from '../components/modal.js';
 
 let _pollTimer = null;
 let _isLoading = false;
@@ -7,6 +8,7 @@ let _lastUpdate = null;
 let _currentPage = 1;
 let _currentStatus = '';
 let _totalPages = 1;
+let selectedAccounts = new Set();
 
 function fmtDate(d) {
   if (!d) return '-';
@@ -47,6 +49,40 @@ const SETUP_MAP = {
   error: { label: '异常', class: 'badge-rejected' },
 };
 
+function updateCleanupBar() {
+  const btn = document.getElementById('batch-cleanup-btn');
+  const selBtn = document.getElementById('batch-select-all');
+  const count = selectedAccounts.size;
+  if (count > 0) {
+    btn.style.display = 'inline-flex';
+    btn.disabled = false;
+    btn.textContent = '清理选中 (' + count + ')';
+    selBtn.style.display = 'inline-flex';
+    selBtn.textContent = '取消全选';
+  } else {
+    btn.style.display = 'none';
+    btn.disabled = true;
+    selBtn.style.display = 'none';
+  }
+}
+
+function toggleAccount(id) {
+  if (selectedAccounts.has(id)) selectedAccounts.delete(id);
+  else selectedAccounts.add(id);
+  updateCleanupBar();
+}
+
+function toggleSelectAll() {
+  const checkboxes = document.querySelectorAll('.acc-checkbox:not(:disabled)');
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  checkboxes.forEach(cb => {
+    cb.checked = !allChecked;
+    if (cb.checked) selectedAccounts.add(cb.value);
+    else selectedAccounts.delete(cb.value);
+  });
+  updateCleanupBar();
+}
+
 export async function renderAdminAccounts({ container }) {
   if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
 
@@ -58,6 +94,8 @@ export async function renderAdminAccounts({ container }) {
           <p>所有账号实时状态</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-primary" id="batch-cleanup-btn" disabled style="display:none;">清理选中</button>
+          <button class="btn btn-ghost btn-sm" id="batch-select-all" style="display:none;">全选</button>
           <span class="text-xs text-muted" id="admin-account-refresh-time"></span>
           <span class="text-xs text-muted" id="admin-account-total"></span>
           <button class="btn btn-sm btn-ghost" id="admin-account-refresh-btn" title="手动刷新">↻</button>
@@ -77,7 +115,7 @@ export async function renderAdminAccounts({ container }) {
         <option value="banned">封禁</option>
         <option value="failed">失败</option>
       </select>
-      <button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;margin-left:auto;" id="btn-retry-all" title="一键重置所有失败账号为重试状态">一键重试</button>
+      <button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;margin-left:auto;" id="btn-retry-all">一键重试</button>
     </div>
     <div id="admin-accounts-list">
       <div class="loading"><div class="spinner"></div></div>
@@ -105,6 +143,8 @@ export async function renderAdminAccounts({ container }) {
     if (e.target.checked) startPoll();
   });
   document.getElementById('btn-retry-all').addEventListener('click', retryAllFailed);
+  document.getElementById('batch-cleanup-btn').addEventListener('click', batchCleanup);
+  document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
 
   await loadAccounts();
   startPoll();
@@ -141,7 +181,6 @@ async function loadAccounts() {
     const tt = document.getElementById('admin-account-total');
     if (tt) tt.textContent = '共 ' + total + ' 条';
 
-    // 分页按钮
     document.getElementById('page-prev').disabled = _currentPage <= 1;
     document.getElementById('page-next').disabled = _currentPage >= _totalPages;
     document.getElementById('page-info').textContent = '第 ' + _currentPage + '/' + _totalPages + ' 页';
@@ -158,8 +197,10 @@ async function loadAccounts() {
       const st = STATUS_MAP[a.status] || { label: a.status, class: '' };
       const setup = SETUP_MAP[a.setup_status] || { label: a.setup_status || '待Setup', class: 'badge-pending' };
       const showRetry = a.status === 'failed';
+      const canClean = a.status !== 'completed' && a.status !== 'banned';
       return `
         <tr>
+          <td>${canClean ? '<input type="checkbox" class="acc-checkbox" value="' + a.id + '" style="cursor:pointer;">' : ''}</td>
           <td class="font-mono text-xs">${a.id}</td>
           <td class="font-mono text-xs">${a.username || '-'}</td>
           <td class="font-semibold">${a.character_name || '-'}</td>
@@ -168,11 +209,11 @@ async function loadAccounts() {
           <td><span title="${(a.exp != null ? a.exp.toLocaleString() : '0')}exp (${a.exp_percent || 0}%)">Lv.${a.level || '-'}</span></td>
           <td class="text-xs text-muted">${a.user_name || a.user_id || '-'}</td>
           <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>
-          <td class="text-xs" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
+          <td class="text-xs" style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
           <td class="text-sm text-muted" title="${fmtDate(a.last_check_at || a.created_at)}">${timeAgo(a.last_check_at || a.created_at) || '-'}</td>
           <td class="actions-cell">
             <div class="actions-group">
-              <a href="#/accounts/${a.id}" class="btn btn-sm btn-ghost" title="查看详情">详情</a>
+              <a href="#/accounts/${a.id}" class="btn btn-sm btn-ghost">详情</a>
               ${showRetry ? `<button class="btn btn-sm btn-danger" data-rid="${a.id}" onclick="window.__retryAccount(this)">重试</button>` : ''}
             </div>
           </td>
@@ -186,26 +227,32 @@ async function loadAccounts() {
     } else {
       el.innerHTML = `
         <div class="table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-          <table style="min-width:800px;">
+          <table style="min-width:850px;">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>游戏账号</th>
-                <th>角色名</th>
-                <th>状态</th>
-                <th>Setup</th>
-                <th>等级</th>
-                <th>用户</th>
-                <th>订单</th>
-                <th>错误信息</th>
-                <th>最后活跃</th>
-                <th class="actions-th">操作</th>
+                <th style="width:32px;"><input type="checkbox" id="select-all-header" style="cursor:pointer;"></th>
+                <th>ID</th><th>游戏账号</th><th>角色名</th><th>状态</th><th>Setup</th><th>等级</th>
+                <th>用户</th><th>订单</th><th>错误</th><th>最后活跃</th><th>操作</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>
         </div>`;
     }
+
+    // 事件绑定
+    selectedAccounts.clear();
+    document.querySelectorAll('.acc-checkbox').forEach(cb => {
+      cb.addEventListener('change', () => toggleAccount(cb.value));
+    });
+    document.getElementById('select-all-header').addEventListener('change', function() {
+      document.querySelectorAll('.acc-checkbox:not(:disabled)').forEach(cb => {
+        cb.checked = this.checked;
+        if (this.checked) selectedAccounts.add(cb.value);
+        else selectedAccounts.delete(cb.value);
+      });
+      updateCleanupBar();
+    });
 
   } catch (err) {
     if (isFirstLoad || !el.querySelector('table')) {
@@ -218,18 +265,48 @@ async function loadAccounts() {
   if (btn) btn.disabled = false;
 }
 
+async function batchCleanup() {
+  const ids = Array.from(selectedAccounts);
+  if (!ids.length) { toast.error('请选择账号'); return; }
+
+  const body = document.createElement('div');
+  body.innerHTML = `
+    <p>确定清理选中的 <strong>${ids.length}</strong> 个账号？</p>
+    <p style="font-size:13px;color:var(--text-tertiary);margin-top:4px;">将标记为「已清理」并停止监控，不再执行升级/挂机。</p>
+    <div class="form-group" style="margin-top:12px;">
+      <label class="form-label">注意事项</label>
+      <p style="font-size:12px;color:var(--text-tertiary);">清理后无法恢复，请在确认后再操作。</p>
+    </div>`;
+
+  modal.open({
+    title: '批量清理账号 (' + ids.length + ')',
+    body,
+    confirmText: '确认清理',
+    confirmClass: 'btn-danger',
+    onConfirm: async () => {
+      try {
+        const res = await api.post('/admin/accounts/delete', { ids });
+        if (res.ok) {
+          toast.success('已清理 ' + res.deleted + ' 个账号');
+        }
+        modal.close();
+        selectedAccounts.clear();
+        loadAccounts();
+      } catch (err) {
+        toast.error(err.message || '清理失败');
+      }
+    },
+  });
+}
+
 async function retryAllFailed() {
-  if (!confirm('确定要一键重试所有失败账号吗？将重置所有失败账号为「注册中」状态。')) return;
+  if (!confirm('确定要一键重试所有失败账号吗？')) return;
   const btn = document.getElementById('btn-retry-all');
   try {
     btn.disabled = true; btn.textContent = '重试中...';
     const res = await api.adminRetryAllFailed();
-    if (res.ok) {
-      toast.success(res.message || '操作成功');
-      loadAccounts();
-    } else {
-      toast.error(res.error || '操作失败');
-    }
+    if (res.ok) { toast.success(res.message || '操作成功'); loadAccounts(); }
+    else { toast.error(res.error || '操作失败'); }
   } catch (err) { toast.error('操作失败: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = '一键重试'; }
 }

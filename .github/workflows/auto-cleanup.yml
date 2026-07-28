@@ -1,0 +1,22 @@
+name: 🧹 账号自动清理（120级满3天删号）
+on:
+  schedule:
+    - cron: '0 6 */2 * *'  # 每2天早上6点
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 账号自动清理
+        run: node gh-actions/auto_cleanup.js
+        working-directory: 工单系统
+        env:
+          WORKER_URL: 'https://ider-order-system.sifangzhiji.workers.dev'
+          API_BASE: 'https://idlexiuxianzhuan.cn'
+          CLIENT_VERSION: '1.2.4'
+          SIGN_KEY: ${{ secrets.SIGN_KEY }}

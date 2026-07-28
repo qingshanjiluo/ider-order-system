@@ -140,6 +140,7 @@ async function loadOrders(status = '') {
             <div class="flex gap-1" style="flex-wrap:wrap;">
               ${adminBtns}
               ${needsReissue(o) ? `<button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" data-action="reissue-order" data-id="${o.id}">补发审查</button>` : ''}
+              ${hasExcess(o) ? `<button class="btn btn-sm" style="background:var(--accent-red);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" data-action="cleanup-excess" data-id="${o.id}">清理超额</button>` : ''}
               <button class="btn btn-ghost btn-sm" onclick="location.hash='#/orders/${o.id}'">详情</button>
             </div>
                   </td>
@@ -161,6 +162,9 @@ async function loadOrders(status = '') {
     });
     document.querySelectorAll('[data-action="reissue-order"]').forEach(btn => {
       btn.addEventListener('click', () => reissueOrder(btn.dataset.id));
+    });
+    document.querySelectorAll('[data-action="cleanup-excess"]').forEach(btn => {
+      btn.addEventListener('click', () => cleanupExcess(btn.dataset.id));
     });
 
     // 多选事件
@@ -203,6 +207,12 @@ function needsReissue(order) {
   return qty > 0 && created < qty;
 }
 
+function hasExcess(order) {
+  const qty = order.quantity || 0;
+  const created = order.total_accounts_created || 0;
+  return qty > 0 && created > qty;
+}
+
 async function reissueOrder(orderId) {
   if (!confirm(`确定对工单 #${orderId} 执行补发审查？将重置所有失败账号并重新处理。`)) return;
   try {
@@ -223,6 +233,22 @@ async function reissueOrder(orderId) {
     }
   } catch (err) {
     toast.error('补发审查失败: ' + err.message);
+  }
+}
+
+async function cleanupExcess(orderId) {
+  if (!confirm(`确定清理工单 #${orderId} 的超额账号？将删除超出目标数量的所有账号。`)) return;
+  try {
+    const res = await api.post('/admin/accounts/delete', { order_id: parseInt(orderId), excess_only: true });
+    if (res.ok) {
+      toast.success('已清理 ' + res.deleted + ' 个超额账号');
+      const statusEl = document.getElementById('admin-order-status');
+      loadOrders(statusEl?.value || '');
+    } else {
+      toast.error(res.error || '清理失败');
+    }
+  } catch (err) {
+    toast.error('清理失败: ' + err.message);
   }
 }
 

@@ -1758,6 +1758,7 @@ function applySkin(skinName) {
   CYBERWASH.remove();
   DUNHUANGWASH.remove();
   TAIJIWASH.remove();
+  GUZHENRENWASH.remove();
   isOrderSystemMode = false;
 
   if (skinName && SKINS[skinName]) {
@@ -2298,6 +2299,7 @@ function applyOrderSystemSkin(skinKey, cssText) {
   CYBERWASH.remove();
   DUNHUANGWASH.remove();
   TAIJIWASH.remove();
+  GUZHENRENWASH.remove();
   isOrderSystemMode = true;
   const style = document.createElement('style');
   style.textContent = cssText;

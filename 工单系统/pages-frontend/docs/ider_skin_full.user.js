@@ -1642,6 +1642,14 @@ function applyOrderSystemSkinFromApi(skinKey, panel) {
   const localKey = API_KEY_TO_LOCAL[skinKey];
   const localSkin = localKey ? SKINS[localKey] : null;
 
+  if (localSkin) {
+    // 直接使用本地 CSS，无需网络请求
+    applySkin(localKey);
+    closeSkinPicker();
+    showToast('已切换为「' + localSkin.name + '」');
+    return;
+  }
+
   const msgEl = panel.querySelector('#ider-os-status-text');
   if (msgEl) msgEl.innerHTML = icon('hourglass', null, 12) + ' 应用皮肤...';
 
@@ -1653,25 +1661,13 @@ function applyOrderSystemSkinFromApi(skinKey, panel) {
         applyOrderSystemSkin(skinKey, cssRes.responseText);
         closeSkinPicker();
         showToast('已切换皮肤');
-      } else if (localSkin) {
-        applySkin(localKey);
-        closeSkinPicker();
-        showToast('已切换为「' + localSkin.name + '」（离线模式）');
       }
     },
     onerror: function() {
-      if (localSkin) {
-        applySkin(localKey);
-        closeSkinPicker();
-        showToast('已切换为「' + localSkin.name + '」（离线模式）');
-      }
+      if (msgEl) msgEl.innerHTML = icon('crossError', null, 12) + ' 加载失败';
     },
     ontimeout: function() {
-      if (localSkin) {
-        applySkin(localKey);
-        closeSkinPicker();
-        showToast('已切换为「' + localSkin.name + '」（离线模式）');
-      }
+      if (msgEl) msgEl.innerHTML = icon('crossError', null, 12) + ' 请求超时';
     },
   });
 }

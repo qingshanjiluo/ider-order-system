@@ -793,11 +793,11 @@ const GUZHENRENWASH = {
       // 视频控制
       if (vid) {
         if (mode === 'video') {
-          vid.style.opacity = '0.04'; vid.style.display = '';
+          vid.style.opacity = '' + (cfg.videoOpacity || 0.04); vid.style.display = '';
           vid.play().catch(function(){});
           bgEl.style.opacity = '0';
         } else if (mode === 'mixed') {
-          vid.style.opacity = '0.04'; vid.style.display = '';
+          vid.style.opacity = '' + (cfg.videoOpacity || 0.04); vid.style.display = '';
           vid.play().catch(function(){});
           bgEl.style.opacity = '1';
         } else {
@@ -971,6 +971,11 @@ const GUZHENRENWASH = {
           '<option value="300000"' + (interval===300000?' selected':'') + '>5分钟</option>' +
         '</select>' +
       '</div>' +
+      '<div style="margin-bottom:12px">' +
+        '<div style="color:#A09888;font-size:11px;margin-bottom:6px">视频透明度（0~1，仅视频/混合模式）</div>' +
+        '<input id="gzr-s-vopacity" type="range" min="0" max="0.2" step="0.005" value="' + (cfg.videoOpacity||0.04) + '" style="width:100%;height:4px">' +
+        '<span id="gzr-s-vopacity-val" style="color:#d4a844;font-size:10px;margin-left:4px">' + (cfg.videoOpacity||0.04) + '</span>' +
+      '</div>' +
       '<button id="gzr-s-save" style="width:100%;padding:8px;background:rgba(139,115,85,0.3);border:1px solid rgba(139,115,85,0.4);color:#d4a844;cursor:pointer;font-size:12px;letter-spacing:2px;border-radius:2px;margin-bottom:8px">保存设置</button>' +
       '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(139,115,85,0.15)">' +
         '<div style="color:#A09888;font-size:10px;margin-bottom:6px">自定义背景图（每行一个URL，将加入轮播）</div>' +
@@ -983,12 +988,20 @@ const GUZHENRENWASH = {
       '<div id="gzr-dl-status" style="font-size:10px;color:#555;text-align:center;margin-top:8px;display:none"></div>' +
       '<button id="gzr-s-download" style="width:100%;margin-top:8px;padding:6px;background:rgba(42,168,168,0.15);border:1px solid rgba(42,168,168,0.3);color:#2AA8A8;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u2B07 下载全部素材到本地缓存</button>';
     panel.querySelector('#gzr-s-close').addEventListener('click', function(){ panel.remove(); });
+    // 透明度滑块实时显示
+    var vOpacityInput = document.getElementById('gzr-s-vopacity');
+    if (vOpacityInput) {
+      vOpacityInput.addEventListener('input', function() {
+        document.getElementById('gzr-s-vopacity-val').textContent = this.value;
+      });
+    }
     panel.querySelector('#gzr-s-save').addEventListener('click', function() {
       var newMode = document.getElementById('gzr-s-mode').value;
       var newInterval = parseInt(document.getElementById('gzr-s-interval').value) || 0;
+      var newVOpacity = parseFloat(document.getElementById('gzr-s-vopacity').value) || 0.04;
       var customBgs = document.getElementById('gzr-s-custom-bg').value.trim().split('\n').filter(function(s){return s.trim()});
       var customPortraits = document.getElementById('gzr-s-custom-portrait').value.trim().split('\n').filter(function(s){return s.trim()});
-      GUZHENRENWASH.saveCfg({mode: newMode, interval: newInterval, customBgs: customBgs, customPortraits: customPortraits});
+      GUZHENRENWASH.saveCfg({mode: newMode, interval: newInterval, videoOpacity: newVOpacity, customBgs: customBgs, customPortraits: customPortraits});
       if (GUZHENRENWASH._bgTimer) { clearInterval(GUZHENRENWASH._bgTimer); GUZHENRENWASH._bgTimer = null; }
       GUZHENRENWASH.startBgSwitcher();
       panel.remove();

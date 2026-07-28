@@ -192,7 +192,7 @@ const INKWASH = {
 
     const applyBtnSvgs = () => {
       try {
-        const btns = document.querySelectorAll('.game-header .btn-icon, header .btn-icon');
+        const btns = document.querySelectorAll('.game-header .btn-icon:not(.ider-skin-btn), header .btn-icon:not(.ider-skin-btn)');
         btns.forEach(btn => {
           if (btn.dataset.inkwashBound) return;
           btn.dataset.inkwashBound = '1';
@@ -580,12 +580,12 @@ html.theme-inkwash{--paper:#F5F0E6;--paper-warm:#F0EBE0;--ink-deep:#1a1a1a;--ink
 @keyframes inkwashMist{0%,100%{transform:translateX(0)}50%{transform:translateX(15%)}}
 @keyframes inkwashFloat{0%,100%{transform:translateY(0) scale(1);opacity:0.03}50%{transform:translateY(-6px) scale(1.1);opacity:0.06}}
 .theme-inkwash body{font-family:'Noto Serif SC','STKaiti','KaiTi','FangSong',serif!important;background:var(--paper)!important;letter-spacing:0.04em!important;color:var(--ink-deep)!important}
-.theme-inkwash .game-header{display:flex!important;flex-direction:row!important;align-items:center!important;padding:4px 12px!important;background:transparent!important;border-bottom:1px solid var(--border)!important;gap:4px!important;flex-wrap:nowrap!important}
+.theme-inkwash .game-header{display:flex!important;flex-direction:row!important;align-items:center!important;padding:2px 8px!important;background:transparent!important;border-bottom:1px solid var(--border)!important;gap:2px!important;flex-wrap:nowrap!important;overflow:hidden!important;min-height:32px!important}
 .theme-inkwash .inkwash-header-line{display:none!important}
-.theme-inkwash .game-header .hdr-name{font-family:'Ma Shan Zheng',cursive!important;font-size:0.85rem!important;letter-spacing:0.15em!important;color:var(--cinnabar)!important;white-space:nowrap!important}
+.theme-inkwash .game-header .hdr-name{font-family:'Ma Shan Zheng',cursive!important;font-size:0.7rem!important;letter-spacing:0.06em!important;color:var(--cinnabar)!important;white-space:nowrap!important;max-width:72px!important;overflow:hidden!important;text-overflow:ellipsis!important;flex-shrink:0!important}
 
 
-.theme-inkwash .game-header .hdr-info{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.1em!important;color:var(--text2)!important;font-size:0.7rem!important;white-space:nowrap!important}
+.theme-inkwash .game-header .hdr-info{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.04em!important;color:var(--text2)!important;font-size:0.55rem!important;white-space:nowrap!important;flex-shrink:0!important}
 .theme-inkwash .game-header .hdr-info .realm-badge{background:transparent!important;color:var(--text2)!important;padding:0!important;font-size:inherit!important;border:none!important}
 .theme-inkwash .game-header .hdr-qq{display:none!important}
 .theme-inkwash .game-header .hdr-res{font-size:11px!important;letter-spacing:0.1em!important;gap:8px!important;white-space:nowrap!important;display:flex!important;align-items:center!important}
@@ -605,7 +605,7 @@ html.theme-inkwash{--paper:#F5F0E6;--paper-warm:#F0EBE0;--ink-deep:#1a1a1a;--ink
 .theme-inkwash .tab-btn.active .inkwash-nav-icon{color:var(--cinnabar)!important}
 .theme-inkwash .tab-btn:hover .inkwash-nav-icon{color:var(--cinnabar-soft)!important}
 @media(min-width:1024px){.theme-inkwash .tab-nav{flex-direction:column!important;position:fixed!important;left:0!important;top:50%!important;transform:translateY(-50%)!important;z-index:100!important;background:var(--bg2)!important;border:1px solid var(--border)!important;border-left:none!important;padding:12px 8px!important;gap:4px!important;border-radius:0 8px 8px 0!important;box-shadow:2px 2px 12px rgba(0,0,0,0.04)!important}.theme-inkwash .tab-btn{writing-mode:vertical-rl!important;padding:8px 6px!important;font-size:11px!important;letter-spacing:0.2em!important;border-bottom:none!important;border-right:1px solid transparent!important}.theme-inkwash .tab-btn.active{border-bottom-color:transparent!important;border-right-color:var(--cinnabar)!important}.theme-inkwash .tab-btn[data-tab="character"],.theme-inkwash .tab-btn[data-tab="battle"]{display:block!important}.theme-inkwash .inkwash-nav-icon{width:20px!important;height:20px!important;margin-right:0!important;margin-bottom:2px!important}.theme-inkwash .main-area{margin-left:48px!important}}
-@media(min-width:1024px){.theme-inkwash .battle-sidebar{width:240px!important;border-right:none!important;border-left:1px solid var(--border)!important;background:var(--paper-warm)!important;padding:16px 14px!important;position:relative!important}.theme-inkwash .battle-sidebar::before{content:''!important;position:absolute!important;left:8px!important;top:8px!important;bottom:8px!important;width:1px!important;background:var(--ink-ghost)!important;opacity:0.4!important}.theme-inkwash .sidebar-char-header{flex-direction:column!important;align-items:center!important;gap:4px!important;margin-bottom:12px!important;padding-bottom:12px!important;border-bottom:1px solid var(--border)!important}.theme-inkwash .sidebar-char-realm{font-size:10px!important;letter-spacing:0.2em!important;color:var(--text2)!important;text-align:center!important;display:block!important;margin-top:4px!important}.theme-inkwash .sidebar-section-title{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.2em!important;font-size:10px!important;color:var(--text2)!important;border-bottom:1px solid var(--border)!important}.theme-inkwash .sidebar-attr-grid .attr-item{background:transparent!important;padding:3px 4px!important;font-size:11px!important}.theme-inkwash .sidebar-stat-cards .stat-card.compact{background:transparent!important;border:1px solid var(--border)!important;padding:6px 8px!important}}
+@media(min-width:1024px){.theme-inkwash .battle-sidebar{width:300px!important;border-right:none!important;border-left:1px solid var(--border)!important;background:var(--paper-warm)!important;padding:16px 14px!important;position:relative!important}.theme-inkwash .battle-sidebar::before{content:''!important;position:absolute!important;left:8px!important;top:8px!important;bottom:8px!important;width:1px!important;background:var(--ink-ghost)!important;opacity:0.4!important}.theme-inkwash .sidebar-char-header{flex-direction:column!important;align-items:center!important;gap:4px!important;margin-bottom:12px!important;padding-bottom:12px!important;border-bottom:1px solid var(--border)!important}.theme-inkwash .sidebar-char-realm{font-size:10px!important;letter-spacing:0.2em!important;color:var(--text2)!important;text-align:center!important;display:block!important;margin-top:4px!important}.theme-inkwash .sidebar-section-title{font-family:'Noto Serif SC',serif!important;font-weight:200!important;letter-spacing:0.2em!important;font-size:10px!important;color:var(--text2)!important;border-bottom:1px solid var(--border)!important}.theme-inkwash .sidebar-attr-grid .attr-item{background:transparent!important;padding:3px 4px!important;font-size:11px!important}.theme-inkwash .sidebar-stat-cards .stat-card.compact{background:transparent!important;border:1px solid var(--border)!important;padding:6px 8px!important}}
 .theme-inkwash .stat-card,.theme-inkwash .skill-card,.theme-inkwash .map-card,.theme-inkwash .sect-card,.theme-inkwash .alliance-card,.theme-inkwash .recipe-card,.theme-inkwash .dungeon-card,.theme-inkwash .listing-card{background:var(--bg3)!important;border:1px solid var(--border)!important;position:relative!important;transition:all 0.6s ease!important}
 .theme-inkwash .stat-card::before,.theme-inkwash .skill-card::before,.theme-inkwash .map-card::before{content:''!important;position:absolute!important;left:0!important;top:0!important;bottom:0!important;width:2px!important;background:var(--cinnabar)!important;transform:scaleY(0)!important;transition:transform 0.4s ease!important}
 .theme-inkwash .stat-card:hover::before,.theme-inkwash .skill-card:hover::before,.theme-inkwash .map-card:hover::before{transform:scaleY(1)!important}
@@ -1933,6 +1933,10 @@ function applyOrderSystemSkin(skinKey, cssText) {
     setTimeout(() => INKWASH.apply(), 150);
   } else if (skinKey === 'cyber') {
     setTimeout(() => CYBERWASH.apply(), 150);
+  } else if (skinKey === 'dunhuang') {
+    setTimeout(() => DUNHUANGWASH.apply(), 150);
+  } else if (skinKey === 'taiji') {
+    setTimeout(() => TAIJIWASH.apply(), 150);
   }
 }
 

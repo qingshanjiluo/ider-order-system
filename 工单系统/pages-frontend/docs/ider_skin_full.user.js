@@ -489,7 +489,7 @@ const DUNHUANGWASH = {
 
     var bg = document.createElement('div');
     bg.id = 'gzr-bg-img';
-    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;transition:opacity 0.8s ease;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
+    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
     document.body.prepend(bg);
 
     var sigil = document.createElement('div');
@@ -508,7 +508,7 @@ const DUNHUANGWASH = {
     var vid = document.createElement('video');
     vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
     vid.muted = true; vid.loop = true; vid.playsinline = true;
-    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.025;z-index:-4;pointer-events:none';
+    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none';
     vid.play().catch(function(){});
     document.body.prepend(vid);
 
@@ -612,12 +612,14 @@ const DUNHUANGWASH = {
   setBg: function(url) {
     var bgEl = document.getElementById('gzr-bg-img');
     if (!bgEl || bgEl.dataset.current === url) return;
+
+    // 切换图片背景时隐藏视频
+    var vids = document.querySelectorAll('video[src*="guzhenren"]');
+    vids.forEach(function(v) { v.style.opacity = '0'; v.style.display = 'none'; });
+
     bgEl.dataset.current = url;
-    bgEl.style.opacity = '0';
-    setTimeout(function() {
-      bgEl.style.backgroundImage = 'url("' + url + '")';
-      bgEl.style.opacity = '0.35';
-    }, 200);
+    bgEl.style.backgroundImage = 'url("' + url + '")';
+    bgEl.style.opacity = '1';
   },
   startObserver() {
   },
@@ -814,7 +816,8 @@ const GUZHENRENWASH = {
     panel.innerHTML =
       '<div id="gzr-p-close" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;background:rgba(0,0,0,0.6);border:1px solid rgba(139,115,85,0.4);color:#A09888;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;font-family:sans-serif;border-radius:50%">\u2715</div>' +
       '<div id="gzr-p-img" style="width:clamp(100px,15vw,200px);height:clamp(160px,24vw,320px);background-image:url(' + portraits[idx].url + ');background-size:contain;background-repeat:no-repeat;background-position:center bottom;transition:opacity 0.4s ease;border-radius:4px;box-shadow:0 4px 30px rgba(0,0,0,0.5)"></div>' +
-      '<div style="text-align:center;margin-top:4px;font-size:10px;color:rgba(160,152,136,0.6);font-family:Noto Serif SC,serif;letter-spacing:2px" id="gzr-p-name">' + portraits[idx].name + '</div>';
+      '<div style="text-align:center;margin-top:4px;font-size:10px;color:rgba(160,152,136,0.6);font-family:Noto Serif SC,serif;letter-spacing:2px" id="gzr-p-name">' + portraits[idx].name + '</div>' +
+      '<div id="gzr-bg-btn" style="margin-top:6px;padding:3px 8px;background:rgba(0,0,0,0.4);border:1px solid rgba(139,115,85,0.3);color:rgba(160,152,136,0.7);font-size:9px;font-family:Noto Serif SC,serif;cursor:pointer;text-align:center;border-radius:2px;letter-spacing:1px">切换背景</div>';
     panel.querySelector('#gzr-p-close').addEventListener('click', function(e) {
       e.stopPropagation();
       panel.style.transition = 'opacity 0.3s';
@@ -831,6 +834,37 @@ const GUZHENRENWASH = {
         nameEl.textContent = portraits[idx].name;
         imgEl.style.opacity = '1';
       }, 200);
+    });
+    // 手动切换背景
+    panel.querySelector('#gzr-bg-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      var bgEl = document.getElementById('gzr-bg-img');
+      if (!bgEl) return;
+      var current = bgEl.dataset.current || '';
+      var cycle = [
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
+        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
+      ];
+      var next = 0;
+      for (var i = 0; i < cycle.length; i++) {
+        if (cycle[i] === current) { next = (i + 1) % cycle.length; break; }
+      }
+      if (typeof GUZHENRENWASH !== 'undefined' && GUZHENRENWASH.setBg) {
+        GUZHENRENWASH.setBg(cycle[next]);
+      }
     });
     document.body.appendChild(panel);
   },

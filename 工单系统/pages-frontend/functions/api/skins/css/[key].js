@@ -574,7 +574,8 @@ html.theme-guzhenren{--void:#07070A;--abyss:#0A0A0F;--deep:#0F0F14;--ink:#141019
 .theme-guzhenren .panel{animation:gzrFadeIn 0.5s ease!important}
 .theme-guzhenren .bar-fill,.theme-guzhenren .exp-fill{animation:gzrFadeIn 0.6s ease!important}
 .tab-btn svg,.ider-nav-icon{display:none!important}
-`,
+
+`
 };
 
 export async function onRequest(context) {

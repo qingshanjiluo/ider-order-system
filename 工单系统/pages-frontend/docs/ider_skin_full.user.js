@@ -709,28 +709,61 @@ const GUZHENRENWASH = {
     vid.play().catch(function(){});
     document.body.prepend(vid);
 
-    // 角色立绘装饰（随机选一个作为装饰）
-    var portraits = [
-      'https://ider-order-system.pages.dev/docs/guzhenren/%E5%8F%A4%E6%9C%88%E6%96%B9%E6%BA%90%E7%AB%8B%E7%BB%98.png',
-      'https://ider-order-system.pages.dev/docs/guzhenren/%E7%99%BD%E8%A1%A3%E6%96%B9%E6%BA%90%E7%AB%8B%E7%BB%98.png',
-      'https://ider-order-system.pages.dev/docs/guzhenren/%E7%99%BD%E5%87%9D%E5%86%B0%E7%AB%8B%E7%BB%98.png',
-      'https://ider-order-system.pages.dev/docs/guzhenren/%E9%BB%91%E6%A5%BC%E5%85%B0%E7%AB%8B%E7%BB%98.png',
-      'https://ider-order-system.pages.dev/docs/guzhenren/%E7%8B%82%E8%9B%AE%E4%BB%99%E5%B0%8A%E7%AB%8B%E7%BB%98.png',
-    ];
-    var pIdx = Math.floor(Math.random() * portraits.length);
-    var portrait = document.createElement('div');
-    portrait.style.cssText = 'position:fixed;bottom:0;right:0;width:clamp(120px,20vw,250px);height:auto;aspect-ratio:0.6;background-image:url("' + portraits[pIdx] + '");background-size:contain;background-repeat:no-repeat;background-position:bottom right;opacity:0.08;z-index:-1;pointer-events:none;animation:gzrPortraitGlow 8s ease-in-out infinite';
-    w.appendChild(portrait);
-
-    // 春秋蝉线稿（左上角装饰）
+    // 春秋蝉线稿（侧栏装饰）
     var cicada = document.createElement('div');
-    cicada.style.cssText = 'position:fixed;top:60px;left:10px;width:clamp(40px,8vw,80px);height:auto;aspect-ratio:1;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E6%98%A5%E7%A7%8B%E8%9D%89%E7%BA%BF%E7%A8%BF.png");background-size:contain;background-repeat:no-repeat;opacity:0.06;z-index:-1;pointer-events:none;animation:gzrFloat 15s ease-in-out infinite';
+    cicada.style.cssText = 'position:fixed;left:10px;bottom:80px;width:clamp(50px,6vw,90px);height:auto;aspect-ratio:1;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E6%98%A5%E7%A7%8B%E8%9D%89%E7%BA%BF%E7%A8%BF.png");background-size:contain;background-repeat:no-repeat;opacity:0.08;z-index:-1;pointer-events:none;animation:gzrFloat 20s ease-in-out infinite';
     w.appendChild(cicada);
 
     document.body.prepend(w);
     this.decorEl = w;
+
+    // 立绘交互面板（最上层，可关闭/切换）
+    this.createPortraitPanel();
   },
 
+  PORTRAITS: [
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E5%8F%A4%E6%9C%88%E6%96%B9%E6%BA%90%E7%AB%8B%E7%BB%98.png",name:"古月方源"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E7%99%BD%E8%A1%A3%E6%96%B9%E6%BA%90%E7%AB%8B%E7%BB%98.png",name:"白衣方源"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E7%99%BD%E5%87%9D%E5%86%B0%E7%AB%8B%E7%BB%98.png",name:"白凝冰"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E9%BB%91%E6%A5%BC%E5%85%B0%E7%AB%8B%E7%BB%98.png",name:"黑楼兰"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E7%8B%82%E8%9B%AE%E4%BB%99%E5%B0%8A%E7%AB%8B%E7%BB%98.png",name:"狂蛮仙尊"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E5%95%86%E5%BF%83%E6%85%88%E7%AB%8B%E7%BB%98.png",name:"商心慈"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E5%B0%8F%E7%8B%90%E5%A8%98%E7%AB%8B%E7%BB%98.png",name:"小狐娘"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E4%BB%99%E5%83%B5%E7%AB%8B%E7%BB%98.png",name:"仙僵"},
+    {url:"https://ider-order-system.pages.dev/docs/guzhenren/%E4%B9%A6%E7%94%9F%E7%AB%8B%E7%BB%98.png",name:"书生"},
+  ],
+
+  createPortraitPanel: function() {
+    if (document.getElementById('gzr-portrait')) return;
+    var portraits = this.PORTRAITS;
+    var idx = Math.floor(Math.random() * portraits.length);
+    var panel = document.createElement('div');
+    panel.id = 'gzr-portrait';
+    panel.style.cssText = 'position:fixed;bottom:60px;right:10px;z-index:9999;cursor:pointer';
+    panel.style.animation = 'gzrPortraitIn 0.5s ease';
+    panel.innerHTML =
+      '<div id="gzr-p-close" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;background:rgba(0,0,0,0.6);border:1px solid rgba(139,115,85,0.4);color:#A09888;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;font-family:sans-serif;border-radius:50%">\u2715</div>' +
+      '<div id="gzr-p-img" style="width:clamp(100px,15vw,200px);height:clamp(160px,24vw,320px);background-image:url(' + portraits[idx].url + ');background-size:contain;background-repeat:no-repeat;background-position:center bottom;transition:opacity 0.4s ease;border-radius:4px;box-shadow:0 4px 30px rgba(0,0,0,0.5)"></div>' +
+      '<div style="text-align:center;margin-top:4px;font-size:10px;color:rgba(160,152,136,0.6);font-family:Noto Serif SC,serif;letter-spacing:2px" id="gzr-p-name">' + portraits[idx].name + '</div>';
+    panel.querySelector('#gzr-p-close').addEventListener('click', function(e) {
+      e.stopPropagation();
+      panel.style.transition = 'opacity 0.3s';
+      panel.style.opacity = '0';
+      setTimeout(function(){ panel.remove(); }, 300);
+    });
+    panel.addEventListener('click', function() {
+      idx = (idx + 1) % portraits.length;
+      var imgEl = panel.querySelector('#gzr-p-img');
+      var nameEl = panel.querySelector('#gzr-p-name');
+      imgEl.style.opacity = '0';
+      setTimeout(function() {
+        imgEl.style.backgroundImage = 'url(' + portraits[idx].url + ')';
+        nameEl.textContent = portraits[idx].name;
+        imgEl.style.opacity = '1';
+      }, 200);
+    });
+    document.body.appendChild(panel);
+  },
   startObserver() {
   },
 

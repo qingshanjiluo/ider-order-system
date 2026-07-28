@@ -312,14 +312,16 @@ CREATE INDEX IF NOT EXISTS idx_activation_codes_code ON activation_codes(code);
 CREATE INDEX IF NOT EXISTS idx_activation_codes_skin ON activation_codes(skin_id);
 
 INSERT OR IGNORE INTO skins (name, key, label, description, price, sort_order, is_active) VALUES
-('水墨修仙', 'ink', '水墨修仙', '泼墨写意，素雅高远 · 大面积留白，笔触质感', 388, 0, 1),
-('赛博修仙', 'cyber', '赛博修仙', '霓虹光污染，数据流涌动 · 紧凑布局，速度感', 688, 1, 1),
-('奢华金属', 'luxe', '奢华金属', '鎏金溢彩，华贵典藏 · 金属光泽，浮雕质感', 588, 2, 1),
-('轻奢杂志', 'magazine', '轻奢杂志', '杂志级排版，克制优雅 · 大留白，精字距', 288, 3, 1),
-('日式和风', 'wabi', '日式和风', '侘寂美学，一木一石 · 自然质感，和纸纹理', 488, 4, 1),
-('极简主义', 'minimal', '极简主义', '少即是多，内容至上 · 极致留白，去装饰化', 188, 5, 1),
-('磨砂玻璃态', 'frost', '磨砂玻璃态', 'Apple 风格玻璃拟态 · 通透模糊，悬浮层次', 388, 6, 1),
-('粗野主义', 'brutal', '粗野主义', '粗粝不羁，破格醒目 · 厚边框，撞色块，无圆角', 288, 7, 1);
+('水墨修仙', 'ink', '水墨修仙', '泼墨写意，素雅高远 · 大面积留白，笔触质感', 129, 0, 1),
+('赛博修仙', 'cyber', '赛博修仙', '霓虹光污染，数据流涌动 · 紧凑布局，速度感', 129, 1, 1),
+('敦煌飞天', 'dunhuang', '敦煌飞天', '壁画霓裳，飞天神韵 · 莫高色彩，飘带灵动', 129, 2, 1),
+('阴阳太极', 'taiji', '阴阳太极', '阴阳相生，太极无极 · 黑白对立，道法自然', 129, 3, 1),
+('奢华金属', 'luxe', '奢华金属', '鎏金溢彩，华贵典藏 · 金属光泽，浮雕质感', 88, 4, 1),
+('日式和风', 'wabi', '日式和风', '侘寂美学，一木一石 · 自然质感，和纸纹理', 88, 5, 1),
+('轻奢杂志', 'magazine', '轻奢杂志', '杂志级排版，克制优雅 · 大留白，精字距', 68, 6, 1),
+('磨砂玻璃态', 'frost', '磨砂玻璃态', 'Apple 风格玻璃拟态 · 通透模糊，悬浮层次', 68, 7, 1),
+('极简主义', 'minimal', '极简主义', '少即是多，内容至上 · 极致留白，去装饰化', 48, 8, 1),
+('粗野主义', 'brutal', '粗野主义', '粗粝不羁，破格醒目 · 厚边框，撞色块，无圆角', 48, 9, 1);
 
 -- Seed admin user (最中幻想 / Pipi20100817)
 INSERT OR IGNORE INTO users (username, password_hash, display_name, invite_code, is_admin, role, level, xp, created_at)

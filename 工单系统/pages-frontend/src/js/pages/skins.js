@@ -14,6 +14,8 @@ const SKIN_PREVIEWS = {
   minimal: 'linear-gradient(135deg,#ffffff,#e8e8e8)',
   frost: 'linear-gradient(135deg,#0e0e14,#2c2e44)',
   brutal: 'linear-gradient(135deg,#f0f0f0,#d0d0d0)',
+  dunhuang: 'linear-gradient(135deg,#F0E6D3,#D4A844)',
+  taiji: 'linear-gradient(135deg,#F8F8F8,#0A0A0A)',
 };
 
 export async function renderSkins({ container }) {

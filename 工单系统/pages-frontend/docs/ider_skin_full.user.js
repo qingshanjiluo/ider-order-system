@@ -440,6 +440,151 @@ const CYBERWASH = {
 // 8套全面升级皮肤（覆盖CSS + 布局优化）
 // ═══════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════
+// 敦煌飞天 — 壁画霓裳，飞天神韵
+// ═══════════════════════════════════════
+
+const DUNHUANGWASH = {
+  active: false, decorEl: null, observer: null,
+
+  RIBBON_SVG: '<svg viewBox="0 0 1440 800" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rib1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#D4432A" stop-opacity="0.06"/><stop offset="50%" stop-color="#D4A844" stop-opacity="0.04"/><stop offset="100%" stop-color="#2AA8A8" stop-opacity="0.06"/></linearGradient><linearGradient id="rib2" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2AA8A8" stop-opacity="0.05"/><stop offset="50%" stop-color="#D4A844" stop-opacity="0.03"/><stop offset="100%" stop-color="#D4432A" stop-opacity="0.05"/></linearGradient></defs><path d="M0,400 Q200,350 400,420 T800,360 T1200,430 T1440,380 L1440,800 L0,800 Z" fill="url(#rib1)"><animate attributeName="d" dur="20s" repeatCount="indefinite" values="M0,400 Q200,350 400,420 T800,360 T1200,430 T1440,380 L1440,800 L0,800 Z;M0,420 Q200,380 400,400 T800,440 T1200,390 T1440,410 L1440,800 L0,800 Z;M0,400 Q200,350 400,420 T800,360 T1200,430 T1440,380 L1440,800 L0,800 Z"/></path><path d="M0,500 Q250,440 500,510 T1000,470 T1440,500 L1440,800 L0,800 Z" fill="url(#rib2)" opacity="0.6"><animate attributeName="d" dur="25s" repeatCount="indefinite" values="M0,500 Q250,440 500,510 T1000,470 T1440,500 L1440,800 L0,800 Z;M0,480 Q250,520 500,480 T1000,520 T1440,490 L1440,800 L0,800 Z;M0,500 Q250,440 500,510 T1000,470 T1440,500 L1440,800 L0,800 Z"/></path></svg>',
+
+  PETAL_SVG: '<svg viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg"><path d="M5,0 Q7,3 5,5 Q3,3 5,0" fill="currentColor"/></svg>',
+
+  apply() {
+    if (this.active) return;
+    this.active = true;
+    document.documentElement.classList.add('theme-dunhuang');
+    this.createDecor();
+    this.startObserver();
+  },
+
+  remove() {
+    this.active = false;
+    document.documentElement.classList.remove('theme-dunhuang');
+    if (this.decorEl) { this.decorEl.remove(); this.decorEl = null; }
+    this.stopObserver();
+  },
+
+  createDecor() {
+    if (this.decorEl) return;
+    const w = document.createElement('div');
+    w.id = 'dunhuang-decor';
+    w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
+
+    // 壁画纹理背景
+    const mural = document.createElement('div');
+    mural.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(212,168,68,0.04),transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(212,67,42,0.03),transparent 50%),radial-gradient(ellipse at 50% 50%,rgba(42,168,168,0.02),transparent 50%)';
+    w.appendChild(mural);
+
+    // 飘带
+    const ribbon = document.createElement('div');
+    ribbon.innerHTML = this.RIBBON_SVG;
+    ribbon.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:60vh;opacity:0.8';
+    w.appendChild(ribbon);
+
+    // 花瓣粒子
+    for (let i = 0; i < 15; i++) {
+      const p = document.createElement('div');
+      p.innerHTML = this.PETAL_SVG;
+      const size = 4 + Math.random() * 8;
+      const x = Math.random() * 100;
+      const delay = Math.random() * 20;
+      const dur = 15 + Math.random() * 20;
+      p.style.cssText = `position:absolute;left:${x}%;top:-20px;width:${size}px;height:${size}px;color:${['#D4A844','#D4432A','#2AA8A8','#C49B5E'][i%4]};animation:dunhuangFall ${dur}s linear ${delay}s infinite;opacity:0.4`;
+      w.appendChild(p);
+    }
+    document.body.prepend(w);
+    this.decorEl = w;
+  },
+
+  startObserver() {
+    if (this.observer) return;
+    let timer = null;
+    this.observer = new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (this.active && document.querySelector('.view-game')) {/* CSS handles it */}
+      }, 100);
+    });
+    this.observer.observe(document.body, { childList: true, subtree: true });
+  },
+
+  stopObserver() {
+    if (this.observer) { this.observer.disconnect(); this.observer = null; }
+  },
+};
+
+// ═══════════════════════════════════════
+// 阴阳太极 — 阴阳相生，太极无极
+// ═══════════════════════════════════════
+
+const TAIJI_CLASS = 'theme-taiji';
+
+const TAIJIWASH = {
+  active: false, decorEl: null, observer: null,
+
+  apply() {
+    if (this.active) return;
+    this.active = true;
+    document.documentElement.classList.add(TAIJI_CLASS);
+    this.createDecor();
+    this.startObserver();
+  },
+
+  remove() {
+    this.active = false;
+    document.documentElement.classList.remove(TAIJI_CLASS);
+    if (this.decorEl) { this.decorEl.remove(); this.decorEl = null; }
+    this.stopObserver();
+  },
+
+  createDecor() {
+    if (this.decorEl) return;
+    const w = document.createElement('div');
+    w.id = 'taiji-decor';
+    w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
+
+    // 太极图背景（旋转）
+    const taiji = document.createElement('div');
+    taiji.innerHTML = '<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="half"><rect x="0" y="0" width="100" height="200"/></clipPath></defs><circle cx="100" cy="100" r="95" fill="#0A0A0A" opacity="0.03"/><circle cx="100" cy="100" r="95" fill="none" stroke="rgba(0,0,0,0.04)" stroke-width="0.5"/><path d="M100,5 A95,95 0 0,1 100,195 A47.5,47.5 0 0,1 100,100 A47.5,47.5 0 0,0 100,5" fill="#FFF" opacity="0.04"/><path d="M100,5 A95,95 0 0,0 100,195 A47.5,47.5 0 0,0 100,100 A47.5,47.5 0 0,1 100,5" fill="#000" opacity="0.03"/><circle cx="100" cy="52.5" r="12" fill="#FFF" opacity="0.04"/><circle cx="100" cy="147.5" r="12" fill="#000" opacity="0.03"/></svg>';
+    taiji.style.cssText = 'position:absolute;top:50%;left:50%;width:400px;height:400px;margin:-200px 0 0 -200px;animation:taijiSpin 30s linear infinite;opacity:0.5';
+    w.appendChild(taiji);
+
+    // 阴阳鱼粒子
+    for (let i = 0; i < 20; i++) {
+      const dot = document.createElement('div');
+      const isDark = i % 2 === 0;
+      const size = 2 + Math.random() * 4;
+      const x = Math.random() * 100;
+      const y = Math.random() * 100;
+      const delay = Math.random() * 10;
+      const dur = 8 + Math.random() * 12;
+      dot.style.cssText = `position:absolute;left:${x}%;top:${y}%;width:${size}px;height:${size}px;border-radius:50%;background:${isDark?'rgba(0,0,0,0.04)':'rgba(255,255,255,0.06)'};animation:taijiFloat ${dur}s ease-in-out ${delay}s infinite`;
+      w.appendChild(dot);
+    }
+    document.body.prepend(w);
+    this.decorEl = w;
+  },
+
+  startObserver() {
+    if (this.observer) return;
+    let timer = null;
+    this.observer = new MutationObserver(() => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (this.active && document.querySelector('.view-game')) {/* CSS handles it */}
+      }, 100);
+    });
+    this.observer.observe(document.body, { childList: true, subtree: true });
+  },
+
+  stopObserver() {
+    if (this.observer) { this.observer.disconnect(); this.observer = null; }
+  },
+};
+
 const SKINS = {
 
 // ───────────────────────────────────────────────
@@ -1114,6 +1259,111 @@ input:focus { border-color: #ff3300 !important; }
 .tab-btn svg,.ider-nav-icon{display:none!important}
 }
 
+
+// ───────────────────────────────────────────────
+// ⑨ 敦煌飞天 — 壁画霓裳，飞天神韵
+// ───────────────────────────────────────────────
+dunhuang: {
+name: '敦煌飞天',
+desc: '壁画霓裳，飞天神韵 · 莫高色彩，飘带灵动',
+css: `
+html.theme-dunhuang{--sand:#F0E6D3;--sand-dark:#E0D0B8;--ochre:#C49B5E;--vermilion:#D4432A;--turquoise:#2AA8A8;--gold:#D4A844;--gold-soft:rgba(212,168,68,0.15);--bg:var(--sand)!important;--bg2:var(--sand-dark)!important;--bg3:#E8DCC8!important;--bg4:#DDD0B8!important;--border:rgba(196,155,94,0.25)!important;--text:#3D2B1A!important;--text2:rgba(61,43,26,0.55)!important;--gold:var(--gold)!important;--gold2:#B8923A!important;--accent:var(--vermilion)!important;--red:var(--vermilion)!important;--green:#5A7A3A!important;--radius:4px!important}
+.theme-dunhuang body{font-family:'Noto Serif SC','STSong','SimSun',serif!important;background:var(--sand)!important;color:var(--text)!important;letter-spacing:0.04em!important}
+.theme-dunhuang .game-header{display:flex!important;flex-direction:row!important;align-items:center!important;padding:4px 12px!important;background:linear-gradient(90deg,var(--sand-dark),transparent,var(--sand-dark))!important;border-bottom:1px solid var(--border)!important;gap:4px!important;flex-wrap:nowrap!important}
+.theme-dunhuang .game-header::after{content:''!important;position:absolute!important;bottom:-1px!important;left:10%!important;right:10%!important;height:1px!important;background:linear-gradient(90deg,transparent,var(--gold),var(--vermilion),var(--gold),transparent)!important;opacity:0.3!important}
+.theme-dunhuang .game-header .hdr-name{font-family:'Noto Serif SC','STSong',serif!important;font-size:0.85rem!important;letter-spacing:0.2em!important;color:var(--vermilion)!important}
+.theme-dunhuang .game-header .hdr-info{color:var(--text2)!important;font-size:0.7rem!important;letter-spacing:0.1em!important;white-space:nowrap!important}
+.theme-dunhuang .game-header .hdr-res{font-size:11px!important;color:var(--text2)!important;display:flex!important;align-items:center!important;gap:8px!important;white-space:nowrap!important}
+.theme-dunhuang .game-header .hdr-res{margin-right:auto!important}
+.theme-dunhuang .hdr-qq{display:none!important}
+.theme-dunhuang .btn-icon{color:var(--text2)!important;font-size:14px!important;padding:2px 6px!important}
+.theme-dunhuang .btn-icon:hover{color:var(--gold)!important}
+.theme-dunhuang .tab-nav{background:var(--sand-dark)!important;border-bottom:1px solid var(--border)!important;gap:2px!important}
+.theme-dunhuang .tab-btn{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.12em!important;padding:6px 12px!important;font-size:12px!important;color:var(--text2)!important;border-bottom:1px solid transparent!important;transition:all 0.3s!important}
+.theme-dunhuang .tab-btn.active{color:var(--vermilion)!important;border-bottom-color:var(--gold)!important}
+.theme-dunhuang .tab-btn:hover{background:var(--gold-soft)!important;color:var(--text)!important}
+.theme-dunhuang .battle-sidebar{background:var(--sand-dark)!important;border-right:1px solid var(--border)!important;padding:16px 14px!important}
+.theme-dunhuang .sidebar-char-name{font-family:'Noto Serif SC',serif!important;color:var(--vermilion)!important;font-size:14px!important;letter-spacing:0.15em!important}
+.theme-dunhuang .sidebar-section-title{color:var(--gold)!important;border-bottom:1px solid var(--border)!important;font-size:10px!important;letter-spacing:0.15em!important}
+.theme-dunhuang .stat-card,.theme-dunhuang .skill-card,.theme-dunhuang .modal-panel,.theme-dunhuang .battle-status-panel,.theme-dunhuang .battle-log-box{background:var(--sand)!important;border:1px solid var(--border)!important;padding:12px!important;transition:all 0.3s!important}
+.theme-dunhuang .stat-card:hover,.theme-dunhuang .skill-card:hover{border-color:var(--gold)!important;box-shadow:0 2px 12px var(--gold-soft)!important}
+.theme-dunhuang .section-title{font-family:'Noto Serif SC',serif!important;color:var(--ochre)!important;border-bottom:1px solid var(--border)!important;font-size:13px!important;letter-spacing:0.15em!important}
+.theme-dunhuang .skill-card.equipped{border-left:3px solid var(--gold)!important;background:var(--gold-soft)!important}
+.theme-dunhuang .btn-primary{background:var(--vermilion)!important;border:none!important;color:#fff!important;font-family:'Noto Serif SC',serif!important;letter-spacing:0.1em!important}
+.theme-dunhuang .btn-primary:hover{background:var(--ochre)!important}
+.theme-dunhuang .btn-action{background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important;font-family:'Noto Serif SC',serif!important}
+.theme-dunhuang .btn-action:hover{background:var(--gold-soft)!important;border-color:var(--gold)!important}
+.theme-dunhuang .btn-action.gold{color:var(--gold)!important;border-color:var(--gold)!important}
+.theme-dunhuang .modal-overlay{background:rgba(61,43,26,0.3)!important}
+.theme-dunhuang .modal-panel{background:var(--sand)!important;border:1px solid var(--border)!important}
+.theme-dunhuang .modal-title{font-family:'Noto Serif SC',serif!important;color:var(--vermilion)!important;border-bottom:1px solid var(--border)!important}
+.theme-dunhuang .bar-track{height:6px!important;background:var(--sand-dark)!important;border:none!important;border-radius:0!important}
+.theme-dunhuang .hp-bar-red{background:linear-gradient(90deg,var(--vermilion),#8A2A1A)!important}
+.theme-dunhuang .hp-bar-green{background:linear-gradient(90deg,var(--turquoise),#1A7A7A)!important}
+.theme-dunhuang .mp-bar-blue{background:linear-gradient(90deg,#3A3A5A,#5A5A8A)!important}
+.theme-dunhuang .exp-fill{background:linear-gradient(90deg,var(--gold),var(--ochre))!important}
+.theme-dunhuang .toast{background:var(--sand)!important;border:1px solid var(--gold)!important;color:var(--vermilion)!important;font-family:'Noto Serif SC',serif!important}
+.theme-dunhuang .view-login{background:var(--sand)!important}
+.theme-dunhuang .login-card{background:var(--sand-dark)!important;border:1px solid var(--border)!important}
+.theme-dunhuang .game-title{font-family:'Noto Serif SC','STSong',serif!important;color:var(--vermilion)!important;letter-spacing:0.25em!important;text-shadow:none!important}
+.theme-dunhuang input,.theme-dunhuang select,.theme-dunhuang textarea{background:var(--sand)!important;border:1px solid var(--border)!important;color:var(--text)!important}
+.theme-dunhuang ::-webkit-scrollbar-thumb{background:var(--ochre)!important}
+.theme-dunhuang .panel{animation:inkwashIn 0.6s ease!important}
+.tab-btn svg,.ider-nav-icon{display:none!important}
+`
+},
+
+// ───────────────────────────────────────────────
+// ⑩ 阴阳太极 — 阴阳相生，太极无极
+// ───────────────────────────────────────────────
+taiji: {
+name: '阴阳太极',
+desc: '阴阳相生，太极无极 · 黑白对立，道法自然',
+css: `
+html.theme-taiji{--ink-deep:#0A0A0A;--ink-mid:rgba(10,10,10,0.5);--ink-light:rgba(10,10,10,0.1);--ink-faint:rgba(10,10,10,0.04);--paper-pure:#F8F8F8;--paper-warm:#F0F0F0;--gray-mid:#888;--gray-light:#CCC;--bg:var(--paper-pure)!important;--bg2:var(--paper-warm)!important;--bg3:#E8E8E8!important;--bg4:#DDD!important;--border:rgba(10,10,10,0.12)!important;--text:var(--ink-deep)!important;--text2:var(--ink-mid)!important;--gold:var(--ink-deep)!important;--gold2:var(--ink-mid)!important;--accent:var(--gray-mid)!important;--red:#0A0A0A!important;--green:#4A4A4A!important;--radius:0!important;--shadow:none!important}
+.theme-taiji body{font-family:'Noto Sans SC','Helvetica Neue',Arial,sans-serif!important;background:var(--paper-pure)!important;color:var(--ink-deep)!important;letter-spacing:0.02em!important}
+.theme-taiji .game-header{display:flex!important;flex-direction:row!important;align-items:center!important;padding:4px 16px!important;background:var(--ink-deep)!important;border-bottom:2px solid var(--ink-deep)!important;gap:6px!important;flex-wrap:nowrap!important}
+.theme-taiji .game-header .hdr-name{font-weight:600!important;font-size:0.8rem!important;letter-spacing:0.15em!important;color:#fff!important;white-space:nowrap!important}
+.theme-taiji .game-header .hdr-info{color:rgba(255,255,255,0.5)!important;font-size:0.7rem!important;white-space:nowrap!important}
+.theme-taiji .game-header .hdr-res{color:rgba(255,255,255,0.6)!important;font-size:11px!important;display:flex!important;align-items:center!important;gap:8px!important;margin-right:auto!important}
+.theme-taiji .game-header .btn-icon{color:rgba(255,255,255,0.4)!important;font-size:14px!important;padding:2px 6px!important}
+.theme-taiji .game-header .btn-icon:hover{color:#fff!important}
+.theme-taiji .hdr-qq{display:none!important}
+.theme-taiji .tab-nav{background:#fff!important;border-bottom:2px solid var(--ink-deep)!important}
+.theme-taiji .tab-btn{font-weight:400!important;letter-spacing:0.08em!important;padding:8px 16px!important;font-size:12px!important;color:var(--text2)!important;border-bottom:2px solid transparent!important;margin-bottom:-2px!important;transition:all 0.2s!important}
+.theme-taiji .tab-btn.active{color:var(--ink-deep)!important;border-bottom-color:var(--ink-deep)!important;font-weight:600!important}
+.theme-taiji .tab-btn:hover{color:var(--ink-deep)!important;background:var(--ink-faint)!important}
+.theme-taiji .battle-sidebar{background:#fff!important;border-right:1px solid var(--border)!important;padding:20px 16px!important;width:240px!important}
+.theme-taiji .sidebar-char-name{font-weight:700!important;font-size:16px!important;color:var(--ink-deep)!important;letter-spacing:0.05em!important}
+.theme-taiji .sidebar-section-title{font-weight:600!important;font-size:10px!important;color:var(--text2)!important;text-transform:uppercase!important;border-bottom:1px solid var(--border)!important;padding-bottom:6px!important;letter-spacing:1px!important}
+.theme-taiji .stat-card,.theme-taiji .skill-card,.theme-taiji .modal-panel,.theme-taiji .battle-status-panel,.theme-taiji .battle-log-box{background:#fff!important;border:1px solid var(--border)!important;padding:14px!important}
+.theme-taiji .skill-card.equipped{border-left:3px solid var(--ink-deep)!important}
+.theme-taiji .section-title{font-weight:600!important;font-size:12px!important;color:var(--ink-deep)!important;border-bottom:1px solid var(--border)!important;padding-bottom:8px!important;text-transform:uppercase!important;letter-spacing:1px!important}
+.theme-taiji .btn-primary{background:var(--ink-deep)!important;border:none!important;color:#fff!important;border-radius:0!important;padding:8px 20px!important;font-size:12px!important}
+.theme-taiji .btn-primary:hover{background:var(--gray-mid)!important}
+.theme-taiji .btn-action{background:transparent!important;border:1px solid var(--border)!important;color:var(--text)!important;border-radius:0!important}
+.theme-taiji .btn-action:hover{background:var(--ink-deep)!important;color:#fff!important}
+.theme-taiji .btn-action.gold{color:var(--ink-deep)!important;border-color:var(--ink-deep)!important}
+.theme-taiji .modal-overlay{background:rgba(10,10,10,0.4)!important}
+.theme-taiji .modal-panel{background:#fff!important;border:2px solid var(--ink-deep)!important;border-radius:0!important}
+.theme-taiji .modal-title{font-weight:700!important;font-size:16px!important;border-bottom:2px solid var(--ink-deep)!important;padding-bottom:10px!important}
+.theme-taiji .bar-track{height:4px!important;background:var(--ink-faint)!important;border:none!important;border-radius:0!important}
+.theme-taiji .hp-bar-red{background:var(--ink-deep)!important}
+.theme-taiji .hp-bar-green{background:var(--gray-mid)!important}
+.theme-taiji .mp-bar-blue{background:var(--gray-light)!important}
+.theme-taiji .exp-fill{background:var(--ink-deep)!important}
+.theme-taiji .toast{background:var(--ink-deep)!important;border:none!important;color:#fff!important;border-radius:0!important}
+.theme-taiji .view-login{background:var(--paper-pure)!important}
+.theme-taiji .login-card{background:#fff!important;border:2px solid var(--ink-deep)!important;border-radius:0!important;box-shadow:8px 8px 0 rgba(10,10,10,0.05)!important}
+.theme-taiji .game-title{font-weight:700!important;letter-spacing:0.15em!important;color:var(--ink-deep)!important;text-shadow:none!important}
+.theme-taiji input,.theme-taiji select,.theme-taiji textarea{background:#fff!important;border:1px solid var(--ink-deep)!important;color:var(--ink-deep)!important;border-radius:0!important}
+.theme-taiji ::-webkit-scrollbar{width:4px!important}
+.theme-taiji ::-webkit-scrollbar-thumb{background:var(--ink-deep)!important}
+.theme-taiji .panel{animation:iderFrostIn 0.3s ease!important}
+.tab-btn svg,.ider-nav-icon{display:none!important}
+`
+},
+
 }; // SKINS end
 
 // ═══════════════════════════════════════════════════════════
@@ -1121,6 +1371,8 @@ input:focus { border-color: #ff3300 !important; }
 // ═══════════════════════════════════════════════════════════
 const SKIN_KEY_MAP = {
   inkwash: 'ink',
+  dunhuang: 'dunhuang',
+  taiji: 'taiji',
   cyber: 'cyber',
   luxe: 'luxe',
   magazine: 'magazine',
@@ -1152,6 +1404,8 @@ function applySkin(skinName) {
   clearActiveStyle();
   INKWASH.remove();
   CYBERWASH.remove();
+  DUNHUANGWASH.remove();
+  TAIJIWASH.remove();
   isOrderSystemMode = false;
 
   if (skinName && SKINS[skinName]) {
@@ -1166,6 +1420,10 @@ function applySkin(skinName) {
       setTimeout(() => INKWASH.apply(), 150);
     } else if (skinName === 'cyber') {
       setTimeout(() => CYBERWASH.apply(), 150);
+    } else if (skinName === 'dunhuang') {
+      setTimeout(() => DUNHUANGWASH.apply(), 150);
+    } else if (skinName === 'taiji') {
+      setTimeout(() => TAIJIWASH.apply(), 150);
     }
   } else {
     setActiveSkin('');
@@ -1676,6 +1934,8 @@ function applyOrderSystemSkin(skinKey, cssText) {
   clearActiveStyle();
   INKWASH.remove();
   CYBERWASH.remove();
+  DUNHUANGWASH.remove();
+  TAIJIWASH.remove();
   isOrderSystemMode = true;
   const style = document.createElement('style');
   style.textContent = cssText;
@@ -1693,7 +1953,7 @@ function applyOrderSystemSkin(skinKey, cssText) {
 
 // 注入全局动画关键帧
 const animStyle = document.createElement('style');
-animStyle.textContent = `@keyframes iderTIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}@keyframes iderCustomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes iderCyberScanLine{0%,100%{top:0;opacity:0}10%{opacity:1}20%{opacity:0.3}30%{opacity:1}45%{opacity:0}50%{top:50%;opacity:0.8}60%{opacity:0.2}75%{opacity:1}90%{opacity:0}100%{top:100%;opacity:0}}`;
+animStyle.textContent = `@keyframes iderTIn{from{opacity:0;transform:translateX(-50%) translateY(-10px)}}@keyframes iderCustomIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes iderCyberScanLine{0%,100%{top:0;opacity:0}10%{opacity:1}20%{opacity:0.3}30%{opacity:1}45%{opacity:0}50%{top:50%;opacity:0.8}60%{opacity:0.2}75%{opacity:1}90%{opacity:0}100%{top:100%;opacity:0}}@keyframes dunhuangFall{0%{transform:translateY(-20px) rotate(0deg);opacity:0}10%{opacity:0.5}90%{opacity:0.3}100%{transform:translateY(110vh) rotate(360deg);opacity:0}}@keyframes taijiSpin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}@keyframes taijiFloat{0%,100%{transform:translateY(0) scale(1);opacity:0.3}50%{transform:translateY(-20px) scale(1.3);opacity:0.6}}`;
 document.head.appendChild(animStyle);
 
 // ══ 启动 ══

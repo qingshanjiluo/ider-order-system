@@ -711,8 +711,7 @@ const GUZHENRENWASH = {
     var mode = (this.getCfg() || {}).mode || 'image';
     var vid = document.createElement('video');
     vid.id = 'gzr-video';
-    vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
-    vid.muted = true; vid.loop = true; vid.playsinline = true; vid.preload = 'none';
+    vid.muted = true; vid.loop = false; vid.playsinline = true; vid.preload = 'none';
     vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-5;pointer-events:none;opacity:0';
     document.body.prepend(vid);
 
@@ -776,6 +775,10 @@ const GUZHENRENWASH = {
     "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
   ],
   DEFAULT_BG: "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+  VIDEO_CYCLE: [
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B81.mp4",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4",
+  ],
   _lastBgTime: 0,
 
   startBgSwitcher: function() {
@@ -796,14 +799,19 @@ const GUZHENRENWASH = {
 
       // 视频控制
       if (vid) {
-        if (mode === 'video') {
-          vid.style.opacity = '' + (cfg.videoOpacity || 0.04); vid.style.display = '';
-          vid.play().catch(function(){});
-          bgEl.style.opacity = '0';
-        } else if (mode === 'mixed') {
-          vid.style.opacity = '' + (cfg.videoOpacity || 0.04); vid.style.display = '';
-          vid.play().catch(function(){});
-          bgEl.style.opacity = '1';
+        var vCycle = self.VIDEO_CYCLE || [];
+        if (mode === 'video' || mode === 'mixed') {
+          var vOpacity = cfg.videoOpacity || 0.04;
+          vid.style.opacity = '' + vOpacity; vid.style.display = '';
+          // 如果视频没有src或播放结束，切到下一个
+          if (!vid.src || vid.ended) {
+            var curVid = vid.src || '';
+            var vIdx = 0;
+            for (var vi = 0; vi < vCycle.length; vi++) { if (vCycle[vi] === curVid) { vIdx = (vi + 1) % vCycle.length; break; } }
+            vid.src = vCycle[vIdx];
+            vid.load();
+            vid.play().catch(function(){});
+          }
         } else {
           vid.style.opacity = '0'; vid.style.display = 'none';
           vid.pause();

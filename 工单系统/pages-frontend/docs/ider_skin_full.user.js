@@ -902,9 +902,11 @@ const GUZHENRENWASH = {
         imgEl.style.opacity = '1';
       }, 200);
     });
-    // 手动切换背景
+    // 手动切换背景（视频模式下无效）
     panel.querySelector('#gzr-bg-btn').addEventListener('click', function(e) {
       e.stopPropagation();
+      var cfg = GUZHENRENWASH.getCfg();
+      if (!cfg || cfg.mode === 'video') return;
       var bgEl = document.getElementById('gzr-bg-img');
       if (!bgEl) return;
       var current = bgEl.dataset.current || '';

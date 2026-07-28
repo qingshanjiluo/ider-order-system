@@ -195,17 +195,8 @@ const INKWASH = {
         const btns = document.querySelectorAll('.game-header .btn-icon, header .btn-icon');
         btns.forEach(btn => {
           if (btn.dataset.inkwashBound) return;
-          const title = (btn.getAttribute('title') || '').toLowerCase();
-          let svgStr = null;
-          if (title.includes('退出') || title.includes('logout') || title.includes('换号')) svgStr = this.ICONS.logout;
-          else if (title.includes('帮助') || title.includes('help')) svgStr = this.ICONS.scroll;
-          else if (title.includes('主题') || title.includes('theme') || title.includes('切换')) svgStr = this.ICONS.talisman;
-          if (svgStr) {
-            btn.dataset.inkwashBound = '1';
-            const encoded = btoa(unescape(encodeURIComponent(svgStr)));
-            btn.style.cssText = `background:none!important;border:none!important;cursor:pointer!important;padding:4px!important;color:var(--text2)!important;width:28px!important;height:28px!important;background-image:url("data:image/svg+xml;base64,${encoded}")!important;background-size:18px!important;background-position:center!important;background-repeat:no-repeat!important`;
-            btn.textContent = '';
-          }
+          btn.dataset.inkwashBound = '1';
+          btn.style.cssText = 'background:none!important;border:none!important;cursor:pointer!important;padding:4px!important;color:var(--text2)!important;font-size:16px!important;line-height:1!important';
         });
       } catch (e) { /* ignore */ }
     };
@@ -1533,9 +1524,10 @@ function injectSkinBtn() {
     if (header && !document.querySelector('.ider-skin-btn')) {
       const btn = document.createElement('button');
       btn.className = 'btn-icon ider-skin-btn';
-      btn.innerHTML = icon('palette', null, 18);
-      btn.style.fontSize = '0';
       btn.title = '切换皮肤';
+      const palSvg = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="7"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="11" cy="5" r="1.2" fill="currentColor"/><circle cx="3" cy="9" r="1" fill="currentColor"/><path d="M8 13a2 2 0 002-2" opacity="0.5"/></svg>';
+      const enc = btoa(unescape(encodeURIComponent(palSvg)));
+      btn.style.cssText = `background:none!important;border:none!important;cursor:pointer!important;padding:4px!important;color:var(--text2)!important;font-size:16px!important;width:28px!important;height:28px!important;background-image:url("data:image/svg+xml;base64,${enc}")!important;background-size:18px!important;background-position:center!important;background-repeat:no-repeat!important`;
       btn.addEventListener('click', showSkinPicker);
       header.appendChild(btn);
       observer.disconnect();

@@ -483,150 +483,84 @@ const DUNHUANGWASH = {
 
   createDecor() {
     if (this.decorEl) return;
-    var w = document.createElement('div');
-    w.id = 'guzhenren-decor';
+    const w = document.createElement('div');
+    w.id = 'dunhuang-decor';
     w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
 
-    var bg = document.createElement('div');
-    bg.id = 'gzr-bg-img';
-    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
-    document.body.prepend(bg);
+    // 壁画纹理背景（增强版）
+    const mural = document.createElement('div');
+    mural.style.cssText = 'position:absolute;inset:0;background:' + this.CAVE_TEXTURE;
+    w.appendChild(mural);
 
-    var sigil = document.createElement('div');
-    sigil.innerHTML = this.SIGIL_SVG;
-    sigil.style.cssText = 'position:absolute;top:50%;left:50%;width:500px;height:500px;margin:-250px 0 0 -250px;opacity:0.35;animation:gzrSigilSpin 120s linear infinite';
-    w.appendChild(sigil);
+    // 飞天（天女散花）剪影
+    const apsaras = document.createElement('div');
+    apsaras.innerHTML = this.APSARAS_SVG;
+    apsaras.style.cssText = 'position:absolute;top:5%;left:0;width:100%;height:20vh;opacity:0.8;animation:dunhuangDrift 30s ease-in-out infinite';
+    w.appendChild(apsaras);
 
-    var chars = ['蛊','虫','禁','残','蚀','腐','骨','噬','影','咒','蛹','蜕'];
-    for (var i = 0; i < 16; i++) {
-      var g = document.createElement('div');
-      g.textContent = chars[i % chars.length];
-      g.style.cssText = 'position:absolute;left:' + (5 + Math.random() * 90) + '%;top:' + (5 + Math.random() * 90) + '%;font-size:' + (10 + Math.random() * 16) + 'px;color:rgba(139,115,85,0.035);font-family:"Noto Serif SC",serif;font-weight:900;pointer-events:none;animation:gzrFloat ' + (15 + Math.random() * 25) + 's ease-in-out ' + (Math.random() * 20) + 's infinite';
+    // 飘带（增强版）
+    const ribbon = document.createElement('div');
+    ribbon.innerHTML = this.RIBBON_SVG;
+    ribbon.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:70vh;opacity:0.8';
+    w.appendChild(ribbon);
+
+    // 金色尘埃背景
+    const goldDust = document.createElement('div');
+    goldDust.innerHTML = this.GOLDEN_DUST;
+    goldDust.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0.6;animation:dunhuangGlow 8s ease-in-out infinite alternate';
+    w.appendChild(goldDust);
+
+    // 花瓣粒子（20个）
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.innerHTML = this.PETAL_SVG;
+      const size = 4 + Math.random() * 10;
+      const x = Math.random() * 100;
+      const delay = Math.random() * 20;
+      const dur = 15 + Math.random() * 20;
+      const colors = ['#D4A844','#D4432A','#2AA8A8','#C49B5E','#E8C87A'];
+      p.style.cssText = `position:absolute;left:${x}%;top:-20px;width:${size}px;height:${size}px;color:${colors[i%5]};animation:dunhuangFall ${dur}s linear ${delay}s infinite;opacity:${0.3 + Math.random() * 0.3}`;
+      w.appendChild(p);
+    }
+
+    // 金色浮动粒子
+    for (let i = 0; i < 12; i++) {
+      const g = document.createElement('div');
+      const gs = 2 + Math.random() * 4;
+      const gx = Math.random() * 100;
+      const gy = Math.random() * 100;
+      const gd = Math.random() * 15;
+      const gdur = 10 + Math.random() * 20;
+      g.style.cssText = `position:absolute;left:${gx}%;top:${gy}%;width:${gs}px;height:${gs}px;border-radius:50%;background:#D4A844;opacity:${0.1 + Math.random() * 0.2};animation:dunhuangFloat ${gdur}s ease-in-out ${gd}s infinite`;
       w.appendChild(g);
     }
 
-    var vid = document.createElement('video');
-    vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
-    vid.muted = true; vid.loop = true; vid.playsinline = true;
-    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none';
-    vid.play().catch(function(){});
-    document.body.prepend(vid);
-
-    var wm = document.createElement('div');
-    wm.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%9B%8A%E7%9C%9F%E4%BA%BA%E4%B9%A6%E6%B3%95%E5%AD%97.png");background-repeat:no-repeat;background-position:50% 50%;background-size:clamp(200px,40vw,500px);opacity:0.03;animation:gzrWatermarkFloat 20s ease-in-out infinite';
-    w.appendChild(wm);
-
-    var cicada = document.createElement('div');
-    cicada.style.cssText = 'position:fixed;left:10px;bottom:80px;width:clamp(50px,6vw,90px);height:auto;aspect-ratio:1;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E6%98%A5%E7%A7%8B%E8%9D%89%E7%BA%BF%E7%A8%BF.png");background-size:contain;background-repeat:no-repeat;opacity:0.08;z-index:-1;pointer-events:none;animation:gzrFloat 20s ease-in-out infinite';
-    w.appendChild(cicada);
+    // 莲花元素
+    for (let i = 0; i < 3; i++) {
+      const lotus = document.createElement('div');
+      const lx = 20 + i * 30;
+      const ly = 70 + Math.random() * 15;
+      const ls = 16 + Math.random() * 12;
+      lotus.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12,2 Q16,8 12,14 Q8,8 12,2" fill="currentColor" opacity="0.5"/><path d="M12,6 Q15,10 12,14 Q9,10 12,6" fill="currentColor" opacity="0.3"/><path d="M12,8 Q14,11 12,14 Q10,11 12,8" fill="currentColor" opacity="0.2"/><path d="M10,14 Q12,18 14,14" fill="currentColor" opacity="0.15"/></svg>';
+      lotus.style.cssText = `position:absolute;left:${lx}%;top:${ly}%;width:${ls}px;height:${ls}px;color:${['#D4A844','#C49B5E','#2AA8A8'][i]};opacity:0.25;animation:dunhuangLotus ${8 + i * 3}s ease-in-out ${i * 4}s infinite`;
+      w.appendChild(lotus);
+    }
 
     document.body.prepend(w);
     this.decorEl = w;
-    this.createPortraitPanel();
-    this.startBgSwitcher();
   },
 
-  BG_MAP: {
-    announcement: "https://ider-order-system.pages.dev/docs/guzhenren/89-008.jpg",
-    character: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
-    inventory: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
-    equipment: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
-    skills: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
-    techniques: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
-    map: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-    baiyi: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
-    cave: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-    disciple: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
-    sect: "https://ider-order-system.pages.dev/docs/guzhenren/89-007.jpg",
-    alliance: "https://ider-order-system.pages.dev/docs/guzhenren/89-006.jpg",
-    exchange: "https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg",
-    dungeon: "https://ider-order-system.pages.dev/docs/guzhenren/89-003.jpg",
-    duel: "https://ider-order-system.pages.dev/docs/guzhenren/89-005.jpg",
-    league: "https://ider-order-system.pages.dev/docs/guzhenren/89-004.jpg",
-    trial: "https://ider-order-system.pages.dev/docs/guzhenren/89-001.jpg",
-    mail: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
-    dictionary: "https://ider-order-system.pages.dev/docs/guzhenren/89-009.jpg",
-    settings: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
-  },
-  BG_CYCLE: [
-    // 旧壁纸
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
-    // 新壁纸
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
-    // 原始背景
-    "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
-  ],
-  DEFAULT_BG: "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
-  _lastBgTime: 0,
-
-  startBgSwitcher: function() {
-    var self = this;
-    var lastTab = '';
-    setInterval(function() {
-      var active = document.querySelector('.tab-btn.active');
-      var bgEl = document.getElementById('gzr-bg-img');
-      if (!bgEl) return;
-
-      // Tab change: immediate switch
-      if (active) {
-        var tab = active.getAttribute('data-tab') || '';
-        if (tab !== lastTab) {
-          lastTab = tab;
-          var url = self.BG_MAP[tab] || self.DEFAULT_BG;
-          self.setBg(url);
-          self._lastBgTime = Date.now();
-          return;
-        }
-      } else {
-        if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); self._lastBgTime = Date.now(); }
-        return;
-      }
-
-      // Time-based cycle: same tab for >15s, rotate through wallpapers
-      var elapsed = Date.now() - self._lastBgTime;
-      if (elapsed > 15000) {
-        self._lastBgTime = Date.now();
-        var current = bgEl.dataset.current || '';
-        var cycle = self.BG_CYCLE;
-        var nextIdx = 0;
-        for (var i = 0; i < cycle.length; i++) {
-          if (cycle[i] === current) { nextIdx = (i + 1) % cycle.length; break; }
-        }
-        self.setBg(cycle[nextIdx]);
-      }
-    }, 1000);
-  },
-
-  setBg: function(url) {
-    var bgEl = document.getElementById('gzr-bg-img');
-    if (!bgEl || bgEl.dataset.current === url) return;
-
-    // 切换图片背景时隐藏视频
-    var vids = document.querySelectorAll('video[src*="guzhenren"]');
-    vids.forEach(function(v) { v.style.opacity = '0'; v.style.display = 'none'; });
-
-    bgEl.dataset.current = url;
-    bgEl.style.backgroundImage = 'url("' + url + '")';
-    bgEl.style.opacity = '1';
-  },
   startObserver() {
   },
 
   stopObserver() {
   },
 };
+
+// ═══════════════════════════════════════
+// 阴阳太极 — 阴阳相生，太极无极
+// ═══════════════════════════════════════
+
 
 // ═══════════════════════════════════════
 // 阴阳太极 — 阴阳相生，太极无极
@@ -749,13 +683,15 @@ const GUZHENRENWASH = {
     w.id = 'guzhenren-decor';
     w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
 
+    // 单个背景层（JS自动切换+手动切换）
     var bg = document.createElement('div');
-    bg.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%, rgba(139,115,85,0.03) 0%, transparent 60%)';
-    w.appendChild(bg);
+    bg.id = 'gzr-bg-img';
+    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
+    document.body.prepend(bg);
 
     var sigil = document.createElement('div');
     sigil.innerHTML = this.SIGIL_SVG;
-    sigil.style.cssText = 'position:absolute;top:50%;left:50%;width:500px;height:500px;margin:-250px 0 0 -250px;opacity:0.5;animation:gzrSigilSpin 120s linear infinite';
+    sigil.style.cssText = 'position:absolute;top:50%;left:50%;width:500px;height:500px;margin:-250px 0 0 -250px;opacity:0.35;animation:gzrSigilSpin 120s linear infinite';
     w.appendChild(sigil);
 
     var chars = ['蛊','虫','禁','残','蚀','腐','骨','噬','影','咒','蛹','蜕'];
@@ -771,26 +707,114 @@ const GUZHENRENWASH = {
       w.appendChild(g);
     }
 
-    // 视频背景（循环播放，静音）
+    // 视频背景（极低透明度）
     var vid = document.createElement('video');
     vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
-    vid.muted = true;
-    vid.loop = true;
-    vid.playsinline = true;
-    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.04;z-index:-3;pointer-events:none';
+    vid.muted = true; vid.loop = true; vid.playsinline = true;
+    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none';
     vid.play().catch(function(){});
     document.body.prepend(vid);
 
-    // 春秋蝉线稿（侧栏装饰）
+    // 书法字水印
+    var wm = document.createElement('div');
+    wm.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%9B%8A%E7%9C%9F%E4%BA%BA%E4%B9%A6%E6%B3%95%E5%AD%97.png");background-repeat:no-repeat;background-position:50% 50%;background-size:clamp(200px,40vw,500px);opacity:0.03;animation:gzrWatermarkFloat 20s ease-in-out infinite';
+    w.appendChild(wm);
+
+    // 春秋蝉线稿
     var cicada = document.createElement('div');
     cicada.style.cssText = 'position:fixed;left:10px;bottom:80px;width:clamp(50px,6vw,90px);height:auto;aspect-ratio:1;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E6%98%A5%E7%A7%8B%E8%9D%89%E7%BA%BF%E7%A8%BF.png");background-size:contain;background-repeat:no-repeat;opacity:0.08;z-index:-1;pointer-events:none;animation:gzrFloat 20s ease-in-out infinite';
     w.appendChild(cicada);
 
     document.body.prepend(w);
     this.decorEl = w;
-
-    // 立绘交互面板（最上层，可关闭/切换）
     this.createPortraitPanel();
+    this.startBgSwitcher();
+  },
+
+  BG_MAP: {
+    announcement: "https://ider-order-system.pages.dev/docs/guzhenren/89-008.jpg",
+    character: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
+    inventory: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
+    equipment: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
+    skills: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
+    techniques: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
+    map: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+    baiyi: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
+    cave: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+    disciple: "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
+    sect: "https://ider-order-system.pages.dev/docs/guzhenren/89-007.jpg",
+    alliance: "https://ider-order-system.pages.dev/docs/guzhenren/89-006.jpg",
+    exchange: "https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg",
+    dungeon: "https://ider-order-system.pages.dev/docs/guzhenren/89-003.jpg",
+    duel: "https://ider-order-system.pages.dev/docs/guzhenren/89-005.jpg",
+    league: "https://ider-order-system.pages.dev/docs/guzhenren/89-004.jpg",
+    trial: "https://ider-order-system.pages.dev/docs/guzhenren/89-001.jpg",
+    mail: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+    dictionary: "https://ider-order-system.pages.dev/docs/guzhenren/89-009.jpg",
+    settings: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+  },
+  BG_CYCLE: [
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
+  ],
+  DEFAULT_BG: "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+  _lastBgTime: 0,
+
+  startBgSwitcher: function() {
+    var self = this;
+    var lastTab = '';
+    setInterval(function() {
+      var active = document.querySelector('.tab-btn.active');
+      var bgEl = document.getElementById('gzr-bg-img');
+      if (!bgEl) return;
+      if (active) {
+        var tab = active.getAttribute('data-tab') || '';
+        if (tab !== lastTab) {
+          lastTab = tab;
+          self.setBg(self.BG_MAP[tab] || self.DEFAULT_BG);
+          self._lastBgTime = Date.now();
+          return;
+        }
+      } else {
+        if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); self._lastBgTime = Date.now(); }
+        return;
+      }
+      var elapsed = Date.now() - self._lastBgTime;
+      if (elapsed > 15000) {
+        self._lastBgTime = Date.now();
+        var current = bgEl.dataset.current || '';
+        var cycle = self.BG_CYCLE;
+        var nextIdx = 0;
+        for (var i = 0; i < cycle.length; i++) {
+          if (cycle[i] === current) { nextIdx = (i + 1) % cycle.length; break; }
+        }
+        self.setBg(cycle[nextIdx]);
+      }
+    }, 1000);
+  },
+
+  setBg: function(url) {
+    var bgEl = document.getElementById('gzr-bg-img');
+    if (!bgEl || bgEl.dataset.current === url) return;
+    // 显示图片背景时隐藏视频
+    var vids = document.querySelectorAll('video[src*="guzhenren"]');
+    vids.forEach(function(v) { v.style.opacity = '0'; v.style.display = 'none'; });
+    bgEl.dataset.current = url;
+    bgEl.style.backgroundImage = 'url("' + url + '")';
+    bgEl.style.opacity = '1';
   },
 
   PORTRAITS: [

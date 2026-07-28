@@ -772,9 +772,12 @@ const GUZHENRENWASH = {
   _lastBgTime: 0,
 
   startBgSwitcher: function() {
+    if (this._bgTimer) { clearInterval(this._bgTimer); this._bgTimer = null; }
     var self = this;
     var lastTab = '';
-    setInterval(function() {
+    var cfg = this.getCfg();
+    var interval = cfg.interval || 30000;
+    this._bgTimer = setInterval(function() {
       var active = document.querySelector('.tab-btn.active');
       var bgEl = document.getElementById('gzr-bg-img');
       if (!bgEl) return;
@@ -790,8 +793,9 @@ const GUZHENRENWASH = {
         if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); self._lastBgTime = Date.now(); }
         return;
       }
+      var interval = parseInt((self.getCfg ? self.getCfg().interval : 0) || 30000);
       var elapsed = Date.now() - self._lastBgTime;
-      if (elapsed > 30000) {
+      if (interval > 0 && elapsed > interval) {
         self._lastBgTime = Date.now();
         var current = bgEl.dataset.current || '';
         var cycle = self.BG_CYCLE;
@@ -836,7 +840,10 @@ const GUZHENRENWASH = {
     panel.style.cssText = 'position:fixed;bottom:60px;right:10px;z-index:9999;cursor:pointer';
     panel.style.animation = 'gzrPortraitIn 0.5s ease';
     panel.innerHTML =
-      '<div id="gzr-p-close" style="position:absolute;top:-8px;right:-8px;width:22px;height:22px;background:rgba(0,0,0,0.6);border:1px solid rgba(139,115,85,0.4);color:#A09888;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10;font-family:sans-serif;border-radius:50%">\u2715</div>' +
+      '<div style="position:absolute;top:-8px;right:-8px;display:flex;gap:4px;z-index:10">' +
+        '<div id="gzr-p-settings" style="width:22px;height:22px;background:rgba(0,0,0,0.6);border:1px solid rgba(139,115,85,0.4);color:#A09888;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:sans-serif;border-radius:50%">\u2699</div>' +
+        '<div id="gzr-p-close" style="width:22px;height:22px;background:rgba(0,0,0,0.6);border:1px solid rgba(139,115,85,0.4);color:#A09888;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:sans-serif;border-radius:50%">\u2715</div>' +
+      '</div>' +
       '<div id="gzr-p-img" style="width:clamp(100px,15vw,200px);height:clamp(160px,24vw,320px);background-image:url(' + portraits[idx].url + ');background-size:contain;background-repeat:no-repeat;background-position:center bottom;transition:opacity 0.4s ease;border-radius:4px;box-shadow:0 4px 30px rgba(0,0,0,0.5)"></div>' +
       '<div style="text-align:center;margin-top:4px;font-size:10px;color:rgba(160,152,136,0.6);font-family:Noto Serif SC,serif;letter-spacing:2px" id="gzr-p-name">' + portraits[idx].name + '</div>' +
       '<div id="gzr-bg-btn" style="margin-top:6px;padding:3px 8px;background:rgba(0,0,0,0.4);border:1px solid rgba(139,115,85,0.3);color:rgba(160,152,136,0.7);font-size:9px;font-family:Noto Serif SC,serif;cursor:pointer;text-align:center;border-radius:2px;letter-spacing:1px">切换背景</div>';
@@ -878,6 +885,70 @@ const GUZHENRENWASH = {
       if (typeof GUZHENRENWASH !== 'undefined' && GUZHENRENWASH.setBg) {
         GUZHENRENWASH.setBg(cycle[next]);
       }
+    });
+    // 设置按钮
+    panel.querySelector('#gzr-p-settings').addEventListener('click', function(e) {
+      e.stopPropagation();
+      GUZHENRENWASH.showSettings();
+    });
+    document.body.appendChild(panel);
+  },
+
+  getCfg: function() {
+    try { return JSON.parse(GM_getValue('guzhenren_cfg', '{}')); } catch(e) { return {}; }
+  },
+  saveCfg: function(cfg) {
+    GM_setValue('guzhenren_cfg', JSON.stringify(cfg));
+  },
+
+  showSettings: function() {
+    var existing = document.getElementById('gzr-settings');
+    if (existing) { existing.remove(); return; }
+    var cfg = this.getCfg();
+    var interval = cfg.interval || 30000;
+    var showVideo = cfg.video || false;
+
+    var panel = document.createElement('div');
+    panel.id = 'gzr-settings';
+    panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:rgba(10,10,15,0.95);border:1px solid rgba(139,115,85,0.3);padding:20px 24px;min-width:260px;color:#d4d4e0;font-family:"Noto Serif SC","Microsoft YaHei",sans-serif;font-size:13px;animation:gzrFadeInUp 0.3s ease';
+    panel.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid rgba(139,115,85,0.2);padding-bottom:10px">' +
+        '<span style="color:#d4a844;font-weight:700;letter-spacing:2px;font-size:14px">\u2699 蛊真人设置</span>' +
+        '<span id="gzr-s-close" style="color:#888;cursor:pointer;font-size:16px;line-height:1">\u2715</span>' +
+      '</div>' +
+      '<div style="margin-bottom:14px">' +
+        '<div style="color:#A09888;font-size:11px;margin-bottom:6px">背景轮播间隔</div>' +
+        '<select id="gzr-s-interval" style="width:100%;padding:6px 8px;background:rgba(20,16,25,0.8);border:1px solid rgba(139,115,85,0.2);color:#d4d4e0;font-size:12px;border-radius:2px">' +
+          '<option value="0"' + (interval===0?' selected':'') + '>关闭轮播</option>' +
+          '<option value="10000"' + (interval===10000?' selected':'') + '>10秒</option>' +
+          '<option value="30000"' + (interval===30000?' selected':'') + '>30秒</option>' +
+          '<option value="60000"' + (interval===60000?' selected':'') + '>1分钟</option>' +
+          '<option value="120000"' + (interval===120000?' selected':'') + '>2分钟</option>' +
+          '<option value="300000"' + (interval===300000?' selected':'') + '>5分钟</option>' +
+        '</select>' +
+      '</div>' +
+      '<div style="margin-bottom:14px">' +
+        '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">' +
+          '<input type="checkbox" id="gzr-s-video"' + (showVideo?' checked':'') + ' style="width:16px;height:16px">' +
+          '<span style="color:#A09888;font-size:11px">视频背景（关闭可提升性能）</span>' +
+        '</label>' +
+      '</div>' +
+      '<button id="gzr-s-save" style="width:100%;padding:8px;background:rgba(139,115,85,0.3);border:1px solid rgba(139,115,85,0.4);color:#d4a844;cursor:pointer;font-size:12px;letter-spacing:2px;border-radius:2px">保存设置</button>';
+    panel.querySelector('#gzr-s-close').addEventListener('click', function(){ panel.remove(); });
+    panel.querySelector('#gzr-s-save').addEventListener('click', function() {
+      var newInterval = parseInt(document.getElementById('gzr-s-interval').value);
+      var newVideo = document.getElementById('gzr-s-video').checked;
+      GUZHENRENWASH.saveCfg({interval: newInterval, video: newVideo});
+      // 立即生效
+      if (GUZHENRENWASH._bgTimer) { clearInterval(GUZHENRENWASH._bgTimer); GUZHENRENWASH._bgTimer = null; }
+      GUZHENRENWASH.startBgSwitcher();
+      // 视频显示/隐藏
+      var vids = document.querySelectorAll('video[src*="guzhenren"]');
+      vids.forEach(function(v) {
+        if (newVideo) { v.style.display = ''; v.play().catch(function(){}); }
+        else { v.style.display = 'none'; v.pause(); }
+      });
+      panel.remove();
     });
     document.body.appendChild(panel);
   },

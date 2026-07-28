@@ -527,54 +527,76 @@ const DUNHUANGWASH = {
   },
 
   BG_MAP: {
+    announcement: "https://ider-order-system.pages.dev/docs/guzhenren/89-008.jpg",
     character: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
     inventory: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
     equipment: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
     skills: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
     techniques: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
     map: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-    mail: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
-    chat: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
-    settings: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
-    help: "https://ider-order-system.pages.dev/docs/guzhenren/89-009.jpg",
-    announcement: "https://ider-order-system.pages.dev/docs/guzhenren/89-008.jpg",
-    sect: "https://ider-order-system.pages.dev/docs/guzhenren/89-007.jpg",
-    alliance: "https://ider-order-system.pages.dev/docs/guzhenren/89-006.jpg",
-    duel: "https://ider-order-system.pages.dev/docs/guzhenren/89-005.jpg",
-    league: "https://ider-order-system.pages.dev/docs/guzhenren/89-004.jpg",
-    dungeon: "https://ider-order-system.pages.dev/docs/guzhenren/89-003.jpg",
-    exchange: "https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg",
-    forge: "https://ider-order-system.pages.dev/docs/guzhenren/89-001.jpg",
     baiyi: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
     cave: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+    disciple: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+    sect: "https://ider-order-system.pages.dev/docs/guzhenren/89-007.jpg",
+    alliance: "https://ider-order-system.pages.dev/docs/guzhenren/89-006.jpg",
+    exchange: "https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg",
+    dungeon: "https://ider-order-system.pages.dev/docs/guzhenren/89-003.jpg",
+    duel: "https://ider-order-system.pages.dev/docs/guzhenren/89-005.jpg",
+    league: "https://ider-order-system.pages.dev/docs/guzhenren/89-004.jpg",
+    trial: "https://ider-order-system.pages.dev/docs/guzhenren/89-001.jpg",
+    mail: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+    dictionary: "https://ider-order-system.pages.dev/docs/guzhenren/89-009.jpg",
+    settings: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
   },
+  BG_CYCLE: [
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+    "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+  ],
   DEFAULT_BG: "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+  _lastBgTime: 0,
 
   startBgSwitcher: function() {
     var self = this;
     var lastTab = '';
     setInterval(function() {
       var active = document.querySelector('.tab-btn.active');
-      if (!active) {
-        if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); }
-        return;
-      }
-      var tab = active.getAttribute('data-tab') || '';
-      if (tab !== lastTab) { lastTab = tab; self.setBg(self.BG_MAP[tab] || self.DEFAULT_BG); }
-    }, 500);
-
-    setInterval(function() {
-      var modal = document.querySelector('.modal-panel');
       var bgEl = document.getElementById('gzr-bg-img');
       if (!bgEl) return;
-      if (modal && !bgEl.dataset.modalOpen) {
-        bgEl.dataset.modalOpen = '1';
-        self.setBg("https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg");
-      } else if (!modal && bgEl.dataset.modalOpen) {
-        bgEl.dataset.modalOpen = '';
-        lastTab = '';
+
+      // Tab change: immediate switch
+      if (active) {
+        var tab = active.getAttribute('data-tab') || '';
+        if (tab !== lastTab) {
+          lastTab = tab;
+          var url = self.BG_MAP[tab] || self.DEFAULT_BG;
+          self.setBg(url);
+          self._lastBgTime = Date.now();
+          return;
+        }
+      } else {
+        if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); self._lastBgTime = Date.now(); }
+        return;
       }
-    }, 300);
+
+      // Time-based cycle: same tab for >30s, rotate through wallpapers
+      var elapsed = Date.now() - self._lastBgTime;
+      if (elapsed > 30000) {
+        self._lastBgTime = Date.now();
+        var current = bgEl.dataset.current || '';
+        var cycle = self.BG_CYCLE;
+        var nextIdx = 0;
+        for (var i = 0; i < cycle.length; i++) {
+          if (cycle[i] === current) { nextIdx = (i + 1) % cycle.length; break; }
+        }
+        self.setBg(cycle[nextIdx]);
+      }
+    }, 1000);
   },
 
   setBg: function(url) {

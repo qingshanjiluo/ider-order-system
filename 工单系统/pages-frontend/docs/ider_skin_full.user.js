@@ -1502,7 +1502,7 @@ function injectSkinBtn() {
       btn.title = '切换皮肤';
       const palSvg = '<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8.5" stroke="#d4a844" stroke-width="1.2"/><circle cx="6.5" cy="6.5" r="1.5" fill="#d4a844"/><circle cx="14" cy="6.5" r="1.5" fill="#e88" stroke="none"/><circle cx="4" cy="11" r="1.2" fill="#8cf" stroke="none"/><path d="M10 15a2.5 2.5 0 002.5-2.5" stroke="#d4a844" stroke-width="1.2" opacity="0.6"/></svg>';
       const enc = btoa(unescape(encodeURIComponent(palSvg)));
-      btn.style.cssText = `border:none!important;cursor:pointer!important;padding:2px!important;width:28px!important;height:28px!important;background:transparent!important;background-image:url("data:image/svg+xml;base64,${enc}")!important;background-size:20px!important;background-position:center!important;background-repeat:no-repeat!important;flex-shrink:0!important;border-radius:4px!important`;
+      btn.style.cssText = `border:none!important;cursor:pointer!important;padding:2px!important;width:28px!important;height:28px!important;background:transparent!important;background-image:url("data:image/svg+xml;base64,${enc}")!important;background-size:20px!important;background-position:center!important;background-repeat:no-repeat!important;flex-shrink:0!important;border-radius:4px!important;z-index:9999!important;position:relative!important`;
       btn.addEventListener('click', showSkinPicker);
       // 插入到灵石区域后面（和灵石并排）
       const res = header.querySelector('.hdr-res');

@@ -202,13 +202,9 @@ const INKWASH = {
           else if (title.includes('主题') || title.includes('theme') || title.includes('切换')) svgStr = this.ICONS.talisman;
           if (svgStr) {
             btn.dataset.inkwashBound = '1';
-            // 用 DOMParser 解析 SVG 再插入，避免 innerHTML 触发 Vue 解析器
-            const doc = new DOMParser().parseFromString(svgStr, 'image/svg+xml');
-            const svgEl = doc.documentElement;
-            // 清空按钮文字并插入 SVG 元素
+            const encoded = btoa(unescape(encodeURIComponent(svgStr)));
+            btn.style.cssText = `background:none!important;border:none!important;cursor:pointer!important;padding:4px!important;color:var(--text2)!important;width:28px!important;height:28px!important;background-image:url("data:image/svg+xml;base64,${encoded}")!important;background-size:18px!important;background-position:center!important;background-repeat:no-repeat!important`;
             btn.textContent = '';
-            btn.appendChild(document.importNode(svgEl, true));
-            btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:4px;color:var(--text2);width:28px;height:28px';
           }
         });
       } catch (e) { /* ignore */ }

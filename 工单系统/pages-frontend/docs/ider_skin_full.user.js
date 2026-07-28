@@ -707,11 +707,15 @@ const GUZHENRENWASH = {
       w.appendChild(g);
     }
 
-    // 视频背景（不自动播放，节省性能）
+    // 视频背景（根据配置决定是否显示）
+    var cfg = this.getCfg();
+    var mode = cfg.mode || 'image';
     var vid = document.createElement('video');
     vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
     vid.muted = true; vid.loop = true; vid.playsinline = true; vid.preload = 'none';
-    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none;display:none';
+    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none;display:' + (mode==='video'||mode==='mixed'?'':'none');
+    if (mode === 'video' || mode === 'mixed') { setTimeout(function(){ vid.play().catch(function(){}); }, 500); }
+    document.body.prepend(vid);
 
     // 书法字水印
     var wm = document.createElement('div');
@@ -777,10 +781,28 @@ const GUZHENRENWASH = {
     var lastTab = '';
     var cfg = this.getCfg();
     var interval = cfg.interval || 30000;
+    var mode = cfg.mode || 'image';
+
+    // 根据模式初始化视频状态
+    var vids = document.querySelectorAll('video[src*="guzhenren"]');
+    vids.forEach(function(v) {
+      if (mode === 'video' || mode === 'mixed') { v.style.display = ''; v.play().catch(function(){}); }
+      else { v.style.display = 'none'; v.pause(); }
+    });
+
     this._bgTimer = setInterval(function() {
       var active = document.querySelector('.tab-btn.active');
       var bgEl = document.getElementById('gzr-bg-img');
       if (!bgEl) return;
+
+      // 视频模式：隐藏图片显示视频
+      if (mode === 'video') {
+        bgEl.style.opacity = '0';
+        return;
+      }
+
+      // 图片/混合模式：正常显示图片
+      bgEl.style.opacity = '1';
       if (active) {
         var tab = active.getAttribute('data-tab') || '';
         if (tab !== lastTab) {
@@ -793,6 +815,8 @@ const GUZHENRENWASH = {
         if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); self._lastBgTime = Date.now(); }
         return;
       }
+
+      // 时间循环
       var interval = parseInt((self.getCfg ? self.getCfg().interval : 0) || 30000);
       var elapsed = Date.now() - self._lastBgTime;
       if (interval > 0 && elapsed > interval) {
@@ -905,19 +929,27 @@ const GUZHENRENWASH = {
     var existing = document.getElementById('gzr-settings');
     if (existing) { existing.remove(); return; }
     var cfg = this.getCfg();
+    var mode = cfg.mode || 'image'; // image|video|mixed
     var interval = cfg.interval || 30000;
-    var showVideo = cfg.video || false;
 
     var panel = document.createElement('div');
     panel.id = 'gzr-settings';
-    panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:rgba(10,10,15,0.95);border:1px solid rgba(139,115,85,0.3);padding:20px 24px;min-width:260px;color:#d4d4e0;font-family:"Noto Serif SC","Microsoft YaHei",sans-serif;font-size:13px;animation:gzrFadeInUp 0.3s ease';
+    panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:rgba(10,10,15,0.95);border:1px solid rgba(139,115,85,0.3);padding:20px 24px;min-width:280px;color:#d4d4e0;font-family:"Noto Serif SC","Microsoft YaHei",sans-serif;font-size:13px;animation:gzrFadeInUp 0.3s ease';
     panel.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid rgba(139,115,85,0.2);padding-bottom:10px">' +
         '<span style="color:#d4a844;font-weight:700;letter-spacing:2px;font-size:14px">\u2699 蛊真人设置</span>' +
         '<span id="gzr-s-close" style="color:#888;cursor:pointer;font-size:16px;line-height:1">\u2715</span>' +
       '</div>' +
-      '<div style="margin-bottom:14px">' +
-        '<div style="color:#A09888;font-size:11px;margin-bottom:6px">背景轮播间隔</div>' +
+      '<div style="margin-bottom:12px">' +
+        '<div style="color:#A09888;font-size:11px;margin-bottom:6px">轮播模式</div>' +
+        '<select id="gzr-s-mode" style="width:100%;padding:6px 8px;background:rgba(20,16,25,0.8);border:1px solid rgba(139,115,85,0.2);color:#d4d4e0;font-size:12px;border-radius:2px">' +
+          '<option value="image"' + (mode==='image'?' selected':'') + '>图片轮播</option>' +
+          '<option value="video"' + (mode==='video'?' selected':'') + '>视频轮播</option>' +
+          '<option value="mixed"' + (mode==='mixed'?' selected':'') + '>混合轮播</option>' +
+        '</select>' +
+      '</div>' +
+      '<div style="margin-bottom:12px">' +
+        '<div style="color:#A09888;font-size:11px;margin-bottom:6px">轮播间隔（仅图片/混合模式）</div>' +
         '<select id="gzr-s-interval" style="width:100%;padding:6px 8px;background:rgba(20,16,25,0.8);border:1px solid rgba(139,115,85,0.2);color:#d4d4e0;font-size:12px;border-radius:2px">' +
           '<option value="0"' + (interval===0?' selected':'') + '>关闭轮播</option>' +
           '<option value="10000"' + (interval===10000?' selected':'') + '>10秒</option>' +
@@ -927,30 +959,92 @@ const GUZHENRENWASH = {
           '<option value="300000"' + (interval===300000?' selected':'') + '>5分钟</option>' +
         '</select>' +
       '</div>' +
-      '<div style="margin-bottom:14px">' +
-        '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">' +
-          '<input type="checkbox" id="gzr-s-video"' + (showVideo?' checked':'') + ' style="width:16px;height:16px">' +
-          '<span style="color:#A09888;font-size:11px">视频背景（关闭可提升性能）</span>' +
-        '</label>' +
-      '</div>' +
-      '<button id="gzr-s-save" style="width:100%;padding:8px;background:rgba(139,115,85,0.3);border:1px solid rgba(139,115,85,0.4);color:#d4a844;cursor:pointer;font-size:12px;letter-spacing:2px;border-radius:2px">保存设置</button>';
+      '<button id="gzr-s-save" style="width:100%;padding:8px;background:rgba(139,115,85,0.3);border:1px solid rgba(139,115,85,0.4);color:#d4a844;cursor:pointer;font-size:12px;letter-spacing:2px;border-radius:2px;margin-bottom:8px">保存设置</button>' +
+      '<div id="gzr-dl-status" style="font-size:10px;color:#555;text-align:center;margin-bottom:8px;display:none"></div>' +
+      '<button id="gzr-s-download" style="width:100%;padding:6px;background:rgba(42,168,168,0.15);border:1px solid rgba(42,168,168,0.3);color:#2AA8A8;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u2B07 下载所有素材到缓存</button>';
     panel.querySelector('#gzr-s-close').addEventListener('click', function(){ panel.remove(); });
     panel.querySelector('#gzr-s-save').addEventListener('click', function() {
+      var newMode = document.getElementById('gzr-s-mode').value;
       var newInterval = parseInt(document.getElementById('gzr-s-interval').value);
-      var newVideo = document.getElementById('gzr-s-video').checked;
-      GUZHENRENWASH.saveCfg({interval: newInterval, video: newVideo});
-      // 立即生效
+      GUZHENRENWASH.saveCfg({mode: newMode, interval: newInterval});
       if (GUZHENRENWASH._bgTimer) { clearInterval(GUZHENRENWASH._bgTimer); GUZHENRENWASH._bgTimer = null; }
       GUZHENRENWASH.startBgSwitcher();
-      // 视频显示/隐藏
+      // 根据模式显示/隐藏视频
       var vids = document.querySelectorAll('video[src*="guzhenren"]');
       vids.forEach(function(v) {
-        if (newVideo) { v.style.display = ''; v.play().catch(function(){}); }
+        if (newMode === 'video' || newMode === 'mixed') { v.style.display = ''; v.play().catch(function(){}); }
         else { v.style.display = 'none'; v.pause(); }
       });
       panel.remove();
     });
+    // 下载缓存按钮
+    panel.querySelector('#gzr-s-download').addEventListener('click', function() {
+      var btn = document.getElementById('gzr-s-download');
+      var status = document.getElementById('gzr-dl-status');
+      btn.disabled = true; btn.textContent = '下载中...';
+      status.style.display = 'block'; status.textContent = '准备下载...';
+      GUZHENRENWASH.downloadAssets(function(msg) {
+        status.textContent = msg;
+        if (msg.indexOf('完成') > 0) { btn.textContent = '\u2713 已完成'; }
+        else { btn.disabled = false; btn.textContent = '\u2B07 重试下载'; }
+      });
+    });
     document.body.appendChild(panel);
+  },
+
+  downloadAssets: function(cb) {
+    var urls = [
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B84.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B85.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B86.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B87.jpg",
+      "https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4",
+    ];
+    var done = 0;
+    var total = urls.length;
+    cb('0/' + total + ' 下载中...');
+    urls.forEach(function(url) {
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: url,
+        responseType: 'blob',
+        onload: function(res) {
+          if (res.response) {
+            try {
+              // 用 Cache API 存储
+              caches.open('guzhenren-v1').then(function(cache) {
+                var resp = new Response(res.response, {headers: {'Content-Type': res.response.type}});
+                cache.put(url, resp);
+              }).catch(function(e){});
+            } catch(e) {}
+          }
+          done++;
+          cb(done + '/' + total + ' 下载中...');
+          if (done >= total) {
+            cb('完成！已缓存 ' + total + ' 个素材到本地');
+          }
+        },
+        onerror: function() {
+          done++;
+          cb(done + '/' + total + ' 下载中（部分失败）');
+        },
+        ontimeout: function() {
+          done++;
+          cb(done + '/' + total + ' 下载中（部分超时）');
+        },
+      });
+    });
   },
   startObserver() {
   },

@@ -910,11 +910,23 @@ const GUZHENRENWASH = {
         imgEl.style.opacity = '1';
       }, 200);
     });
-    // 手动切换背景（视频模式下无效）
+    // 手动切换背景
     panel.querySelector('#gzr-bg-btn').addEventListener('click', function(e) {
       e.stopPropagation();
       var cfg = GUZHENRENWASH.getCfg();
-      if (!cfg || cfg.mode === 'video') return;
+      if (!cfg) return;
+      // 视频模式：切换视频源
+      if (cfg.mode === 'video') {
+        var vid = document.getElementById('gzr-video');
+        if (!vid) return;
+        var vCycle = GUZHENRENWASH.VIDEO_CYCLE || [];
+        if (vCycle.length < 2) return;
+        var cur = vid.src || '';
+        var next = 0;
+        for (var vi = 0; vi < vCycle.length; vi++) { if (vCycle[vi] === cur) { next = (vi + 1) % vCycle.length; break; } }
+        vid.src = vCycle[next]; vid.load(); vid.play().catch(function(){});
+        return;
+      }
       var bgEl = document.getElementById('gzr-bg-img');
       if (!bgEl) return;
       var current = bgEl.dataset.current || '';

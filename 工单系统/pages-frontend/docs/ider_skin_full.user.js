@@ -663,8 +663,8 @@ html.theme-inkwash{--paper:#F5F0E6;--paper-warm:#F0EBE0;--ink-deep:#1a1a1a;--ink
 .theme-inkwash input:focus{border-color:var(--ink-deep)!important}
 .theme-inkwash .panel{animation:inkwashIn 0.8s cubic-bezier(0.22,1,0.36,1)!important}
 .theme-inkwash .bar-fill,.theme-inkwash .exp-fill{background-size:200% 100%!important;animation:inkwashPour 0.8s ease forwards!important}
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
+`
 },
 
 
@@ -830,8 +830,8 @@ body::after{content:''!important;position:fixed!important;inset:0!important;z-in
 
 .panel { animation: iderLuxeIn 0.4s ease !important; }
 @keyframes iderLuxeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
+`
 },
 
 // ───────────────────────────────────────────────
@@ -912,8 +912,8 @@ input:focus { border-color: #2a2520 !important; }
 
 .panel { animation: iderMagIn 0.35s ease !important; }
 @keyframes iderMagIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
+`
 },
 
 // ───────────────────────────────────────────────
@@ -995,8 +995,8 @@ input:focus { border-color: #3a3028 !important; }
 
 .panel { animation: iderZenIn 0.4s ease !important; }
 @keyframes iderZenIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
+`
 },
 
 // ───────────────────────────────────────────────
@@ -1076,8 +1076,8 @@ input:focus { border-color: #333333 !important; }
 
 .panel { animation: iderMinIn 0.3s ease !important; }
 @keyframes iderMinIn { from { opacity: 0; } to { opacity: 1; } }
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
+`
 },
 
 // ───────────────────────────────────────────────
@@ -1153,8 +1153,8 @@ body::after{content:''!important;position:fixed!important;inset:0!important;z-in
 
 .panel { animation: iderFrostIn 0.4s ease !important; }
 @keyframes iderFrostIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
+`
 },
 
 // ───────────────────────────────────────────────
@@ -1234,9 +1234,9 @@ input:focus { border-color: #ff3300 !important; }
 
 .panel { animation: iderBrutIn 0.2s ease !important; }
 @keyframes iderBrutIn { from { opacity: 0; transform: rotate(-1deg); } to { opacity: 1; transform: rotate(0); } }
-`
 .tab-btn svg,.ider-nav-icon{display:none!important}
-}
+`
+},
 
 
 // ───────────────────────────────────────────────

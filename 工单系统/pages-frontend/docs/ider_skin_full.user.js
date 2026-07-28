@@ -326,6 +326,8 @@ const INKWASH = {
   apply() {
     if (this.active) return;
     this.active = true;
+    // 移除游戏自带的旧 inkwash.css（flex-direction:column 冲突）
+    document.querySelectorAll('link[rel="stylesheet"][href*="inkwash.css"]').forEach(el => el.remove());
     document.documentElement.classList.add(INKWASH_CLASS);
     this.createDecorations();
     this.layout();

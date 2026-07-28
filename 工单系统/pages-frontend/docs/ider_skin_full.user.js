@@ -707,14 +707,13 @@ const GUZHENRENWASH = {
       w.appendChild(g);
     }
 
-    // 视频背景（根据配置决定是否显示）
-    var cfg = this.getCfg();
-    var mode = cfg.mode || 'image';
+    // 视频背景
+    var mode = (this.getCfg() || {}).mode || 'image';
     var vid = document.createElement('video');
+    vid.id = 'gzr-video';
     vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
     vid.muted = true; vid.loop = true; vid.playsinline = true; vid.preload = 'none';
-    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.008;z-index:-5;pointer-events:none;display:' + (mode==='video'||mode==='mixed'?'':'none');
-    if (mode === 'video' || mode === 'mixed') { setTimeout(function(){ vid.play().catch(function(){}); }, 500); }
+    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-5;pointer-events:none;opacity:0';
     document.body.prepend(vid);
 
     // 书法字水印
@@ -779,30 +778,39 @@ const GUZHENRENWASH = {
     if (this._bgTimer) { clearInterval(this._bgTimer); this._bgTimer = null; }
     var self = this;
     var lastTab = '';
-    var cfg = this.getCfg();
-    var interval = cfg.interval || 30000;
-    var mode = cfg.mode || 'image';
-
-    // 根据模式初始化视频状态
-    var vids = document.querySelectorAll('video[src*="guzhenren"]');
-    vids.forEach(function(v) {
-      if (mode === 'video' || mode === 'mixed') { v.style.display = ''; v.play().catch(function(){}); }
-      else { v.style.display = 'none'; v.pause(); }
-    });
 
     this._bgTimer = setInterval(function() {
+      var cfg = self.getCfg();
+      if (!cfg || !cfg.mode) cfg = {mode:'image', interval:30000};
+      var mode = cfg.mode || 'image';
+      var interval = parseInt(cfg.interval) || 0;
+
       var active = document.querySelector('.tab-btn.active');
       var bgEl = document.getElementById('gzr-bg-img');
+      var vid = document.getElementById('gzr-video');
       if (!bgEl) return;
 
-      // 视频模式：隐藏图片显示视频
-      if (mode === 'video') {
-        bgEl.style.opacity = '0';
-        return;
+      // 视频控制
+      if (vid) {
+        if (mode === 'video') {
+          vid.style.opacity = '0.04'; vid.style.display = '';
+          vid.play().catch(function(){});
+          bgEl.style.opacity = '0';
+        } else if (mode === 'mixed') {
+          vid.style.opacity = '0.04'; vid.style.display = '';
+          vid.play().catch(function(){});
+          bgEl.style.opacity = '1';
+        } else {
+          vid.style.opacity = '0'; vid.style.display = 'none';
+          vid.pause();
+          bgEl.style.opacity = '1';
+        }
       }
 
-      // 图片/混合模式：正常显示图片
-      bgEl.style.opacity = '1';
+      // 视频模式：只显示视频
+      if (mode === 'video') return;
+
+      // 图片/混合模式
       if (active) {
         var tab = active.getAttribute('data-tab') || '';
         if (tab !== lastTab) {
@@ -817,9 +825,8 @@ const GUZHENRENWASH = {
       }
 
       // 时间循环
-      var interval = parseInt((self.getCfg ? self.getCfg().interval : 0) || 30000);
-      var elapsed = Date.now() - self._lastBgTime;
-      if (interval > 0 && elapsed > interval) {
+      if (interval > 0 && self._lastBgTime) {
+        var elapsed = Date.now() - self._lastBgTime;
         self._lastBgTime = Date.now();
         var current = bgEl.dataset.current || '';
         var cycle = self.BG_CYCLE;
@@ -835,9 +842,6 @@ const GUZHENRENWASH = {
   setBg: function(url) {
     var bgEl = document.getElementById('gzr-bg-img');
     if (!bgEl || bgEl.dataset.current === url) return;
-    // 显示图片背景时隐藏视频
-    var vids = document.querySelectorAll('video[src*="guzhenren"]');
-    vids.forEach(function(v) { v.style.opacity = '0'; v.style.display = 'none'; });
     bgEl.dataset.current = url;
     bgEl.style.backgroundImage = 'url("' + url + '")';
     bgEl.style.opacity = '1';
@@ -870,7 +874,8 @@ const GUZHENRENWASH = {
       '</div>' +
       '<div id="gzr-p-img" style="width:clamp(100px,15vw,200px);height:clamp(160px,24vw,320px);background-image:url(' + portraits[idx].url + ');background-size:contain;background-repeat:no-repeat;background-position:center bottom;transition:opacity 0.4s ease;border-radius:4px;box-shadow:0 4px 30px rgba(0,0,0,0.5)"></div>' +
       '<div style="text-align:center;margin-top:4px;font-size:10px;color:rgba(160,152,136,0.6);font-family:Noto Serif SC,serif;letter-spacing:2px" id="gzr-p-name">' + portraits[idx].name + '</div>' +
-      '<div id="gzr-bg-btn" style="margin-top:6px;padding:3px 8px;background:rgba(0,0,0,0.4);border:1px solid rgba(139,115,85,0.3);color:rgba(160,152,136,0.7);font-size:9px;font-family:Noto Serif SC,serif;cursor:pointer;text-align:center;border-radius:2px;letter-spacing:1px">切换背景</div>';
+      '<div id="gzr-bg-btn" style="margin-top:6px;padding:3px 8px;background:rgba(0,0,0,0.4);border:1px solid rgba(139,115,85,0.3);color:rgba(160,152,136,0.7);font-size:9px;font-family:Noto Serif SC,serif;cursor:pointer;text-align:center;border-radius:2px;letter-spacing:1px">切换背景</div>' +
+      '<div id="gzr-mode-btn" style="margin-top:4px;padding:2px 0;font-size:8px;color:rgba(160,152,136,0.4);text-align:center;cursor:pointer;letter-spacing:1px">模式: ' + (GUZHENRENWASH.getCfg().mode||'image') + '</div>';
     panel.querySelector('#gzr-p-close').addEventListener('click', function(e) {
       e.stopPropagation();
       panel.style.transition = 'opacity 0.3s';
@@ -894,14 +899,7 @@ const GUZHENRENWASH = {
       var bgEl = document.getElementById('gzr-bg-img');
       if (!bgEl) return;
       var current = bgEl.dataset.current || '';
-      var cycle = [
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B82.jpg",
-        "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
-      ];
+      var cycle = ["https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png","https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png","https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B8.jpg","https://ider-order-system.pages.dev/docs/guzhenren/%E6%96%B0%E5%A3%81%E7%BA%B81.jpg","https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png"];
       var next = 0;
       for (var i = 0; i < cycle.length; i++) {
         if (cycle[i] === current) { next = (i + 1) % cycle.length; break; }
@@ -909,6 +907,20 @@ const GUZHENRENWASH = {
       if (typeof GUZHENRENWASH !== 'undefined' && GUZHENRENWASH.setBg) {
         GUZHENRENWASH.setBg(cycle[next]);
       }
+    });
+    // 模式快速切换
+    panel.querySelector('#gzr-mode-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      var cfg = GUZHENRENWASH.getCfg();
+      var modes = ['image','video','mixed'];
+      var labels = ['图片','视频','混合'];
+      var cur = cfg.mode || 'image';
+      var next = (modes.indexOf(cur) + 1) % modes.length;
+      cfg.mode = modes[next];
+      GUZHENRENWASH.saveCfg(cfg);
+      document.getElementById('gzr-mode-btn').textContent = '\u6A21\u5F0F: ' + labels[next];
+      if (GUZHENRENWASH._bgTimer) { clearInterval(GUZHENRENWASH._bgTimer); GUZHENRENWASH._bgTimer = null; }
+      GUZHENRENWASH.startBgSwitcher();
     });
     // 设置按钮
     panel.querySelector('#gzr-p-settings').addEventListener('click', function(e) {
@@ -960,33 +972,37 @@ const GUZHENRENWASH = {
         '</select>' +
       '</div>' +
       '<button id="gzr-s-save" style="width:100%;padding:8px;background:rgba(139,115,85,0.3);border:1px solid rgba(139,115,85,0.4);color:#d4a844;cursor:pointer;font-size:12px;letter-spacing:2px;border-radius:2px;margin-bottom:8px">保存设置</button>' +
-      '<div id="gzr-dl-status" style="font-size:10px;color:#555;text-align:center;margin-bottom:8px;display:none"></div>' +
-      '<button id="gzr-s-download" style="width:100%;padding:6px;background:rgba(42,168,168,0.15);border:1px solid rgba(42,168,168,0.3);color:#2AA8A8;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u2B07 下载所有素材到缓存</button>';
+      '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(139,115,85,0.15)">' +
+        '<div style="color:#A09888;font-size:10px;margin-bottom:6px">自定义背景图（每行一个URL，将加入轮播）</div>' +
+        '<textarea id="gzr-s-custom-bg" style="width:100%;height:40px;padding:4px 6px;background:rgba(20,16,25,0.8);border:1px solid rgba(139,115,85,0.2);color:#d4d4e0;font-size:10px;border-radius:2px;resize:vertical">' + (cfg.customBgs||[]).join('\n') + '</textarea>' +
+      '</div>' +
+      '<div style="margin-top:8px;padding-top:10px;border-top:1px solid rgba(139,115,85,0.15)">' +
+        '<div style="color:#A09888;font-size:10px;margin-bottom:6px">自定义立绘（每行一个URL）</div>' +
+        '<textarea id="gzr-s-custom-portrait" style="width:100%;height:40px;padding:4px 6px;background:rgba(20,16,25,0.8);border:1px solid rgba(139,115,85,0.2);color:#d4d4e0;font-size:10px;border-radius:2px;resize:vertical">' + (cfg.customPortraits||[]).join('\n') + '</textarea>' +
+      '</div>' +
+      '<div id="gzr-dl-status" style="font-size:10px;color:#555;text-align:center;margin-top:8px;display:none"></div>' +
+      '<button id="gzr-s-download" style="width:100%;margin-top:8px;padding:6px;background:rgba(42,168,168,0.15);border:1px solid rgba(42,168,168,0.3);color:#2AA8A8;cursor:pointer;font-size:11px;letter-spacing:1px;border-radius:2px">\u2B07 下载全部素材到本地缓存</button>';
     panel.querySelector('#gzr-s-close').addEventListener('click', function(){ panel.remove(); });
     panel.querySelector('#gzr-s-save').addEventListener('click', function() {
       var newMode = document.getElementById('gzr-s-mode').value;
-      var newInterval = parseInt(document.getElementById('gzr-s-interval').value);
-      GUZHENRENWASH.saveCfg({mode: newMode, interval: newInterval});
+      var newInterval = parseInt(document.getElementById('gzr-s-interval').value) || 0;
+      var customBgs = document.getElementById('gzr-s-custom-bg').value.trim().split('\n').filter(function(s){return s.trim()});
+      var customPortraits = document.getElementById('gzr-s-custom-portrait').value.trim().split('\n').filter(function(s){return s.trim()});
+      GUZHENRENWASH.saveCfg({mode: newMode, interval: newInterval, customBgs: customBgs, customPortraits: customPortraits});
       if (GUZHENRENWASH._bgTimer) { clearInterval(GUZHENRENWASH._bgTimer); GUZHENRENWASH._bgTimer = null; }
       GUZHENRENWASH.startBgSwitcher();
-      // 根据模式显示/隐藏视频
-      var vids = document.querySelectorAll('video[src*="guzhenren"]');
-      vids.forEach(function(v) {
-        if (newMode === 'video' || newMode === 'mixed') { v.style.display = ''; v.play().catch(function(){}); }
-        else { v.style.display = 'none'; v.pause(); }
-      });
       panel.remove();
     });
     // 下载缓存按钮
     panel.querySelector('#gzr-s-download').addEventListener('click', function() {
       var btn = document.getElementById('gzr-s-download');
-      var status = document.getElementById('gzr-dl-status');
+      var st = document.getElementById('gzr-dl-status');
       btn.disabled = true; btn.textContent = '下载中...';
-      status.style.display = 'block'; status.textContent = '准备下载...';
+      st.style.display = 'block'; st.textContent = '0/16 ...';
       GUZHENRENWASH.downloadAssets(function(msg) {
-        status.textContent = msg;
-        if (msg.indexOf('完成') > 0) { btn.textContent = '\u2713 已完成'; }
-        else { btn.disabled = false; btn.textContent = '\u2B07 重试下载'; }
+        st.textContent = msg;
+        if (msg.indexOf('完成') >= 0) btn.textContent = '\u2713 已完成';
+        else { btn.disabled = false; btn.textContent = '\u2B07 重试'; }
       });
     });
     document.body.appendChild(panel);

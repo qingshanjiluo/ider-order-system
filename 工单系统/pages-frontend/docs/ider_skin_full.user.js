@@ -737,6 +737,7 @@ const GUZHENRENWASH = {
     this.active = false;
     document.documentElement.classList.remove(GUZHENREN_CLASS);
     if (this.decorEl) { this.decorEl.remove(); this.decorEl = null; }
+    document.querySelectorAll('video[src*="guzhenren"],#gzr-bg-img,#gzr-portrait').forEach(function(el) { el.remove(); });
     this.stopObserver();
   },
 

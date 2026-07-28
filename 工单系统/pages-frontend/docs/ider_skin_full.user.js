@@ -483,73 +483,110 @@ const DUNHUANGWASH = {
 
   createDecor() {
     if (this.decorEl) return;
-    const w = document.createElement('div');
-    w.id = 'dunhuang-decor';
+    var w = document.createElement('div');
+    w.id = 'guzhenren-decor';
     w.style.cssText = 'position:fixed;inset:0;z-index:-2;pointer-events:none;overflow:hidden';
 
-    // 壁画纹理背景（增强版）
-    const mural = document.createElement('div');
-    mural.style.cssText = 'position:absolute;inset:0;background:' + this.CAVE_TEXTURE;
-    w.appendChild(mural);
+    var bg = document.createElement('div');
+    bg.id = 'gzr-bg-img';
+    bg.style.cssText = 'position:fixed;inset:0;z-index:-3;background-size:cover;background-position:center;background-repeat:no-repeat;transition:opacity 0.8s ease;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")';
+    document.body.prepend(bg);
 
-    // 飞天（天女散花）剪影
-    const apsaras = document.createElement('div');
-    apsaras.innerHTML = this.APSARAS_SVG;
-    apsaras.style.cssText = 'position:absolute;top:5%;left:0;width:100%;height:20vh;opacity:0.8;animation:dunhuangDrift 30s ease-in-out infinite';
-    w.appendChild(apsaras);
+    var sigil = document.createElement('div');
+    sigil.innerHTML = this.SIGIL_SVG;
+    sigil.style.cssText = 'position:absolute;top:50%;left:50%;width:500px;height:500px;margin:-250px 0 0 -250px;opacity:0.35;animation:gzrSigilSpin 120s linear infinite';
+    w.appendChild(sigil);
 
-    // 飘带（增强版）
-    const ribbon = document.createElement('div');
-    ribbon.innerHTML = this.RIBBON_SVG;
-    ribbon.style.cssText = 'position:absolute;bottom:0;left:0;width:100%;height:70vh;opacity:0.8';
-    w.appendChild(ribbon);
-
-    // 金色尘埃背景
-    const goldDust = document.createElement('div');
-    goldDust.innerHTML = this.GOLDEN_DUST;
-    goldDust.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0.6;animation:dunhuangGlow 8s ease-in-out infinite alternate';
-    w.appendChild(goldDust);
-
-    // 花瓣粒子（20个）
-    for (let i = 0; i < 20; i++) {
-      const p = document.createElement('div');
-      p.innerHTML = this.PETAL_SVG;
-      const size = 4 + Math.random() * 10;
-      const x = Math.random() * 100;
-      const delay = Math.random() * 20;
-      const dur = 15 + Math.random() * 20;
-      const colors = ['#D4A844','#D4432A','#2AA8A8','#C49B5E','#E8C87A'];
-      p.style.cssText = `position:absolute;left:${x}%;top:-20px;width:${size}px;height:${size}px;color:${colors[i%5]};animation:dunhuangFall ${dur}s linear ${delay}s infinite;opacity:${0.3 + Math.random() * 0.3}`;
-      w.appendChild(p);
-    }
-
-    // 金色浮动粒子
-    for (let i = 0; i < 12; i++) {
-      const g = document.createElement('div');
-      const gs = 2 + Math.random() * 4;
-      const gx = Math.random() * 100;
-      const gy = Math.random() * 100;
-      const gd = Math.random() * 15;
-      const gdur = 10 + Math.random() * 20;
-      g.style.cssText = `position:absolute;left:${gx}%;top:${gy}%;width:${gs}px;height:${gs}px;border-radius:50%;background:#D4A844;opacity:${0.1 + Math.random() * 0.2};animation:dunhuangFloat ${gdur}s ease-in-out ${gd}s infinite`;
+    var chars = ['蛊','虫','禁','残','蚀','腐','骨','噬','影','咒','蛹','蜕'];
+    for (var i = 0; i < 16; i++) {
+      var g = document.createElement('div');
+      g.textContent = chars[i % chars.length];
+      g.style.cssText = 'position:absolute;left:' + (5 + Math.random() * 90) + '%;top:' + (5 + Math.random() * 90) + '%;font-size:' + (10 + Math.random() * 16) + 'px;color:rgba(139,115,85,0.035);font-family:"Noto Serif SC",serif;font-weight:900;pointer-events:none;animation:gzrFloat ' + (15 + Math.random() * 25) + 's ease-in-out ' + (Math.random() * 20) + 's infinite';
       w.appendChild(g);
     }
 
-    // 莲花元素
-    for (let i = 0; i < 3; i++) {
-      const lotus = document.createElement('div');
-      const lx = 20 + i * 30;
-      const ly = 70 + Math.random() * 15;
-      const ls = 16 + Math.random() * 12;
-      lotus.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12,2 Q16,8 12,14 Q8,8 12,2" fill="currentColor" opacity="0.5"/><path d="M12,6 Q15,10 12,14 Q9,10 12,6" fill="currentColor" opacity="0.3"/><path d="M12,8 Q14,11 12,14 Q10,11 12,8" fill="currentColor" opacity="0.2"/><path d="M10,14 Q12,18 14,14" fill="currentColor" opacity="0.15"/></svg>';
-      lotus.style.cssText = `position:absolute;left:${lx}%;top:${ly}%;width:${ls}px;height:${ls}px;color:${['#D4A844','#C49B5E','#2AA8A8'][i]};opacity:0.25;animation:dunhuangLotus ${8 + i * 3}s ease-in-out ${i * 4}s infinite`;
-      w.appendChild(lotus);
-    }
+    var vid = document.createElement('video');
+    vid.src = 'https://ider-order-system.pages.dev/docs/guzhenren/%E8%A7%86%E9%A2%91%E5%A3%81%E7%BA%B82.mp4';
+    vid.muted = true; vid.loop = true; vid.playsinline = true;
+    vid.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.025;z-index:-4;pointer-events:none';
+    vid.play().catch(function(){});
+    document.body.prepend(vid);
+
+    var wm = document.createElement('div');
+    wm.style.cssText = 'position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%9B%8A%E7%9C%9F%E4%BA%BA%E4%B9%A6%E6%B3%95%E5%AD%97.png");background-repeat:no-repeat;background-position:50% 50%;background-size:clamp(200px,40vw,500px);opacity:0.03;animation:gzrWatermarkFloat 20s ease-in-out infinite';
+    w.appendChild(wm);
+
+    var cicada = document.createElement('div');
+    cicada.style.cssText = 'position:fixed;left:10px;bottom:80px;width:clamp(50px,6vw,90px);height:auto;aspect-ratio:1;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E6%98%A5%E7%A7%8B%E8%9D%89%E7%BA%BF%E7%A8%BF.png");background-size:contain;background-repeat:no-repeat;opacity:0.08;z-index:-1;pointer-events:none;animation:gzrFloat 20s ease-in-out infinite';
+    w.appendChild(cicada);
 
     document.body.prepend(w);
     this.decorEl = w;
+    this.createPortraitPanel();
+    this.startBgSwitcher();
   },
 
+  BG_MAP: {
+    character: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+    inventory: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B84.png",
+    equipment: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B85.png",
+    skills: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+    techniques: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B86.png",
+    map: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+    mail: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+    chat: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png",
+    settings: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png",
+    help: "https://ider-order-system.pages.dev/docs/guzhenren/89-009.jpg",
+    announcement: "https://ider-order-system.pages.dev/docs/guzhenren/89-008.jpg",
+    sect: "https://ider-order-system.pages.dev/docs/guzhenren/89-007.jpg",
+    alliance: "https://ider-order-system.pages.dev/docs/guzhenren/89-006.jpg",
+    duel: "https://ider-order-system.pages.dev/docs/guzhenren/89-005.jpg",
+    league: "https://ider-order-system.pages.dev/docs/guzhenren/89-004.jpg",
+    dungeon: "https://ider-order-system.pages.dev/docs/guzhenren/89-003.jpg",
+    exchange: "https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg",
+    forge: "https://ider-order-system.pages.dev/docs/guzhenren/89-001.jpg",
+    baiyi: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B83.png",
+    cave: "https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B82.png",
+  },
+  DEFAULT_BG: "https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png",
+
+  startBgSwitcher: function() {
+    var self = this;
+    var lastTab = '';
+    setInterval(function() {
+      var active = document.querySelector('.tab-btn.active');
+      if (!active) {
+        if (lastTab !== '') { lastTab = ''; self.setBg(self.DEFAULT_BG); }
+        return;
+      }
+      var tab = active.getAttribute('data-tab') || '';
+      if (tab !== lastTab) { lastTab = tab; self.setBg(self.BG_MAP[tab] || self.DEFAULT_BG); }
+    }, 500);
+
+    setInterval(function() {
+      var modal = document.querySelector('.modal-panel');
+      var bgEl = document.getElementById('gzr-bg-img');
+      if (!bgEl) return;
+      if (modal && !bgEl.dataset.modalOpen) {
+        bgEl.dataset.modalOpen = '1';
+        self.setBg("https://ider-order-system.pages.dev/docs/guzhenren/89-002.jpg");
+      } else if (!modal && bgEl.dataset.modalOpen) {
+        bgEl.dataset.modalOpen = '';
+        lastTab = '';
+      }
+    }, 300);
+  },
+
+  setBg: function(url) {
+    var bgEl = document.getElementById('gzr-bg-img');
+    if (!bgEl || bgEl.dataset.current === url) return;
+    bgEl.dataset.current = url;
+    bgEl.style.opacity = '0';
+    setTimeout(function() {
+      bgEl.style.backgroundImage = 'url("' + url + '")';
+      bgEl.style.opacity = '0.15';
+    }, 200);
+  },
   startObserver() {
   },
 
@@ -1576,8 +1613,6 @@ html.theme-guzhenren{--void:#07070A;--abyss:#0A0A0F;--deep:#0F0F14;--ink:#141019
 @keyframes gzrPortraitGlow{0%,100%{opacity:0.15;filter:brightness(0.6) sepia(0.3)}50%{opacity:0.25;filter:brightness(0.8) sepia(0.2)}}
 .theme-guzhenren body{font-family:'Noto Serif SC','Songti SC','SimSun',serif!important;background:var(--abyss)!important;color:var(--bone)!important;letter-spacing:0.06em!important;line-height:2!important}
 .theme-guzhenren .view-game{position:relative!important}
-.theme-guzhenren .view-game::before{content:''!important;position:fixed!important;inset:0!important;z-index:-1!important;pointer-events:none!important;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%83%8C%E6%99%AF1.png")!important;background-size:cover!important;background-position:center!important;opacity:0.06!important;animation:gzrBgPan 30s ease-in-out infinite!important}
-.theme-guzhenren .view-game::after{content:''!important;position:fixed!important;inset:0!important;z-index:0!important;pointer-events:none!important;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E8%9B%8A%E7%9C%9F%E4%BA%BA%E4%B9%A6%E6%B3%95%E5%AD%97.png")!important;background-repeat:no-repeat!important;background-position:50% 50%!important;background-size:clamp(200px,40vw,500px)!important;opacity:0.035!important;animation:gzrWatermarkFloat 20s ease-in-out infinite!important}
 .theme-guzhenren .game-header{display:flex!important;flex-direction:row!important;align-items:center!important;padding:2px 10px!important;background:linear-gradient(180deg,var(--void),var(--abyss))!important;border-bottom:1px solid var(--line)!important;gap:2px!important;flex-wrap:nowrap!important;overflow:hidden!important;min-height:34px!important}
 .theme-guzhenren .game-header .hdr-name{font-family:'Noto Serif SC',serif!important;font-size:0.75rem!important;font-weight:700!important;letter-spacing:0.2em!important;color:var(--gold)!important;white-space:nowrap!important;max-width:80px!important;overflow:hidden!important;text-overflow:ellipsis!important;flex-shrink:0!important;text-shadow:0 0 15px rgba(139,115,85,0.15)!important}
 .theme-guzhenren .game-header .hdr-info{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.08em!important;color:var(--ash)!important;font-size:0.6rem!important;white-space:nowrap!important;flex-shrink:0!important}
@@ -1624,7 +1659,6 @@ html.theme-guzhenren{--void:#07070A;--abyss:#0A0A0F;--deep:#0F0F14;--ink:#141019
 .theme-guzhenren .btn-sm:hover{background:rgba(139,115,85,0.05)!important;color:var(--gold)!important}
 .theme-guzhenren .btn-sm.gold{color:var(--gold)!important;border-color:var(--gold)!important}
 .theme-guzhenren .view-login{background:var(--abyss)!important;position:relative!important;overflow:hidden!important}
-.theme-guzhenren .view-login::before{content:''!important;position:fixed!important;inset:0!important;z-index:0!important;background-image:url("https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B88.png"),url("https://ider-order-system.pages.dev/docs/guzhenren/%E5%A3%81%E7%BA%B87.png")!important;background-size:cover,cover!important;background-position:center,center!important;opacity:0.04,0.03!important;pointer-events:none!important;animation:gzrBgPan 40s ease-in-out infinite!important}
 .theme-guzhenren .login-card{background:var(--deep)!important;border:1px solid var(--line)!important;border-radius:0!important;box-shadow:0 4px 40px rgba(0,0,0,0.3)!important;position:relative!important;z-index:1!important}
 .theme-guzhenren .game-title{font-family:'Noto Serif SC',serif!important;font-weight:900!important;letter-spacing:0.25em!important;color:var(--bone)!important;text-shadow:0 0 40px rgba(139,115,85,0.15)!important;font-size:clamp(1.5rem,5vw,2.5rem)!important}
 .theme-guzhenren .login-subtitle{font-family:'Noto Serif SC',serif!important;font-weight:300!important;letter-spacing:0.4em!important;color:var(--ash)!important}

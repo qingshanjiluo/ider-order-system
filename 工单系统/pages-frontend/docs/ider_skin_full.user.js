@@ -188,12 +188,22 @@ const INKWASH = {
     btns.forEach(btn => {
       if (btn.querySelector('svg')) return;
       const title = (btn.getAttribute('title') || '').toLowerCase();
-      let svg = null;
-      if (title.includes('退出') || title.includes('logout')) svg = this.ICONS.logout;
-      else if (title.includes('帮助') || title.includes('help')) svg = this.ICONS.scroll;
-      else if (title.includes('主题') || title.includes('theme') || title.includes('皮肤')) svg = this.ICONS.inkstone;
-      if (svg) {
-        btn.innerHTML = svg;
+      let svgStr = null;
+      if (title.includes('退出') || title.includes('logout')) svgStr = this.ICONS.logout;
+      else if (title.includes('帮助') || title.includes('help')) svgStr = this.ICONS.scroll;
+      else if (title.includes('主题') || title.includes('theme') || title.includes('皮肤')) svgStr = this.ICONS.inkstone;
+      if (svgStr) {
+        // 使用 DOMParser 解析 SVG 字符串为真实 DOM 节点，避免 Vue 虚拟 DOM 冲突
+        btn.innerHTML = '';
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(svgStr, 'text/html');
+          const svgNode = doc.body.firstElementChild;
+          if (svgNode) btn.appendChild(svgNode);
+        } catch (e) {
+          // 降级方案：直接 innerHTML
+          btn.innerHTML = svgStr;
+        }
         btn.style.cssText = 'background:none;border:none;cursor:pointer;padding:4px;color:var(--text2);width:28px;height:28px';
       }
     });

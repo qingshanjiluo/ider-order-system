@@ -16,13 +16,13 @@ export async function onRequest(context) {
     if (!user) return json({ error: '未登录' }, 401);
     const [list, userInfo] = await Promise.all([
       env.DB.prepare('SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').bind(user.id).all(),
-      env.DB.prepare('SELECT bonus_points, spirit_stones FROM users WHERE id = ?').bind(user.id).first()
+      env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(user.id).first()
     ]);
     return json({
       ok: true,
       withdrawals: list.results,
       rates: RATES,
-      balance: { bonus_points: userInfo?.bonus_points || 0, spirit_stones: userInfo?.spirit_stones || 0 }
+      balance: { bonus_points: userInfo?.bonus_points || 0 }
     });
   }
 

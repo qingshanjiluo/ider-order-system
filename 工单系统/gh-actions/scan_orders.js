@@ -128,11 +128,12 @@ async function registerAndSetup(workerOrder, orderIdx) {
       const accountId = reportRes.account_id || 0;
 
       // ── 2) 创建角色（金灵根100），角色名冲突时自动加后缀重试 ──
-      let playerName = username.slice(0, 8);
+      let playerName = username.slice(0, 12);
       let createData, characterName, createdResultData, spiritRoots;
-      for (let nameRetry = 0; nameRetry < 10; nameRetry++) {
+      for (let nameRetry = 0; nameRetry < 15; nameRetry++) {
         if (nameRetry > 0) {
-          playerName = username.slice(0, 6) + '_' + nameRetry;
+          var sfx = ['_'+nameRetry, '_'+Math.floor(Math.random()*999), String.fromCharCode(97+nameRetry%26), '_x'+nameRetry];
+          playerName = username.slice(0, 8) + sfx[nameRetry % sfx.length];
           tsLog('[' + username + '] 角色名重试 #' + (nameRetry + 1) + ': ' + playerName);
         }
         try {

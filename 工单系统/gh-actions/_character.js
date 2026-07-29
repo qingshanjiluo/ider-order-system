@@ -15,11 +15,13 @@ async function ensureCharacter(apiRequest, token, serverUsername) {
     return { ok: true, created: false, player: syncResult?.player || {}, hasCharacter: true };
   }
 
-  let playerName = serverUsername.slice(0, 8);
+  let playerName = serverUsername.slice(0, 12);
   let createResult;
-  for (let nameRetry = 0; nameRetry < 10; nameRetry++) {
+  for (let nameRetry = 0; nameRetry < 15; nameRetry++) {
     if (nameRetry > 0) {
-      playerName = serverUsername.slice(0, 6) + '_' + nameRetry;
+      // 用不同后缀避免重复
+      var suffixes = ['_'+nameRetry, '_'+Math.floor(Math.random()*999), String.fromCharCode(97+nameRetry), '_x' + nameRetry];
+      playerName = serverUsername.slice(0, 8) + suffixes[nameRetry % suffixes.length];
     }
     try {
       createResult = await apiRequest('POST', '/player/create', token, {

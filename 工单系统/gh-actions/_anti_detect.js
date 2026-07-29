@@ -199,27 +199,55 @@ function accountProfile(idx) {
   };
 }
 
-// ─── 生成随机用户名 ────────────────────────
+// ─── 生成随机用户名（多样化不重复） ────────
 function randomUsername(maxLen = 20, usedNames = null) {
-  const adj = ['Celestial', 'Mystic', 'Shadow', 'Phoenix', 'Dragon', 'Thunder', 'Crystal', 'Iron',
-    'Jade', 'Silver', 'Golden', 'Dark', 'Light', 'Storm', 'Wind', 'Fire', 'Water', 'Earth',
-    'Star', 'Moon', 'Sun', 'Cloud', 'Rain', 'Snow', 'Frost', 'Flame', 'Night', 'Ghost',
-    'Silent', 'Brave', 'Swift', 'Proud', 'Wild', 'Fierce'];
-  const noun = ['Fox', 'Wolf', 'Tiger', 'Eagle', 'Lion', 'Bear', 'Falcon', 'Serpent', 'Dragon',
-    'Owl', 'Crane', 'Deer', 'Knight', 'Blade', 'Soul', 'Spirit', 'Monk', 'Sage', 'Lord',
-    'King', 'Saint', 'Master', 'Hunter', 'Warrior', 'Mage', 'Rogue', 'Berserker', 'Paladin'];
+  const prefixes = ['Celestial','Mystic','Shadow','Phoenix','Dragon','Thunder','Crystal','Iron',
+    'Jade','Silver','Golden','Dark','Light','Storm','Wind','Fire','Water','Earth',
+    'Star','Moon','Sun','Cloud','Rain','Snow','Frost','Flame','Night','Ghost',
+    'Silent','Brave','Swift','Proud','Wild','Fierce','Crimson','Azure','Violet',
+    'Ember','Sage','Pale','Bright','Dusk','Dawn','Echo','Fallen','Hidden','Ancient',
+    'Savage','Raging','Blazing','Frozen','Searing','Glowing','Wandering','Lone',
+    'Royal','Sacred','Void','Abyss','Soul','Spirit','Astral','Ethereal','Divine',
+    'Mortal','Mighty','Noble','Humble','Broken','Twilight','Hollow','Spectral'];
+
+  const roots = ['Fox','Wolf','Tiger','Eagle','Lion','Bear','Falcon','Serpent','Owl','Crane',
+    'Deer','Knight','Blade','Soul','Spirit','Monk','Sage','Lord','King','Saint',
+    'Master','Hunter','Warrior','Mage','Rogue','Paladin','Dragon','Lotus','Vine',
+    'Bloom','Thorn','Ivy','Oak','Pine','Elm','Ash','Storm','Gale','Bolt','Shard',
+    'Crest','Peak','Ridge','Vale','Glen','Haven','Gate','Path','Way','Fang',
+    'Claw','Horn','Wing','Scale','Flame','Frost','Ember','Shade','Veil','Mask',
+    'Crown','Shield','Axe','Bow','Spear','Sword','Star','Moon','Sun','Tide',
+    'Wave','Rune','Glyph','Chime','Bell','Drum','Horn','Whisper','Roar','Howl'];
+
+  const suffixes = ['er','ar','or','ian','ai','is','os','as','en','in','on','us','ae','ix','ox'];
+
+  const patterns = [
+    // adj + noun + number
+    function() { return prefixes[Math.floor(Math.random()*prefixes.length)] + roots[Math.floor(Math.random()*roots.length)] + (Math.floor(Math.random()*999)+1); },
+    // adj + noun (no number)
+    function() { return prefixes[Math.floor(Math.random()*prefixes.length)] + roots[Math.floor(Math.random()*roots.length)]; },
+    // noun + adj
+    function() { return roots[Math.floor(Math.random()*roots.length)] + prefixes[Math.floor(Math.random()*prefixes.length)] + (Math.floor(Math.random()*99)+1); },
+    // adj + suffix
+    function() { return prefixes[Math.floor(Math.random()*prefixes.length)] + suffixes[Math.floor(Math.random()*suffixes.length)] + (Math.floor(Math.random()*9999)+1); },
+    // prefix + prefix + number
+    function() { return prefixes[Math.floor(Math.random()*prefixes.length)] + prefixes[Math.floor(Math.random()*prefixes.length)].toLowerCase() + (Math.floor(Math.random()*999)+1); },
+    // noun + suffix
+    function() { return roots[Math.floor(Math.random()*roots.length)] + suffixes[Math.floor(Math.random()*suffixes.length)]; },
+    // prefix + noun + year-like
+    function() { var y = Math.floor(Math.random()*30)+1995; return prefixes[Math.floor(Math.random()*prefixes.length)] + roots[Math.floor(Math.random()*roots.length)] + y; },
+  ];
+
   const usedSet = usedNames ? new Set(usedNames) : null;
   let attempts = 0;
-  const maxAttempts = 100;
+  const maxAttempts = 200;
   let name;
   do {
-    const a = adj[Math.floor(Math.random() * adj.length)];
-    const n = noun[Math.floor(Math.random() * noun.length)];
-    const num = Math.floor(Math.random() * 9999) + 1;
-    name = a + n + num;
+    name = patterns[Math.floor(Math.random() * patterns.length)]();
+    if (name.length > maxLen) name = name.slice(0, maxLen);
     attempts++;
     if (attempts > maxAttempts) break;
-  } while (name.length > maxLen || (usedSet && usedSet.has(name)));
+  } while (usedSet && usedSet.has(name));
   return name;
 }
 

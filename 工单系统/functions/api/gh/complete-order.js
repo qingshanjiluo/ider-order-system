@@ -28,11 +28,11 @@ export async function onRequest(context) {
     const farming = getCount(farmingPhase);
     const finished = getCount(finalPhase);
 
-    const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
+    const order = await env.DB.prepare("SELECT user_id, status, quantity FROM orders WHERE id = ?").bind(order_id).first();
     if (!order) return json({ error: '工单不存在' }, 404);
 
-    // 阶段1: 初始交付（所有账号已离开设置阶段）
-    if (settingUp === 0 && total > 0 && farming + finished === total) {
+    // 阶段1: 初始交付（账号数量达标且全部离开设置阶段）
+    if (settingUp === 0 && total >= order.quantity && farming + finished === total) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'"
       ).bind(total, order_id).run();

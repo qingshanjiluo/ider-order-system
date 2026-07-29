@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { section: '概览', items: [
     { id: 'dashboard', label: '控制台', icon: 'diamond', hash: '#/dashboard' },
     { id: 'orders', label: '我的工单', icon: 'diamondSolid', hash: '#/orders' },
+    { id: 'withdrawals', label: '提现', icon: 'diamondOutline', hash: '#/withdrawals' },
     { id: 'accounts', label: '我的账号', icon: 'diamondOutline', hash: '#/accounts' },
   ]},
   { section: '社交', items: [
@@ -40,6 +41,7 @@ export function getAdminItems() {
       { id: 'admin-cs', label: '客服对话', icon: 'star', hash: '#/admin/cs' },
       { id: 'admin-users', label: '用户管理', icon: 'diamondSolid', hash: '#/admin/users' },
       { id: 'admin-orders', label: '工单管理', icon: 'diamondOutline', hash: '#/admin/orders' },
+      { id: 'admin-withdrawals', label: '提现审核', icon: 'star', hash: '#/admin/withdrawals' },
       { id: 'admin-accounts', label: '账号管理', icon: 'star', hash: '#/admin/accounts' },
       { id: 'admin-appeals', label: '申诉管理', icon: 'circle', hash: '#/admin/appeals' },
       { id: 'admin-config', label: '系统配置', icon: 'gear', hash: '#/admin/config' },

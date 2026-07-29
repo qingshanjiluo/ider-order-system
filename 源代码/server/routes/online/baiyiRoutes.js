@@ -300,7 +300,7 @@ function mountBaiyiRoutes({
       const resultItem = getItemById(resultItemId);
       if (!resultItem || Object.keys(resultItem).length <= 0) return res.json({ ok: false, error: '配方产物不存在' });
       const baseTime = (matched ? Math.max(1, intVal((matched || {}).time, 20)) : 20) * 2;
-      const totalTime = Math.max(1, baseTime * batchCount);
+      const totalTime = process.env.ALCHEMY_INSTANT === 'true' ? 1 : Math.max(1, baseTime * batchCount);
       player.alchemy.is_brewing = true;
       player.alchemy.current_recipe = matched ? intVal((matched || {}).id, 0) : 0;
       player.baiyi.pending_job = {

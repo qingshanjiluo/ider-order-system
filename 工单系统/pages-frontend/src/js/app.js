@@ -20,6 +20,7 @@ import { renderContact } from './pages/contact.js';
 import { renderChangelog } from './pages/changelog.js';
 import { renderChat } from './pages/chat.js';
 import { renderOrders } from './pages/orders.js';
+import { renderWithdrawals } from './pages/withdrawals.js';
 import { renderOrderDetail } from './pages/order-detail.js';
 import { renderAccounts } from './pages/accounts.js';
 import { renderAccountDetail } from './pages/account-detail.js';
@@ -46,6 +47,7 @@ import { renderAdminRechargeCodes } from './pages/admin-recharge-codes.js';
 import { renderAdminAiConfig } from './pages/admin-ai-config.js';
 import { renderAdminMarketOrders } from './pages/admin-market-orders.js';
 import { renderAdminMarketPurchases } from './pages/admin-market-purchases.js';
+import { renderAdminWithdrawals } from './pages/admin-withdrawals.js';
 import { renderSkins } from './pages/skins.js';
 import { renderAdminSkins } from './pages/admin-skins.js';
 import { renderCsDialog } from './pages/cs-dialog.js';
@@ -135,7 +137,8 @@ router.register('/changelog', (ctx) => renderFullPage(renderChangelog, ctx));
 
 // 带侧边栏的页面
 router.register('/dashboard', (ctx) => renderLayout('/dashboard', renderDashboard));
-router.register('/orders', (ctx) => renderLayout('/orders', renderOrders, { query: ctx.query }));
+  router.register('/orders', (ctx) => renderLayout('/orders', renderOrders, { query: ctx.query }));
+  router.register('/withdrawals', (ctx) => renderLayout('/withdrawals', renderWithdrawals));
 router.register('/orders/:id', (ctx) => renderLayout('/orders', renderOrderDetail, { params: ctx.params }));
 router.register('/accounts', (ctx) => renderLayout('/accounts', renderAccounts));
 router.register('/accounts/:id', (ctx) => renderLayout('/accounts', renderAccountDetail, { params: ctx.params }));
@@ -168,7 +171,8 @@ router.register('/admin/ai-config', (ctx) => renderLayout('/admin/ai-config', re
 router.register('/admin/ads', (ctx) => renderLayout('/admin/ads', renderAdminAds));
 router.register('/admin/skins', (ctx) => renderLayout('/admin/skins', renderAdminSkins));
 router.register('/admin/market-orders', (ctx) => renderLayout('/admin/market-orders', renderAdminMarketOrders));
-router.register('/admin/market-purchases', (ctx) => renderLayout('/admin/market-purchases', renderAdminMarketPurchases));
+  router.register('/admin/market-purchases', (ctx) => renderLayout('/admin/market-purchases', renderAdminMarketPurchases));
+  router.register('/admin/withdrawals', (ctx) => renderLayout('/admin/withdrawals', renderAdminWithdrawals));
 
 // ── 初始化 ──────────────────────────
 // 尝试从 localStorage 恢复登录状态

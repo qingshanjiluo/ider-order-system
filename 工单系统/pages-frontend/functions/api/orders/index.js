@@ -28,8 +28,12 @@ export async function onRequest(context) {
     }
 
     query += ' ORDER BY o.created_at DESC';
-    const orders = await env.DB.prepare(query).bind(...params).all();
-    return json({ ok: true, orders: orders.results });
+    try {
+      const orders = await env.DB.prepare(query).bind(...params).all();
+      return json({ ok: true, orders: orders.results });
+    } catch (e) {
+      return json({ error: '查询失败: ' + e.message }, 500);
+    }
   }
 
   // ── POST /api/orders — 创建工单 ─────────────────────

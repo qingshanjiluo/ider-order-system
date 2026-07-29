@@ -95,9 +95,10 @@ export async function renderRecharge({ container }) {
           <div class="flex items-center gap-3" style="flex-wrap:wrap;">
             <input type="number" class="form-input" id="direct-spirit-amount" placeholder="输入灵石数量（万）" min="100" style="max-width:200px;">
             <button class="btn btn-primary" id="direct-spirit-btn">提交充值</button>
+            <button class="btn btn-ghost" id="instant-spirit-btn" style="border:1px solid var(--gold);color:var(--gold);">⚡ 即时支付</button>
             <span class="text-sm text-muted" id="spirit-preview">≈ 0 修仙币</span>
           </div>
-          <p class="text-sm text-muted mt-2">灵石直充后联系管理员确认到账</p>
+          <p class="text-sm text-muted mt-2">灵石直充后联系管理员确认到账 ｜ ⚡即时支付自动到账（挂单购买方式）</p>
         </div>
       </div>
 
@@ -168,6 +169,37 @@ export async function renderRecharge({ container }) {
       const amount = parseInt(document.getElementById('direct-spirit-amount').value) * 10000;
       if (!amount || amount < 1000000) return toast.error('灵石充值至少100万');
       submitDirect('spirit_stone', amount);
+    });
+
+    // 即时支付（挂单购买）
+    document.getElementById('instant-spirit-btn')?.addEventListener('click', async () => {
+      const amount = parseInt(document.getElementById('direct-spirit-amount').value) || 100;
+      if (amount < 10) return toast.error('最少充值10万灵石');
+      const btn = document.getElementById('instant-spirit-btn');
+      btn.disabled = true; btn.textContent = '创建挂单中...';
+      try {
+        const res = await api.post('/recharge/instant', { amount_spirit: amount });
+        if (res.ok) {
+          toast.success('挂单已创建！请在游戏交易所搜索并购买');
+          // 显示挂单信息
+          modal.open({
+            title: '⚡ 即时支付',
+            body: `<div style="text-align:center;padding:12px;">
+              <p style="font-size:18px;color:var(--gold);margin-bottom:12px">挂单已创建</p>
+              <p style="margin-bottom:8px">请在游戏内打开「坊市→交易所」</p>
+              <p style="margin-bottom:8px">搜索 <strong style="color:var(--gold)">${res.item_name || '一阶装备'}</strong></p>
+              <p style="margin-bottom:8px">价格: <strong style="color:var(--gold)">${res.price} 灵石</strong></p>
+              <p style="font-size:12px;color:#888">购买后自动充值到账（约1-5分钟）</p>
+              <p style="font-size:12px;color:#888">挂单有效时间: 10分钟</p>
+            </div>`,
+            confirmText: '我知道了',
+          });
+          loadHistory();
+        } else {
+          toast.error(res.error || '创建失败');
+        }
+      } catch (e) { toast.error(e.message); }
+      btn.disabled = false; btn.textContent = '⚡ 即时支付';
     });
 
     // 灵石预计算（单位万）

@@ -38,6 +38,7 @@ export async function onRequest(context) {
 
   // ── POST /api/orders — 创建工单 ─────────────────────
   if (request.method === 'POST') {
+    try {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
 
@@ -248,9 +249,9 @@ export async function onRequest(context) {
       "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_created', ?)"
     ).bind(orderId, '提交工单 #' + orderId + '：' + (ORDER_TYPE_LABEL[order_type] || order_type) + ', ' + accCount + '个账号').run();
 
-    return json({ 
-      ok: true, 
-      message: '工单已提交，等待审核', 
+    return json({
+      ok: true,
+      message: '工单已提交，等待审核',
       order_id: orderId,
       price_info: {
         points,
@@ -261,6 +262,9 @@ export async function onRequest(context) {
         frozen_points: frozenPoints
       }
     });
+    } catch (e) {
+      return json({ error: '创建工单失败: ' + e.message }, 500);
+    }
   }
 
   return json({ error: 'Method not allowed' }, 405);

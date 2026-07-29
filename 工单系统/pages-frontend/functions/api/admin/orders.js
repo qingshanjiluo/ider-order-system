@@ -25,11 +25,14 @@ export async function onRequest(context) {
     }
     query += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
-    const [orders, totalResult] = await Promise.all([
-      env.DB.prepare(query).bind(...params).all(),
-      env.DB.prepare(countQuery).bind(...countParams).first()
-    ]);
-    const total = totalResult?.total || 0;
+    const ordersPromise = params.length > 0
+      ? env.DB.prepare(query).bind(...params).all()
+      : env.DB.prepare(query).all();
+    const countPromise = countParams.length > 0
+      ? env.DB.prepare(countQuery).bind(...countParams).first()
+      : env.DB.prepare(countQuery).first();
+    const [orders, totalResult] = await Promise.all([ordersPromise, countPromise]);
+    const total = (totalResult && typeof totalResult.total === 'number') ? totalResult.total : 0;
     return json({ ok: true, orders: orders.results, total, page, limit });
   }
 

@@ -8,6 +8,10 @@ const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请
 /** 需要创建游戏账号的工单类型 */
 const ACCOUNT_ORDER_TYPES = ['代练', '代打', '托管'];
 
+let _currentPage = 1;
+let _totalPages = 1;
+let _currentStatus = '';
+
 /** 根据支付方式格式化价格显示 */
 function formatAdminPrice(order) {
   const price = order.total_price || order.price || 0;
@@ -56,11 +60,22 @@ export async function renderAdminOrders({ container }) {
     </div>
     <div id="admin-orders-list">
       <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div id="admin-orders-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;">
+      <button class="btn btn-sm btn-ghost" id="page-prev" disabled>‹ 上一页</button>
+      <span class="text-sm text-muted" id="page-info">第 1 页</span>
+      <button class="btn btn-sm btn-ghost" id="page-next" disabled>下一页 ›</button>
     </div>`;
 
-  document.getElementById('admin-order-status').addEventListener('change', (e) => loadOrders(e.target.value));
+  document.getElementById('admin-order-status').addEventListener('change', (e) => { _currentPage = 1; _currentStatus = e.target.value; loadOrders(); });
   document.getElementById('batch-approve-btn').addEventListener('click', batchApprove);
   document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
+  document.getElementById('page-prev').addEventListener('click', () => {
+    if (_currentPage > 1) { _currentPage--; loadOrders(); }
+  });
+  document.getElementById('page-next').addEventListener('click', () => {
+    if (_currentPage < _totalPages) { _currentPage++; loadOrders(); }
+  });
   loadOrders();
 }
 
@@ -100,14 +115,17 @@ function toggleOrder(id) {
   updateBatchBar();
 }
 
-async function loadOrders(status = '') {
+async function loadOrders() {
   const el = document.getElementById('admin-orders-list');
   if (!el) return;
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
 
   try {
-    const res = await api.adminGetOrders(status);
-    const orders = res.orders || res || [];
+    const res = await api.adminGetOrders(_currentStatus, _currentPage);
+    const orders = res.orders || [];
+    const total = res.total || 0;
+    const limit = res.limit || 50;
+    _totalPages = Math.ceil(total / limit) || 1;
 
     if (!orders.length) {
       el.innerHTML = `<div class="empty-state"><p>暂无工单</p></div>`;
@@ -181,6 +199,11 @@ async function loadOrders(status = '') {
       updateBatchBar();
     });
 
+    // 分页控制
+    document.getElementById('page-prev').disabled = _currentPage <= 1;
+    document.getElementById('page-next').disabled = _currentPage >= _totalPages;
+    document.getElementById('page-info').textContent = '第 ' + _currentPage + '/' + _totalPages + ' 页（共' + total + '条）';
+
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }
@@ -227,7 +250,7 @@ async function reissueOrder(orderId) {
       }
       // 刷新列表
       const statusEl = document.getElementById('admin-order-status');
-      loadOrders(statusEl?.value || '');
+      loadOrders();
     } else {
       toast.error(res.error || '补发审查失败');
     }
@@ -243,7 +266,7 @@ async function cleanupExcess(orderId) {
     if (res.ok) {
       toast.success('已清理 ' + res.deleted + ' 个超额账号');
       const statusEl = document.getElementById('admin-order-status');
-      loadOrders(statusEl?.value || '');
+      loadOrders();
     } else {
       toast.error(res.error || '清理失败');
     }
@@ -274,7 +297,7 @@ function showStatusModal(orderId, newStatus) {
         modal.close();
         // 刷新列表
         const statusEl = document.getElementById('admin-order-status');
-        loadOrders(statusEl?.value || '');
+        loadOrders();
       } catch (err) {
         toast.error(err.message);
       }
@@ -311,7 +334,7 @@ function batchApprove() {
         modal.close();
         selectedOrders.clear();
         const statusEl = document.getElementById('admin-order-status');
-        loadOrders(statusEl?.value || '');
+        loadOrders();
       } catch (err) {
         toast.error(err.message || '批量操作失败');
         if (btn) { btn.disabled = false; btn.textContent = '确认通过 (' + ids.length + ')'; }

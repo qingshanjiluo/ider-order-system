@@ -35,6 +35,7 @@ function formatAdminPrice(order) {
 const STATUS_MAP = {
   pending: { label: '待审批', class: 'badge-pending' },
   approved: { label: '进行中', class: 'badge-approved' },
+  processing: { label: '挂机中', class: 'badge-approved' },
   completed: { label: '已完成', class: 'badge-completed' },
   rejected: { label: '已拒绝', class: 'badge-rejected' },
   cancelled: { label: '已取消', class: 'badge-pending' },

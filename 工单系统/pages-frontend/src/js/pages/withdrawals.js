@@ -66,3 +66,24 @@ async function loadData() {
     document.getElementById('wd-history').innerHTML = '<div class="empty-state"><p>加载失败</p></div>';
   }
 }
+
+async function submitWithdrawal() {
+  var btn = document.getElementById('wd-submit');
+  btn.disabled = true; btn.textContent = '提交中...';
+  try {
+    var res = await api.post('/withdrawals', {
+      cost_type: document.getElementById('wd-type').value,
+      account_name: document.getElementById('wd-account').value,
+      account_info: document.getElementById('wd-info').value,
+    });
+    if (res.ok) {
+      toast.success('提现申请已提交，等待审核');
+      document.getElementById('wd-account').value = '';
+      document.getElementById('wd-info').value = '';
+      loadData();
+    } else {
+      toast.error(res.error || '提交失败');
+    }
+  } catch(e) { toast.error(e.message); }
+  btn.disabled = false; btn.textContent = '提交提现申请';
+}

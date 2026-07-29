@@ -26,7 +26,12 @@ export async function renderWithdrawals({ container }) {
     </div>`;
 
   await loadData();
-  document.getElementById('wd-type').addEventListener('change', updatePreview);
+  document.getElementById('wd-type').addEventListener('change', function() {
+    var type = this.value;
+    var rate = type === 'coin' ? 1500 : 10000;
+    var unit = type === 'coin' ? '修仙币' : '万灵石';
+    document.getElementById('wd-balance').textContent = '每 1 元 = ' + rate + ' ' + unit;
+  });
   document.getElementById('wd-submit').addEventListener('click', submitWithdrawal);
 }
 

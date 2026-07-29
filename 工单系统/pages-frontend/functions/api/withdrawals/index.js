@@ -14,10 +14,16 @@ export async function onRequest(context) {
   if (request.method === 'GET') {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
-    const list = await env.DB.prepare(
-      'SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 50'
-    ).bind(user.id).all();
-    return json({ ok: true, withdrawals: list.results, rates: RATES });
+    const [list, userInfo] = await Promise.all([
+      env.DB.prepare('SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').bind(user.id).all(),
+      env.DB.prepare('SELECT bonus_points, spirit_stones FROM users WHERE id = ?').bind(user.id).first()
+    ]);
+    return json({
+      ok: true,
+      withdrawals: list.results,
+      rates: RATES,
+      balance: { bonus_points: userInfo?.bonus_points || 0, spirit_stones: userInfo?.spirit_stones || 0 }
+    });
   }
 
   // ── POST /api/withdrawals — 创建提现 ──

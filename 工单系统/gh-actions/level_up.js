@@ -314,10 +314,11 @@ async function main() {
 
     const tasks = batchAccounts.map((acc, offset) => {
       const globalIdx = start + offset;
+      const orderId = acc && acc.order_id;
       const delay = offset * (2000 + Math.floor(Math.random() * 2000));
       return sleep(delay).then(() => {
         console.log('──── [' + (globalIdx + 1) + '/' + total + '] ' + (acc.server_username || acc.username) + ' ────');
-        return levelUpAccount(acc, globalIdx);
+        return levelUpAccount(acc, globalIdx).then(function(r) { r._orderId = orderId; return r; });
       });
     });
 
@@ -331,7 +332,7 @@ async function main() {
           if (res.completed) completed++;
         }
         if (!res.ok) failed++;
-        processedOrders.add(acc && acc.order_id);
+        if (res && res._orderId) processedOrders.add(res._orderId);
       } else {
         failed++;
       }

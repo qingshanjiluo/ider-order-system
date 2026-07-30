@@ -222,19 +222,17 @@ async function loadMine(el) {
                 ${active ? '<span class="badge badge-approved">使用中</span>' : ''}
               </div>
               <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:var(--space-3);">获取于 ${new Date(o.created_at).toLocaleDateString('zh-CN')}</p>
-              ${!active ? `<button class="btn btn-primary btn-sm" data-use-owned="${o.id}">使用</button>` : ''}
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${!active ? '<button class="btn btn-primary btn-sm" data-use-owned="' + o.id + '">使用</button>' : ''}
+                <button class="btn btn-ghost btn-sm" data-apply-css="' + o.key + '">应用于工单系统</button>
+              </div>
             </div>`;
         }).join('')}
       </div>`;
 
-    el.querySelectorAll('[data-use-owned]').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        try {
-          const res = await api.useSkin(parseInt(btn.dataset.useOwned));
-          toast.success(res.message);
-          loadMine(el);
-          loadShop(document.querySelector('#skin-shop'), el.closest('#app-content'));
-        } catch (err) { toast.error(err.message); }
+    el.querySelectorAll('[data-apply-css]').forEach(btn => {
+      btn.addEventListener('click', function() {
+        applySkinToSite(this.dataset.applyCss);
       });
     });
   } catch (err) {
@@ -322,6 +320,40 @@ function showPurchaseSuccessModal(skin, message) {
     <p style="font-size:var(--text-xs);color:var(--text-tertiary);text-align:center;">详细教程请点击「教程」按钮查看</p>
   `.trim(), '知道了');
 }
+
+function applySkinToSite(key) {
+  if (!key) return toast.error('无效皮肤');
+  // 清除之前应用的皮肤
+  var existing = document.getElementById('ider-skin-css');
+  if (existing) existing.remove();
+  // 获取CSS并应用
+  fetch('/api/skins/css/' + key + '?v=' + Date.now())
+    .then(function(r) { return r.text(); })
+    .then(function(css) {
+      var style = document.createElement('style');
+      style.id = 'ider-skin-css';
+      style.textContent = css;
+      document.head.appendChild(style);
+      localStorage.setItem('ider_active_skin', key);
+      toast.success('皮肤已应用于工单系统');
+    })
+    .catch(function() { toast.error('皮肤应用失败'); });
+}
+
+// 页面加载时恢复之前应用的皮肤
+(function() {
+  var saved = localStorage.getItem('ider_active_skin');
+  if (saved) {
+    fetch('/api/skins/css/' + saved)
+      .then(function(r) { return r.text(); })
+      .then(function(css) {
+        var style = document.createElement('style');
+        style.id = 'ider-skin-css';
+        style.textContent = css;
+        document.head.appendChild(style);
+      }).catch(function() {});
+  }
+})();
 
 function showModal(title, bodyHtml, confirmText) {
   const m = document.createElement('div');

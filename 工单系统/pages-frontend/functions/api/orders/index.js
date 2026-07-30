@@ -13,6 +13,7 @@ export async function onRequest(context) {
 
   // ── GET /api/orders — 用户工单列表 ──────────────────
   if (request.method === 'GET') {
+    try {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
 
@@ -28,11 +29,10 @@ export async function onRequest(context) {
     }
 
     query += ' ORDER BY o.created_at DESC';
-    try {
-      const orders = await env.DB.prepare(query).bind(...params).all();
+    const orders = await env.DB.prepare(query).bind(...params).all();
       return json({ ok: true, orders: orders.results });
     } catch (e) {
-      return json({ error: '查询失败: ' + e.message }, 500);
+      return json({ error: '获取工单失败: ' + e.message }, 500);
     }
   }
 
@@ -263,7 +263,8 @@ export async function onRequest(context) {
       }
     });
     } catch (e) {
-      return json({ error: '创建工单失败: ' + e.message }, 500);
+      console.error('[orders POST]', e.message, e.stack);
+      return json({ error: '创建工单失败: ' + e.message, detail: e.stack?.split('\n').slice(0,3).join('; ') }, 500);
     }
   }
 

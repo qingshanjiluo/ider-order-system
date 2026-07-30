@@ -61,9 +61,12 @@ class ApiClient {
   }
 
   // ── Orders ────────────────────────────
-  getOrders(status) {
-    const q = status ? `?status=${status}` : '';
-    return this.get(`/orders${q}`);
+  getOrders(status, page) {
+    const params = [];
+    if (status) params.push('status=' + encodeURIComponent(status));
+    if (page) params.push('page=' + page);
+    const q = params.length ? '?' + params.join('&') : '';
+    return this.get('/orders' + q);
   }
 
   getOrder(id) { return this.get(`/orders/${id}`); }

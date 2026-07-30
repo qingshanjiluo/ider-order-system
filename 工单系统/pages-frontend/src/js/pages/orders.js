@@ -23,10 +23,6 @@ const STATUS_MAP = {
   cancelled: { label: '宸插彇娑?, class: 'badge-pending' },
 };
 
-let _currentPage = 1;
-let _totalPages = 1;
-let _currentStatus = '';
-
 const PAYMENT_METHODS = {
   wechat: { label: '鐜伴噾锛堝井淇℃敮浠橈級', unit: '鍏?, icon: '楼' },
   coin: { label: '淇粰甯?, unit: '淇粰甯?, icon: 'B' },
@@ -56,17 +52,10 @@ export async function renderOrders({ container, query }) {
     </div>
     <div id="orders-list">
       <div class="loading"><div class="spinner"></div></div>
-    </div>
-    <div id="orders-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;">
-      <button class="btn btn-sm btn-ghost" id="orders-prev" disabled>‹ 上一页</button>
-      <span class="text-sm text-muted" id="orders-info">第 1 页</span>
-      <button class="btn btn-sm btn-ghost" id="orders-next" disabled>下一页 ›</button>
     </div>`;
 
   document.getElementById('new-order-btn').addEventListener('click', showNewOrderModal);
-  document.getElementById('status-filter').addEventListener('change', (e) => { _currentPage = 1; _currentStatus = e.target.value; loadOrders(); });
-  document.getElementById('orders-prev').addEventListener('click', () => { if (_currentPage > 1) { _currentPage--; loadOrders(); } });
-  document.getElementById('orders-next').addEventListener('click', () => { if (_currentPage < _totalPages) { _currentPage++; loadOrders(); } });
+  document.getElementById('status-filter').addEventListener('change', (e) => loadOrders(e.target.value));
 
   loadOrders();
 
@@ -75,7 +64,7 @@ export async function renderOrders({ container, query }) {
   }
 }
 
-async function loadOrders() {
+async function loadOrders(status = '') {
   const el = document.getElementById('orders-list');
   if (!el) return;
   el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;

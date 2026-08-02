@@ -132,15 +132,6 @@ async function loadOrders() {
   }
 }
 
-function formatPrice(order) {
-  const method = PAYMENT_METHODS[order.payment_method];
-  if (!method) return `¥${(order.price || 0).toFixed(2)}`;
-  if (order.payment_method === 'wechat') return `¥${(order.price || 0).toFixed(2)}`;
-  if (order.payment_method === 'coin') return `${order.price || 0} 修仙币`;
-  if (order.payment_method === 'spirit_stone') return `${order.price || 0} 万灵石`;
-  return `¥${(order.price || 0).toFixed(2)}`;
-}
-
 async function showNewOrderModal() {
   // 获取用户信息（余额）
   let userBalance = 0;

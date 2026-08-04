@@ -54,6 +54,20 @@ export async function onRequest(context) {
   if (totalRoots > 100) return json({ error: '灵根总和不能超过100' }, 400);
 
   try {
+    // 已创建账号数校验：不得超过订购数量（防止超额交付）
+    const countRow = await env.DB.prepare(
+      "SELECT COUNT(*) as cnt FROM game_accounts WHERE order_id = ?"
+    ).bind(orderId).first();
+    const createdCount = countRow ? countRow.cnt : 0;
+    if (createdCount >= order.quantity) {
+      await logActivity(env, orderId, user.id, 'account_overflow',
+        `账号超额创建被拦截: 已创建 ${createdCount}/${order.quantity}（订购 ${order.quantity} 个）`);
+      return json({
+        ok: false,
+        error: `该工单已创建 ${createdCount}/${order.quantity} 个账号，已达到订购数量，禁止继续创建`,
+      }, 400);
+    }
+
     // 插入游戏账号记录
     const result = await env.DB.prepare(
       `INSERT INTO game_accounts (order_id, username, password, character_name, spirit_roots, status, setup_status, operator_id, operator_name, created_at)

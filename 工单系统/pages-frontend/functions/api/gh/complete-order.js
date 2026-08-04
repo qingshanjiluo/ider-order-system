@@ -43,8 +43,14 @@ export async function onRequest(context) {
       return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total });
     }
 
-    // 阶段2: 最终完成（所有账号已120级或失败）
-    if (settingUp === 0 && farming === 0 && finished === total && total > 0) {
+    // 阶段2: 最终完成（所有账号已120级或失败，且已创建账号数达到订购数）
+    const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
+    const quantityMet = orderQty && total >= orderQty.quantity;
+    if (!quantityMet && orderQty) {
+      await logActivity(env, order_id, order.user_id, 'processing',
+        `账号未达标: 已创建 ${total}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
+    }
+    if (settingUp === 0 && farming === 0 && finished === total && total > 0 && quantityMet) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
       ).bind(order_id).run();
@@ -59,7 +65,7 @@ export async function onRequest(context) {
     return json({
       ok: true,
       message: '仍有账号未完成',
-      detail: { settingUp, farming, finished, total },
+      detail: { settingUp, farming, finished, total, quantity: orderQty ? orderQty.quantity : null },
     });
   }
 

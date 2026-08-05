@@ -15,18 +15,23 @@ export async function onRequest(context) {
 
     // 统计各状态账号数
     const stats = await env.DB.prepare(
-      "SELECT status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status"
+      "SELECT status, setup_status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status, setup_status"
     ).bind(order_id).all();
     const rows = stats.results || [];
     const total = rows.reduce((s, r) => s + r.cnt, 0);
     const getCount = (statuses) => rows.filter(r => statuses.includes(r.status)).reduce((s, r) => s + r.cnt, 0);
     const setupPhase = ['pending', 'registering', 'created'];
     const farmingPhase = ['farming', 'active'];
-    const finalPhase = ['completed', 'failed'];
+    const finalPhase = ['completed', 'failed', 'error'];
 
     const settingUp = getCount(setupPhase);
     const farming = getCount(farmingPhase);
     const finished = getCount(finalPhase);
+    // 有效已交付账号：挂机/满级且配置完成
+    const VALID_SETUP = ['farming', 'active', 'completed'];
+    const delivered = rows
+      .filter(r => ['farming', 'active', 'completed'].includes(r.status) && VALID_SETUP.includes(r.setup_status))
+      .reduce((s, r) => s + r.cnt, 0);
 
     const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
     if (!order) return json({ error: '工单不存在' }, 404);
@@ -40,15 +45,15 @@ export async function onRequest(context) {
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已交付', '工单 #' || ? || ' 账号已全部创建并配置完成，开始自动挂机', 'order')"
       ).bind(order.user_id, order_id).run();
       await logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段');
-      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total });
+      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, delivered });
     }
 
-    // 阶段2: 最终完成（所有账号已120级或失败，且已创建账号数达到订购数）
+    // 阶段2: 最终完成（所有账号已120级或失败/错误，且已创建账号数达到订购数）
     const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
-    const quantityMet = orderQty && total >= orderQty.quantity;
+    const quantityMet = orderQty && delivered >= orderQty.quantity;
     if (!quantityMet && orderQty) {
       await logActivity(env, order_id, order.user_id, 'processing',
-        `账号未达标: 已创建 ${total}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
+        `账号未达标: 有效交付 ${delivered}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
     }
     if (settingUp === 0 && farming === 0 && finished === total && total > 0 && quantityMet) {
       await env.DB.prepare(
@@ -65,7 +70,7 @@ export async function onRequest(context) {
     return json({
       ok: true,
       message: '仍有账号未完成',
-      detail: { settingUp, farming, finished, total, quantity: orderQty ? orderQty.quantity : null },
+      detail: { settingUp, farming, finished, total, delivered, quantity: orderQty ? orderQty.quantity : null },
     });
   }
 

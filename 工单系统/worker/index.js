@@ -1474,13 +1474,22 @@ async function handleRoute(method, path, request, env, url) {
     const order_id = url.searchParams.get('order_id');
     if (!order_id) return json({ error: '缺少 order_id' }, 400);
     const stats = await env.DB.prepare(
-      "SELECT status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status"
+      "SELECT status, setup_status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status, setup_status"
     ).bind(order_id).all();
     const rows = stats.results || [];
     const total = rows.reduce((s, r) => s + r.cnt, 0);
     const byStatus = {};
-    for (const r of rows) byStatus[r.status] = r.cnt;
-    return json({ ok: true, order_id: parseInt(order_id), total, by_status: byStatus });
+    const bySetup = {};
+    const VALID_SETUP = ['farming', 'active', 'completed'];
+    let valid = 0;
+    for (const r of rows) {
+      byStatus[r.status] = (byStatus[r.status] || 0) + r.cnt;
+      bySetup[r.setup_status || ''] = (bySetup[r.setup_status || ''] || 0) + r.cnt;
+      if (['farming', 'active', 'completed'].includes(r.status) && VALID_SETUP.includes(r.setup_status)) {
+        valid += r.cnt;
+      }
+    }
+    return json({ ok: true, order_id: parseInt(order_id), total, valid, by_status: byStatus, by_setup: bySetup });
   }
 
   // ── GH: All Accounts from Unfinished Orders ──────────
@@ -1634,22 +1643,28 @@ async function handleRoute(method, path, request, env, url) {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const { order_id } = body;
     const stats = await env.DB.prepare(
-      "SELECT status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status"
+      "SELECT status, setup_status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status, setup_status"
     ).bind(order_id).all();
     const rows = stats.results || [];
     const total = rows.reduce((s, r) => s + r.cnt, 0);
     const getCount = (statuses) => rows.filter(r => statuses.includes(r.status)).reduce((s, r) => s + r.cnt, 0);
     const setupPhase = ['pending', 'registering', 'created'];
     const farmingPhase = ['farming', 'active'];
-    const finalPhase = ['completed'];
+    const finalPhase = ['completed', 'failed', 'error'];
 
     const settingUp = getCount(setupPhase);
     const farming = getCount(farmingPhase);
     const finished = getCount(finalPhase);
-    const failed = getCount(['failed']);
+    const failed = getCount(['failed', 'error']);
 
     const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
     if (!order) return json({ error: '工单不存在' }, 404);
+
+    // 有效已交付账号：挂机/满级且配置完成
+    const VALID_SETUP = ['farming', 'active', 'completed'];
+    const delivered = rows
+      .filter(r => ['farming', 'active', 'completed'].includes(r.status) && VALID_SETUP.includes(r.setup_status))
+      .reduce((s, r) => s + r.cnt, 0);
 
     // 阶段1: 初始交付 — 全部离开设置阶段，仍有账号在挂机
     if (settingUp === 0 && farming > 0) {
@@ -1660,15 +1675,15 @@ async function handleRoute(method, path, request, env, url) {
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已交付', '工单 #' || ? || ' 账号已全部创建并配置完成，开始自动挂机', 'order')"
       ).bind(order.user_id, order_id).run();
       await logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段');
-      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, failed });
+      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, failed, delivered });
     }
 
-    // 阶段2: 最终完成 — 无挂中账号，全部已完成或失败，且已创建数达到订购数
+    // 阶段2: 最终完成 — 无挂中账号，全部已完成/失败/错误，且有效交付数达到订购数
     const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
-    const quantityMet = orderQty && total >= orderQty.quantity;
+    const quantityMet = orderQty && delivered >= orderQty.quantity;
     if (!quantityMet && orderQty) {
       await logActivity(env, order_id, order.user_id, 'processing',
-        `账号未达标: 已创建 ${total}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
+        `账号未达标: 有效交付 ${delivered}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
     }
     if (settingUp === 0 && farming === 0 && finished + failed === total && total > 0 && quantityMet) {
       await env.DB.prepare(

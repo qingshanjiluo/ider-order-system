@@ -695,7 +695,8 @@ async function dispatchOrder(order, orderIdx) {
       let existingAccounts = 0;
       try {
         const countRes = await workerApi('/api/gh/account-count?order_id=' + order.id);
-        existingAccounts = countRes.total || 0;
+        // 使用 valid（有效已交付账号数），避免把"角色未创建/失败"的账号误算为已交付
+        existingAccounts = (countRes.valid != null ? countRes.valid : countRes.total) || 0;
       } catch (e) {
         tsLog('⚠️ 查询账号数量失败，使用 order.total_accounts_created: ' + e.message);
         existingAccounts = order.total_accounts_created || 0;

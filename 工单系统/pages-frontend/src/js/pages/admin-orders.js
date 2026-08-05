@@ -166,13 +166,16 @@ async function loadOrders() {
       <div class="table-wrap desktop-table">
         <table>
           <thead>
-            <tr><th style="width:32px;"><input type="checkbox" id="select-all-header" style="cursor:pointer;"></th><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>数量</th><th>已创建</th><th>创建时间</th><th>操作</th></tr>
+            <tr><th style="width:32px;"><input type="checkbox" id="select-all-header" style="cursor:pointer;"></th><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>订购数</th><th>已创建</th><th>差额</th><th>创建时间</th><th>操作</th></tr>
           </thead>
           <tbody>
             ${orders.map(o => {
               const st = STATUS_MAP[o.status] || { label: o.status, class: '' };
               const adminBtns = getActionButtons(o);
               const canSelect = o.status === 'pending';
+              const qty = o.quantity || 0;
+              const created = o.delivered_count ?? o.account_count ?? 0;
+              const diff = qty - created;
               return `
                 <tr>
                   <td>${canSelect ? '<input type="checkbox" class="order-checkbox" value="' + o.id + '" style="cursor:pointer;">' : ''}</td>
@@ -181,8 +184,9 @@ async function loadOrders() {
                   <td>${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</td>
                   <td><span class="badge ${st.class}">${st.label}</span></td>
                   <td class="font-semibold">${formatAdminPrice(o)}</td>
-                  <td>${o.account_count || o.quantity || 0}</td>
-                  <td>${o.total_accounts_created || 0}</td>
+                  <td>${qty}</td>
+                  <td>${created}</td>
+                  <td>${diff > 0 ? `<span style="color:var(--accent-red);font-weight:600;">缺 ${diff}</span>` : diff < 0 ? `<span style="color:var(--accent-amber);font-weight:600;">多 ${-diff}</span>` : '<span class="text-muted">-</span>'}</td>
                   <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
                   <td>
             <div class="flex gap-1" style="flex-wrap:wrap;">
@@ -202,6 +206,10 @@ async function loadOrders() {
           const st = STATUS_MAP[o.status] || { label: o.status, class: '' };
           const adminBtns = getActionButtons(o);
           const canSelect = o.status === 'pending';
+          const qty = o.quantity || 0;
+          const created = o.delivered_count ?? o.account_count ?? 0;
+          const diff = qty - created;
+          const diffHtml = diff > 0 ? `<span style="color:var(--accent-red);font-weight:600;">缺 ${diff}</span>` : diff < 0 ? `<span style="color:var(--accent-amber);font-weight:600;">多 ${-diff}</span>` : '<span class="text-muted">-</span>';
           return `
             <div class="order-card" data-order-id="${o.id}">
               <div class="order-card-head">
@@ -216,7 +224,8 @@ async function loadOrders() {
                   <div class="oc-item"><span class="oc-label">用户</span><span class="oc-value">${o.user_name || o.username || o.user_id || '-'}</span></div>
                   <div class="oc-item"><span class="oc-label">类型</span><span class="oc-value">${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</span></div>
                   <div class="oc-item"><span class="oc-label">金额</span><span class="oc-value">${formatAdminPrice(o)}</span></div>
-                  <div class="oc-item"><span class="oc-label">数量</span><span class="oc-value">${o.account_count || o.quantity || 0}（已创建 ${o.total_accounts_created || 0}）</span></div>
+                  <div class="oc-item"><span class="oc-label">订购/已创建</span><span class="oc-value">${qty} / ${created}</span></div>
+                  <div class="oc-item"><span class="oc-label">差额</span><span class="oc-value">${diffHtml}</span></div>
                   <div class="oc-item"><span class="oc-label">创建</span><span class="oc-value">${new Date(o.created_at).toLocaleDateString('zh-CN')}</span></div>
                 </div>
               </div>
@@ -297,33 +306,34 @@ function getActionButtons(order) {
 }
 
 function needsReissue(order) {
-  // 补发审查：判断是否少于应创建的数量（以实际账号数为准）
+  // 补发审查：判断是否少于应创建的数量（以实际有效交付账号数为准）
   if (!ACCOUNT_ORDER_TYPES.includes(order.order_type)) return false;
   const qty = order.quantity || 0;
-  const created = order.account_count ?? order.total_accounts_created ?? 0;
+  const created = order.delivered_count ?? order.account_count ?? order.total_accounts_created ?? 0;
   return qty > 0 && created < qty;
 }
 
 function hasExcess(order) {
   const qty = order.quantity || 0;
-  const created = order.account_count ?? order.total_accounts_created ?? 0;
+  const created = order.delivered_count ?? order.account_count ?? order.total_accounts_created ?? 0;
   return qty > 0 && created > qty;
 }
 
 async function reissueOrder(orderId) {
-  if (!confirm(`确定对工单 #${orderId} 执行补发审查？将重置所有失败账号并重新处理。`)) return;
+  if (!confirm(`确定对工单 #${orderId} 执行补发审查？将重置角色未创建/失败/名字重复的账号并重新处理，同时补齐数量不足的账号。`)) return;
   try {
     const btn = document.querySelector(`[data-action="reissue-order"][data-id="${orderId}"]`);
     if (btn) { btn.disabled = true; btn.textContent = '审查中...'; }
     const res = await api.adminReissueOrder(orderId);
     if (res.ok) {
-      if (res.reset_count > 0) {
-        toast.success('已重置 ' + res.reset_count + ' 个失败账号，下次扫描将重新处理');
+      const msgs = [];
+      if (res.reset_count > 0) msgs.push('重置 ' + res.reset_count + ' 个异常账号（角色未创建/失败/名字重复）');
+      if (res.shortfall > 0) msgs.push('缺 ' + res.shortfall + ' 个账号，已恢复补发');
+      if (msgs.length) {
+        toast.success(msgs.join('，'));
       } else {
-        toast.info('没有需要补发的失败账号');
+        toast.info('账号数量已达标，无需补发');
       }
-      // 刷新列表
-      const statusEl = document.getElementById('admin-order-status');
       loadOrders();
     } else {
       toast.error(res.error || '补发审查失败');

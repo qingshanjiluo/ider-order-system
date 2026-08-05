@@ -17,6 +17,9 @@ const SKIN_PREVIEWS = {
   dunhuang: 'linear-gradient(135deg,#F0E6D3,#D4A844)',
   taiji: 'linear-gradient(135deg,#F8F8F8,#0A0A0A)',
   guzhenren: 'linear-gradient(135deg,#07070A,#5C4033)',
+  golden: 'linear-gradient(135deg,#2A1E0E,#E8B84B)',
+  glass: 'linear-gradient(135deg,#12141c,#3a3f5c)',
+  rune: 'linear-gradient(135deg,#0A0A12,#6366F1)',
 };
 
 export async function renderSkins({ container }) {

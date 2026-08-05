@@ -103,11 +103,6 @@ export async function onRequest(context) {
     await env.DB.prepare(
       "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已通过', '工单 #' || ? || ' 已审核通过，正在处理中', 'order')"
     ).bind(order.user_id, orderId).run();
-
-    // 写入账号操作日志
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_approved', ?)"
-    ).bind(orderId, '工单 #' + orderId + ' 审核通过，等待执行').run();
   }
 
   // ── rejected: 拒绝 ─────────────────────────────────

@@ -49,20 +49,11 @@ export async function onRequest(context) {
   // 6. 若存在差额（账号不足），标记为待补齐，便于管理员继续创建
   if (shortfall > 0) {
     await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'reissue_shortfall', ?)"
-    ).bind(orderId, '补发审查：已创建 ' + createdCount + '/' + quantity + ' 个账号，缺 ' + shortfall + ' 个待补齐').run();
-    await env.DB.prepare(
       "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '补发审查待补齐', '工单 #' || ? || ' 账号不足：需 ' || ? || ' 个，已创建 ' || ? || ' 个，待补齐 ' || ? || ' 个', 'order')"
     ).bind(order.user_id, orderId, quantity, createdCount, shortfall).run();
   }
 
   // 7. 记录日志
-  if (resetCount > 0) {
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'reissue', ?)"
-    ).bind(orderId, '管理员触发补发审查，重置 ' + resetCount + ' 个失败账号').run();
-  }
-
   const notes = [];
   if (resetCount > 0) notes.push('已重置 ' + resetCount + ' 个失败账号，下次扫描将重新处理');
   if (shortfall > 0) notes.push('已创建 ' + createdCount + '/' + quantity + '，缺 ' + shortfall + ' 个待补齐');

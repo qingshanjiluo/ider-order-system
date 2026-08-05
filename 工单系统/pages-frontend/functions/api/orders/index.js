@@ -258,10 +258,6 @@ export async function onRequest(context) {
     const paymentLabel = payment_method === 'coin' ? '修仙币' : payment_method === 'wechat' ? '现金' : '灵石';
     await logActivity(env, orderId, user.id, 'created', 
       `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分`);
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_created', ?)"
-    ).bind(orderId, '提交工单 #' + orderId + '：' + (ORDER_TYPE_LABEL[order_type] || order_type) + ', ' + accCount + '个账号').run();
-
     return json({
       ok: true,
       message: '工单已提交，等待审核',

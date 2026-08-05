@@ -589,9 +589,6 @@ async function handleRoute(method, path, request, env, url) {
     const paymentLabel = payment_method === 'coin' ? '修仙币' : payment_method === 'wechat' ? '现金' : '灵石';
     await logActivity(env, orderId, user.id, 'created',
       `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分`);
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_created', ?)"
-    ).bind(orderId, `提交工单 #${orderId}：${order_type}, ${accCount}个账号`).run();
 
     return json({
       ok: true,
@@ -872,9 +869,6 @@ async function handleRoute(method, path, request, env, url) {
       await env.DB.prepare(
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已通过', '工单 #' || ? || ' 已审核通过，正在处理中', 'order')"
       ).bind(order.user_id, orderId).run();
-      await env.DB.prepare(
-        "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_approved', ?)"
-      ).bind(orderId, '工单 #' + orderId + ' 审核通过，等待执行').run();
     } else if (status === 'rejected') {
       // 修仙币支付：退还冻结的积分
       if (order.payment_method === 'coin' && order.frozen_points > 0) {
@@ -1527,9 +1521,6 @@ async function handleRoute(method, path, request, env, url) {
     await env.DB.prepare(
       "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), status = CASE WHEN status = 'pending' THEN 'processing' ELSE status END, updated_at = datetime('now') WHERE id = ?"
     ).bind(game_account_name || '', order_id).run().catch(() => {});
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (0, ?, 'trial_test', '试炼测试已触发', ?)"
-    ).bind(order_id, JSON.stringify({ game_account_name })).run().catch(() => {});
     return json({ ok: true, message: '试炼测试已触发' });
   }
 
@@ -1540,9 +1531,6 @@ async function handleRoute(method, path, request, env, url) {
     await env.DB.prepare(
       "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), game_account_password = COALESCE(NULLIF(?, ''), game_account_password), dispatch_map = COALESCE(NULLIF(?, ''), dispatch_map), material_type = COALESCE(NULLIF(?, ''), material_type), last_executed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
     ).bind(game_account_name || '', game_account_password || '', dispatch_map || '', material_type || '', order_id).run().catch(() => {});
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (0, ?, 'dispatch', '传人派出', ?)"
-    ).bind(order_id, JSON.stringify({ game_account_name, dispatch_map, material_type })).run().catch(() => {});
     return json({ ok: true, message: '传人派出已触发' });
   }
 
@@ -1553,9 +1541,6 @@ async function handleRoute(method, path, request, env, url) {
     await env.DB.prepare(
       "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), game_account_password = COALESCE(NULLIF(?, ''), game_account_password), clear_type = COALESCE(NULLIF(?, ''), clear_type), last_executed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
     ).bind(game_account_name || '', game_account_password || '', clear_type || '', order_id).run().catch(() => {});
-    await env.DB.prepare(
-      "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (0, ?, 'dungeon_clear', '副本刷取', ?)"
-    ).bind(order_id, JSON.stringify({ game_account_name, clear_type })).run().catch(() => {});
     return json({ ok: true, message: '副本刷取已触发' });
   }
 

@@ -15,9 +15,5 @@ export async function onRequest(context) {
     "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), game_account_password = COALESCE(NULLIF(?, ''), game_account_password), dispatch_map = COALESCE(NULLIF(?, ''), dispatch_map), material_type = COALESCE(NULLIF(?, ''), material_type), last_executed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
   ).bind(game_account_name || '', game_account_password || '', dispatch_map || '', material_type || '', order_id).run().catch(() => {});
 
-  await env.DB.prepare(
-    "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (0, ?, 'dispatch', '传人派出', ?)"
-  ).bind(order_id, JSON.stringify({ game_account_name, dispatch_map, material_type })).run().catch(() => {});
-
   return json({ ok: true, message: '传人派出已触发' });
 }

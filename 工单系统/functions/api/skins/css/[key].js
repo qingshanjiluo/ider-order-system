@@ -645,7 +645,6 @@ html.theme-rune ::-webkit-scrollbar-thumb{background:var(--border)!important}
 html.theme-rune input,.theme-rune select,.theme-rune textarea{background:#0E0E18!important;border:1px solid var(--border)!important;color:var(--text)!important}
 html.theme-rune input:focus{border-color:var(--gold)!important;box-shadow:0 0 10px rgba(99,102,241,0.08)!important}`
 };
-};
 
 // ═══════════════════════════════════════════════════════════════
 // 工单系统换肤层：将游戏皮肤同款配色映射到工单系统（艾德尔工单系统）

@@ -1685,7 +1685,7 @@ async function handleRoute(method, path, request, env, url) {
       await logActivity(env, order_id, order.user_id, 'processing',
         `账号未达标: 有效交付 ${delivered}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
     }
-    if (settingUp === 0 && farming === 0 && finished + failed === total && total > 0 && quantityMet) {
+    if (settingUp === 0 && farming === 0 && finished === total && total > 0 && quantityMet) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
       ).bind(order_id).run();

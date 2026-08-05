@@ -39,7 +39,12 @@ export async function onRequest(context) {
 
   // ── approved: 审核通过 ──────────────────────────────
   if (status === 'approved') {
-    // 如果是从 rejected 重新通过，需要重新扣除冻结积分（防止拒绝退款后不扣回）
+    // 重新查一次状态防止重复操作
+    const currentOrder = await env.DB.prepare('SELECT status FROM orders WHERE id = ?').bind(orderId).first();
+    if (currentOrder && currentOrder.status === 'approved') {
+      return json({ ok: true, message: '工单已是审核通过状态' });
+    }
+    // 如果是从 rejected 重新通过，需要重新扣除冻结积分
     if (order.status === 'rejected' && order.payment_method === 'coin' && order.frozen_points > 0) {
       const user = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(order.user_id).first();
       if ((user?.bonus_points || 0) < order.frozen_points) {
@@ -107,8 +112,13 @@ export async function onRequest(context) {
 
   // ── rejected: 拒绝 ─────────────────────────────────
   else if (status === 'rejected') {
-    // 修仙币支付：退还冻结的积分（仅首次拒绝时退，status 变化保护防重复）
-    if (order.payment_method === 'coin' && order.frozen_points > 0 && order.status !== 'rejected') {
+    // 重新查一次状态防止重复操作
+    const currentOrder = await env.DB.prepare('SELECT status FROM orders WHERE id = ?').bind(orderId).first();
+    if (currentOrder && currentOrder.status === 'rejected') {
+      return json({ ok: true, message: '工单已是拒绝状态' });
+    }
+    // 修仙币支付：退还冻结的积分
+    if (order.payment_method === 'coin' && order.frozen_points > 0) {
       await env.DB.prepare(
         'UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?'
       ).bind(order.frozen_points, order.user_id).run();

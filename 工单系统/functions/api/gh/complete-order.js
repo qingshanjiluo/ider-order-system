@@ -28,11 +28,11 @@ export async function onRequest(context) {
     const farming = getCount(farmingPhase);
     const finished = getCount(finalPhase);
 
-    const order = await env.DB.prepare("SELECT user_id, status, quantity FROM orders WHERE id = ?").bind(order_id).first();
+    const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
     if (!order) return json({ error: '工单不存在' }, 404);
 
-    // 阶段1: 初始交付（账号数量达标且全部离开设置阶段）
-    if (settingUp === 0 && total >= order.quantity && farming + finished === total) {
+    // 阶段1: 初始交付（所有账号已离开设置阶段）
+    if (settingUp === 0 && total > 0 && farming + finished === total) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'"
       ).bind(total, order_id).run();
@@ -43,8 +43,14 @@ export async function onRequest(context) {
       return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total });
     }
 
-    // 阶段2: 最终完成（所有账号已120级或失败）
-    if (settingUp === 0 && farming === 0 && finished === total && total > 0) {
+    // 阶段2: 最终完成（所有账号已120级或失败，且已创建账号数达到订购数）
+    const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
+    const quantityMet = orderQty && total >= orderQty.quantity;
+    if (!quantityMet && orderQty) {
+      await logActivity(env, order_id, order.user_id, 'processing',
+        `账号未达标: 已创建 ${total}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
+    }
+    if (settingUp === 0 && farming === 0 && finished === total && total > 0 && quantityMet) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
       ).bind(order_id).run();
@@ -59,7 +65,7 @@ export async function onRequest(context) {
     return json({
       ok: true,
       message: '仍有账号未完成',
-      detail: { settingUp, farming, finished, total },
+      detail: { settingUp, farming, finished, total, quantity: orderQty ? orderQty.quantity : null },
     });
   }
 

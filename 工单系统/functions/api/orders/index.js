@@ -11,29 +11,47 @@ const ORDER_TYPE_LABEL = {
 export async function onRequest(context) {
   const { request, env } = context;
 
-  // ── GET /api/orders — 用户工单列表 ──────────────────
+  // ── GET /api/orders — 用户工单列表（分页） ─────────
   if (request.method === 'GET') {
+    try {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status') || '';
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = 20;
+    const offset = (page - 1) * limit;
 
     let query = 'SELECT o.*, (SELECT COUNT(*) FROM game_accounts WHERE order_id = o.id) as account_count FROM orders o WHERE o.user_id = ?';
+    let countQuery = 'SELECT COUNT(*) as total FROM orders WHERE user_id = ?';
     const params = [user.id];
+    const countParams = [user.id];
 
     if (status) {
       query += ' AND o.status = ?';
+      countQuery += ' AND status = ?';
       params.push(status);
+      countParams.push(status);
     }
 
-    query += ' ORDER BY o.created_at DESC';
-    const orders = await env.DB.prepare(query).bind(...params).all();
-    return json({ ok: true, orders: orders.results });
+    query += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const [orders, totalResult] = await Promise.all([
+      params.length > 2 ? env.DB.prepare(query).bind(...params).all() : env.DB.prepare(query).all(),
+      countParams.length > 1 ? env.DB.prepare(countQuery).bind(...countParams).first() : env.DB.prepare(countQuery).first()
+    ]);
+    const total = totalResult?.total || 0;
+      return json({ ok: true, orders: orders.results, total, page, limit });
+    } catch (e) {
+      return json({ error: '获取工单失败: ' + e.message }, 500);
+    }
   }
 
   // ── POST /api/orders — 创建工单 ─────────────────────
   if (request.method === 'POST') {
+    try {
     const user = await authenticate(request, env);
     if (!user) return json({ error: '未登录' }, 401);
 
@@ -244,9 +262,9 @@ export async function onRequest(context) {
       "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'order_created', ?)"
     ).bind(orderId, '提交工单 #' + orderId + '：' + (ORDER_TYPE_LABEL[order_type] || order_type) + ', ' + accCount + '个账号').run();
 
-    return json({ 
-      ok: true, 
-      message: '工单已提交，等待审核', 
+    return json({
+      ok: true,
+      message: '工单已提交，等待审核',
       order_id: orderId,
       price_info: {
         points,
@@ -257,6 +275,10 @@ export async function onRequest(context) {
         frozen_points: frozenPoints
       }
     });
+    } catch (e) {
+      console.error('[orders POST]', e.message, e.stack);
+      return json({ error: '创建工单失败: ' + e.message, detail: e.stack?.split('\n').slice(0,3).join('; ') }, 500);
+    }
   }
 
   return json({ error: 'Method not allowed' }, 405);

@@ -10,16 +10,23 @@ export async function onRequest(context) {
   if (error) return json({ error }, 403);
 
   const orderId = parseInt(params.id);
-  const order = await env.DB.prepare('SELECT id, status, user_id FROM orders WHERE id = ?').bind(orderId).first();
+  const order = await env.DB.prepare('SELECT id, status, user_id, quantity FROM orders WHERE id = ?').bind(orderId).first();
   if (!order) return json({ error: '工单不存在' }, 404);
 
-  // 1. 统计失败账号
+  // 1. 统计订单下各状态账号数
+  const orderStats = await env.DB.prepare(
+    "SELECT status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status"
+  ).bind(orderId).all();
+  const statRows = orderStats.results || [];
+  const createdCount = statRows.reduce((s, r) => s + r.cnt, 0);
+
+  // 2. 统计失败账号
   const failedAccs = await env.DB.prepare(
     "SELECT id, username, status, error_msg FROM game_accounts WHERE order_id = ? AND status = 'failed'"
   ).bind(orderId).all();
   const failedList = failedAccs.results || [];
 
-  // 2. 重置为 pending 以便下次扫描重试
+  // 3. 重置为 pending 以便下次扫描重试
   let resetCount = 0;
   for (const acc of failedList) {
     await env.DB.prepare(
@@ -28,24 +35,46 @@ export async function onRequest(context) {
     resetCount++;
   }
 
-  // 3. 如果工单是被拒绝或卡住的，恢复成 approved
+  // 4. 计算差额：订购数量 vs 已创建账号数
+  const quantity = order.quantity || 0;
+  const shortfall = quantity > 0 ? Math.max(0, quantity - createdCount) : 0;
+
+  // 5. 如果工单是被拒绝或卡住的，恢复成 approved
   if (order.status === 'rejected' || order.status === 'cancelled' || order.status === 'completed') {
     await env.DB.prepare(
       "UPDATE orders SET status = 'approved', updated_at = datetime('now') WHERE id = ?"
     ).bind(orderId).run();
   }
 
-  // 4. 记录日志
+  // 6. 若存在差额（账号不足），标记为待补齐，便于管理员继续创建
+  if (shortfall > 0) {
+    await env.DB.prepare(
+      "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'reissue_shortfall', ?)"
+    ).bind(orderId, '补发审查：已创建 ' + createdCount + '/' + quantity + ' 个账号，缺 ' + shortfall + ' 个待补齐').run();
+    await env.DB.prepare(
+      "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '补发审查待补齐', '工单 #' || ? || ' 账号不足：需 ' || ? || ' 个，已创建 ' || ? || ' 个，待补齐 ' || ? || ' 个', 'order')"
+    ).bind(order.user_id, orderId, quantity, createdCount, shortfall).run();
+  }
+
+  // 7. 记录日志
   if (resetCount > 0) {
     await env.DB.prepare(
       "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (0, ?, 'reissue', ?)"
     ).bind(orderId, '管理员触发补发审查，重置 ' + resetCount + ' 个失败账号').run();
   }
 
+  const notes = [];
+  if (resetCount > 0) notes.push('已重置 ' + resetCount + ' 个失败账号，下次扫描将重新处理');
+  if (shortfall > 0) notes.push('已创建 ' + createdCount + '/' + quantity + '，缺 ' + shortfall + ' 个待补齐');
+  if (notes.length === 0) notes.push('账号数量已达标，无需处理');
+
   return json({
     ok: true,
     reset_count: resetCount,
+    shortfall,
+    created_count: createdCount,
+    quantity,
     failed_accounts: failedList.map(a => ({ id: a.id, username: a.username, error: a.error_msg })),
-    message: resetCount > 0 ? ('已重置 ' + resetCount + ' 个失败账号，下次扫描将重新处理') : '没有需要补发的失败账号',
+    message: notes.join('；'),
   });
 }

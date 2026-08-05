@@ -827,6 +827,111 @@ html {
   }
 }
 
+/* ── 骨架屏（加载占位） ─────────────────── */
+.page-skeleton {
+  padding: var(--space-2) 0;
+}
+.skeleton-block {
+  background: linear-gradient(90deg, var(--bg-card) 25%, var(--border-light) 50%, var(--bg-card) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease infinite;
+  border-radius: 4px;
+}
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  height: 96px;
+  margin-top: var(--space-4);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(44,44,44,0.05), transparent);
+  animation: skeletonShimmer 1.4s ease infinite;
+}
+
+/* ── 工单卡片列表（桌面表格 + 移动卡片双适配） ── */
+.orders-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.order-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-xs);
+}
+.order-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+}
+.order-card-body {
+  padding: var(--space-3) 0;
+}
+.order-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3) var(--space-4);
+}
+.oc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.oc-label {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.oc-value {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.order-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
+}
+.order-skeleton {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+/* 桌面端显示表格，移动端隐藏表格 */
+.mobile-cards { display: none; }
+
+@media (max-width: 768px) {
+  .desktop-table { display: none; }
+  .mobile-cards { display: flex; }
+  .orders-card-list { gap: var(--space-3); }
+}
+
+/* 桌面端卡片网格：3 列展示，信息更紧凑（用户端工单列表） */
+@media (min-width: 769px) {
+  .orders-card-list:not(.mobile-cards) { display: grid; grid-template-columns: repeat(3, 1fr); align-items: start; }
+  .order-card-grid { grid-template-columns: 1fr 1fr; }
+}
+
 /* ── 滚动条 ──────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

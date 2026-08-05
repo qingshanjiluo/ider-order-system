@@ -7,6 +7,7 @@ class Router {
     this.currentParams = {};
     this.beforeEach = null;
     this.contentEl = null;
+    this._navSeq = 0;
   }
 
   setContainer(el) {
@@ -27,7 +28,14 @@ class Router {
     window.location.hash = path;
   }
 
+  /** 当前导航序号，用于避免旧页面异步渲染覆盖新页面 */
+  navSeq() {
+    return this._navSeq;
+  }
+
   resolve() {
+    this._navSeq++;
+    const seq = this._navSeq;
     const hash = window.location.hash.slice(1) || '/';
     const [path, queryStr] = hash.split('?');
     const query = Object.fromEntries(new URLSearchParams(queryStr || ''));
@@ -67,7 +75,7 @@ class Router {
 
     // Execute handler
     if (this.contentEl) {
-      matched({ params, query, container: this.contentEl });
+      matched({ params, query, container: this.contentEl, seq });
     }
   }
 

@@ -1,9 +1,12 @@
 // api.js — API 客户端模块
 const API_BASE = '/api';
+const REQUEST_TIMEOUT = 15000; // 15s 超时，避免请求悬挂导致一直加载
+const CACHE_TTL = 8000;        // GET 缓存 8s，减少重复请求
 
 class ApiClient {
   constructor() {
     this.token = localStorage.getItem('ider_token') || '';
+    this._cache = new Map();
   }
 
   setToken(token) {
@@ -19,10 +22,63 @@ class ApiClient {
     return this.token;
   }
 
+  // 带超时的 fetch：超过 15s 自动中止并抛错
+  async _fetchWithTimeout(url, opts) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    try {
+      return await fetch(url, { ...opts, signal: controller.signal });
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        const e = new Error('请求超时，请检查网络后重试');
+        e.status = 408;
+        throw e;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // 简单 GET 缓存：相同路径短时间内直接返回缓存
+  _getCacheKey(path) {
+    return this.token + '|' + path;
+  }
+
+  _cachedGet(path) {
+    const key = this._getCacheKey(path);
+    const item = this._cache.get(key);
+    if (item && Date.now() - item.time < CACHE_TTL) {
+      return item.data;
+    }
+    return null;
+  }
+
+  _storeCache(path, data) {
+    const key = this._getCacheKey(path);
+    // 简单淘汰：缓存条数超过 30 时清空旧缓存
+    if (this._cache.size > 30) {
+      const oldest = this._cache.keys().next().value;
+      if (oldest) this._cache.delete(oldest);
+    }
+    this._cache.set(key, { data, time: Date.now() });
+  }
+
+  _invalidateCache() {
+    // 任何写操作成功后清空全部 GET 缓存，避免列表显示旧数据
+    this._cache.clear();
+  }
+
   async request(method, path, body = null) {
     const headers = { 'Content-Type': 'application/json' };
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
+    }
+
+    // GET 请求命中缓存则直接返回，避免重复请求
+    if (method === 'GET') {
+      const cached = this._cachedGet(path);
+      if (cached !== null) return cached;
     }
 
     const opts = { method, headers };
@@ -30,12 +86,16 @@ class ApiClient {
       opts.body = JSON.stringify(body);
     }
 
-    const res = await fetch(`${API_BASE}${path}`, opts);
+    const res = await this._fetchWithTimeout(`${API_BASE}${path}`, opts);
     const data = await res.json().catch(() => ({ error: '网络错误' }));
 
     if (!res.ok) {
+      // 非 GET 操作成功后使相关缓存失效
+      if (method !== 'GET') this._invalidateCache();
       throw new ApiError(data.error || '请求失败', res.status, data);
     }
+
+    if (method === 'GET') this._storeCache(path, data);
     return data;
   }
 
@@ -141,10 +201,11 @@ class ApiClient {
 
   // ── Admin ─────────────────────────────
   adminGetUsers() { return this.get('/admin/users'); }
-  adminGetOrders(status, page) {
+  adminGetOrders(status, page, search) {
     const params = [];
-    if (status) params.push(`status=${status}`);
+    if (status) params.push(`status=${encodeURIComponent(status)}`);
     if (page) params.push(`page=${page}`);
+    if (search) params.push(`q=${encodeURIComponent(search)}`);
     const q = params.length ? `?${params.join('&')}` : '';
     return this.get(`/admin/orders${q}`);
   }

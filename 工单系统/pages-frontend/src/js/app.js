@@ -4,104 +4,34 @@
 import { router } from './router.js';
 import { store } from './store.js';
 import { api } from './api.js';
-import { icon } from './icons.js';
-import { renderSidebar, initSidebar, refreshSidebar } from './components/sidebar.js';
+import { renderSidebar, initSidebar } from './components/sidebar.js';
 import { renderTopbar, initTopbar } from './components/topbar.js';
 import { initChatBot } from './components/chat-bot.js';
-
-// ── 页面导入 ──────────────────────────
-import { renderLanding } from './pages/landing.js';
-import { renderLogin } from './pages/login.js';
-import { renderRegister } from './pages/register.js';
-import { renderForgotPassword } from './pages/forgot-password.js';
-import { renderDashboard } from './pages/dashboard.js';
-import { renderHelp } from './pages/help.js';
-import { renderContact } from './pages/contact.js';
-import { renderChangelog } from './pages/changelog.js';
-import { renderChat } from './pages/chat.js';
-import { renderOrders } from './pages/orders.js';
-import { renderWithdrawals } from './pages/withdrawals.js';
-import { renderOrderDetail } from './pages/order-detail.js';
-import { renderAccounts } from './pages/accounts.js';
-import { renderAccountDetail } from './pages/account-detail.js';
-import { renderInvite } from './pages/invite.js';
-import { renderLeaderboard } from './pages/leaderboard.js';
-import { renderSettings } from './pages/settings.js';
-import { renderAppeals } from './pages/appeals.js';
-import { renderAfterSales } from './pages/after-sales.js';
-import { renderAdminStats } from './pages/admin-stats.js';
-import { renderAdminUsers } from './pages/admin-users.js';
-import { renderAdminOrders } from './pages/admin-orders.js';
-import { renderAdminSuper } from './pages/admin-super.js';
-import { renderAdminAccounts } from './pages/admin-accounts.js';
-import { renderAdminAppeals } from './pages/admin-appeals.js';
-import { renderAdminConfig } from './pages/admin-config.js';
-import { renderAdminCoupons } from './pages/admin-coupons.js';
-import { renderAdminAnnouncements } from './pages/admin-announcements.js';
-import { renderAdminAds } from './pages/admin-ads.js';
-import { renderRecharge } from './pages/recharge.js';
-import { renderMarket } from './pages/market.js';
-import { renderAdminMarket } from './pages/admin-market.js';
-import { renderAdminRecharge } from './pages/admin-recharge.js';
-import { renderAdminRechargeCodes } from './pages/admin-recharge-codes.js';
-import { renderAdminAiConfig } from './pages/admin-ai-config.js';
-import { renderAdminMarketOrders } from './pages/admin-market-orders.js';
-import { renderAdminMarketPurchases } from './pages/admin-market-purchases.js';
-import { renderAdminWithdrawals } from './pages/admin-withdrawals.js';
-import { renderSkins } from './pages/skins.js';
-import { renderAdminSkins } from './pages/admin-skins.js';
-import { renderCsDialog } from './pages/cs-dialog.js';
-import { renderAdminCs } from './pages/admin-cs.js';
 
 // ── 全局 DOM ──────────────────────────
 const appEl = document.getElementById('app');
 
 // ── 页面渲染辅助 ──────────────────────
-function renderLayout(path, renderFn, opts = {}) {
-  appEl.innerHTML = `
-    <aside class="sidebar" id="sidebar"></aside>
-    <main class="main-content">
-      <header class="topbar" id="topbar"></header>
-      <div id="scrolling-announcement-bar" class="scrolling-announcement" style="display:none;"></div>
-      <div class="content-area" id="app-content"></div>
-    </main>`;
-
-  document.getElementById('sidebar').innerHTML = renderSidebar();
-  document.getElementById('topbar').innerHTML = renderTopbar(path);
-
-  initSidebar();
-  initTopbar();
-
-  // 加载滚动公告
-  loadScrollingAnnouncement();
-
-  const contentEl = document.getElementById('app-content');
-  // 只传需要的字段，避免 opts.container 覆盖新创建的 contentEl
-  renderFn({ container: contentEl, params: opts.params, query: opts.query });
-}
-
-// ── 滚动公告栏 ──────────────────────────
+// ── 滚动公告栏（带会话缓存，避免每次导航重复请求）──
+let announcementCache = null;
 async function loadScrollingAnnouncement() {
   const bar = document.getElementById('scrolling-announcement-bar');
   if (!bar) return;
-  try {
-    const res = await api.get('/announcements/active');
-    if (res && res.announcement && res.announcement.content) {
-      bar.style.display = 'block';
-      bar.innerHTML = `
-        <div class="scrolling-wrap">
-          <span class="scrolling-text">${res.announcement.content}</span>
-        </div>
-        <button class="scrolling-close" onclick="this.parentElement.style.display='none'">&times;</button>`;
-    }
-  } catch { /* ignore */ }
-}
-
-function renderFullPage(renderFn, opts = {}) {
-  appEl.innerHTML = `<div id="app-content" style="width:100%;"></div>`;
-  const contentEl = document.getElementById('app-content');
-  // 只传需要的字段，避免 opts.container 覆盖新创建的 contentEl
-  renderFn({ container: contentEl, params: opts.params, query: opts.query });
+  if (announcementCache === null) {
+    try {
+      const res = await api.get('/announcements/active');
+      announcementCache = (res && res.announcement && res.announcement.content) ? res.announcement.content : '';
+    } catch { announcementCache = ''; }
+  }
+  if (announcementCache) {
+    bar.style.display = 'block';
+    bar.innerHTML = `
+      <div class="scrolling-wrap">
+        <span class="scrolling-text"></span>
+      </div>
+      <button class="scrolling-close" onclick="this.parentElement.style.display='none'">&times;</button>`;
+    bar.querySelector('.scrolling-text').textContent = announcementCache;
+  }
 }
 
 // ── 路由守卫 ──────────────────────────
@@ -124,74 +54,166 @@ router.beforeEach = (path, params) => {
   return true;
 };
 
-// ── 路由注册 ──────────────────────────
-// 公共页面（全屏，无侧边栏）
-router.register('/', (ctx) => renderFullPage(renderLanding, ctx));
-router.register('/landing', (ctx) => renderFullPage(renderLanding, ctx));
-router.register('/login', (ctx) => renderFullPage(renderLogin, ctx));
-router.register('/register', (ctx) => renderFullPage(renderRegister, ctx));
-router.register('/forgot-password', (ctx) => renderFullPage(renderForgotPassword, ctx));
-router.register('/help', (ctx) => renderFullPage(renderHelp, ctx));
-router.register('/contact', (ctx) => renderFullPage(renderContact, ctx));
-router.register('/changelog', (ctx) => renderFullPage(renderChangelog, ctx));
+// ── 页面加载器：按需动态导入，极大减少首屏加载 ──
+const pageLoaders = {
+  landing: () => import('./pages/landing.js').then(m => m.renderLanding),
+  login: () => import('./pages/login.js').then(m => m.renderLogin),
+  register: () => import('./pages/register.js').then(m => m.renderRegister),
+  forgotPassword: () => import('./pages/forgot-password.js').then(m => m.renderForgotPassword),
+  dashboard: () => import('./pages/dashboard.js').then(m => m.renderDashboard),
+  help: () => import('./pages/help.js').then(m => m.renderHelp),
+  contact: () => import('./pages/contact.js').then(m => m.renderContact),
+  changelog: () => import('./pages/changelog.js').then(m => m.renderChangelog),
+  chat: () => import('./pages/chat.js').then(m => m.renderChat),
+  orders: () => import('./pages/orders.js').then(m => m.renderOrders),
+  withdrawals: () => import('./pages/withdrawals.js').then(m => m.renderWithdrawals),
+  orderDetail: () => import('./pages/order-detail.js').then(m => m.renderOrderDetail),
+  accounts: () => import('./pages/accounts.js').then(m => m.renderAccounts),
+  accountDetail: () => import('./pages/account-detail.js').then(m => m.renderAccountDetail),
+  invite: () => import('./pages/invite.js').then(m => m.renderInvite),
+  leaderboard: () => import('./pages/leaderboard.js').then(m => m.renderLeaderboard),
+  settings: () => import('./pages/settings.js').then(m => m.renderSettings),
+  appeals: () => import('./pages/appeals.js').then(m => m.renderAppeals),
+  afterSales: () => import('./pages/after-sales.js').then(m => m.renderAfterSales),
+  adminStats: () => import('./pages/admin-stats.js').then(m => m.renderAdminStats),
+  adminUsers: () => import('./pages/admin-users.js').then(m => m.renderAdminUsers),
+  adminOrders: () => import('./pages/admin-orders.js').then(m => m.renderAdminOrders),
+  adminSuper: () => import('./pages/admin-super.js').then(m => m.renderAdminSuper),
+  adminAccounts: () => import('./pages/admin-accounts.js').then(m => m.renderAdminAccounts),
+  adminAppeals: () => import('./pages/admin-appeals.js').then(m => m.renderAdminAppeals),
+  adminConfig: () => import('./pages/admin-config.js').then(m => m.renderAdminConfig),
+  adminCoupons: () => import('./pages/admin-coupons.js').then(m => m.renderAdminCoupons),
+  adminAnnouncements: () => import('./pages/admin-announcements.js').then(m => m.renderAdminAnnouncements),
+  adminAds: () => import('./pages/admin-ads.js').then(m => m.renderAdminAds),
+  recharge: () => import('./pages/recharge.js').then(m => m.renderRecharge),
+  market: () => import('./pages/market.js').then(m => m.renderMarket),
+  adminMarket: () => import('./pages/admin-market.js').then(m => m.renderAdminMarket),
+  adminRecharge: () => import('./pages/admin-recharge.js').then(m => m.renderAdminRecharge),
+  adminRechargeCodes: () => import('./pages/admin-recharge-codes.js').then(m => m.renderAdminRechargeCodes),
+  adminAiConfig: () => import('./pages/admin-ai-config.js').then(m => m.renderAdminAiConfig),
+  adminMarketOrders: () => import('./pages/admin-market-orders.js').then(m => m.renderAdminMarketOrders),
+  adminMarketPurchases: () => import('./pages/admin-market-purchases.js').then(m => m.renderAdminMarketPurchases),
+  adminWithdrawals: () => import('./pages/admin-withdrawals.js').then(m => m.renderAdminWithdrawals),
+  skins: () => import('./pages/skins.js').then(m => m.renderSkins),
+  adminSkins: () => import('./pages/admin-skins.js').then(m => m.renderAdminSkins),
+  csDialog: () => import('./pages/cs-dialog.js').then(m => m.renderCsDialog),
+  adminCs: () => import('./pages/admin-cs.js').then(m => m.renderAdminCs),
+};
 
-// 带侧边栏的页面
-router.register('/dashboard', (ctx) => renderLayout('/dashboard', renderDashboard));
-  router.register('/orders', (ctx) => renderLayout('/orders', renderOrders, { query: ctx.query }));
-  router.register('/withdrawals', (ctx) => renderLayout('/withdrawals', renderWithdrawals));
-router.register('/orders/:id', (ctx) => renderLayout('/orders', renderOrderDetail, { params: ctx.params }));
-router.register('/accounts', (ctx) => renderLayout('/accounts', renderAccounts));
-router.register('/accounts/:id', (ctx) => renderLayout('/accounts', renderAccountDetail, { params: ctx.params }));
-router.register('/market', (ctx) => renderLayout('/market', renderMarket));
-router.register('/recharge', (ctx) => renderLayout('/recharge', renderRecharge));
-router.register('/skins', (ctx) => renderLayout('/skins', renderSkins));
-router.register('/invite', (ctx) => renderLayout('/invite', renderInvite));
-router.register('/leaderboard', (ctx) => renderLayout('/leaderboard', renderLeaderboard));
-router.register('/settings', (ctx) => renderLayout('/settings', renderSettings));
-router.register('/appeals', (ctx) => renderLayout('/appeals', renderAppeals));
-router.register('/after-sales', (ctx) => renderLayout('/after-sales', renderAfterSales));
-router.register('/cs', (ctx) => renderLayout('/cs', renderCsDialog));
-router.register('/chat', (ctx) => renderLayout('/chat', renderChat));
+// 异步路由包装：动态导入页面模块后再渲染，避免首屏加载全部页面
+function lazyPage(loader, mode, basePath) {
+  return (ctx) => {
+    const seq = ctx.seq;
+    if (mode === 'full') {
+      renderFullPageSkeleton();
+    } else {
+      renderLayoutSkeleton(basePath);
+    }
+    loader().then((renderFn) => {
+      // 若期间用户已切换到其它页面，则放弃本次渲染
+      if (router.navSeq() !== seq) return;
+      const contentEl = document.getElementById('app-content');
+      if (!contentEl) return;
+      renderFn({ container: contentEl, params: ctx.params, query: ctx.query });
+    }).catch(() => {
+      if (router.navSeq() !== seq) return;
+      const contentEl = document.getElementById('app-content');
+      if (contentEl) contentEl.innerHTML = `<div class="empty-state"><p>页面加载失败，请刷新重试</p></div>`;
+    });
+  };
+}
+
+// 布局骨架：先渲染侧边栏/顶栏，再按需加载页面内容
+function renderLayoutSkeleton(basePath) {
+  appEl.innerHTML = `
+    <aside class="sidebar" id="sidebar"></aside>
+    <main class="main-content">
+      <header class="topbar" id="topbar"></header>
+      <div id="scrolling-announcement-bar" class="scrolling-announcement" style="display:none;"></div>
+      <div class="content-area" id="app-content">
+        <div class="page-skeleton">
+          <div class="skeleton-block" style="width:160px;height:24px;"></div>
+          <div class="skeleton-block" style="width:100%;height:12px;margin-top:12px;"></div>
+          <div class="skeleton-block" style="width:70%;height:12px;margin-top:8px;"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      </div>
+    </main>`;
+
+  document.getElementById('sidebar').innerHTML = renderSidebar();
+  document.getElementById('topbar').innerHTML = renderTopbar(basePath);
+
+  initSidebar();
+  initTopbar();
+  loadScrollingAnnouncement();
+}
+
+function renderFullPageSkeleton() {
+  appEl.innerHTML = `
+    <div id="app-content" style="width:100%;">
+      <div class="page-skeleton" style="max-width:520px;margin:24px auto;padding:24px;">
+        <div class="skeleton-block" style="width:120px;height:24px;"></div>
+        <div class="skeleton-card"></div>
+      </div>
+    </div>`;
+}
+
+// ── 路由注册（全部按需加载）──────────────────
+router.register('/', lazyPage(pageLoaders.landing, 'full'));
+router.register('/landing', lazyPage(pageLoaders.landing, 'full'));
+router.register('/login', lazyPage(pageLoaders.login, 'full'));
+router.register('/register', lazyPage(pageLoaders.register, 'full'));
+router.register('/forgot-password', lazyPage(pageLoaders.forgotPassword, 'full'));
+router.register('/help', lazyPage(pageLoaders.help, 'full'));
+router.register('/contact', lazyPage(pageLoaders.contact, 'full'));
+router.register('/changelog', lazyPage(pageLoaders.changelog, 'full'));
+
+router.register('/dashboard', lazyPage(pageLoaders.dashboard, 'layout', '/dashboard'));
+router.register('/orders', lazyPage(pageLoaders.orders, 'layout', '/orders'));
+router.register('/withdrawals', lazyPage(pageLoaders.withdrawals, 'layout', '/withdrawals'));
+router.register('/orders/:id', lazyPage(pageLoaders.orderDetail, 'layout', '/orders'));
+router.register('/accounts', lazyPage(pageLoaders.accounts, 'layout', '/accounts'));
+router.register('/accounts/:id', lazyPage(pageLoaders.accountDetail, 'layout', '/accounts'));
+router.register('/market', lazyPage(pageLoaders.market, 'layout', '/market'));
+router.register('/recharge', lazyPage(pageLoaders.recharge, 'layout', '/recharge'));
+router.register('/skins', lazyPage(pageLoaders.skins, 'layout', '/skins'));
+router.register('/invite', lazyPage(pageLoaders.invite, 'layout', '/invite'));
+router.register('/leaderboard', lazyPage(pageLoaders.leaderboard, 'layout', '/leaderboard'));
+router.register('/settings', lazyPage(pageLoaders.settings, 'layout', '/settings'));
+router.register('/appeals', lazyPage(pageLoaders.appeals, 'layout', '/appeals'));
+router.register('/after-sales', lazyPage(pageLoaders.afterSales, 'layout', '/after-sales'));
+router.register('/cs', lazyPage(pageLoaders.csDialog, 'layout', '/cs'));
+router.register('/chat', lazyPage(pageLoaders.chat, 'layout', '/chat'));
 
 // Admin pages
-router.register('/admin/stats', (ctx) => renderLayout('/admin/stats', renderAdminStats));
-router.register('/admin/users', (ctx) => renderLayout('/admin/users', renderAdminUsers));
-router.register('/admin/cs', (ctx) => renderLayout('/admin/cs', renderAdminCs));
-router.register('/admin/market', (ctx) => renderLayout('/admin/market', renderAdminMarket));
-router.register('/admin/recharge', (ctx) => renderLayout('/admin/recharge', renderAdminRecharge));
-router.register('/admin/orders', (ctx) => renderLayout('/admin/orders', renderAdminOrders));
-router.register('/admin/super', (ctx) => renderLayout('/admin/super', renderAdminSuper));
-router.register('/admin/accounts', (ctx) => renderLayout('/admin/accounts', renderAdminAccounts));
-router.register('/admin/appeals', (ctx) => renderLayout('/admin/appeals', renderAdminAppeals));
-router.register('/admin/config', (ctx) => renderLayout('/admin/config', renderAdminConfig));
-router.register('/admin/coupons', (ctx) => renderLayout('/admin/coupons', renderAdminCoupons));
-router.register('/admin/announcements', (ctx) => renderLayout('/admin/announcements', renderAdminAnnouncements));
-router.register('/admin/recharge-codes', (ctx) => renderLayout('/admin/recharge-codes', renderAdminRechargeCodes));
-router.register('/admin/ai-config', (ctx) => renderLayout('/admin/ai-config', renderAdminAiConfig));
-router.register('/admin/ads', (ctx) => renderLayout('/admin/ads', renderAdminAds));
-router.register('/admin/skins', (ctx) => renderLayout('/admin/skins', renderAdminSkins));
-router.register('/admin/market-orders', (ctx) => renderLayout('/admin/market-orders', renderAdminMarketOrders));
-  router.register('/admin/market-purchases', (ctx) => renderLayout('/admin/market-purchases', renderAdminMarketPurchases));
-  router.register('/admin/withdrawals', (ctx) => renderLayout('/admin/withdrawals', renderAdminWithdrawals));
+router.register('/admin/stats', lazyPage(pageLoaders.adminStats, 'layout', '/admin/stats'));
+router.register('/admin/users', lazyPage(pageLoaders.adminUsers, 'layout', '/admin/users'));
+router.register('/admin/cs', lazyPage(pageLoaders.adminCs, 'layout', '/admin/cs'));
+router.register('/admin/market', lazyPage(pageLoaders.adminMarket, 'layout', '/admin/market'));
+router.register('/admin/recharge', lazyPage(pageLoaders.adminRecharge, 'layout', '/admin/recharge'));
+router.register('/admin/orders', lazyPage(pageLoaders.adminOrders, 'layout', '/admin/orders'));
+router.register('/admin/super', lazyPage(pageLoaders.adminSuper, 'layout', '/admin/super'));
+router.register('/admin/accounts', lazyPage(pageLoaders.adminAccounts, 'layout', '/admin/accounts'));
+router.register('/admin/appeals', lazyPage(pageLoaders.adminAppeals, 'layout', '/admin/appeals'));
+router.register('/admin/config', lazyPage(pageLoaders.adminConfig, 'layout', '/admin/config'));
+router.register('/admin/coupons', lazyPage(pageLoaders.adminCoupons, 'layout', '/admin/coupons'));
+router.register('/admin/announcements', lazyPage(pageLoaders.adminAnnouncements, 'layout', '/admin/announcements'));
+router.register('/admin/recharge-codes', lazyPage(pageLoaders.adminRechargeCodes, 'layout', '/admin/recharge-codes'));
+router.register('/admin/ai-config', lazyPage(pageLoaders.adminAiConfig, 'layout', '/admin/ai-config'));
+router.register('/admin/ads', lazyPage(pageLoaders.adminAds, 'layout', '/admin/ads'));
+router.register('/admin/skins', lazyPage(pageLoaders.adminSkins, 'layout', '/admin/skins'));
+router.register('/admin/market-orders', lazyPage(pageLoaders.adminMarketOrders, 'layout', '/admin/market-orders'));
+router.register('/admin/market-purchases', lazyPage(pageLoaders.adminMarketPurchases, 'layout', '/admin/market-purchases'));
+router.register('/admin/withdrawals', lazyPage(pageLoaders.adminWithdrawals, 'layout', '/admin/withdrawals'));
 
 // ── 初始化 ──────────────────────────
 // 尝试从 localStorage 恢复登录状态
 store.loadFromStorage();
 
-// 如果有 token，尝试获取用户信息
+// 立即启动路由，页面先渲染，不等待网络请求
 async function init() {
-  if (store.isLoggedIn()) {
-    try {
-      const res = await api.getUserInfo();
-      const user = res.user || res;
-      store.setUser(user);
-      localStorage.setItem('ider_user', JSON.stringify(user));
-    } catch (err) {
-      // Token 失效，清除登录状态
-      store.clearStorage();
-    }
-  }
-
   // 确保 #app-content 容器存在
   let contentEl = document.getElementById('app-content');
   if (!contentEl) {
@@ -199,9 +221,21 @@ async function init() {
     contentEl = document.getElementById('app-content');
   }
 
-  // 启动路由
+  // 启动路由（同步执行，立即渲染当前路由）
   router.setContainer(contentEl);
   router.start();
+
+  // 后台刷新用户信息：不阻塞首屏渲染，失败时静默降级
+  if (store.isLoggedIn()) {
+    api.getUserInfo().then((res) => {
+      const user = res.user || res;
+      store.setUser(user);
+      localStorage.setItem('ider_user', JSON.stringify(user));
+    }).catch(() => {
+      // Token 可能失效，清除登录状态
+      store.clearStorage();
+    });
+  }
 
   // 非关键功能延后加载，不阻塞首屏
   requestIdleCallback(() => {

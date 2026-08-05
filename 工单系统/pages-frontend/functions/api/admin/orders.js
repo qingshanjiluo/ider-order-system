@@ -10,18 +10,34 @@ export async function onRequest(context) {
     if (error) return json({ error }, 403);
     const url = new URL(request.url);
     const status = url.searchParams.get('status') || '';
+    const search = url.searchParams.get('q') || '';
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = 50;
     const offset = (page - 1) * limit;
     let query = 'SELECT o.*, u.username as user_name FROM orders o JOIN users u ON o.user_id = u.id';
-    let countQuery = 'SELECT COUNT(*) as total FROM orders';
+    let countQuery = 'SELECT COUNT(*) as total FROM orders o JOIN users u ON o.user_id = u.id';
     const params = [];
     const countParams = [];
+    const conds = [];
     if (status) {
-      query += ' WHERE o.status = ?';
-      countQuery += ' WHERE status = ?';
+      conds.push('o.status = ?');
       params.push(status);
       countParams.push(status);
+    }
+    if (search) {
+      // 支持工单号、用户名、邀请码搜索
+      const isNum = /^\d+$/.test(search);
+      conds.push(isNum
+        ? 'o.id = ? OR o.invite_code LIKE ? OR u.username LIKE ?'
+        : 'o.invite_code LIKE ? OR u.username LIKE ?');
+      if (isNum) params.push(parseInt(search));
+      params.push('%' + search + '%', '%' + search + '%');
+      if (isNum) countParams.push(parseInt(search));
+      countParams.push('%' + search + '%', '%' + search + '%');
+    }
+    if (conds.length) {
+      query += ' WHERE ' + conds.join(' AND ');
+      countQuery += ' WHERE ' + conds.join(' AND ');
     }
     query += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);

@@ -57,7 +57,7 @@ export async function renderOrders({ container, query }) {
       </select>
     </div>
     <div id="orders-list">
-      <div class="loading"><div class="spinner"></div></div>
+      ${skeletonRows(3)}
     </div>
     <div id="orders-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;">
       <button class="btn btn-sm btn-ghost" id="orders-prev" disabled>‹ 上一页</button>
@@ -77,10 +77,22 @@ export async function renderOrders({ container, query }) {
   }
 }
 
+function skeletonRows(count) {
+  let rows = '';
+  for (let i = 0; i < count; i++) {
+    rows += `<div class="order-skeleton">
+      <div class="skeleton-block" style="width:60px;height:14px;"></div>
+      <div class="skeleton-block" style="width:100%;height:14px;margin-top:10px;"></div>
+      <div class="skeleton-block" style="width:45%;height:14px;margin-top:10px;"></div>
+    </div>`;
+  }
+  return `<div class="orders-card-list">${rows}</div>`;
+}
+
 async function loadOrders() {
   const el = document.getElementById('orders-list');
   if (!el) return;
-  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  el.innerHTML = skeletonRows(3);
 
   try {
     const res = await api.getOrders(_currentStatus, _currentPage);
@@ -93,51 +105,46 @@ async function loadOrders() {
       return;
     }
 
-    el.innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>订单号</th>
-              <th>类型</th>
-              <th>状态</th>
-              <th>账号数</th>
-              <th>积分</th>
-              <th>付款方式</th>
-              <th>金额</th>
-              <th>创建时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${orders.map(o => `
-              <tr>
-                <td class="font-mono text-xs">#${o.id}</td>
-                <td>${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</td>
-                <td><span class="badge ${(STATUS_MAP[o.status]||{}).class || ''}">${(STATUS_MAP[o.status]||{}).label || o.status}</span></td>
-                <td>${o.account_count || o.quantity || 0}</td>
-                <td>${o.bonus_points || 0}</td>
-                <td>${formatPrice(o)}</td>
-                <td class="text-sm text-muted">${new Date(o.created_at).toLocaleDateString('zh-CN')}</td>
-                <td>
-                  <a href="#/orders/${o.id}" class="btn btn-ghost btn-xs" style="text-decoration:none">详情</a>
-                  ${o.status === 'pending' ? '<button class="btn btn-xs" style="background:var(--accent-red);color:#fff;border:none;padding:2px 8px;cursor:pointer;font-size:11px" data-cancel="' + o.id + '">取消</button>' : ''}
-                </td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>`;
+    el.innerHTML = orders.map(o => `
+      <div class="order-card" data-order-id="${o.id}">
+        <div class="order-card-head">
+          <span class="font-mono text-xs">#${o.id}</span>
+          <span class="badge ${(STATUS_MAP[o.status]||{}).class || ''}">${(STATUS_MAP[o.status]||{}).label || o.status}</span>
+        </div>
+        <div class="order-card-body">
+          <div class="order-card-grid">
+            <div class="oc-item"><span class="oc-label">类型</span><span class="oc-value">${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</span></div>
+            <div class="oc-item"><span class="oc-label">账号数</span><span class="oc-value">${o.account_count || o.quantity || 0}</span></div>
+            <div class="oc-item"><span class="oc-label">积分</span><span class="oc-value">${o.bonus_points || 0}</span></div>
+            <div class="oc-item"><span class="oc-label">付款</span><span class="oc-value">${formatPrice(o)}</span></div>
+            <div class="oc-item"><span class="oc-label">创建</span><span class="oc-value">${new Date(o.created_at).toLocaleDateString('zh-CN')}</span></div>
+          </div>
+        </div>
+        <div class="order-card-foot">
+          <a href="#/orders/${o.id}" class="btn btn-ghost btn-xs" style="text-decoration:none">详情</a>
+          ${o.status === 'pending' ? '<button class="btn btn-xs" style="background:var(--accent-red);color:#fff;border:none;padding:2px 8px;cursor:pointer;font-size:11px" data-cancel="' + o.id + '">取消</button>' : ''}
+        </div>
+      </div>
+    `).join('');
+
+    // 取消按钮事件（修复：之前未绑定导致无法取消）
+    el.querySelectorAll('[data-cancel]').forEach(btn => {
+      btn.addEventListener('click', () => cancelOrder(btn.dataset.cancel));
+    });
+
+    updatePager(total);
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }
 }
 
 async function showNewOrderModal() {
-  // 获取用户信息（余额）
+  // 获取用户信息（余额）— 优先用本地缓存立即打开弹窗，余额随后异步刷新
   let userBalance = 0;
+  let cachedUser = null;
   try {
-    const info = await api.getUserInfo();
-    userBalance = info.user?.bonus_points || info.bonus_points || 0;
+    cachedUser = JSON.parse(localStorage.getItem('ider_user') || 'null');
+    userBalance = cachedUser?.bonus_points || 0;
   } catch (e) { /* ignore */ }
 
   // 工单类型配置
@@ -370,6 +377,22 @@ async function showNewOrderModal() {
       }
     },
   });
+
+  // 异步刷新修仙币余额（不阻塞弹窗打开）
+  (async () => {
+    try {
+      const info = await api.getUserInfo();
+      const fresh = info.user?.bonus_points || info.bonus_points || 0;
+      if (fresh !== userBalance) {
+        const label = body.querySelector('label.radio-card input[value="coin"]')?.closest('label');
+        const divs = label ? label.querySelectorAll('div') : [];
+        if (divs.length >= 2) {
+          divs[divs.length - 1].textContent = `修仙币 (余: ${fresh})`;
+        }
+        userBalance = fresh;
+      }
+    } catch (e) { /* 保持缓存值 */ }
+  })();
 
   // ── 工单类型切换事件（立即绑定，不依赖优惠券验证） ──
   body.querySelector('#order-type').addEventListener('change', handleOrderTypeChange);

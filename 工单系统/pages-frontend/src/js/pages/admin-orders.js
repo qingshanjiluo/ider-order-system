@@ -11,6 +11,7 @@ const ACCOUNT_ORDER_TYPES = ['代练', '代打', '托管'];
 let _currentPage = 1;
 let _totalPages = 1;
 let _currentStatus = '';
+let _searchText = '';
 
 /** 根据支付方式格式化价格显示 */
 function formatAdminPrice(order) {
@@ -57,10 +58,14 @@ export async function renderAdminOrders({ container }) {
         <option value="approved">进行中</option>
         <option value="completed">已完成</option>
         <option value="rejected">已拒绝</option>
+        <option value="cancelled">已取消</option>
       </select>
+      <div style="flex:1;min-width:180px;display:flex;gap:6px;">
+        <input type="search" class="form-input" id="admin-order-search" placeholder="搜索工单号 / 用户" style="flex:1;">
+      </div>
     </div>
     <div id="admin-orders-list">
-      <div class="loading"><div class="spinner"></div></div>
+      ${skeletonRows(3)}
     </div>
     <div id="admin-orders-pager" style="display:flex;justify-content:center;align-items:center;gap:12px;padding:16px 0;">
       <button class="btn btn-sm btn-ghost" id="page-prev" disabled>‹ 上一页</button>
@@ -69,6 +74,16 @@ export async function renderAdminOrders({ container }) {
     </div>`;
 
   document.getElementById('admin-order-status').addEventListener('change', (e) => { _currentPage = 1; _currentStatus = e.target.value; loadOrders(); });
+  // 搜索框：输入停顿 400ms 后自动搜索（防抖）
+  let searchTimer = null;
+  document.getElementById('admin-order-search').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      _currentPage = 1;
+      _searchText = e.target.value.trim();
+      loadOrders();
+    }, 400);
+  });
   document.getElementById('batch-approve-btn').addEventListener('click', batchApprove);
   document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
   document.getElementById('page-prev').addEventListener('click', () => {
@@ -78,6 +93,18 @@ export async function renderAdminOrders({ container }) {
     if (_currentPage < _totalPages) { _currentPage++; loadOrders(); }
   });
   loadOrders();
+}
+
+function skeletonRows(count) {
+  let rows = '';
+  for (let i = 0; i < count; i++) {
+    rows += `<div class="order-skeleton">
+      <div class="skeleton-block" style="width:60px;height:14px;"></div>
+      <div class="skeleton-block" style="width:100%;height:14px;margin-top:10px;"></div>
+      <div class="skeleton-block" style="width:45%;height:14px;margin-top:10px;"></div>
+    </div>`;
+  }
+  return `<div class="orders-card-list">${rows}</div>`;
 }
 
 let selectedOrders = new Set();
@@ -119,22 +146,24 @@ function toggleOrder(id) {
 async function loadOrders() {
   const el = document.getElementById('admin-orders-list');
   if (!el) return;
-  el.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+  el.innerHTML = skeletonRows(3);
 
   try {
-    const res = await api.adminGetOrders(_currentStatus, _currentPage);
+    const res = await api.adminGetOrders(_currentStatus, _currentPage, _searchText);
     const orders = res.orders || [];
     const total = res.total || 0;
     const limit = res.limit || 50;
     _totalPages = Math.ceil(total / limit) || 1;
 
     if (!orders.length) {
-      el.innerHTML = `<div class="empty-state"><p>暂无工单</p></div>`;
+      el.innerHTML = `<div class="empty-state"><p>${_searchText ? '未找到匹配的工单' : '暂无工单'}</p></div>`;
+      updatePager();
       return;
     }
 
+    // 桌面端用表格，移动端用卡片（CSS 自动切换）
     el.innerHTML = `
-      <div class="table-wrap">
+      <div class="table-wrap desktop-table">
         <table>
           <thead>
             <tr><th style="width:32px;"><input type="checkbox" id="select-all-header" style="cursor:pointer;"></th><th>ID</th><th>用户</th><th>类型</th><th>状态</th><th>金额</th><th>数量</th><th>已创建</th><th>创建时间</th><th>操作</th></tr>
@@ -167,6 +196,40 @@ async function loadOrders() {
             }).join('')}
           </tbody>
         </table>
+      </div>
+      <div class="orders-card-list mobile-cards">
+        ${orders.map(o => {
+          const st = STATUS_MAP[o.status] || { label: o.status, class: '' };
+          const adminBtns = getActionButtons(o);
+          const canSelect = o.status === 'pending';
+          return `
+            <div class="order-card" data-order-id="${o.id}">
+              <div class="order-card-head">
+                <span style="display:flex;align-items:center;gap:8px;">
+                  ${canSelect ? '<input type="checkbox" class="order-checkbox" value="' + o.id + '" style="cursor:pointer;">' : ''}
+                  <span class="font-mono text-xs">#${o.id}</span>
+                </span>
+                <span class="badge ${st.class}">${st.label}</span>
+              </div>
+              <div class="order-card-body">
+                <div class="order-card-grid">
+                  <div class="oc-item"><span class="oc-label">用户</span><span class="oc-value">${o.user_name || o.username || o.user_id || '-'}</span></div>
+                  <div class="oc-item"><span class="oc-label">类型</span><span class="oc-value">${ORDER_TYPE_LABEL[o.order_type] || '购买邀请积分'}</span></div>
+                  <div class="oc-item"><span class="oc-label">金额</span><span class="oc-value">${formatAdminPrice(o)}</span></div>
+                  <div class="oc-item"><span class="oc-label">数量</span><span class="oc-value">${o.account_count || o.quantity || 0}（已创建 ${o.total_accounts_created || 0}）</span></div>
+                  <div class="oc-item"><span class="oc-label">创建</span><span class="oc-value">${new Date(o.created_at).toLocaleDateString('zh-CN')}</span></div>
+                </div>
+              </div>
+              <div class="order-card-foot">
+                <div class="flex gap-1" style="flex-wrap:wrap;gap:6px;">
+                  ${adminBtns}
+                  ${needsReissue(o) ? `<button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" data-action="reissue-order" data-id="${o.id}">补发审查</button>` : ''}
+                  ${hasExcess(o) ? `<button class="btn btn-sm" style="background:var(--accent-red);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" data-action="cleanup-excess" data-id="${o.id}">清理超额</button>` : ''}
+                  <button class="btn btn-ghost btn-sm" onclick="location.hash='#/orders/${o.id}'">详情</button>
+                </div>
+              </div>
+            </div>`;
+        }).join('')}
       </div>`;
 
     // 绑定审批按钮事件
@@ -191,23 +254,33 @@ async function loadOrders() {
     document.querySelectorAll('.order-checkbox').forEach(cb => {
       cb.addEventListener('change', () => toggleOrder(cb.value));
     });
-    document.getElementById('select-all-header').addEventListener('change', function() {
-      document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
-        cb.checked = this.checked;
-        if (this.checked) selectedOrders.add(cb.value);
-        else selectedOrders.delete(cb.value);
+    const selectAllHeader = document.getElementById('select-all-header');
+    if (selectAllHeader) {
+      selectAllHeader.addEventListener('change', function() {
+        document.querySelectorAll('.order-checkbox:not(:disabled)').forEach(cb => {
+          cb.checked = this.checked;
+          if (this.checked) selectedOrders.add(cb.value);
+          else selectedOrders.delete(cb.value);
+        });
+        updateBatchBar();
       });
-      updateBatchBar();
-    });
+    }
 
-    // 分页控制
-    document.getElementById('page-prev').disabled = _currentPage <= 1;
-    document.getElementById('page-next').disabled = _currentPage >= _totalPages;
-    document.getElementById('page-info').textContent = '第 ' + _currentPage + '/' + _totalPages + ' 页（共' + total + '条）';
+    updatePager();
 
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }
+}
+
+function updatePager() {
+  const prev = document.getElementById('page-prev');
+  const next = document.getElementById('page-next');
+  const info = document.getElementById('page-info');
+  if (!prev || !next || !info) return;
+  prev.disabled = _currentPage <= 1;
+  next.disabled = _currentPage >= _totalPages;
+  info.textContent = '第 ' + _currentPage + '/' + _totalPages + ' 页';
 }
 
 function getActionButtons(order) {

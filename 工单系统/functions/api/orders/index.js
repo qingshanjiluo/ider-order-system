@@ -100,6 +100,9 @@ export async function onRequest(context) {
       if (!points || points < 10 || points % 10 !== 0) {
         return json({ error: '邀请积分数量必须是10的倍数（最少10）' }, 400);
       }
+      if (points > 500) {
+        return json({ error: '单个工单最多购买500邀请积分，如需更多请分多次下单' }, 400);
+      }
     }
 
     // ── 2. 验证付款方式 ──
@@ -109,13 +112,16 @@ export async function onRequest(context) {
     }
 
     // ── 3. 根据付款方式计算价格 ──
+    const isNewType = NEW_ORDER_TYPES.includes(order_type);
+    // 新工单类型：前端将固定价格×100 传为 points（整数存储），此处换算回修仙币
+    const unitPrice = isNewType ? (points || 0) / 100 : (points || 0);
     let price = 0;        // 显示价格
     let priceUnit = '';   // 价格单位
-    let bonusPoints = points; // 获得的积分 = 输入的积分数量
+    let bonusPoints = isNewType ? unitPrice : points; // 获得的积分/金额
 
     if (payment_method === 'wechat') {
       // 现金：1元 = 120积分
-      price = points / 120;
+      price = unitPrice / 120;
       priceUnit = '元';
     } else if (payment_method === 'spirit_stone') {
       // 灵石：从 config 读取灵石兑换比例（默认 100万灵石 = 10积分）
@@ -123,11 +129,11 @@ export async function onRequest(context) {
       const spiritPer10 = parseInt(spiritCfg?.value || '1000000');
       // spiritPer10 = 每10积分对应的灵石数（单位：灵石）
       // 转换为万灵石显示：spiritPer10 / 10000 = 每10积分对应的万灵石数
-      price = Math.round(points / 10 * spiritPer10 / 10000);
+      price = Math.round(unitPrice / 10 * spiritPer10 / 10000);
       priceUnit = '万灵石';
     } else if (payment_method === 'coin') {
       // 修仙币：1修仙币 = 1积分
-      price = points;
+      price = unitPrice;
       priceUnit = '修仙币';
     }
 
@@ -143,7 +149,7 @@ export async function onRequest(context) {
       if (!coupon) {
         return json({ error: '优惠码无效、已过期或已达使用上限' }, 400);
       }
-      if (coupon.min_amount > 0 && points < coupon.min_amount) {
+      if (coupon.min_amount > 0 && unitPrice < coupon.min_amount) {
         return json({ error: `该优惠码需订单金额达到 ${coupon.min_amount} 积分才能使用` }, 400);
       }
       couponId = coupon.id;
@@ -213,9 +219,13 @@ export async function onRequest(context) {
       }
     }
 
+    // 修仙币支付的工单自动通过（已扣款，无需人工审核）
+    const autoApproved = payment_method === 'coin' && !NEW_ORDER_TYPES.includes(order_type);
+    const orderStatus = autoApproved ? 'approved' : 'pending';
+
     const result = await env.DB.prepare(
       `INSERT INTO orders (user_id, invite_code, payment_method, payment_account, amount, price, coupon_code, discount, bonus_points, order_type, quantity, frozen_points, invite_code_used, status, created_at, est_complete_date, game_account_name, game_account_password, subscription_start, subscription_end, dispatch_map, material_type, clear_type)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       user.id,
       finalInviteCode,
@@ -230,6 +240,7 @@ export async function onRequest(context) {
       accCount,         // quantity: 账号数
       frozenPoints,     // frozen_points: 冻结的修仙币
       finalInviteCode,  // invite_code_used
+      orderStatus,
       estDate,
       game_account_name || '',
       game_account_password || '',
@@ -250,18 +261,25 @@ export async function onRequest(context) {
     }
 
     // ── 11. 发送通知 ──
-    await env.DB.prepare(
-      "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已提交', '工单 #' || ? || ' 已提交，等待管理员审核中', 'order')"
-    ).bind(user.id, orderId).run();
+    if (autoApproved) {
+      await env.DB.prepare(
+        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已自动通过', '工单 #' || ? || ' 修仙币支付成功，已自动通过并开始处理', 'order')"
+      ).bind(user.id, orderId).run();
+    } else {
+      await env.DB.prepare(
+        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已提交', '工单 #' || ? || ' 已提交，等待管理员审核中', 'order')"
+      ).bind(user.id, orderId).run();
+    }
 
     // ── 12. 记录活动日志 ──
     const paymentLabel = payment_method === 'coin' ? '修仙币' : payment_method === 'wechat' ? '现金' : '灵石';
-    await logActivity(env, orderId, user.id, 'created', 
-      `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分`);
+    await logActivity(env, orderId, user.id, autoApproved ? 'approved' : 'created', 
+      `提交工单: ${accCount}个账号, ${paymentLabel}支付, ${points}积分` + (autoApproved ? '（修仙币支付自动通过）' : ''));
     return json({
       ok: true,
-      message: '工单已提交，等待审核',
+      message: autoApproved ? '工单已提交并自动通过，开始处理中' : '工单已提交，等待审核',
       order_id: orderId,
+      auto_approved: autoApproved,
       price_info: {
         points,
         payment_method: payment_method,

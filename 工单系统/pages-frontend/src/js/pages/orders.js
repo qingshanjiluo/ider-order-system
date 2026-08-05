@@ -203,8 +203,8 @@ async function showNewOrderModal() {
         </div>
         <div class="form-group">
           <label class="form-label">邀请积分数量 <span style="color:var(--accent-red)">*</span></label>
-          <input type="number" class="form-input" id="order-points" value="10" min="10" step="10">
-          <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;">每10积分 = 1个120级账号，必须是10的倍数</div>
+          <input type="number" class="form-input" id="order-points" value="10" min="10" max="500" step="10">
+          <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;">每10积分 = 1个120级账号，必须是10的倍数，单工单最多500积分</div>
         </div>
       </div>
 
@@ -369,8 +369,14 @@ async function showNewOrderModal() {
         if (material_type) payload.material_type = material_type;
         if (clear_type) payload.clear_type = clear_type;
         const res = await api.createOrder(payload);
-        toast.success('工单创建成功');
+        toast.success(res.message || '工单创建成功');
         modal.close();
+        // 刷新用户余额（扣除修仙币后同步本地存储）
+        try {
+          const info = await api.getUserInfo();
+          const fresh = info.user || info;
+          localStorage.setItem('ider_user', JSON.stringify(fresh));
+        } catch (e) { /* 保持原值 */ }
         loadOrders();
       } catch (err) {
         toast.error(err.message || '创建失败');

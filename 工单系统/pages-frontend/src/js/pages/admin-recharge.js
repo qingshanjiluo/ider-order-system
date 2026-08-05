@@ -45,11 +45,10 @@ export async function renderAdminRecharge({ container }) {
     container.querySelectorAll('[data-ar-approve]').forEach(el => {
       el.addEventListener('click', async () => {
         const id = parseInt(el.dataset.arApprove);
-        if (!confirm('确认到账？审核通过后将自动生成兑换码')) return;
+        if (!confirm('确认到账？审核通过后修仙币将直接计入用户余额')) return;
         try {
           const res = await api.adminApproveRecharge(id);
-          const code = res.code || '';
-          toast.success('已确认到账' + (code ? '，兑换码: ' + code : ''));
+          toast.success('已确认到账' + (res.credited ? '，+'+res.credited+' 修仙币已计入用户余额' : ''));
           renderAdminRecharge({ container });
         } catch (err) {
           toast.error(err.message || '操作失败');
@@ -82,7 +81,7 @@ function renderOrdersTable(orders, showActions) {
   return `
     <div class="card">
       <table class="table" style="width:100%;">
-        <thead><tr><th>时间</th><th>用户</th><th>类型</th><th>金额</th><th>折合</th><th>支付方式</th><th>状态</th><th>兑换码</th>${showActions ? '<th>操作</th>' : ''}</tr></thead>
+        <thead><tr><th>时间</th><th>用户</th><th>类型</th><th>金额</th><th>折合</th><th>支付方式</th><th>状态</th><th>到账</th>${showActions ? '<th>操作</th>' : ''}</tr></thead>
         <tbody>
           ${orders.map(o => {
             const typeLabel = o.type === 'package' ? '套餐' : o.type === 'cash' ? '现金' : '灵石';
@@ -99,7 +98,7 @@ function renderOrdersTable(orders, showActions) {
                 <td style="color:var(--accent-amber);">¥${(o.coins / 400).toFixed(2)}</td>
                 <td class="text-sm">${o.payment_account || '-'}</td>
                 <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-                <td class="text-sm">${o.redeem_code ? `<code style="background:var(--bg-base);padding:2px 6px;border-radius:4px;font-size:12px;letter-spacing:1px;">${o.redeem_code}</code>` : (o.status === 'completed' ? '已生成' : '-')}</td>
+                <td class="text-sm">${o.status === 'completed' ? '✓ 已到账' : (o.redeem_code ? `<code style="background:var(--bg-base);padding:2px 6px;border-radius:4px;font-size:12px;letter-spacing:1px;">${o.redeem_code}</code>` : '-')}</td>
                 ${showActions ? `
                 <td>
                   ${o.status === 'pending' ? `

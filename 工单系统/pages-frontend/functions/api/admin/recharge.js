@@ -1,5 +1,5 @@
 // functions/api/admin/recharge.js — 管理充值订单
-import { json, generateRechargeCode } from '../../_utils.js';
+import { json, logActivity } from '../../_utils.js';
 import { authenticateAdmin } from '../../_auth.js';
 
 export async function onRequest(context) {
@@ -44,29 +44,21 @@ export async function onRequest(context) {
     if (order.status !== 'pending') return json({ error: '订单已处理' }, 400);
 
     if (action === 'approve') {
-      // 标记充值订单完成（修仙币通过兑换码发放，不直接加币，避免双倍到账）
+      // 直接到账：将修仙币计入用户余额（无需兑换码兑换）
+      await env.DB.prepare(
+        "UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?"
+      ).bind(order.coins, order.user_id).run();
       await env.DB.prepare(
         "UPDATE recharge_orders SET status = 'completed', admin_id = ?, completed_at = datetime('now') WHERE id = ?"
       ).bind(user.id, order_id).run();
 
-      // 2. 自动生成兑换码（唯一性重试机制）
-      let code = '';
-      let retries = 0;
-      while (retries < 5) {
-        code = generateRechargeCode();
-        const exist = await env.DB.prepare('SELECT id FROM recharge_codes WHERE code = ?').bind(code).first();
-        if (!exist) break;
-        retries++;
-      }
-      await env.DB.prepare(
-        'INSERT INTO recharge_codes (user_id, recharge_order_id, code, coins, status, created_by) VALUES (?, ?, ?, ?, ?, ?)'
-      ).bind(order.user_id, order.id, code, order.coins, 'pending', user.id).run();
-
       // 3. 发送通知
       await env.DB.prepare(
-        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '兑换码已生成', '您的充值 ' || ? || ' 修仙币兑换码已生成：' || ? || '，请在坊市或充值页面输入兑换码激活', 'order')"
-      ).bind(order.user_id, order.coins, code).run();
-      return json({ ok: true, message: '充值已确认，兑换码已生成', code });
+        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '充值已到账', '您的 ' || ? || ' 修仙币充值已确认，已直接到账', 'order')"
+      ).bind(order.user_id, order.coins).run();
+      await logActivity(env, order_id, order.user_id, 'recharge_approved',
+        '充值 ' + order.coins + ' 修仙币已到账（管理员 ' + (user.username || user.id) + ' 确认）');
+      return json({ ok: true, message: '充值已确认，修仙币已直接到账', credited: order.coins });
     } else {
       await env.DB.prepare(
         "UPDATE recharge_orders SET status = 'cancelled', admin_id = ? WHERE id = ?"

@@ -28,7 +28,7 @@ export async function renderRecharge({ container }) {
           <input type="text" class="form-input" id="recharge-redeem-input" placeholder="输入兑换码（8位字母数字）" style="max-width:260px;text-transform:uppercase;letter-spacing:2px;">
           <button class="btn btn-primary" id="recharge-redeem-btn">激活修仙币</button>
         </div>
-        <p class="text-sm text-muted mt-2">兑换码由管理员审核通过后自动生成，或由管理员直接发放</p>
+        <p class="text-sm text-muted mt-2">充值审核通过后修仙币将直接到账，无需兑换码；兑换码用于管理员手动发放的奖励码</p>
       </div>
 
       <!-- Tabs -->
@@ -237,12 +237,11 @@ function showRechargeWizard(pkg, method) {
             <hr style="margin:16px 0;border-color:var(--border-light);">
             <p style="color:var(--text-secondary);font-size:var(--text-sm);line-height:1.7;">
               请仔细阅读以下事项：<br><br>
-              1. 支付后请截图保存支付凭证<br>
-              2. 提交申请后管理员会审核确认<br>
-              3. 审核通过后自动生成<strong>兑换码</strong><br>
-              4. 在充值页或坊市页输入兑换码激活修仙币<br>
-              5. 如长时间未审核请联系站长<br>
-              6. 兑换码仅限本人使用，请勿泄露
+               1. 支付后请截图保存支付凭证<br>
+               2. 提交申请后管理员会审核确认<br>
+               3. 审核通过后修仙币将<strong>直接到账</strong><br>
+               4. 如长时间未审核请联系站长<br>
+               5. 兑换码仅用于管理员发放的奖励码，请勿泄露
             </p>
           </div>
         `,
@@ -293,11 +292,10 @@ function showRechargeWizard(pkg, method) {
             <hr style="margin:16px 0;border-color:var(--border-light);">
             <p style="color:var(--text-secondary);font-size:var(--text-sm);">
               提交后等待管理员审核<br>
-              审核通过后将自动生成兑换码<br>
-              请在充值页或坊市页输入兑换码激活
+              审核通过后修仙币将<strong>直接到账</strong>
             </p>
             <p style="margin-top:12px;font-size:var(--text-xs);color:var(--text-tertiary);">
-              已有兑换码？在输入框中直接激活即可
+              已有管理员发放的兑换码？在输入框中直接激活即可
             </p>
           </div>
         `,

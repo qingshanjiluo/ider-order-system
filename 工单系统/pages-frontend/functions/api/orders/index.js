@@ -40,7 +40,7 @@ export async function onRequest(context) {
 
     const [orders, totalResult] = await Promise.all([
       params.length > 2 ? env.DB.prepare(query).bind(...params).all() : env.DB.prepare(query).all(),
-      countParams.length > 1 ? env.DB.prepare(countQuery).bind(...countParams).first() : env.DB.prepare(countQuery).first()
+      env.DB.prepare(countQuery).bind(...countParams).first()
     ]);
     const total = totalResult?.total || 0;
       return json({ ok: true, orders: orders.results, total, page, limit });

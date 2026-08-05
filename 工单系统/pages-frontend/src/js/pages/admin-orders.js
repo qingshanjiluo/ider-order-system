@@ -297,16 +297,16 @@ function getActionButtons(order) {
 }
 
 function needsReissue(order) {
+  // 补发审查：判断是否少于应创建的数量（以实际账号数为准）
   if (!ACCOUNT_ORDER_TYPES.includes(order.order_type)) return false;
-  if (order.status === 'rejected') return true;
   const qty = order.quantity || 0;
-  const created = order.total_accounts_created || 0;
+  const created = order.account_count ?? order.total_accounts_created ?? 0;
   return qty > 0 && created < qty;
 }
 
 function hasExcess(order) {
   const qty = order.quantity || 0;
-  const created = order.total_accounts_created || 0;
+  const created = order.account_count ?? order.total_accounts_created ?? 0;
   return qty > 0 && created > qty;
 }
 

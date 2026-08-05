@@ -1663,8 +1663,14 @@ async function handleRoute(method, path, request, env, url) {
       return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, failed });
     }
 
-    // 阶段2: 最终完成 — 无挂中账号，全部已完成或失败
-    if (settingUp === 0 && farming === 0 && finished + failed === total && total > 0) {
+    // 阶段2: 最终完成 — 无挂中账号，全部已完成或失败，且已创建数达到订购数
+    const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
+    const quantityMet = orderQty && total >= orderQty.quantity;
+    if (!quantityMet && orderQty) {
+      await logActivity(env, order_id, order.user_id, 'processing',
+        `账号未达标: 已创建 ${total}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
+    }
+    if (settingUp === 0 && farming === 0 && finished + failed === total && total > 0 && quantityMet) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
       ).bind(order_id).run();

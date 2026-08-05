@@ -39,8 +39,15 @@ export async function onRequest(context) {
   const quantity = order.quantity || 0;
   const shortfall = quantity > 0 ? Math.max(0, quantity - createdCount) : 0;
 
-  // 5. 如果工单是被拒绝或卡住的，恢复成 approved
-  if (order.status === 'rejected' || order.status === 'cancelled' || order.status === 'completed') {
+  // 5. 如果工单是被拒绝/取消/完成/挂机的，且存在差额，恢复成 approved 以便扫描器补发
+  if (shortfall > 0) {
+    await env.DB.prepare(
+      "UPDATE orders SET status = 'approved', updated_at = datetime('now') WHERE id = ? AND status != 'approved'"
+    ).bind(orderId).run();
+    await env.DB.prepare(
+      "UPDATE orders SET total_accounts_created = ? WHERE id = ?"
+    ).bind(createdCount, orderId).run();
+  } else if (order.status === 'rejected' || order.status === 'cancelled') {
     await env.DB.prepare(
       "UPDATE orders SET status = 'approved', updated_at = datetime('now') WHERE id = ?"
     ).bind(orderId).run();

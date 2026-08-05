@@ -175,6 +175,10 @@ async function loadShop(el, container) {
         const key = btn.dataset.previewSkin;
         const existing = document.getElementById('skin-preview-style');
         if (existing) existing.remove();
+        // 先清理可能存在的 preview theme class
+        document.documentElement.classList.forEach(function(c) {
+          if (c.indexOf('theme-') === 0) document.documentElement.classList.remove(c);
+        });
         fetch(`/api/skins/css/${key}?v=${Date.now()}`)
           .then(r => r.text())
           .then(css => {
@@ -182,6 +186,7 @@ async function loadShop(el, container) {
             style.id = 'skin-preview-style';
             style.textContent = css;
             document.head.appendChild(style);
+            document.documentElement.classList.add('theme-' + key);
             toast.info('已应用皮肤预览，刷新页面恢复默认');
           })
           .catch(() => toast.error('预览加载失败'));
@@ -209,6 +214,7 @@ async function loadMine(el) {
     }
 
     el.innerHTML = `
+      <div id="site-skin-status" style="display:none;background:var(--bg-card);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-4);border:1px solid var(--accent-green);font-size:var(--text-sm);color:var(--text-primary);align-items:center;gap:var(--space-3);"></div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:var(--space-4);margin-top:var(--space-4);">
         ${owned.map(o => {
           const active = currentActive && currentActive.id === o.id;
@@ -219,22 +225,35 @@ async function loadMine(el) {
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2);">
                 <h3 style="font-size:var(--text-base);font-weight:var(--font-semibold);">${o.label}</h3>
-                ${active ? '<span class="badge badge-approved">使用中</span>' : ''}
+                ${active ? '<span class="badge badge-approved">游戏中使用中</span>' : ''}
               </div>
               <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:var(--space-3);">获取于 ${new Date(o.created_at).toLocaleDateString('zh-CN')}</p>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                ${!active ? '<button class="btn btn-primary btn-sm" data-use-owned="' + o.id + '">使用</button>' : ''}
+                ${!active ? '<button class="btn btn-primary btn-sm" data-use-owned="' + o.id + '">游戏中启用</button>' : '<button class="btn btn-secondary btn-sm" data-use-owned="' + o.id + '">游戏中启用</button>'}
                 <button class="btn btn-ghost btn-sm" data-apply-css="' + o.key + '">应用于工单系统</button>
               </div>
             </div>`;
         }).join('')}
       </div>`;
 
+    el.querySelectorAll('[data-use-owned]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          const res = await api.useSkin(parseInt(btn.dataset.useOwned));
+          toast.success(res.message);
+          loadMine(el);
+          loadShop(document.getElementById('skin-shop'), el.closest('.content-area'));
+        } catch (err) { toast.error(err.message); }
+      });
+    });
+
     el.querySelectorAll('[data-apply-css]').forEach(btn => {
       btn.addEventListener('click', function() {
         applySkinToSite(this.dataset.applyCss);
       });
     });
+
+    refreshSkinButtons();
   } catch (err) {
     el.innerHTML = `<div class="empty-state"><p>加载失败: ${err.message}</p></div>`;
   }
@@ -321,12 +340,12 @@ function showPurchaseSuccessModal(skin, message) {
   `.trim(), '知道了');
 }
 
+// 应用到工单系统：注入 CSS 并给 <html> 添加 theme-{key} 类
 function applySkinToSite(key) {
   if (!key) return toast.error('无效皮肤');
-  // 清除之前应用的皮肤
-  var existing = document.getElementById('ider-skin-css');
-  if (existing) existing.remove();
-  // 获取CSS并应用
+  const root = document.documentElement;
+  // 清除之前应用的皮肤 class + css
+  clearSiteSkin();
   fetch('/api/skins/css/' + key + '?v=' + Date.now())
     .then(function(r) { return r.text(); })
     .then(function(css) {
@@ -334,16 +353,59 @@ function applySkinToSite(key) {
       style.id = 'ider-skin-css';
       style.textContent = css;
       document.head.appendChild(style);
+      root.classList.add('theme-' + key);
       localStorage.setItem('ider_active_skin', key);
-      toast.success('皮肤已应用于工单系统');
+      toast.success('皮肤已应用于工单系统，点击「移除皮肤」恢复默认');
+      refreshSkinButtons();
     })
     .catch(function() { toast.error('皮肤应用失败'); });
+}
+
+function clearSiteSkin() {
+  var root = document.documentElement;
+  // 移除所有已应用的主题 class
+  root.classList.forEach(function(c) {
+    if (c.indexOf('theme-') === 0) root.classList.remove(c);
+  });
+  var existing = document.getElementById('ider-skin-css');
+  if (existing) existing.remove();
+}
+
+// 刷新「我的皮肤」中每个皮肤的按钮状态
+function refreshSkinButtons() {
+  var active = localStorage.getItem('ider_active_skin');
+  var el = document.getElementById('skin-mine');
+  if (!el) return;
+  el.querySelectorAll('[data-apply-css]').forEach(function(btn) {
+    var key = btn.dataset.applyCss;
+    var applied = key === active;
+    btn.textContent = applied ? '✓ 工单系统使用中' : '应用于工单系统';
+    btn.style.background = applied ? 'var(--accent-green)' : '';
+    btn.style.color = applied ? '#fff' : '';
+  });
+  // 顶部提示条
+  var info = document.getElementById('site-skin-status');
+  if (info) {
+    if (active) {
+      info.style.display = 'flex';
+      info.innerHTML = `<span>当前工单系统皮肤：<strong>${active}</strong></span><button class="btn btn-ghost btn-sm" id="remove-site-skin" style="margin-left:auto;">移除皮肤</button>`;
+      info.querySelector('#remove-site-skin').addEventListener('click', () => {
+        localStorage.removeItem('ider_active_skin');
+        clearSiteSkin();
+        toast.success('已恢复默认皮肤');
+        refreshSkinButtons();
+      });
+    } else {
+      info.style.display = 'none';
+    }
+  }
 }
 
 // 页面加载时恢复之前应用的皮肤
 (function() {
   var saved = localStorage.getItem('ider_active_skin');
   if (saved) {
+    var root = document.documentElement;
     fetch('/api/skins/css/' + saved)
       .then(function(r) { return r.text(); })
       .then(function(css) {
@@ -351,6 +413,8 @@ function applySkinToSite(key) {
         style.id = 'ider-skin-css';
         style.textContent = css;
         document.head.appendChild(style);
+        root.classList.add('theme-' + saved);
+        refreshSkinButtons();
       }).catch(function() {});
   }
 })();

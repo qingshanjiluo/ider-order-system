@@ -575,6 +575,267 @@ html.theme-guzhenren{--void:#07070A;--abyss:#0A0A0F;--deep:#0F0F14;--ink:#141019
 `
 };
 
+// ═══════════════════════════════════════════════════════════════
+// 工单系统换肤层：将游戏皮肤同款配色映射到工单系统（艾德尔工单系统）
+// 通过 html.theme-{key} 作用域，注入后仅在该皮肤激活时生效
+// ═══════════════════════════════════════════════════════════════
+
+function buildSystemCss(p) {
+  return `
+/* ═══ 工单系统皮肤: ${p.label} ═══ */
+html.theme-${p.key}{
+  --bg-base: ${p.bg} !important;
+  --bg-card: ${p.card} !important;
+  --bg-card-hover: ${p.cardHover} !important;
+  --bg-sidebar: ${p.sidebar} !important;
+  --bg-sidebar-hover: ${p.sidebarHover} !important;
+  --bg-sidebar-active: ${p.sidebarActive} !important;
+  --bg-input: ${p.input} !important;
+  --bg-overlay: ${p.overlay} !important;
+  --text-primary: ${p.text} !important;
+  --text-secondary: ${p.text2} !important;
+  --text-tertiary: ${p.text3} !important;
+  --text-inverse: ${p.textInverse} !important;
+  --text-sidebar: ${p.sidebarText} !important;
+  --text-sidebar-active: ${p.sidebarTextActive} !important;
+  --accent-green: ${p.green} !important;
+  --accent-green-light: ${p.greenLight} !important;
+  --accent-green-dark: ${p.greenDark} !important;
+  --accent-amber: ${p.amber} !important;
+  --accent-amber-light: ${p.amberLight} !important;
+  --accent-blue: ${p.blue} !important;
+  --accent-blue-light: ${p.blueLight} !important;
+  --accent-red: ${p.red} !important;
+  --accent-red-light: ${p.redLight} !important;
+  --border-default: ${p.border} !important;
+  --border-light: ${p.borderLight} !important;
+  --border-focus: ${p.borderFocus} !important;
+  ${p.font ? `--font-sans: ${p.font} !important;` : ''}
+  --radius-sm: ${p.radiusSm} !important;
+  --radius-md: ${p.radiusMd} !important;
+  --radius-lg: ${p.radiusLg} !important;
+  --shadow-sm: ${p.shadow} !important;
+  --shadow-md: ${p.shadow} !important;
+}
+html.theme-${p.key} body{background:${p.bg} !important;color:${p.text} !important}
+html.theme-${p.key} .sidebar{background:${p.sidebar} !important}
+html.theme-${p.key} .sidebar-brand{background:${p.sidebar} !important;border-bottom-color:${p.border} !important}
+html.theme-${p.key} .sidebar-brand h1{color:${p.sidebarTextActive} !important}
+html.theme-${p.key} .nav-item{color:${p.sidebarText} !important}
+html.theme-${p.key} .nav-item:hover{background:${p.sidebarHover} !important}
+html.theme-${p.key} .nav-item.active{background:${p.sidebarActive} !important;color:${p.sidebarTextActive} !important}
+html.theme-${p.key} .sidebar-section-trigger{color:${p.text3} !important}
+html.theme-${p.key} .topbar{background:${p.card} !important;border-bottom-color:${p.border} !important}
+html.theme-${p.key} .topbar-title{color:${p.text} !important}
+html.theme-${p.key} .content-area{background:${p.bg} !important}
+html.theme-${p.key} .page-header h2{color:${p.text} !important}
+html.theme-${p.key} .page-header p{color:${p.text2} !important}
+html.theme-${p.key} .card{background:${p.card} !important;border-color:${p.border} !important;box-shadow:${p.shadow} !important}
+html.theme-${p.key} .table-wrap{background:${p.card} !important;border-color:${p.border} !important}
+html.theme-${p.key} table th{color:${p.text2} !important;border-bottom-color:${p.border} !important;background:${p.cardHover} !important}
+html.theme-${p.key} table td{border-bottom-color:${p.borderLight} !important;color:${p.text} !important}
+html.theme-${p.key} .form-input,html.theme-${p.key} .form-select,html.theme-${p.key} .form-textarea{background:${p.input} !important;border-color:${p.border} !important;color:${p.text} !important}
+html.theme-${p.key} .form-input:focus,html.theme-${p.key} .form-select:focus{border-color:${p.borderFocus} !important}
+html.theme-${p.key} .form-input::placeholder{color:${p.text3} !important}
+html.theme-${p.key} .btn-primary{background:${p.text} !important;color:${p.textInverse} !important;border-color:${p.text} !important}
+html.theme-${p.key} .btn-primary:hover:not(:disabled){background:${p.blue} !important}
+html.theme-${p.key} .btn-secondary{background:${p.card} !important;color:${p.text} !important;border-color:${p.border} !important}
+html.theme-${p.key} .btn-ghost{color:${p.text2} !important}
+html.theme-${p.key} .btn-ghost:hover{background:${p.cardHover} !important;color:${p.text} !important}
+html.theme-${p.key} .badge{background:${p.cardHover} !important;color:${p.text2} !important}
+html.theme-${p.key} .badge-pending{background:${p.amberLight} !important;color:${p.amber} !important}
+html.theme-${p.key} .badge-approved{background:${p.blueLight} !important;color:${p.blue} !important}
+html.theme-${p.key} .badge-completed{background:${p.greenLight} !important;color:${p.greenDark} !important}
+html.theme-${p.key} .badge-rejected{background:${p.redLight} !important;color:${p.red} !important}
+html.theme-${p.key} .modal-overlay{background:${p.overlay} !important}
+html.theme-${p.key} .modal{background:${p.card} !important;border-color:${p.border} !important}
+html.theme-${p.key} .modal-header{background:${p.card} !important;border-bottom-color:${p.border} !important}
+html.theme-${p.key} .modal-header h3{color:${p.text} !important}
+html.theme-${p.key} .modal-body{background:${p.card} !important;color:${p.text} !important}
+html.theme-${p.key} .modal-footer{background:${p.card} !important;border-top-color:${p.border} !important}
+html.theme-${p.key} .tab{color:${p.text2} !important}
+html.theme-${p.key} .tab.active{color:${p.text} !important;border-bottom-color:${p.text} !important}
+html.theme-${p.key} .empty-state{color:${p.text2} !important}
+html.theme-${p.key} .scrolling-announcement{background:${p.sidebar} !important}
+html.theme-${p.key} .scrolling-text{color:${p.amber} !important}
+html.theme-${p.key} .filter-bar .form-select{background:${p.input} !important;color:${p.text} !important;border-color:${p.border} !important}
+html.theme-${p.key} .order-card{background:${p.card} !important;border-color:${p.border} !important}
+html.theme-${p.key} .oc-label{color:${p.text3} !important}
+html.theme-${p.key} .oc-value{color:${p.text} !important}
+html.theme-${p.key} .skeleton-block{background:linear-gradient(90deg,${p.cardHover} 25%,${p.borderLight} 50%,${p.cardHover} 75%) !important}
+html.theme-${p.key} .skeleton-card{background:${p.card} !important;border-color:${p.border} !important}
+html.theme-${p.key} .text-muted{color:${p.text2} !important}
+html.theme-${p.key} a{color:${p.blue} !important}
+html.theme-${p.key} a:hover{color:${p.amber} !important}
+html.theme-${p.key} ::-webkit-scrollbar-thumb{background:${p.border} !important}
+`;
+}
+
+// 各皮肤在工单系统的配色映射（与游戏皮肤同款色系）
+const SYSTEM_PALETTES = {
+  ink: { key:'ink', label:'水墨丹青',
+    bg:'#F5F0E6', card:'#F0EBE0', cardHover:'#E8E0D0', input:'#F0EBE0',
+    sidebar:'#1a1a1a', sidebarHover:'#2a2a2a', sidebarActive:'#C43A2B',
+    sidebarText:'#D4D4D4', sidebarTextActive:'#F5F0E6',
+    text:'#1a1a1a', text2:'rgba(26,26,26,0.55)', text3:'rgba(26,26,26,0.38)', textInverse:'#F5F0E6',
+    amber:'#C43A2B', amberLight:'rgba(196,58,43,0.10)',
+    blue:'#8B7355', blueLight:'rgba(139,115,85,0.12)',
+    green:'#5a7a3a', greenLight:'rgba(90,122,58,0.12)', greenDark:'#4a6a2a',
+    red:'#C43A2B', redLight:'rgba(196,58,43,0.10)',
+    border:'rgba(26,26,26,0.18)', borderLight:'rgba(26,26,26,0.08)', borderFocus:'#1a1a1a',
+    overlay:'rgba(26,26,26,0.5)', radiusSm:'3px', radiusMd:'4px', radiusLg:'6px',
+    shadow:'0 1px 2px rgba(0,0,0,0.04)',
+    font:'"Noto Serif SC","STKaiti","KaiTi","FangSong",serif',
+  },
+  cyber: { key:'cyber', label:'赛博修仙',
+    bg:'#03030a', card:'#070718', cardHover:'#0c0c28', input:'#0c0c28',
+    sidebar:'#050510', sidebarHover:'#0a0a20', sidebarActive:'#00f0ff',
+    sidebarText:'#4a5a7a', sidebarTextActive:'#00f0ff',
+    text:'#c4d0e0', text2:'#4a5a7a', text3:'#334', textInverse:'#03030a',
+    amber:'#ff00aa', amberLight:'rgba(255,0,170,0.10)',
+    blue:'#00f0ff', blueLight:'rgba(0,240,255,0.10)',
+    green:'#00ff88', greenLight:'rgba(0,255,136,0.10)', greenDark:'#00cc6a',
+    red:'#ff0044', redLight:'rgba(255,0,68,0.10)',
+    border:'#1a1a4a', borderLight:'rgba(0,240,255,0.06)', borderFocus:'#00f0ff',
+    overlay:'rgba(3,3,10,0.85)', radiusSm:'2px', radiusMd:'2px', radiusLg:'2px',
+    shadow:'0 0 12px rgba(0,240,255,0.04)',
+    font:'"Rajdhani","Noto Sans SC",sans-serif',
+  },
+  luxe: { key:'luxe', label:'欧式奢华',
+    bg:'#0d0b08', card:'#1a1612', cardHover:'#28221c', input:'#1a1612',
+    sidebar:'#0d0b08', sidebarHover:'#1a1612', sidebarActive:'#d4a844',
+    sidebarText:'#a09080', sidebarTextActive:'#d4a844',
+    text:'#e8ddd0', text2:'#a09080', text3:'#6a5f52', textInverse:'#0d0b08',
+    amber:'#d4a844', amberLight:'rgba(212,168,68,0.10)',
+    blue:'#d4a844', blueLight:'rgba(212,168,68,0.10)',
+    green:'#40a060', greenLight:'rgba(64,160,96,0.12)', greenDark:'#2a8a48',
+    red:'#c04040', redLight:'rgba(192,64,64,0.10)',
+    border:'#4a3f35', borderLight:'rgba(74,63,53,0.4)', borderFocus:'#d4a844',
+    overlay:'rgba(13,11,8,0.85)', radiusSm:'4px', radiusMd:'4px', radiusLg:'4px',
+    shadow:'0 4px 20px rgba(0,0,0,0.2)',
+    font:'"Playfair Display","Noto Serif SC",serif',
+  },
+  magazine: { key:'magazine', label:'杂志风',
+    bg:'#f8f6f2', card:'#ffffff', cardHover:'#f0ece6', input:'#f8f6f2',
+    sidebar:'#2a2520', sidebarHover:'#3a3530', sidebarActive:'#c49a6c',
+    sidebarText:'#a09080', sidebarTextActive:'#fff',
+    text:'#2a2520', text2:'#8a8078', text3:'rgba(42,37,32,0.4)', textInverse:'#fff',
+    amber:'#c49a6c', amberLight:'rgba(196,154,108,0.12)',
+    blue:'#6a7a8a', blueLight:'rgba(106,122,138,0.12)',
+    green:'#5a8a5a', greenLight:'rgba(90,138,90,0.12)', greenDark:'#4a7a4a',
+    red:'#b04a3a', redLight:'rgba(176,74,58,0.10)',
+    border:'#d0c8bc', borderLight:'rgba(208,200,188,0.4)', borderFocus:'#2a2520',
+    overlay:'rgba(248,246,242,0.9)', radiusSm:'0', radiusMd:'0', radiusLg:'0',
+    shadow:'0 2px 8px rgba(0,0,0,0.02)',
+    font:'"Noto Serif SC","Georgia",serif',
+  },
+  wabi: { key:'wabi', label:'侘寂',
+    bg:'#F5F0E8', card:'#F0E8DC', cardHover:'#EDE4D8', input:'#F0E8DC',
+    sidebar:'#EDE4D8', sidebarHover:'#E4D8CA', sidebarActive:'#B7413E',
+    sidebarText:'rgba(44,44,44,0.5)', sidebarTextActive:'#B7413E',
+    text:'#2C2C2C', text2:'rgba(44,44,44,0.5)', text3:'rgba(44,44,44,0.3)', textInverse:'#F5F0E8',
+    amber:'#B7413E', amberLight:'rgba(183,65,62,0.08)',
+    blue:'#6B8E6B', blueLight:'rgba(107,142,107,0.12)',
+    green:'#5A7A4A', greenLight:'rgba(90,122,74,0.12)', greenDark:'#4a6a3a',
+    red:'#B7413E', redLight:'rgba(183,65,62,0.08)',
+    border:'rgba(44,44,44,0.12)', borderLight:'rgba(44,44,44,0.06)', borderFocus:'#2C2C2C',
+    overlay:'rgba(245,240,232,0.85)', radiusSm:'0', radiusMd:'0', radiusLg:'0',
+    shadow:'0 1px 0 rgba(44,44,44,0.06)',
+    font:'"Noto Serif JP","STSong","Yu Mincho",serif',
+  },
+  minimal: { key:'minimal', label:'极简主义',
+    bg:'#FFFFFF', card:'#FFFFFF', cardHover:'#F8F8F8', input:'#FFFFFF',
+    sidebar:'#F8F8F8', sidebarHover:'#EFEFEF', sidebarActive:'#000000',
+    sidebarText:'rgba(0,0,0,0.45)', sidebarTextActive:'#FFFFFF',
+    text:'#000000', text2:'rgba(0,0,0,0.55)', text3:'rgba(0,0,0,0.3)', textInverse:'#FFFFFF',
+    amber:'#000000', amberLight:'rgba(0,0,0,0.05)',
+    blue:'#000000', blueLight:'rgba(0,0,0,0.05)',
+    green:'#000000', greenLight:'rgba(0,0,0,0.05)', greenDark:'#333333',
+    red:'#000000', redLight:'rgba(0,0,0,0.05)',
+    border:'rgba(0,0,0,0.08)', borderLight:'rgba(0,0,0,0.04)', borderFocus:'#000000',
+    overlay:'rgba(255,255,255,0.8)', radiusSm:'0', radiusMd:'0', radiusLg:'0',
+    shadow:'none',
+    font:'"Inter","Noto Sans SC",-apple-system,BlinkMacSystemFont,sans-serif',
+  },
+  frost: { key:'frost', label:'霜语',
+    bg:'#020617', card:'rgba(255,255,255,0.03)', cardHover:'rgba(255,255,255,0.06)', input:'rgba(255,255,255,0.05)',
+    sidebar:'#020617', sidebarHover:'rgba(255,255,255,0.06)', sidebarActive:'rgba(255,255,255,0.9)',
+    sidebarText:'rgba(255,255,255,0.4)', sidebarTextActive:'#020617',
+    text:'rgba(255,255,255,0.92)', text2:'rgba(255,255,255,0.48)', text3:'rgba(255,255,255,0.3)', textInverse:'#020617',
+    amber:'rgba(255,255,255,0.9)', amberLight:'rgba(255,255,255,0.08)',
+    blue:'rgba(255,255,255,0.8)', blueLight:'rgba(255,255,255,0.08)',
+    green:'rgba(52,199,89,0.8)', greenLight:'rgba(52,199,89,0.12)', greenDark:'rgba(52,199,89,0.9)',
+    red:'rgba(255,69,58,0.8)', redLight:'rgba(255,69,58,0.12)',
+    border:'rgba(255,255,255,0.08)', borderLight:'rgba(255,255,255,0.04)', borderFocus:'rgba(255,255,255,0.9)',
+    overlay:'rgba(2,6,23,0.8)', radiusSm:'12px', radiusMd:'14px', radiusLg:'16px',
+    shadow:'0 8px 32px rgba(0,0,0,0.25)',
+    font:'"Inter","Noto Sans SC",-apple-system,BlinkMacSystemFont,sans-serif',
+  },
+  brutal: { key:'brutal', label:'粗野主义',
+    bg:'#F0F0F0', card:'#FFFFFF', cardHover:'#E8E8E8', input:'#FFFFFF',
+    sidebar:'#0A0A0A', sidebarHover:'#2A2A2A', sidebarActive:'#FF3300',
+    sidebarText:'#CCCCCC', sidebarTextActive:'#FFFFFF',
+    text:'#0A0A0A', text2:'#444444', text3:'rgba(10,10,10,0.35)', textInverse:'#FFFFFF',
+    amber:'#FF3300', amberLight:'rgba(255,51,0,0.10)',
+    blue:'#0044FF', blueLight:'rgba(0,68,255,0.10)',
+    green:'#00CC00', greenLight:'rgba(0,204,0,0.10)', greenDark:'#009a00',
+    red:'#FF0000', redLight:'rgba(255,0,0,0.10)',
+    border:'#0A0A0A', borderLight:'rgba(10,10,10,0.3)', borderFocus:'#0A0A0A',
+    overlay:'rgba(10,10,10,0.6)', radiusSm:'0', radiusMd:'0', radiusLg:'0',
+    shadow:'4px 4px 0 #0A0A0A',
+    font:'-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif',
+  },
+  dunhuang: { key:'dunhuang', label:'敦煌飞天',
+    bg:'#F0E6D3', card:'#E8DCC8', cardHover:'#E0D0B8', input:'#F0E6D3',
+    sidebar:'#3D2B1A', sidebarHover:'#4A3522', sidebarActive:'#D4432A',
+    sidebarText:'rgba(232,220,200,0.6)', sidebarTextActive:'#F0E6D3',
+    text:'#3D2B1A', text2:'rgba(61,43,26,0.55)', text3:'rgba(61,43,26,0.35)', textInverse:'#F0E6D3',
+    amber:'#D4A844', amberLight:'rgba(212,168,68,0.15)',
+    blue:'#2AA8A8', blueLight:'rgba(42,168,168,0.12)',
+    green:'#2AA8A8', greenLight:'rgba(42,168,168,0.12)', greenDark:'#1a8a8a',
+    red:'#D4432A', redLight:'rgba(212,67,42,0.10)',
+    border:'rgba(196,155,94,0.25)', borderLight:'rgba(196,155,94,0.12)', borderFocus:'#D4A844',
+    overlay:'rgba(61,43,26,0.6)', radiusSm:'4px', radiusMd:'6px', radiusLg:'8px',
+    shadow:'0 2px 8px rgba(61,43,26,0.06)',
+    font:'"Noto Serif SC","STKaiti",serif',
+  },
+  taiji: { key:'taiji', label:'阴阳太极',
+    bg:'#F8F8F8', card:'#F0F0F0', cardHover:'#E8E8E8', input:'#F8F8F8',
+    sidebar:'#0A0A0A', sidebarHover:'#2A2A2A', sidebarActive:'#FFFFFF',
+    sidebarText:'#999999', sidebarTextActive:'#0A0A0A',
+    text:'#0A0A0A', text2:'rgba(10,10,10,0.5)', text3:'rgba(10,10,10,0.3)', textInverse:'#FFFFFF',
+    amber:'#0A0A0A', amberLight:'rgba(10,10,10,0.06)',
+    blue:'#888888', blueLight:'rgba(136,136,136,0.12)',
+    green:'#4A4A4A', greenLight:'rgba(74,74,74,0.12)', greenDark:'#2a2a2a',
+    red:'#0A0A0A', redLight:'rgba(10,10,10,0.06)',
+    border:'rgba(10,10,10,0.12)', borderLight:'rgba(10,10,10,0.06)', borderFocus:'#0A0A0A',
+    overlay:'rgba(10,10,10,0.4)', radiusSm:'0', radiusMd:'0', radiusLg:'0',
+    shadow:'none',
+    font:'"Noto Sans SC",-apple-system,BlinkMacSystemFont,sans-serif',
+  },
+  guzhenren: { key:'guzhenren', label:'蛊真人',
+    bg:'#0A0A0F', card:'#0F0F14', cardHover:'#141019', input:'#141019',
+    sidebar:'#07070A', sidebarHover:'#141019', sidebarActive:'#8B7355',
+    sidebarText:'#A09888', sidebarTextActive:'#E8DCC4',
+    text:'#E8DCC4', text2:'#A09888', text3:'#5A5548', textInverse:'#07070A',
+    amber:'#8B7355', amberLight:'rgba(139,115,85,0.12)',
+    blue:'#8B7355', blueLight:'rgba(139,115,85,0.12)',
+    green:'#2F4538', greenLight:'rgba(47,69,56,0.15)', greenDark:'#3a5a48',
+    red:'#6B2020', redLight:'rgba(107,32,32,0.12)',
+    border:'rgba(139,115,85,0.25)', borderLight:'rgba(139,115,85,0.12)', borderFocus:'#8B7355',
+    overlay:'rgba(7,7,10,0.85)', radiusSm:'0', radiusMd:'0', radiusLg:'0',
+    shadow:'0 4px 20px rgba(0,0,0,0.3)',
+    font:'"Noto Serif SC","STKaiti",serif',
+  },
+};
+
+// 每个皮肤的最终 CSS = 游戏皮肤 CSS + 工单系统换肤层
+const FULL_CSS = {};
+for (const k of Object.keys(SKIN_CSS)) {
+  const pal = SYSTEM_PALETTES[k];
+  FULL_CSS[k] = SKIN_CSS[k] + (pal ? buildSystemCss(pal) : '');
+}
+
 export async function onRequest(context) {
   const { request, env, params } = context;
   if (request.method !== 'GET') return json({ error: 'Method not allowed' }, 405);
@@ -582,7 +843,7 @@ export async function onRequest(context) {
   const key = params.key;
   if (!key) return json({ error: 'Missing skin key' }, 400);
 
-  const css = SKIN_CSS[key];
+  const css = FULL_CSS[key];
   if (!css) return json({ error: 'CSS not available' }, 404);
 
   return new Response(css, {

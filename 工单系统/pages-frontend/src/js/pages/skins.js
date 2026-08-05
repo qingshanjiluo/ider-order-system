@@ -232,8 +232,8 @@ async function loadMine(el) {
               </div>
               <p style="font-size:var(--text-xs);color:var(--text-tertiary);margin-bottom:var(--space-3);">获取于 ${new Date(o.created_at).toLocaleDateString('zh-CN')}</p>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                ${!active ? '<button class="btn btn-primary btn-sm" data-use-owned="' + o.id + '">游戏中启用</button>' : '<button class="btn btn-secondary btn-sm" data-use-owned="' + o.id + '">游戏中启用</button>'}
-                <button class="btn btn-ghost btn-sm" data-apply-css="' + o.key + '">应用于工单系统</button>
+                ${!active ? `<button class="btn btn-primary btn-sm" data-use-owned="${o.id}">游戏中启用</button>` : `<button class="btn btn-secondary btn-sm" data-use-owned="${o.id}">游戏中启用</button>`}
+                <button class="btn btn-ghost btn-sm" data-apply-css="${o.key}">应用于工单系统</button>
               </div>
             </div>`;
         }).join('')}

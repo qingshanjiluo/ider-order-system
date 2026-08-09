@@ -61,10 +61,11 @@ export async function renderAccounts({ container }) {
             <tbody>
               ${accounts.map(a => {
                 const st = STATUS_MAP[a.status] || { label: a.status, class: '' };
+                const isCleaned = a.health_status === 'cleaned';
                 return `
-                  <tr>
+                  <tr style="${isCleaned ? 'opacity:0.55;' : ''}">
                     <td class="font-mono text-xs">${a.game_username || a.username || '-'}</td>
-                    <td><span class="badge ${st.class}">${st.label}</span></td>
+                    <td><span class="badge ${isCleaned ? 'badge-pending' : st.class}">${isCleaned ? '已清理' : st.label}</span></td>
                     <td>Lv.${a.level || '-'}</td>
                     <td class="text-xs">${a.character_name || '-'}</td>
                     <td class="font-mono text-xs">${a.order_id ? '#' + a.order_id : '-'}</td>

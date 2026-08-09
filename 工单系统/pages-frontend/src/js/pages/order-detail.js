@@ -337,12 +337,12 @@ function renderAccountsTable(el, accounts, isAdmin) {
               <td class="font-mono text-xs">${a.username || '-'}</td>
               <td class="font-semibold">${a.character_name || '-'}</td>
               <td class="text-xs">${rootDesc || '-'}</td>
-              <td><span class="badge badge-${a.status === 'completed' ? 'completed' : a.status === 'farming' ? 'approved' : a.status === 'creating' ? 'pending' : a.status === 'error' ? 'rejected' : 'pending'}">${a.status || 'pending'}</span></td>
-              <td><span class="badge ${setupLabel.class}">${setupLabel.label}</span></td>
+              <td><span class="badge badge-${a.status === 'completed' ? 'completed' : a.status === 'farming' ? 'approved' : a.status === 'creating' ? 'pending' : a.status === 'error' ? 'rejected' : 'pending'}">${a.health_status === 'cleaned' ? '已清理' : (a.status || 'pending')}</span></td>
+              <td><span class="badge ${setupLabel.class}">${a.health_status === 'cleaned' ? '已清理' : setupLabel.label}</span></td>
               <td>Lv.${a.level || '-'}</td>
               <td class="text-xs text-muted">${a.operator_name || '-'}</td>
               <td class="text-sm text-muted">${fmtDate(a.last_check_at || a.created_at)}</td>
-              <td class="text-xs" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.error_msg || '-'}</td>
+              <td class="text-xs" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;color:${a.error_msg ? 'var(--accent-red)' : 'inherit'}">${a.health_status === 'cleaned' ? '已清理（停止监控）' : (a.error_msg || '-')}</td>
             </tr>`;
           }).join('')}
         </tbody>

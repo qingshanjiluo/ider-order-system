@@ -45,8 +45,9 @@ export async function onRequest(context) {
       if (!order || order.quantity <= 0) continue;
 
       // 该工单需要纳入"超额判断"的账号：排除已清理/已满级完成的（避免反复清理）
+      // 排序：健康账号（farming/active/completed）优先保留；failed/error 最靠后（最先被清理）
       const allAcc = await env.DB.prepare(
-        "SELECT id FROM game_accounts WHERE order_id = ? AND health_status != 'cleaned' ORDER BY CASE WHEN status IN ('failed','error') THEN 0 ELSE 1 END, COALESCE(level,0) ASC, id ASC"
+        "SELECT id FROM game_accounts WHERE order_id = ? AND health_status != 'cleaned' ORDER BY CASE WHEN status IN ('failed','error') THEN 3 WHEN status IN ('farming','active','completed') THEN 0 ELSE 2 END, COALESCE(level,0) DESC, id ASC"
       ).bind(oid).all();
       const allRows = allAcc.results || [];
       const keepIds = allRows.slice(0, order.quantity).map(a => a.id);

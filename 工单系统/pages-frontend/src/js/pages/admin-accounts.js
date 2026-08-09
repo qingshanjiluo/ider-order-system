@@ -116,6 +116,7 @@ export async function renderAdminAccounts({ container }) {
         <option value="failed">失败</option>
       </select>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-sm" style="background:var(--accent-green);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" id="btn-restore-cleaned">恢复误清理</button>
         <button class="btn btn-sm" style="background:var(--accent-red);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" id="btn-cleanup-excess">一键清理超额</button>
         <button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" id="btn-retry-all">一键重试</button>
       </div>
@@ -147,6 +148,7 @@ export async function renderAdminAccounts({ container }) {
   });
   document.getElementById('btn-retry-all').addEventListener('click', retryAllFailed);
   document.getElementById('btn-cleanup-excess').addEventListener('click', cleanupExcess);
+  document.getElementById('btn-restore-cleaned').addEventListener('click', restoreCleaned);
   document.getElementById('batch-cleanup-btn').addEventListener('click', batchCleanup);
   document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
 
@@ -347,6 +349,26 @@ async function cleanupExcess() {
   }
   finally {
     btn.disabled = false; btn.textContent = '一键清理超额';
+  }
+}
+
+// 恢复被误清理的健康账号（修复清理排序错误导致健康账号被清）
+async function restoreCleaned() {
+  const btn = document.getElementById('btn-restore-cleaned');
+  if (!confirm('确定恢复所有被误清理的健康账号？将撤销清理操作，恢复有角色名且有等级的账号，请随后重新执行「一键清理超额」以正确清理多余账号。')) return;
+  btn.disabled = true; btn.textContent = '恢复中...';
+  try {
+    const res = await api.adminRestoreCleaned();
+    if (res.ok) {
+      toast.success(res.message || ('已恢复 ' + (res.restored || 0) + ' 个账号'));
+      loadAccounts();
+    } else {
+      toast.error(res.error || '恢复失败');
+    }
+  } catch (err) {
+    toast.error('恢复失败: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '恢复误清理';
   }
 }
 

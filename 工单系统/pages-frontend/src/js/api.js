@@ -232,6 +232,11 @@ class ApiClient {
     if (maxOrders) body.max_orders = parseInt(maxOrders);
     return this.post('/admin/accounts/cleanup-excess', body);
   }
+  adminRestoreCleaned(orderId) {
+    const body = {};
+    if (orderId) body.order_id = parseInt(orderId);
+    return this.post('/admin/accounts/restore', body);
+  }
   adminReissueOrder(id) { return this.post(`/admin/orders/${id}/reissue`); }
   adminGetConfig() { return this.get('/admin/config'); }
   adminSetConfig(key, value) { return this.post('/admin/config', { key, value }); }

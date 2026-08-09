@@ -691,55 +691,34 @@ async function dispatchOrder(order, orderIdx) {
     case '代打':
     case '托管':
     default: {
-      // 查询工单真实账号数量（不依赖 order.total_accounts_created 这种可能过期的字段）
+      // 查询工单账号总数（含注册中/角色创建中/已完成，防止重复注册造成超量）
+      // 注意：不能只用 valid（已交付挂机）数量，否则注册中的账号不被计入，
+      // 每次扫描都会误以为"数量不足"而继续注册，导致严重超量注册。
+      // 已满足计数 = 总数 - 失败/错误（失败账号需另补，不占名额）
       let existingAccounts = 0;
+      let failedErrCount = 0;
       try {
         const countRes = await workerApi('/api/gh/account-count?order_id=' + order.id);
-        // 使用 valid（有效已交付账号数），避免把"角色未创建/失败"的账号误算为已交付
-        existingAccounts = (countRes.valid != null ? countRes.valid : countRes.total) || 0;
+        const byStatus = countRes.by_status || {};
+        const total = countRes.total != null ? countRes.total : countRes.valid;
+        failedErrCount = (byStatus.failed || 0) + (byStatus.error || 0);
+        existingAccounts = Math.max(0, (total || 0) - failedErrCount);
       } catch (e) {
         tsLog('⚠️ 查询账号数量失败，使用 order.total_accounts_created: ' + e.message);
-        existingAccounts = order.total_accounts_created || 0;
+        existingAccounts = Math.max(0, (order.total_accounts_created || 0) - failedErrCount);
       }
       const accountsToCreate = order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1);
 
-      // 检查是否有失败账号需要重试
-      let retriedCount = 0;
-      try {
-        const failedRes = await workerApi('/api/gh/failed-accounts');
-        const failedAccounts = (failedRes.accounts || []).filter(a => a.order_id === order.id);
-        if (failedAccounts.length > 0) {
-          tsLog('发现 ' + failedAccounts.length + ' 个失败账号，尝试重试...');
-          for (const fa of failedAccounts) {
-            tsLog('重试失败账号: ' + (fa.username || '?'));
-            const r = await registerAndSetup(order, orderIdx * 10 + retriedCount);
-            if (r.ok) {
-              retriedCount++;
-              tsLog('✅ 失败账号重试成功: ' + r.username);
-            } else {
-              tsLog('❌ 失败账号重试仍失败: ' + (r.error || ''));
-            }
-            await antiDetect.smartPause(retriedCount, 3, 30);
-          }
-        }
-      } catch (e) {
-        tsLog('⚠️ 查询失败账号出错: ' + e.message);
-      }
-
-      // 如果已有账号已达目标数量，且无失败账号需重试，跳过
-      if (existingAccounts >= accountsToCreate && retriedCount === 0) {
-        tsLog('已有 ' + existingAccounts + '/' + accountsToCreate + ' 个账号，无需补充');
+      // 已有账号已达目标数量 → 跳过
+      if (existingAccounts >= accountsToCreate) {
+        tsLog('已有 ' + existingAccounts + '/' + accountsToCreate + ' 个账号（不含失败 ' + failedErrCount + '），无需补充');
         return true;
       }
-      if (existingAccounts > 0 && retriedCount > 0) {
-        tsLog('重试完成 ' + retriedCount + ' 个失败账号');
-        // 继续检查是否需要补充到目标数量
-      }
 
-      // 当前需要创建的账号数 = 目标 - 已有（但每次最多不超过 50，防超时）
+      // 当前需要创建的账号数 = 目标 - 已有（每次最多不超过 50，防超时）
       const remaining = Math.max(0, accountsToCreate - existingAccounts);
       const maxToCreate = Math.min(remaining, 50);
-      tsLog('类型: ' + orderType + ', 目标: ' + accountsToCreate + ', 已有: ' + existingAccounts + ', 本次创建: ' + maxToCreate + ' 个');
+      tsLog('类型: ' + orderType + ', 目标: ' + accountsToCreate + ', 已有: ' + existingAccounts + '（失败 ' + failedErrCount + '）, 本次创建: ' + maxToCreate + ' 个');
 
       for (let a = 0; a < maxToCreate; a++) {
         await antiDetect.randomDelay(5000);

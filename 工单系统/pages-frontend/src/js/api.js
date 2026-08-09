@@ -226,6 +226,12 @@ class ApiClient {
   }
   adminRetryAccount(id) { return this.post(`/admin/accounts/${id}/retry`); }
   adminRetryAllFailed() { return this.post('/admin/accounts/retry-all'); }
+  adminCleanupExcess(orderId, maxOrders) {
+    const body = {};
+    if (orderId) body.order_id = parseInt(orderId);
+    if (maxOrders) body.max_orders = parseInt(maxOrders);
+    return this.post('/admin/accounts/cleanup-excess', body);
+  }
   adminReissueOrder(id) { return this.post(`/admin/orders/${id}/reissue`); }
   adminGetConfig() { return this.get('/admin/config'); }
   adminSetConfig(key, value) { return this.post('/admin/config', { key, value }); }

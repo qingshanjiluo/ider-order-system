@@ -115,7 +115,10 @@ export async function renderAdminAccounts({ container }) {
         <option value="banned">封禁</option>
         <option value="failed">失败</option>
       </select>
-      <button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;margin-left:auto;" id="btn-retry-all">一键重试</button>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-sm" style="background:var(--accent-red);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" id="btn-cleanup-excess">一键清理超额</button>
+        <button class="btn btn-sm" style="background:var(--accent-amber);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" id="btn-retry-all">一键重试</button>
+      </div>
     </div>
     <div id="admin-accounts-list">
       <div class="loading"><div class="spinner"></div></div>
@@ -143,6 +146,7 @@ export async function renderAdminAccounts({ container }) {
     if (e.target.checked) startPoll();
   });
   document.getElementById('btn-retry-all').addEventListener('click', retryAllFailed);
+  document.getElementById('btn-cleanup-excess').addEventListener('click', cleanupExcess);
   document.getElementById('batch-cleanup-btn').addEventListener('click', batchCleanup);
   document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
 
@@ -309,6 +313,34 @@ async function retryAllFailed() {
     else { toast.error(res.error || '操作失败'); }
   } catch (err) { toast.error('操作失败: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = '一键重试'; }
+}
+
+// 一键清理所有超额注册账号（分批，每批处理最多30个工单）
+async function cleanupExcess() {
+  const btn = document.getElementById('btn-cleanup-excess');
+  if (!confirm('确定一键清理所有超额注册的账号？将保留每个工单的订购数量，其余多余账号标记为已清理并停止监控。')) return;
+  btn.disabled = true; btn.textContent = '清理中...';
+  let totalCleaned = 0;
+  let rounds = 0;
+  try {
+    // 循环调用直到没有剩余超额工单（防超时分批处理）
+    while (true) {
+      const res = await api.adminCleanupExcess();
+      totalCleaned += res.cleaned || 0;
+      rounds++;
+      if (!res.ok) { toast.error(res.error || '清理失败'); break; }
+      if (!res.has_more || res.cleaned === 0) break;
+      if (rounds >= 20) { toast.info('已达批次上限，请再次点击继续'); break; }
+    }
+    if (totalCleaned > 0) toast.success('已清理 ' + totalCleaned + ' 个超额账号');
+    else toast.info('没有需要清理的超额账号');
+    loadAccounts();
+  } catch (err) {
+    toast.error('清理失败: ' + err.message + (totalCleaned > 0 ? '（已清理 ' + totalCleaned + ' 个，可再次点击继续）' : ''));
+  }
+  finally {
+    btn.disabled = false; btn.textContent = '一键清理超额';
+  }
 }
 
 window.__retryAccount = async function(el) {

@@ -46,7 +46,8 @@ export async function renderAdminOrders({ container }) {
   container.innerHTML = `
     <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <div><h2>工单管理</h2><p>管理所有用户工单</p></div>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-sm" style="background:var(--accent-red);color:#fff;border:none;border-radius:var(--radius-md);padding:4px 10px;font-size:var(--text-sm);cursor:pointer;" id="admin-cleanup-excess-btn">一键清理超额</button>
         <button class="btn btn-primary" id="batch-approve-btn" disabled style="display:none;">批量通过</button>
         <button class="btn btn-ghost btn-sm" id="batch-select-all" style="display:none;">全选</button>
       </div>
@@ -86,6 +87,7 @@ export async function renderAdminOrders({ container }) {
   });
   document.getElementById('batch-approve-btn').addEventListener('click', batchApprove);
   document.getElementById('batch-select-all').addEventListener('click', toggleSelectAll);
+  document.getElementById('admin-cleanup-excess-btn').addEventListener('click', cleanupAllExcess);
   document.getElementById('page-prev').addEventListener('click', () => {
     if (_currentPage > 1) { _currentPage--; loadOrders(); }
   });
@@ -356,6 +358,32 @@ async function cleanupExcess(orderId) {
     }
   } catch (err) {
     toast.error('清理失败: ' + err.message);
+  }
+}
+
+// 一键清理所有超额账号（分批，防超时）
+async function cleanupAllExcess() {
+  const btn = document.getElementById('admin-cleanup-excess-btn');
+  if (!btn) return;
+  if (!confirm('确定一键清理所有超额注册的账号？将保留每个工单的订购数量，多余账号标记为已清理。')) return;
+  btn.disabled = true; btn.textContent = '清理中...';
+  let total = 0, rounds = 0;
+  try {
+    while (true) {
+      const res = await api.adminCleanupExcess();
+      total += res.cleaned || 0;
+      rounds++;
+      if (!res.ok) { toast.error(res.error || '清理失败'); break; }
+      if (!res.has_more || res.cleaned === 0) break;
+      if (rounds >= 20) break;
+    }
+    if (total > 0) toast.success('已清理 ' + total + ' 个超额账号');
+    else toast.info('没有需要清理的超额账号');
+    loadOrders();
+  } catch (err) {
+    toast.error('清理失败: ' + err.message + (total > 0 ? '（已清理 ' + total + ' 个，可再次点击）' : ''));
+  } finally {
+    btn.disabled = false; btn.textContent = '一键清理超额';
   }
 }
 

@@ -1,6 +1,6 @@
 // functions/api/admin/accounts/delete.js
 // POST /api/admin/accounts/delete — 批量清理账号（标记为completed+停止监控）
-// 高效实现：使用 D1 batch 一次提交所有操作，避免逐账号循环导致超时
+// 高效实现：使用 D1 batch 分批提交，避免逐账号循环导致超时
 import { json, logActivity } from '../../../_utils.js';
 import { authenticate } from '../../../_auth.js';
 
@@ -13,7 +13,7 @@ export async function onRequest(context) {
     return json({ error: '无权限' }, 403);
 
   const body = await request.json().catch(() => ({}));
-  const { ids, order_id, excess_only } = body;
+  const { ids, order_id, excess_only, permanent } = body;
 
   let deleteIds = [];
   let targetOrderId = order_id ? parseInt(order_id) : null;
@@ -54,43 +54,63 @@ export async function onRequest(context) {
   if (deleteIds.length === 0) return json({ ok: true, deleted: 0, total: 0, message: '没有需要清理的账号' });
 
   // ── 2. 查询要清理账号的信息（用于日志） ─────────────
-  const placeholders = deleteIds.map(() => '?').join(',');
-  const accInfo = await env.DB.prepare(
-    `SELECT id, username, server_username, order_id FROM game_accounts WHERE id IN (${placeholders})`
-  ).bind(...deleteIds).all();
-  const rows = accInfo.results || [];
-
-  // ── 3. 构造批量操作：一次提交所有 UPDATE + INSERT ────
-  const stmts = [];
-  const logBatch = [];
-  for (const acc of rows) {
-    stmts.push(
-      env.DB.prepare(
-        "UPDATE game_accounts SET status = 'completed', health_status = 'cleaned', stop_monitor_at = datetime('now'), last_check_at = datetime('now') WHERE id = ?"
-      ).bind(acc.id)
-    );
-    logBatch.push({ account_id: acc.id, order_id: acc.order_id, name: acc.server_username || acc.username || '?' });
+  const CHUNK = 50;
+  const rows = [];
+  for (let i = 0; i < deleteIds.length; i += CHUNK) {
+    const chunkIds = deleteIds.slice(i, i + CHUNK);
+    const ph = chunkIds.map(() => '?').join(',');
+    const accInfo = await env.DB.prepare(
+      `SELECT id, username, server_username, order_id FROM game_accounts WHERE id IN (${ph})`
+    ).bind(...chunkIds).all();
+    rows.push(...(accInfo.results || []));
   }
-  // 账号日志批量插入（拼接多值，避免逐条插入）
-  if (logBatch.length > 0) {
-    const vals = logBatch.map(() => '(?, ?, \'admin_clean\', ?)').join(',');
-    const logParams = [];
-    for (const l of logBatch) logParams.push(l.account_id, l.order_id, '管理员批量清理: ' + l.name);
-    stmts.push(env.DB.prepare(`INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES ${vals}`).bind(...logParams));
+
+  // ── 3. 分批 batch：每个账号一条语句，防止 D1 变量/语句上限 ──
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const stmts = [];
+    if (permanent) {
+      // 永久删除：先删关联日志（避免外键约束），再删账号
+      stmts.push(
+        env.DB.prepare(
+          `DELETE FROM account_logs WHERE account_id IN (${chunk.map(() => '?').join(',')})`
+        ).bind(...chunk.map(a => a.id))
+      );
+      stmts.push(
+        env.DB.prepare(
+          `DELETE FROM checkin_logs WHERE game_account_id IN (${chunk.map(() => '?').join(',')})`
+        ).bind(...chunk.map(a => a.id))
+      );
+      stmts.push(
+        env.DB.prepare(
+          `DELETE FROM game_accounts WHERE id IN (${chunk.map(() => '?').join(',')})`
+        ).bind(...chunk.map(a => a.id))
+      );
+    } else {
+      for (const acc of chunk) {
+        stmts.push(
+          env.DB.prepare(
+            "UPDATE game_accounts SET status = 'completed', health_status = 'cleaned', stop_monitor_at = datetime('now'), last_check_at = datetime('now') WHERE id = ?"
+          ).bind(acc.id)
+        );
+        stmts.push(
+          env.DB.prepare(
+            "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (?, ?, 'admin_clean', ?)"
+          ).bind(acc.id, acc.order_id, '管理员批量清理: ' + (acc.server_username || acc.username || '?'))
+        );
+      }
+    }
+    await env.DB.batch(stmts);
   }
 
   // 更新订单 total_accounts_created（若指定了订单）
   if (targetOrderId) {
-    stmts.push(
-      env.DB.prepare(
-        "UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed','completed')) WHERE id = ?"
-      ).bind(targetOrderId, targetOrderId)
-    );
+    await env.DB.prepare(
+      "UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed','completed')) WHERE id = ?"
+    ).bind(targetOrderId, targetOrderId).run();
   }
 
-  await env.DB.batch(stmts);
-
-  await logActivity(env, targetOrderId || 0, user.id, 'admin_clean', '批量清理 ' + rows.length + ' 个账号');
+  await logActivity(env, targetOrderId || null, user.id, 'admin_clean', '批量清理 ' + rows.length + ' 个账号');
 
   return json({ ok: true, deleted: rows.length, total: deleteIds.length, details: rows.map(a => ({ id: a.id, username: a.username, status: 'cleaned' })) });
 }

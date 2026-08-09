@@ -276,7 +276,13 @@ async function batchCleanup() {
   const body = document.createElement('div');
   body.innerHTML = `
     <p>确定清理选中的 <strong>${ids.length}</strong> 个账号？</p>
-    <p style="font-size:13px;color:var(--text-tertiary);margin-top:4px;">将标记为「已清理」并停止监控，不再执行升级/挂机。</p>
+    <p style="font-size:13px;color:var(--text-tertiary);margin-top:4px;">默认将标记为「已清理」并停止监控，不再执行升级/挂机。</p>
+    <div class="form-group" style="margin-top:12px;">
+      <label class="form-label">清理方式</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="cleanup-permanent"> 永久删除（删除数据库记录，不可恢复）
+      </label>
+    </div>
     <div class="form-group" style="margin-top:12px;">
       <label class="form-label">注意事项</label>
       <p style="font-size:12px;color:var(--text-tertiary);">清理后无法恢复，请在确认后再操作。</p>
@@ -288,8 +294,9 @@ async function batchCleanup() {
     confirmText: '确认清理',
     confirmClass: 'btn-danger',
     onConfirm: async () => {
+      const permanent = !!body.querySelector('#cleanup-permanent')?.checked;
       try {
-        const res = await api.post('/admin/accounts/delete', { ids });
+        const res = await api.post('/admin/accounts/delete', { ids, permanent });
         if (res.ok) {
           toast.success('已清理 ' + res.deleted + ' 个账号');
         }

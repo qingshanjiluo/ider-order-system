@@ -14,7 +14,7 @@ export async function onRequest(context) {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = 50;
     const offset = (page - 1) * limit;
-    let query = "SELECT o.*, u.username as user_name, (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id) as account_count, (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.status IN ('farming','active','completed') AND ga.setup_status IN ('farming','active','completed')) as delivered_count FROM orders o JOIN users u ON o.user_id = u.id";
+    let query = "SELECT o.*, u.username as user_name, (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') as account_count, (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.status IN ('farming','active','completed') AND ga.setup_status IN ('farming','active','completed') AND ga.health_status != 'cleaned') as delivered_count FROM orders o JOIN users u ON o.user_id = u.id";
     let countQuery = 'SELECT COUNT(*) as total FROM orders o JOIN users u ON o.user_id = u.id';
     const params = [];
     const countParams = [];

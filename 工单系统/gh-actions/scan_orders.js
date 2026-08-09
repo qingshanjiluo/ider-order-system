@@ -125,6 +125,11 @@ async function registerAndSetup(workerOrder, orderIdx) {
         server_username: username, server_password: password,
         status: 'creating',
       });
+      // 若已达订购数量上限（服务端硬上限），跳过本次注册
+      if (reportRes.capped) {
+        tsLog('[' + username + '] ⛔ 已达订购数量上限，跳过注册');
+        return { username, ok: false, capped: true, error: reportRes.message || '已达上限' };
+      }
       const accountId = reportRes.account_id || 0;
 
       // ── 2) 创建角色（金灵根100），角色名冲突时自动加后缀重试 ──
@@ -723,8 +728,23 @@ async function dispatchOrder(order, orderIdx) {
       for (let a = 0; a < maxToCreate; a++) {
         await antiDetect.randomDelay(5000);
         const r = await registerAndSetup(order, orderIdx * 10 + a);
-        tsLog('结果 [' + (a + 1) + '/' + maxToCreate + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : '❌ ' + r.error));
+        tsLog('结果 [' + (a + 1) + '/' + maxToCreate + ']: ' + (r.ok ? '✅ 注册成功 [' + r.username + ']' : (r.capped ? '⛔ 已达上限' : '❌ ' + r.error)));
         await antiDetect.smartPause(a, 3, 30);
+        // 服务端已拒绝（达上限）→ 立即停止本次创建
+        if (r.capped) { tsLog('⛔ 已达订购数量上限，停止本次创建'); break; }
+        // 每创建一个后复查计数，已达目标即提前停止（防并发导致超量）
+        if (r.ok) {
+          try {
+            const reCount = await workerApi('/api/gh/account-count?order_id=' + order.id);
+            const rcTotal = reCount.total != null ? reCount.total : reCount.valid;
+            const rcFailed = ((reCount.by_status || {}).failed || 0) + ((reCount.by_status || {}).error || 0);
+            const rcExisting = Math.max(0, (rcTotal || 0) - rcFailed);
+            if (rcExisting >= accountsToCreate) {
+              tsLog('✅ 已达目标 ' + rcExisting + '/' + accountsToCreate + '，提前结束');
+              break;
+            }
+          } catch (e) { /* 忽略复查失败 */ }
+        }
       }
       return true;
     }

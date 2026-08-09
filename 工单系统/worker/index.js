@@ -1383,6 +1383,21 @@ async function handleRoute(method, path, request, env, url) {
 
     let accountId = 0;
     if (status === 'creating') {
+      // 服务端硬上限：防止并发扫描/重复注册导致超量注册
+      const ordInfo = await env.DB.prepare(
+        'SELECT quantity, status FROM orders WHERE id = ?'
+      ).bind(order_id).first();
+      if (ordInfo) {
+        const qty = ordInfo.quantity || 0;
+        const cntRow = await env.DB.prepare(
+          "SELECT COUNT(*) as cnt FROM game_accounts WHERE order_id = ?"
+        ).bind(order_id).first();
+        const cnt = cntRow?.cnt || 0;
+        // 已注册数 >= 订购数时不再创建新账号（重试已存在账号除外）
+        if (qty > 0 && cnt >= qty) {
+          return json({ ok: true, account_id: 0, capped: true, message: '已达订购数量上限，跳过注册' });
+        }
+      }
       const existing = await env.DB.prepare(
         'SELECT id FROM game_accounts WHERE username = ? AND order_id = ?'
       ).bind(username, order_id).first();

@@ -513,20 +513,19 @@ async function handleRoute(method, path, request, env, url) {
     let discount = 0;
     let couponType = 'percent';
     let couponFixedAmount = 0;
+    let couponId = null;
     if (coupon_code) {
       const coupon = await env.DB.prepare(
         "SELECT * FROM coupons WHERE code = ? AND (expires_at IS NULL OR expires_at > datetime('now')) AND (max_uses = 0 OR used_count < max_uses)"
       ).bind(coupon_code).first();
       if (coupon) {
+        couponId = coupon.id;
         couponType = coupon.coupon_type || 'percent';
         if (couponType === 'fixed') {
           couponFixedAmount = coupon.fixed_amount || 0;
         } else {
           discount = coupon.discount_percent || 0;
         }
-        await env.DB.prepare(
-          'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
-        ).bind(coupon.id).run();
       }
     }
 
@@ -535,19 +534,27 @@ async function handleRoute(method, path, request, env, url) {
     const levelDiscounts = { 1: 0, 2: 0, 3: 10, 4: 20, 5: 30, 6: 40, 7: 45, 8: 50, 9: 60, 10: 70 };
     const levelDiscount = levelDiscounts[userLevel] || 0;
 
-    // ── 7. 计算最终价格（取最大折扣） ──
+    // ── 7. 计算最终价格（优惠码+等级折扣可叠加） ──
     let finalPrice = price;
     if (couponType === 'fixed') {
-      // 固定金额减免
-      finalPrice = Math.max(0, price - couponFixedAmount);
-      const levelPrice = price * (100 - levelDiscount) / 100;
-      finalPrice = Math.min(finalPrice, levelPrice);
-      discount = levelDiscount;
+      // 固定金额减免 + 等级折扣叠加
+      const afterCoupon = Math.max(0, price - couponFixedAmount);
+      const afterLevel = price * (100 - levelDiscount) / 100;
+      finalPrice = Math.min(afterCoupon, afterLevel);
+      // 记录总折扣百分比
+      discount = Math.round((1 - finalPrice / price) * 100);
     } else {
-      // 百分比折扣，取最大值
-      const maxDiscount = Math.max(discount, levelDiscount);
-      finalPrice = price * (100 - maxDiscount) / 100;
-      discount = maxDiscount;
+      // 百分比折扣：优惠码 + 等级折扣叠加
+      const totalDiscount = Math.min(90, discount + levelDiscount); // 最高90%折扣
+      finalPrice = price * (100 - totalDiscount) / 100;
+      discount = totalDiscount;
+    }
+
+    // ── 7.1 优惠码使用次数更新（仅在有效时增加） ──
+    if (couponId) {
+      await env.DB.prepare(
+        'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
+      ).bind(couponId).run();
     }
 
     // ── 8. 计算账号数 ──
@@ -571,7 +578,7 @@ async function handleRoute(method, path, request, env, url) {
       coupon_code || '',
       discount,
       bonusPoints,
-      order_type || '代练',
+      order_type || '购买邀请积分',
       accCount,
       frozenPoints,
       finalInviteCode,
@@ -1415,6 +1422,18 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, accounts: accounts.results });
   }
 
+  // ── 获取工单关联的游戏账号 ──
+  if (path === '/api/gh/accounts-by-order' && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const url2 = new URL(request.url);
+    const orderId = parseInt(url2.searchParams.get('order_id') || '0', 10);
+    if (!orderId) return json({ error: '缺少order_id' }, 400);
+    const accounts = await env.DB.prepare(
+      "SELECT ga.* FROM game_accounts ga WHERE ga.order_id = ? ORDER BY ga.id ASC"
+    ).bind(orderId).all();
+    return json({ ok: true, accounts: accounts.results });
+  }
+
   if (path === '/api/gh/report-health' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const { order_id, username, level, status, map_id, map_name, error_msg, character_name, spirit_roots, skills, techniques, equipment, exp, exp_percent, health_status, setup_status } = body;
@@ -1491,6 +1510,104 @@ async function handleRoute(method, path, request, env, url) {
     const cfg = {};
     for (const c of configs.results) cfg[c.key] = c.value;
     return json({ ok: true, config: cfg });
+  }
+
+  // ── 获取旧账号（超过指定天数） ──
+  if (path === '/api/gh/old-accounts' && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const url2 = new URL(request.url);
+    const days = parseInt(url2.searchParams.get('days') || '7', 10);
+    const limit = parseInt(url2.searchParams.get('limit') || '100', 10);
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffStr = cutoffDate.toISOString().slice(0, 19).replace('T', ' ');
+
+    const accounts = await env.DB.prepare(
+      "SELECT ga.*, o.user_id, o.invite_code FROM game_accounts ga JOIN orders o ON ga.order_id = o.id WHERE ga.created_at < ? AND ga.status NOT IN ('completed', 'failed', 'deleted') ORDER BY ga.created_at ASC LIMIT ?"
+    ).bind(cutoffStr, limit).all();
+
+    return json({ ok: true, accounts: accounts.results, cutoff: cutoffStr, days });
+  }
+
+  // ── 获取所有不活跃账号（非farming/active状态） ──
+  if (path === '/api/gh/inactive-accounts' && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const url2 = new URL(request.url);
+    const days = parseInt(url2.searchParams.get('days') || '3', 10);
+    const limit = parseInt(url2.searchParams.get('limit') || '500', 10);
+    const countOnly = url2.searchParams.get('count_only') === 'true';
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    const cutoffStr = cutoffDate.toISOString().slice(0, 19).replace('T', ' ');
+
+    if (countOnly) {
+      const countResult = await env.DB.prepare(
+        "SELECT COUNT(*) as count FROM game_accounts ga JOIN orders o ON ga.order_id = o.id WHERE ga.status NOT IN ('farming', 'active', 'deleted', 'pending_deletion') AND ga.created_at < ?"
+      ).bind(cutoffStr).first();
+      return json({ ok: true, count: countResult.count, cutoff: cutoffStr, days });
+    }
+
+    // 获取不活跃账号：状态不是 farming/active，且创建时间早于截止日期
+    const accounts = await env.DB.prepare(
+      "SELECT ga.*, o.user_id, o.invite_code FROM game_accounts ga JOIN orders o ON ga.order_id = o.id WHERE ga.status NOT IN ('farming', 'active', 'deleted', 'pending_deletion') AND ga.created_at < ? ORDER BY ga.created_at ASC LIMIT ?"
+    ).bind(cutoffStr, limit).all();
+
+    return json({ ok: true, accounts: accounts.results, cutoff: cutoffStr, days });
+  }
+
+  // ── 标记账号为待删除 ──
+  if (path === '/api/gh/mark-for-deletion' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { account_ids } = body;
+    if (!Array.isArray(account_ids) || account_ids.length === 0) {
+      return json({ error: '缺少account_ids数组' }, 400);
+    }
+
+    let updated = 0;
+    for (const id of account_ids) {
+      const numId = parseInt(id, 10);
+      if (numId > 0) {
+        await env.DB.prepare(
+          "UPDATE game_accounts SET status = 'pending_deletion', error_msg = '等待删档确认' WHERE id = ? AND status NOT IN ('deleted', 'pending_deletion')"
+        ).bind(numId).run();
+        updated++;
+      }
+    }
+
+    return json({ ok: true, updated, message: `已标记 ${updated} 个账号为待删除` });
+  }
+
+  // ── 获取待删除账号列表 ──
+  if (path === '/api/gh/pending-deletion' && method === 'GET') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const accounts = await env.DB.prepare(
+      "SELECT ga.*, o.user_id FROM game_accounts ga JOIN orders o ON ga.order_id = o.id WHERE ga.status = 'pending_deletion' ORDER BY ga.created_at ASC"
+    ).all();
+    return json({ ok: true, accounts: accounts.results });
+  }
+
+  // ── 确认删除账号（从游戏数据库删除） ──
+  if (path === '/api/gh/confirm-deletion' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { account_ids } = body;
+    if (!Array.isArray(account_ids) || account_ids.length === 0) {
+      return json({ error: '缺少account_ids数组' }, 400);
+    }
+
+    let deleted = 0;
+    for (const id of account_ids) {
+      const numId = parseInt(id, 10);
+      if (numId > 0) {
+        await env.DB.prepare(
+          "UPDATE game_accounts SET status = 'deleted', error_msg = '已确认删除' WHERE id = ?"
+        ).bind(numId).run();
+        deleted++;
+      }
+    }
+
+    return json({ ok: true, deleted, message: `已确认删除 ${deleted} 个账号` });
   }
 
   // ── Dashboard Stats ─────────────────────────────

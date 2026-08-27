@@ -1,0 +1,51 @@
+name: 清理旧账号 - 定期删除超过7天的邀请积分账号
+
+on:
+  schedule:
+    # 每周日凌晨2点执行
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      days:
+        description: '清理超过指定天数的账号'
+        required: false
+        default: '7'
+        type: string
+      dry_run:
+        description: 'DRY RUN模式（不实际执行）'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  cleanup:
+    name: 清理旧账号
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 执行清理脚本
+        working-directory: 工单系统
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          DAYS_THRESHOLD: ${{ inputs.days || '7' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: node gh-actions/cleanup_old_accounts.js
+
+      - name: 上传日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-log-${{ github.run_id }}
+          path: |
+            工单系统/cleanup_*.log
+          retention-days: 30

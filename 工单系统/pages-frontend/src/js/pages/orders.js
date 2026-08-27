@@ -25,7 +25,7 @@ export async function renderOrders({ container, query }) {
       <div class="flex justify-between items-center">
         <div>
           <h2>我的工单</h2>
-          <p>管理你的代练工单</p>
+          <p>管理你的工单</p>
         </div>
         <button class="btn btn-primary" id="new-order-btn">+ 新建工单</button>
       </div>
@@ -87,7 +87,7 @@ async function loadOrders(status = '') {
             ${orders.map(o => `
               <tr style="cursor:pointer" onclick="location.hash='#/orders/${o.id}'">
                 <td class="font-mono text-xs">#${o.id}</td>
-                <td>${o.order_type || '代练'}</td>
+                <td>${o.order_type || '购买邀请积分'}</td>
                 <td><span class="badge ${STATUS_MAP[o.status]?.class || ''}">${STATUS_MAP[o.status]?.label || o.status}</span></td>
                 <td>${o.account_count || o.quantity || 0}</td>
                 <td class="font-semibold">${o.bonus_points || o.amount || 0}</td>
@@ -123,12 +123,12 @@ async function showNewOrderModal() {
 
   // 工单类型配置
   const ORDER_TYPES = {
-    '代练': { label: '代练', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
-    '代打': { label: '代打', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
-    '托管': { label: '托管', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
+    '购买邀请积分': { label: '购买邀请积分', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
     '仙盟采集': { label: '仙盟采集', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动领取仙盟并开启采集（1修仙币/月）' },
     '试炼测试': { label: '试炼测试', priceUnit: '修仙币', needsInvite: false, needsAccount: false, needsAccountName: true, fixedPrice: 0.5, fixedMethod: 'coin', desc: '测试并记录最佳配置（0.5修仙币/次）' },
     '每日试炼': { label: '每日试炼', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 2, fixedMethod: 'coin', desc: '每日自动完成试炼挑战（2修仙币/月）' },
+    '副本刷取': { label: '副本刷取', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动刷副本（1修仙币/月）' },
+    '自动推图': { label: '自动推图', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 0, fixedMethod: 'coin', desc: '自动推进地图（免费）' },
   };
 
   const body = document.createElement('div');
@@ -137,18 +137,18 @@ async function showNewOrderModal() {
       <div class="form-group">
         <label class="form-label">工单类型 <span style="color:var(--accent-red)">*</span></label>
         <select class="form-select" id="order-type">
-          <option value="代练">代练</option>
-          <option value="代打">代打</option>
-          <option value="托管">托管</option>
+          <option value="购买邀请积分">购买邀请积分</option>
           <option value="仙盟采集">🏯 仙盟采集（1修仙币/月）</option>
           <option value="试炼测试">⚔️ 试炼测试（0.5修仙币/次）</option>
           <option value="每日试炼">🗡️ 每日试炼（2修仙币/月）</option>
+          <option value="副本刷取">🏰 副本刷取（1修仙币/月）</option>
+          <option value="自动推图">🗺️ 自动推图（免费）</option>
         </select>
         <div id="order-type-desc" style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;"></div>
       </div>
 
-      <!-- 付款方式（代练/代打/托管时显示） -->
-      <div class="form-group" id="payment-method-group-wrap">
+      <!-- 付款方式（购买邀请积分时显示） -->
+      <div class="form-group" id="payment-method-group-wrap" style="display:none;">
         <label class="form-label">付款方式 <span style="color:var(--accent-red)">*</span></label>
         <div class="radio-group" id="payment-method-group" style="display:flex;gap:8px;flex-wrap:wrap;">
           <label class="radio-card" style="flex:1;min-width:120px;padding:10px;border:2px solid var(--border);border-radius:var(--radius-md);cursor:pointer;text-align:center;transition:all 0.2s;">
@@ -169,7 +169,7 @@ async function showNewOrderModal() {
         </div>
       </div>
 
-      <!-- 邀请码 + 积分（代练/代打/托管时显示） -->
+      <!-- 邀请码 + 积分（购买邀请积分时显示） -->
       <div id="invite-fields-wrap">
         <div class="form-group">
           <label class="form-label">邀请码 <span style="color:var(--accent-red)">*</span></label>
@@ -259,7 +259,7 @@ async function showNewOrderModal() {
       let payment_method, invite_code, points, game_account_name, game_account_password;
 
       if (cfg.needsInvite) {
-        // 代练/代打/托管
+        // 购买邀请积分
         payment_method = document.querySelector('input[name="payment-method"]:checked')?.value;
         invite_code = document.getElementById('order-invite-code').value.trim();
         points = parseInt(document.getElementById('order-points').value) || 0;
@@ -334,7 +334,7 @@ async function showNewOrderModal() {
       return;
     }
 
-    // 代练/代打/托管：积分制预览
+    // 购买邀请积分：积分制预览
     const pts = parseInt(document.getElementById('order-points')?.value) || 0;
     const method = document.querySelector('input[name="payment-method"]:checked')?.value;
     if (pts < 10) {
@@ -343,23 +343,32 @@ async function showNewOrderModal() {
     }
 
     const accounts = Math.ceil(pts / 10);
+    let originalPrice = 0;
     let priceText = '';
     if (method === 'wechat') {
-      priceText = `¥${(pts / 120).toFixed(2)}`;
+      originalPrice = pts / 120;
+      priceText = `¥${originalPrice.toFixed(2)}`;
     } else if (method === 'coin') {
+      originalPrice = pts;
       priceText = `${pts} 修仙币`;
     } else if (method === 'spirit_stone') {
-      const spiritPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
-      priceText = `${spiritPrice.toLocaleString()} 万灵石`;
+      originalPrice = Math.round(pts / 10 * spiritPer10Cache / 10000);
+      priceText = `${originalPrice.toLocaleString()} 万灵石`;
     }
 
+    // 计算优惠后的价格
+    let finalPrice = originalPrice;
     let discountText = '';
     const couponInfo = document.getElementById('coupon-info');
     if (couponInfo?.dataset?.couponType) {
       if (couponInfo.dataset.couponType === 'percent') {
-        discountText = ` (优惠 ${couponInfo.dataset.discountPercent}%)`;
+        const discountPercent = parseInt(couponInfo.dataset.discountPercent) || 0;
+        finalPrice = originalPrice * (100 - discountPercent) / 100;
+        discountText = ` (原价 ${priceText}，优惠 ${discountPercent}%，折后 <strong>${method === 'wechat' ? '¥' + finalPrice.toFixed(2) : Math.round(finalPrice) + ' 修仙币'}</strong>)`;
       } else {
-        discountText = ` (减免 ¥${couponInfo.dataset.fixedAmount})`;
+        const fixedAmount = parseFloat(couponInfo.dataset.fixedAmount) || 0;
+        finalPrice = Math.max(0, originalPrice - fixedAmount);
+        discountText = ` (原价 ${priceText}，减免 ¥${fixedAmount}，折后 <strong>${method === 'wechat' ? '¥' + finalPrice.toFixed(2) : Math.round(finalPrice) + ' 修仙币'}</strong>)`;
       }
     }
 

@@ -50,7 +50,7 @@ export async function onRequest(context) {
     if (game_account_password && game_account_password.length > 200) return json({ error: '密码最多200字符' }, 400);
 
     // ── 0.1 新工单类型特殊验证 ──
-    const NEW_ORDER_TYPES = ['仙盟采集', '试炼测试', '每日试炼'];
+    const NEW_ORDER_TYPES = ['仙盟采集', '试炼测试', '每日试炼', '副本刷取', '自动推图'];
     if (NEW_ORDER_TYPES.includes(order_type)) {
       if (!game_account_name) return json({ error: '请输入游戏账号名' }, 400);
       if ((order_type === '仙盟采集' || order_type === '每日试炼') && !game_account_password) {
@@ -116,20 +116,19 @@ export async function onRequest(context) {
     let discount = 0;
     let couponType = 'percent';
     let couponFixedAmount = 0;
+    let couponId = null;
     if (coupon_code) {
       const coupon = await env.DB.prepare(
         "SELECT * FROM coupons WHERE code = ? AND (expires_at IS NULL OR expires_at > datetime('now')) AND (max_uses = 0 OR used_count < max_uses)"
       ).bind(coupon_code).first();
       if (coupon) {
+        couponId = coupon.id;
         couponType = coupon.coupon_type || 'percent';
         if (couponType === 'fixed') {
           couponFixedAmount = coupon.fixed_amount || 0;
         } else {
           discount = coupon.discount_percent || 0;
         }
-        await env.DB.prepare(
-          'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
-        ).bind(coupon.id).run();
       }
     }
 
@@ -138,20 +137,27 @@ export async function onRequest(context) {
     const levelDiscounts = { 1: 0, 2: 0, 3: 10, 4: 20, 5: 30, 6: 40, 7: 45, 8: 50, 9: 60, 10: 70 };
     const levelDiscount = levelDiscounts[userLevel] || 0;
 
-    // ── 7. 计算最终价格（取最大折扣） ──
+    // ── 7. 计算最终价格（优惠码+等级折扣可叠加） ──
     let finalPrice = price;
     if (couponType === 'fixed') {
-      // 固定金额减免
-      finalPrice = Math.max(0, price - couponFixedAmount);
-      // 如果等级折扣更高，使用等级折扣
-      const levelPrice = price * (100 - levelDiscount) / 100;
-      finalPrice = Math.min(finalPrice, levelPrice);
-      discount = levelDiscount; // 记录实际折扣百分比
+      // 固定金额减免 + 等级折扣叠加
+      const afterCoupon = Math.max(0, price - couponFixedAmount);
+      const afterLevel = price * (100 - levelDiscount) / 100;
+      finalPrice = Math.min(afterCoupon, afterLevel);
+      // 记录总折扣百分比
+      discount = Math.round((1 - finalPrice / price) * 100);
     } else {
-      // 百分比折扣，取最大值
-      const maxDiscount = Math.max(discount, levelDiscount);
-      finalPrice = price * (100 - maxDiscount) / 100;
-      discount = maxDiscount;
+      // 百分比折扣：优惠码 + 等级折扣叠加
+      const totalDiscount = Math.min(90, discount + levelDiscount); // 最高90%折扣
+      finalPrice = price * (100 - totalDiscount) / 100;
+      discount = totalDiscount;
+    }
+
+    // ── 7.1 优惠码使用次数更新（仅在有效时增加） ──
+    if (couponId) {
+      await env.DB.prepare(
+        'UPDATE coupons SET used_count = used_count + 1 WHERE id = ?'
+      ).bind(couponId).run();
     }
 
     // ── 8. 计算账号数 ──
@@ -189,7 +195,7 @@ export async function onRequest(context) {
       coupon_code || '',
       discount,
       bonusPoints,      // bonus_points: 获得的积分
-      order_type || '代练',
+      order_type || '购买邀请积分',
       accCount,         // quantity: 账号数
       frozenPoints,     // frozen_points: 冻结的修仙币
       finalInviteCode,  // invite_code_used

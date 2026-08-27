@@ -336,11 +336,156 @@ async function registerAndSetup(workerOrder, orderIdx) {
 }
 
 // ── 仙盟采集处理 ──
+// 自动登录 → 加入/检查仙盟 → 完成仙盟日常任务 → 洞府采集
 async function processAllianceDaily(order, orderIdx) {
   const username = order.game_account_name;
   const password = order.game_account_password;
+
+  // 支持从 Worker 获取关联账号
+  let accountsToProcess = [];
+  if (username && password) {
+    accountsToProcess = [{ username, password }];
+  } else {
+    tsLog('工单无游戏账号信息，从 Worker 获取关联账号...');
+    try {
+      const accountsData = await workerApi('/api/gh/accounts-by-order?order_id=' + order.id);
+      if (accountsData.ok && accountsData.accounts && accountsData.accounts.length > 0) {
+        accountsToProcess = accountsData.accounts.map(a => ({
+          username: a.username || a.server_username,
+          password: a.password || a.server_password,
+        }));
+        tsLog('获取到 ' + accountsToProcess.length + ' 个关联账号');
+      } else {
+        tsLog('  ❌ 无关联账号');
+        return false;
+      }
+    } catch (e) {
+      tsLog('  ❌ 获取关联账号失败: ' + e.message);
+      return false;
+    }
+  }
+
+  for (let accIdx = 0; accIdx < accountsToProcess.length; accIdx++) {
+    const acc = accountsToProcess[accIdx];
+    if (!acc.username || !acc.password) continue;
+
+    tsLog('\n══ 仙盟日常 [' + (accIdx + 1) + '/' + accountsToProcess.length + '] ' + acc.username + ' ══');
+    setApiIdx(orderIdx * 20 + accIdx * 10);
+
+    try {
+      const machineId = antiDetect.generateMachineId(orderIdx * 10 + accIdx);
+      await antiDetect.randomDelay(1500);
+
+      // 1) 登录
+      const loginData = await apiRequest('POST', '/auth/login', '', { username: acc.username, password: acc.password, machine_id: machineId });
+      const token = loginData.token;
+      tsLog('[' + acc.username + '] ✅ 登录成功');
+      await antiDetect.randomDelay(1500);
+
+      // 2) 获取角色状态
+      const stateData = await apiRequest('GET', '/player/state', token);
+      const player = stateData.player;
+      let allianceId = player?.alliance_id || 0;
+      tsLog('[' + acc.username + '] 仙盟ID: ' + (allianceId || '无'));
+
+      // 3) 检查/加入仙盟
+      if (!allianceId) {
+        try {
+          const listData = await apiRequest('GET', '/alliance/list', token);
+          const alliances = listData.alliances || [];
+          // 优先加入指定仙盟，否则加入第一个有空位的
+          const target = alliances.find(a => a.name === '天地一家大爱盟' && a.member_limit > (a.member_count || 0))
+            || alliances.find(a => a.member_limit > (a.member_count || 0));
+          if (target) {
+            await apiRequest('POST', '/alliance/apply', token, { alliance_id: target.id });
+            tsLog('[' + acc.username + '] ✅ 已申请加入仙盟: ' + target.name);
+            await antiDetect.randomDelay(2000);
+            // 重新获取状态
+            const state2 = await apiRequest('GET', '/player/state', token);
+            allianceId = state2.player?.alliance_id || 0;
+          } else {
+            tsLog('[' + acc.username + '] ⚠️ 无可用仙盟');
+          }
+        } catch (e) {
+          tsLog('[' + acc.username + '] ⚠️ 仙盟申请跳过: ' + e.message);
+        }
+      }
+
+      // 4) 仙盟日常任务
+      const taskResults = [];
+      if (allianceId) {
+        const tasks = [
+          { name: '灵池沐浴', path: '/alliance/spirit_pool/bathe' },
+          { name: '仙园采摘', path: '/alliance/garden/pick' },
+          { name: '悟道树冥想', path: '/alliance/enlightenment_tree/meditate' },
+        ];
+        for (const t of tasks) {
+          try {
+            await apiRequest('POST', t.path, token, { alliance_id: allianceId });
+            tsLog('[' + acc.username + '] ✅ ' + t.name);
+            taskResults.push(t.name);
+          } catch (e) {
+            tsLog('[' + acc.username + '] ⚠️ ' + t.name + '跳过: ' + e.message);
+          }
+          await antiDetect.randomDelay(1500);
+        }
+      }
+
+      // 5) 洞府采集
+      let caveStatus = '跳过';
+      try {
+        const caveData = await apiRequest('GET', '/online/cave/status', token);
+        if (!caveData.gathering && (caveData.rare_remaining || 0) > 0) {
+          await apiRequest('POST', '/online/cave/start', token, { type: 'field' });
+          caveStatus = '已开启';
+          tsLog('[' + acc.username + '] ✅ 洞府采集已开启');
+        } else {
+          caveStatus = caveData.gathering ? '采集中' : '灵气枯竭';
+          tsLog('[' + acc.username + '] 洞府采集: ' + caveStatus);
+        }
+      } catch (e) {
+        tsLog('[' + acc.username + '] 洞府跳过: ' + e.message);
+      }
+
+      // 6) 上报结果
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: order.id, username: acc.username, password: acc.password,
+        server_username: acc.username, server_password: acc.password,
+        status: 'farming', level: player?.level || 0,
+        character_name: player?.name || acc.username,
+      });
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: order.id, log_type: 'alliance_daily',
+        message: '[' + acc.username + '] 仙盟日常完成: ' + taskResults.join(', ') + ' | 洞府: ' + caveStatus,
+      });
+
+      if (accIdx < accountsToProcess.length - 1) {
+        await antiDetect.smartPause(accIdx, 3, 30);
+      }
+    } catch (e) {
+      tsLog('[' + acc.username + '] ❌ 失败: ' + e.message);
+      try {
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: order.id, log_type: 'error',
+          message: '[' + acc.username + '] 仙盟日常失败: ' + e.message,
+        });
+      } catch (e2) {}
+    }
+  }
+
+  return true;
+}
+
+// ── 试炼测试处理 ──
+// 用于测试试炼系统，验证词条组合效果
+// 自动登录 → 获取试炼配置 → 逐个测试 → 上报结果
+async function processTrialTest(order, orderIdx) {
+  const username = order.game_account_name;
+  const password = order.game_account_password;
+
   if (!username || !password) {
-    console.log('  ❌ 缺少游戏账号信息');
+    tsLog('  ❌ 缺少游戏账号信息');
     return false;
   }
 
@@ -352,162 +497,653 @@ async function processAllianceDaily(order, orderIdx) {
     // 1) 登录
     const loginData = await apiRequest('POST', '/auth/login', '', { username, password, machine_id: machineId });
     const token = loginData.token;
-    console.log('  ✅ 登录成功');
+    tsLog('[' + username + '] ✅ 登录成功');
     await antiDetect.randomDelay(1500);
 
     // 2) 获取角色状态
     const stateData = await apiRequest('GET', '/player/state', token);
     const player = stateData.player;
-    let allianceId = player?.alliance_id || 0;
+    const level = player?.level || 0;
+    tsLog('[' + username + '] 角色等级: Lv.' + level);
 
-    // 3) 检查/加入仙盟
-    if (!allianceId) {
-      try {
-        const listData = await apiRequest('GET', '/alliance/list', token);
-        const alliances = listData.alliances || [];
-        const target = alliances.find(a => a.name === '天地一家大爱盟' && a.member_limit > (a.member_count || 0))
-          || alliances.find(a => a.member_limit > (a.member_count || 0));
-        if (target) {
-          await apiRequest('POST', '/alliance/apply', token, { alliance_id: target.id });
-          console.log('  ✅ 已申请加入仙盟: ' + target.name);
-          await antiDetect.randomDelay(2000);
-          const state2 = await apiRequest('GET', '/player/state', token);
-          allianceId = state2.player?.alliance_id || 0;
-        }
-      } catch (e) {
-        console.log('  仙盟申请跳过: ' + e.message);
-      }
-    }
-
-    // 4) 仙盟日常
-    if (allianceId) {
-      const tasks = [
-        { name: '灵池沐浴', path: '/alliance/spirit_pool/bathe' },
-        { name: '仙园采摘', path: '/alliance/garden/pick' },
-        { name: '悟道树冥想', path: '/alliance/enlightenment_tree/meditate' },
-      ];
-      for (const t of tasks) {
-        try {
-          await apiRequest('POST', t.path, token, { alliance_id: allianceId });
-          console.log('  ✅ ' + t.name);
-        } catch (e) {
-          console.log('  ' + t.name + '跳过: ' + e.message);
-        }
-        await antiDetect.randomDelay(1500);
-      }
-    }
-
-    // 5) 洞府采集
+    // 3) 获取副本列表
+    let dungeons = [];
     try {
-      const caveStatus = await apiRequest('GET', '/online/cave/status', token);
-      if (!caveStatus.gathering && (caveStatus.rare_remaining || 0) > 0) {
-        await apiRequest('POST', '/online/cave/start', token, { type: 'field' });
-        console.log('  ✅ 洞府采集已开启');
-      } else {
-        console.log('  洞府采集跳过（' + (caveStatus.gathering ? '采集中' : '灵气枯竭') + '）');
-      }
+      const dungeonListData = await apiRequest('GET', '/dungeon/list', token);
+      dungeons = dungeonListData.dungeons || [];
     } catch (e) {
-      console.log('  洞府跳过: ' + e.message);
+      tsLog('[' + username + '] ⚠️ 获取副本列表失败: ' + e.message);
+      dungeons = [
+        { id: 1, name: '荒石村试炼', level_min: 10 },
+        { id: 2, name: '青竹林秘境', level_min: 30 },
+        { id: 3, name: '清风镇剿匪', level_min: 50 },
+      ];
     }
 
-    // 报告成功
-    await workerApi('/api/gh/report-account', 'POST', {
-      order_id: order.id, username, password,
-      server_username: username, server_password: password,
-      status: 'farming',
-    });
+    // 4) 筛选可挑战的副本
+    const availableDungeons = dungeons.filter(dg => level >= (dg.level_min || 0));
+    tsLog('[' + username + '] 可挑战 ' + availableDungeons.length + ' 个副本');
 
-    // 更新上次执行时间
-    await workerApi('/api/gh/report-log', 'POST', {
-      order_id: order.id, username,
-      message: '仙盟日常完成',
-    });
-
-    return true;
-  } catch (e) {
-    console.log('  ❌ 失败: ' + e.message);
-    return false;
-  }
-}
-
-// ── 试炼测试处理 ──
-async function processTrialTest(order, orderIdx) {
-  const username = order.game_account_name;
-  if (!username) {
-    console.log('  ❌ 缺少游戏账号名');
-    return false;
-  }
-
-  setApiIdx(orderIdx * 20);
-  try {
-    // 试炼测试需要通过 Worker API 触发
-    const result = await workerApi('/api/gh/process-trial-test', 'POST', {
-      order_id: order.id,
-      game_account_name: username,
-    });
-    if (result.ok) {
-      console.log('  ✅ 试炼测试已触发');
-      return true;
-    } else {
-      console.log('  ❌ 试炼测试失败: ' + (result.error || '未知错误'));
+    if (availableDungeons.length === 0) {
+      tsLog('[' + username + '] ⚠️ 等级不足');
       return false;
     }
+
+    // 5) 测试每个副本（使用空词条）
+    const results = [];
+    for (const dg of availableDungeons.slice(0, 3)) { // 最多测试3个
+      tsLog('[' + username + '] 测试: ' + dg.name);
+      try {
+        const startData = await apiRequest('POST', '/dungeon-battle/start', token, {
+          dungeon_id: dg.id,
+          challenge_mode: 'trial_contract',
+          contract_modifiers: [],
+        });
+        const battleId = startData.battle_id;
+        if (!battleId) throw new Error('无battle_id');
+
+        // 推进战斗
+        let ended = false, victory = false;
+        for (let r = 0; r < 60; r++) {
+          const adv = await apiRequest('POST', '/dungeon-battle/advance?state=lite', token, { battle_id: battleId });
+          ended = Boolean(adv.ended);
+          victory = Boolean(adv.victory);
+          if (ended) break;
+          await sleep(50);
+        }
+
+        const coins = victory ? (Number(startData.trial_coins) || 0) : 0;
+        results.push({ dungeonId: dg.id, name: dg.name, victory, coins });
+        tsLog('[' + username + '] ' + (victory ? '✅' : '❌') + ' ' + dg.name + ' 试炼币: ' + coins);
+      } catch (e) {
+        tsLog('[' + username + '] ❌ ' + dg.name + ': ' + e.message);
+        results.push({ dungeonId: dg.id, name: dg.name, victory: false, error: e.message });
+      }
+      await antiDetect.randomDelay(2000, 4000);
+    }
+
+    // 6) 上报结果
+    const victoryCount = results.filter(r => r.victory).length;
+    await workerApi('/api/gh/report-log', 'POST', {
+      order_id: order.id, log_type: 'trial_test',
+      message: '[' + username + '] 试炼测试完成: ' + victoryCount + '/' + results.length + ' 胜利',
+      raw_output: JSON.stringify(results),
+    });
+
+    tsLog('[' + username + '] 📊 试炼测试完成: ' + victoryCount + '/' + results.length + ' 胜利');
+    return true;
   } catch (e) {
-    console.log('  ❌ 失败: ' + e.message);
+    tsLog('[' + username + '] ❌ 失败: ' + e.message);
     return false;
   }
 }
 
 // ── 每日试炼处理 ──
+// 自动登录 → 遍历所有副本 → 每个副本进行试炼挑战（challenge_mode='trial_contract'）
+// 注意：试炼和副本是不同的系统
+//   试炼: challenge_mode='trial_contract', 掉落试炼币, 有词条加成
+//   副本: challenge_mode='normal', 掉落材料/装备
 async function processDailyTrial(order, orderIdx) {
   const username = order.game_account_name;
   const password = order.game_account_password;
-  if (!username || !password) {
-    console.log('  ❌ 缺少游戏账号信息');
-    return false;
+
+  // 支持从 Worker 获取关联账号
+  let accountsToProcess = [];
+  if (username && password) {
+    accountsToProcess = [{ username, password }];
+  } else {
+    tsLog('工单无游戏账号信息，从 Worker 获取关联账号...');
+    try {
+      const accountsData = await workerApi('/api/gh/accounts-by-order?order_id=' + order.id);
+      if (accountsData.ok && accountsData.accounts && accountsData.accounts.length > 0) {
+        accountsToProcess = accountsData.accounts.map(a => ({
+          username: a.username || a.server_username,
+          password: a.password || a.server_password,
+        }));
+        tsLog('获取到 ' + accountsToProcess.length + ' 个关联账号');
+      } else {
+        tsLog('  ❌ 无关联账号');
+        return false;
+      }
+    } catch (e) {
+      tsLog('  ❌ 获取关联账号失败: ' + e.message);
+      return false;
+    }
   }
 
-  setApiIdx(orderIdx * 20);
-  try {
-    const machineId = antiDetect.generateMachineId(orderIdx);
-    await antiDetect.randomDelay(1500);
+  for (let accIdx = 0; accIdx < accountsToProcess.length; accIdx++) {
+    const acc = accountsToProcess[accIdx];
+    if (!acc.username || !acc.password) continue;
 
-    // 登录
-    const loginData = await apiRequest('POST', '/auth/login', '', { username, password, machine_id: machineId });
-    const token = loginData.token;
-    console.log('  ✅ 登录成功');
-    await antiDetect.randomDelay(1500);
+    tsLog('\n══ 每日试炼 [' + (accIdx + 1) + '/' + accountsToProcess.length + '] ' + acc.username + ' ══');
+    setApiIdx(orderIdx * 20 + accIdx * 10);
 
-    // 触发试炼
     try {
-      const trialRes = await apiRequest('POST', '/trial/start', token, {});
-      console.log('  ✅ 试炼完成: ' + JSON.stringify(trialRes.result || {}).slice(0, 100));
+      const machineId = antiDetect.generateMachineId(orderIdx * 10 + accIdx);
+      await antiDetect.randomDelay(1500);
+
+      // 1) 登录
+      const loginData = await apiRequest('POST', '/auth/login', '', { username: acc.username, password: acc.password, machine_id: machineId });
+      const token = loginData.token;
+      tsLog('[' + acc.username + '] ✅ 登录成功');
+      await antiDetect.randomDelay(1500);
+
+      // 2) 获取角色状态
+      const stateData = await apiRequest('GET', '/player/state', token);
+      const player = stateData.player;
+      const level = player?.level || 0;
+      tsLog('[' + acc.username + '] 角色等级: Lv.' + level);
+
+      // 3) 获取副本列表（试炼使用相同的副本列表）
+      let dungeons = [];
+      try {
+        const dungeonListData = await apiRequest('GET', '/dungeon/list', token);
+        dungeons = dungeonListData.dungeons || [];
+        tsLog('[' + acc.username + '] 获取到 ' + dungeons.length + ' 个副本');
+      } catch (e) {
+        tsLog('[' + acc.username + '] ⚠️ 获取副本列表失败: ' + e.message);
+        dungeons = [
+          { id: 1, name: '荒石村试炼', level_min: 10 },
+          { id: 2, name: '青竹林秘境', level_min: 30 },
+          { id: 3, name: '清风镇剿匪', level_min: 50 },
+        ];
+      }
+
+      // 4) 筛选当前等级可挑战的副本
+      const availableDungeons = dungeons.filter(dg => level >= (dg.level_min || 0));
+      tsLog('[' + acc.username + '] 当前等级可挑战 ' + availableDungeons.length + ' 个试炼');
+
+      if (availableDungeons.length === 0) {
+        tsLog('[' + acc.username + '] ⚠️ 等级不足，无法挑战试炼');
+        continue;
+      }
+
+      // 5) 遍历每个副本进行试炼
+      const results = [];
+      let totalCoins = 0;
+
+      for (let i = 0; i < availableDungeons.length; i++) {
+        const dg = availableDungeons[i];
+        const dungeonId = dg.id;
+        const dungeonName = dg.name || ('试炼' + dungeonId);
+
+        tsLog('[' + acc.username + '] 📍 [' + (i + 1) + '/' + availableDungeons.length + '] ' + dungeonName);
+
+        try {
+          // 开始试炼战斗（trial_contract 模式）
+          const startData = await apiRequest('POST', '/dungeon-battle/start', token, {
+            dungeon_id: dungeonId,
+            challenge_mode: 'trial_contract',  // 试炼模式
+            contract_modifiers: [],  // 无词条
+          });
+          const battleId = startData.battle_id;
+          if (!battleId) throw new Error('无battle_id');
+
+          const theoreticalCoins = Number(startData.trial_coins) || 0;
+          tsLog('[' + acc.username + '] 战斗开始(battleId=' + battleId + '), 理论收益: ' + theoreticalCoins + ' 试炼币');
+
+          // 自动推进战斗
+          let ended = false, victory = false;
+          for (let r = 0; r < 60; r++) {
+            const adv = await apiRequest('POST', '/dungeon-battle/advance?state=lite', token, { battle_id: battleId });
+            ended = Boolean(adv.ended);
+            victory = Boolean(adv.victory);
+            if (ended) break;
+            await sleep(50);
+          }
+
+          const grantedCoins = victory ? theoreticalCoins : 0;
+          totalCoins += grantedCoins;
+
+          results.push({
+            dungeonId, dungeonName, victory,
+            theoreticalCoins, grantedCoins,
+          });
+
+          tsLog('[' + acc.username + '] ' + (victory ? '✅' : '❌') + ' ' + dungeonName + ' 胜利=' + victory + ' 收益: ' + grantedCoins + ' 试炼币');
+
+          // 试炼间隔延迟
+          await antiDetect.randomDelay(2000, 4000);
+        } catch (e) {
+          tsLog('[' + acc.username + '] ❌ ' + dungeonName + ' 失败: ' + e.message);
+          results.push({ dungeonId, dungeonName, victory: false, error: e.message, theoreticalCoins: 0, grantedCoins: 0 });
+          await antiDetect.randomDelay(1000, 2000);
+        }
+      }
+
+      // 6) 汇总
+      const victoryCount = results.filter(r => r.victory).length;
+      tsLog('[' + acc.username + '] 📊 每日试炼完成: ' + victoryCount + '/' + results.length + ' 胜利, 总收益: ' + totalCoins + ' 试炼币');
+
+      // 7) 上报结果
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: order.id, username: acc.username, password: acc.password,
+        server_username: acc.username, server_password: acc.password,
+        status: 'farming', level,
+        character_name: player?.name || acc.username,
+      });
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: order.id, log_type: 'daily_trial',
+        message: '[' + acc.username + '] 每日试炼完成: ' + victoryCount + '/' + results.length + ' 胜利, 总收益: ' + totalCoins + ' 试炼币',
+        raw_output: JSON.stringify(results),
+      });
+
+      if (accIdx < accountsToProcess.length - 1) {
+        await antiDetect.smartPause(accIdx, 3, 30);
+      }
     } catch (e) {
-      console.log('  试炼跳过: ' + e.message);
+      tsLog('[' + acc.username + '] ❌ 失败: ' + e.message);
+      try {
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: order.id, log_type: 'error',
+          message: '[' + acc.username + '] 每日试炼失败: ' + e.message,
+        });
+      } catch (e2) {}
+    }
+  }
+
+  return true;
+}
+
+// ── 副本刷取处理 ──
+// 自动登录已有账号 → 遍历所有副本 → 每个副本战斗并自动推进
+async function processDungeonFarm(order, orderIdx) {
+  const username = order.game_account_name;
+  const password = order.game_account_password;
+
+  // 如果工单没有游戏账号信息，从 Worker 获取关联的账号
+  let accountsToProcess = [];
+  if (username && password) {
+    accountsToProcess = [{ username, password }];
+  } else {
+    tsLog('工单无游戏账号信息，从 Worker 获取关联账号...');
+    try {
+      const accountsData = await workerApi('/api/gh/accounts-by-order?order_id=' + order.id);
+      if (accountsData.ok && accountsData.accounts && accountsData.accounts.length > 0) {
+        accountsToProcess = accountsData.accounts.map(a => ({
+          username: a.username || a.server_username,
+          password: a.password || a.server_password,
+        }));
+        tsLog('获取到 ' + accountsToProcess.length + ' 个关联账号');
+      } else {
+        tsLog('  ❌ 无关联账号，请先在工单中填写游戏账号信息');
+        return false;
+      }
+    } catch (e) {
+      tsLog('  ❌ 获取关联账号失败: ' + e.message);
+      return false;
+    }
+  }
+
+  // 处理每个账号
+  for (let accIdx = 0; accIdx < accountsToProcess.length; accIdx++) {
+    const acc = accountsToProcess[accIdx];
+    if (!acc.username || !acc.password) {
+      tsLog('  ⚠️ 账号 #' + (accIdx + 1) + ' 缺少凭据，跳过');
+      continue;
     }
 
-    // 报告
-    await workerApi('/api/gh/report-account', 'POST', {
-      order_id: order.id, username, password,
-      server_username: username, server_password: password,
-      status: 'farming',
-    });
+    tsLog('\n══ 账号 [' + (accIdx + 1) + '/' + accountsToProcess.length + '] ' + acc.username + ' ══');
+    setApiIdx(orderIdx * 20 + accIdx * 10);
 
-    await workerApi('/api/gh/report-log', 'POST', {
-      order_id: order.id, username,
-      message: '每日试炼完成',
-    });
+    try {
+      const machineId = antiDetect.generateMachineId(orderIdx * 10 + accIdx);
+      await antiDetect.randomDelay(1500);
 
-    return true;
-  } catch (e) {
-    console.log('  ❌ 失败: ' + e.message);
-    return false;
+      // 1) 登录
+      const loginData = await apiRequest('POST', '/auth/login', '', { username: acc.username, password: acc.password, machine_id: machineId });
+      const token = loginData.token;
+      tsLog('[' + acc.username + '] ✅ 登录成功');
+      await antiDetect.randomDelay(1500);
+
+      // 2) 获取角色状态和玩家数据
+      const stateData = await apiRequest('GET', '/player/state', token);
+      const player = stateData.player;
+      const level = player?.level || 0;
+      const currentMapId = player?.current_map_id || 1;
+      tsLog('[' + acc.username + '] 角色等级: Lv.' + level + ', 当前地图ID: ' + currentMapId);
+
+      // 3) 获取副本列表（从 /dungeon/list 接口）
+      let dungeons = [];
+      try {
+        const dungeonListData = await apiRequest('GET', '/dungeon/list', token);
+        dungeons = dungeonListData.dungeons || [];
+        tsLog('[' + acc.username + '] 获取到 ' + dungeons.length + ' 个副本');
+      } catch (e) {
+        tsLog('[' + acc.username + '] ⚠️ 获取副本列表失败: ' + e.message);
+        // 使用默认副本列表（20个副本）
+        dungeons = [
+          { id: 1, name: '荒石村试炼', level_min: 10, daily_limit: 3, quality: 1 },
+          { id: 2, name: '青竹林秘境', level_min: 30, daily_limit: 3, quality: 1 },
+          { id: 3, name: '清风镇剿匪', level_min: 50, daily_limit: 3, quality: 1 },
+          { id: 4, name: '迷雾森林深处', level_min: 70, daily_limit: 3, quality: 1 },
+          { id: 5, name: '黑风山剿匪', level_min: 90, daily_limit: 3, quality: 2 },
+          { id: 6, name: '乱石滩清剿', level_min: 110, daily_limit: 3, quality: 2 },
+          { id: 7, name: '枯骨林深处', level_min: 130, daily_limit: 2, quality: 2 },
+          { id: 8, name: '雷云峰之巅', level_min: 150, daily_limit: 2, quality: 3 },
+          { id: 9, name: '烈焰谷核心', level_min: 170, daily_limit: 2, quality: 3 },
+          { id: 10, name: '坠龙崖禁地', level_min: 190, daily_limit: 2, quality: 4 },
+          { id: 11, name: '万剑冢深处', level_min: 210, daily_limit: 2, quality: 4 },
+          { id: 12, name: '归墟之心', level_min: 230, daily_limit: 2, quality: 5 },
+          { id: 13, name: '古战场遗址', level_min: 250, daily_limit: 2, quality: 5 },
+          { id: 14, name: '无尽风域核心', level_min: 270, daily_limit: 2, quality: 6 },
+          { id: 15, name: '魔渊深处', level_min: 290, daily_limit: 2, quality: 7 },
+          { id: 16, name: '虚空裂隙禁地', level_min: 310, daily_limit: 2, quality: 8 },
+          { id: 17, name: '天穹古墟秘境', level_min: 330, daily_limit: 2, quality: 8 },
+          { id: 18, name: '九幽冥海深处', level_min: 350, daily_limit: 2, quality: 9 },
+          { id: 19, name: '天劫雷池试炼', level_min: 370, daily_limit: 2, quality: 9 },
+          { id: 20, name: '飞升天劫', level_min: 390, daily_limit: 2, quality: 9 },
+        ];
+      }
+
+      // 4) 筛选当前等级可挑战的副本
+      const availableDungeons = dungeons.filter(dg => level >= (dg.level_min || 0));
+      tsLog('[' + acc.username + '] 当前等级可挑战 ' + availableDungeons.length + ' 个副本');
+
+      if (availableDungeons.length === 0) {
+        tsLog('[' + acc.username + '] ⚠️ 等级不足，无法挑战任何副本');
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: order.id, log_type: 'dungeon_farm',
+          message: '[' + acc.username + '] 等级不足(Lv.' + level + ')，无法挑战副本',
+        });
+        continue;
+      }
+
+      // 5) 遍历每个副本进行战斗
+      const results = [];
+      let totalDrops = [];
+
+      for (let i = 0; i < availableDungeons.length; i++) {
+        const dg = availableDungeons[i];
+        const dungeonId = dg.id;
+        const dungeonName = dg.name || ('副本' + dungeonId);
+
+        tsLog('[' + acc.username + '] 📍 [' + (i + 1) + '/' + availableDungeons.length + '] ' + dungeonName + ' (等级要求' + (dg.level_min || '?') + ', 每日' + (dg.daily_limit || 2) + '次)');
+
+        try {
+          // 检查今日剩余次数
+          let remaining = dg.daily_limit || 2;
+          try {
+            const detailData = await apiRequest('GET', '/dungeon/' + dungeonId, token);
+            if (detailData.ok && detailData.dungeon) {
+              remaining = detailData.dungeon.remaining_today || remaining;
+            }
+          } catch (e) {
+            // 忽略，使用默认值
+          }
+
+          if (remaining <= 0) {
+            tsLog('[' + acc.username + '] ⏭️ ' + dungeonName + ' 今日次数已用完，跳过');
+            results.push({ dungeonId, dungeonName, status: 'skipped', reason: '次数用完' });
+            continue;
+          }
+
+          tsLog('[' + acc.username + '] 剩余次数: ' + remaining + ', 开始挑战...');
+
+          // 开始副本战斗（普通模式，非试炼）
+          const startData = await apiRequest('POST', '/dungeon-battle/start', token, {
+            dungeon_id: dungeonId,
+            challenge_mode: 'normal',  // 普通副本模式，非试炼
+          });
+          const battleId = startData.battle_id;
+          if (!battleId) throw new Error('无battle_id');
+
+          tsLog('[' + acc.username + '] 战斗开始(battleId=' + battleId + ')');
+
+          // 自动推进战斗
+          let ended = false, victory = false;
+          for (let r = 0; r < 60; r++) {
+            const adv = await apiRequest('POST', '/dungeon-battle/advance?state=lite', token, { battle_id: battleId });
+            ended = Boolean(adv.ended);
+            victory = Boolean(adv.victory);
+            if (ended) break;
+            await sleep(50);
+          }
+
+          // 获取掉落物品
+          const drops = [];
+          if (victory && startData.rewards) {
+            if (startData.rewards.items) {
+              drops.push(...startData.rewards.items.map(item => item.item_name || item.name || '未知物品'));
+            }
+          }
+
+          results.push({
+            dungeonId, dungeonName, victory, drops,
+            status: victory ? 'victory' : 'defeat',
+          });
+
+          tsLog('[' + acc.username + '] ' + (victory ? '✅' : '❌') + ' ' + dungeonName + ' ' + (victory ? '胜利' : '失败') + (drops.length > 0 ? ' 掉落: ' + drops.join(', ') : ''));
+
+          totalDrops.push(...drops);
+
+          // 副本间隔延迟
+          await antiDetect.randomDelay(2000, 4000);
+        } catch (e) {
+          tsLog('[' + acc.username + '] ❌ ' + dungeonName + ' 失败: ' + e.message);
+          results.push({ dungeonId, dungeonName, status: 'error', error: e.message });
+          await antiDetect.randomDelay(1000, 2000);
+        }
+      }
+
+      // 6) 汇总
+      const victoryCount = results.filter(r => r.status === 'victory').length;
+      const skippedCount = results.filter(r => r.status === 'skipped').length;
+      const defeatCount = results.filter(r => r.status === 'defeat').length;
+      tsLog('[' + acc.username + '] 📊 副本刷取完成: ' + victoryCount + '胜 ' + defeatCount + '负 ' + skippedCount + '跳过');
+      if (totalDrops.length > 0) {
+        tsLog('[' + acc.username + '] 📦 总掉落: ' + [...new Set(totalDrops)].join(', '));
+      }
+
+      // 7) 上报结果
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: order.id, username: acc.username, password: acc.password,
+        server_username: acc.username, server_password: acc.password,
+        status: 'farming', level,
+        map_id: currentMapId,
+        character_name: player?.name || acc.username,
+      });
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: order.id, log_type: 'dungeon_farm',
+        message: '[' + acc.username + '] 副本刷取完成: ' + victoryCount + '胜 ' + defeatCount + '负 ' + skippedCount + '跳过',
+        raw_output: JSON.stringify({ results, totalDrops: [...new Set(totalDrops)] }),
+      });
+
+      // 账号间隔延迟
+      if (accIdx < accountsToProcess.length - 1) {
+        await antiDetect.smartPause(accIdx, 3, 30);
+      }
+    } catch (e) {
+      tsLog('[' + acc.username + '] ❌ 副本刷取失败: ' + e.message);
+      try {
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: order.id, log_type: 'error',
+          message: '[' + acc.username + '] 副本刷取失败: ' + e.message,
+        });
+      } catch (e2) {}
+    }
   }
+
+  return true;
+}
+
+// ── 自动推图处理 ──
+// 自动登录 → 获取地图列表 → 逐个地图战斗并自动推进
+// 与副本刷取不同，推图是刷野怪获取经验和装备
+async function processAutoMap(order, orderIdx) {
+  const username = order.game_account_name;
+  const password = order.game_account_password;
+
+  // 支持从 Worker 获取关联账号
+  let accountsToProcess = [];
+  if (username && password) {
+    accountsToProcess = [{ username, password }];
+  } else {
+    tsLog('工单无游戏账号信息，从 Worker 获取关联账号...');
+    try {
+      const accountsData = await workerApi('/api/gh/accounts-by-order?order_id=' + order.id);
+      if (accountsData.ok && accountsData.accounts && accountsData.accounts.length > 0) {
+        accountsToProcess = accountsData.accounts.map(a => ({
+          username: a.username || a.server_username,
+          password: a.password || a.server_password,
+        }));
+        tsLog('获取到 ' + accountsToProcess.length + ' 个关联账号');
+      } else {
+        tsLog('  ❌ 无关联账号');
+        return false;
+      }
+    } catch (e) {
+      tsLog('  ❌ 获取关联账号失败: ' + e.message);
+      return false;
+    }
+  }
+
+  for (let accIdx = 0; accIdx < accountsToProcess.length; accIdx++) {
+    const acc = accountsToProcess[accIdx];
+    if (!acc.username || !acc.password) continue;
+
+    tsLog('\n══ 自动推图 [' + (accIdx + 1) + '/' + accountsToProcess.length + '] ' + acc.username + ' ══');
+    setApiIdx(orderIdx * 20 + accIdx * 10);
+
+    try {
+      const machineId = antiDetect.generateMachineId(orderIdx * 10 + accIdx);
+      await antiDetect.randomDelay(1500);
+
+      // 1) 登录
+      const loginData = await apiRequest('POST', '/auth/login', '', { username: acc.username, password: acc.password, machine_id: machineId });
+      const token = loginData.token;
+      tsLog('[' + acc.username + '] ✅ 登录成功');
+      await antiDetect.randomDelay(1500);
+
+      // 2) 获取角色状态
+      const stateData = await apiRequest('GET', '/player/state', token);
+      const player = stateData.player;
+      const level = player?.level || 0;
+      let currentMapId = player?.current_map_id || 1;
+      tsLog('[' + acc.username + '] 角色等级: Lv.' + level + ', 当前地图ID: ' + currentMapId);
+
+      // 3) 获取地图列表
+      let maps = [];
+      try {
+        const mapListData = await apiRequest('GET', '/maps', token);
+        maps = mapListData.maps || [];
+        tsLog('[' + acc.username + '] 获取到 ' + maps.length + ' 个地图');
+      } catch (e) {
+        tsLog('[' + acc.username + '] ⚠️ 获取地图列表失败: ' + e.message);
+        // 使用默认地图列表
+        maps = [
+          { id: 1, name: '荒石村', level_min: 1 },
+          { id: 2, name: '青竹林', level_min: 30 },
+          { id: 3, name: '清风镇', level_min: 50 },
+          { id: 4, name: '迷雾森林', level_min: 70 },
+          { id: 5, name: '黑风山', level_min: 90 },
+          { id: 6, name: '乱石滩', level_min: 110 },
+          { id: 7, name: '枯骨林', level_min: 130 },
+          { id: 8, name: '雷云峰', level_min: 150 },
+          { id: 9, name: '烈焰谷', level_min: 170 },
+          { id: 10, name: '坠龙崖', level_min: 190 },
+        ];
+      }
+
+      // 4) 筛选当前等级可进入的地图
+      const availableMaps = maps.filter(m => level >= (m.level_min || 0));
+      tsLog('[' + acc.username + '] 当前等级可进入 ' + availableMaps.length + ' 个地图');
+
+      if (availableMaps.length === 0) {
+        tsLog('[' + acc.username + '] ⚠️ 无可用地图');
+        continue;
+      }
+
+      // 5) 从最高级地图开始刷（效率最高）
+      const sortedMaps = availableMaps.sort((a, b) => (b.level_min || 0) - (a.level_min || 0));
+      const targetMap = sortedMaps[0];
+
+      tsLog('[' + acc.username + '] 目标地图: ' + targetMap.name + ' (等级要求: ' + targetMap.level_min + ')');
+
+      // 6) 切换到目标地图
+      if (currentMapId !== targetMap.id) {
+        try {
+          await apiRequest('POST', '/player/set_map', token, { map_id: targetMap.id });
+          tsLog('[' + acc.username + '] ✅ 已切换到 ' + targetMap.name);
+          currentMapId = targetMap.id;
+        } catch (e) {
+          tsLog('[' + acc.username + '] ⚠️ 切换地图失败: ' + e.message);
+        }
+        await antiDetect.randomDelay(1000, 2000);
+      }
+
+      // 7) 开始自动战斗
+      let battleResult = null;
+      try {
+        // 先检查是否已在战斗中
+        const stateCheck = await apiRequest('GET', '/player/state', token);
+        if (stateCheck.active_battle) {
+          tsLog('[' + acc.username + '] 已在战斗中，跳过启动');
+          battleResult = { status: 'already_in_battle' };
+        } else {
+          // 开始战斗
+          const battleData = await apiRequest('POST', '/battle/start', token, {
+            mapId: targetMap.id,
+            poll_mode: false,
+            auto_restart: true,
+          });
+          tsLog('[' + acc.username + '] ✅ 自动战斗已启动');
+          battleResult = { status: 'started', map: targetMap.name };
+        }
+      } catch (e) {
+        tsLog('[' + acc.username + '] ⚠️ 启动战斗失败: ' + e.message);
+        battleResult = { status: 'error', error: e.message };
+      }
+
+      // 8) 设置自动重启战斗
+      try {
+        await apiRequest('POST', '/battle/auto_restart', token, {
+          enabled: true,
+          map_id: targetMap.id,
+        });
+        tsLog('[' + acc.username + '] ✅ 已设置自动续战');
+      } catch (e) {
+        tsLog('[' + acc.username + '] ⚠️ 设置自动续战失败: ' + e.message);
+      }
+
+      // 9) 上报结果
+      await workerApi('/api/gh/report-account', 'POST', {
+        order_id: order.id, username: acc.username, password: acc.password,
+        server_username: acc.username, server_password: acc.password,
+        status: 'farming', level,
+        map_id: currentMapId,
+        map_name: targetMap.name,
+        character_name: player?.name || acc.username,
+      });
+
+      await workerApi('/api/gh/report-log', 'POST', {
+        order_id: order.id, log_type: 'auto_map',
+        message: '[' + acc.username + '] 自动推图完成: 地图=' + targetMap.name + ', 状态=' + (battleResult?.status || 'unknown'),
+        raw_output: JSON.stringify(battleResult),
+      });
+
+      if (accIdx < accountsToProcess.length - 1) {
+        await antiDetect.smartPause(accIdx, 3, 30);
+      }
+    } catch (e) {
+      tsLog('[' + acc.username + '] ❌ 自动推图失败: ' + e.message);
+      try {
+        await workerApi('/api/gh/report-log', 'POST', {
+          order_id: order.id, log_type: 'error',
+          message: '[' + acc.username + '] 自动推图失败: ' + e.message,
+        });
+      } catch (e2) {}
+    }
+  }
+
+  return true;
 }
 
 // ── 工单类型分发 ──
 async function dispatchOrder(order, orderIdx) {
-  const orderType = order.order_type || '代练';
+  const orderType = order.order_type || '购买邀请积分';
 
   switch (orderType) {
     case '仙盟采集':
@@ -516,9 +1152,11 @@ async function dispatchOrder(order, orderIdx) {
       return processTrialTest(order, orderIdx);
     case '每日试炼':
       return processDailyTrial(order, orderIdx);
-    case '代练':
-    case '代打':
-    case '托管':
+    case '副本刷取':
+      return processDungeonFarm(order, orderIdx);
+    case '自动推图':
+      return processAutoMap(order, orderIdx);
+    case '购买邀请积分':
     default: {
       const existingAccounts = order.total_accounts_created || 0;
       if (existingAccounts > 0) {
@@ -561,11 +1199,11 @@ async function main() {
   for (let i = 0; i < data.orders.length; i++) {
     const order = data.orders[i];
     console.log('──── 工单 #' + order.id + ' [' + (i + 1) + '/' + data.orders.length + '] ────');
-    console.log('  类型: ' + (order.order_type || '代练') + ', 邀请码: ' + (order.invite_code || '-'));
+    console.log('  类型: ' + (order.order_type || '购买邀请积分') + ', 邀请码: ' + (order.invite_code || '-'));
 
     const success = await dispatchOrder(order, i);
 
-    const isSubscription = ['仙盟采集', '每日试炼'].includes(order.order_type);
+    const isSubscription = ['仙盟采集', '每日试炼', '副本刷取'].includes(order.order_type);
     if (success && !isSubscription) {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
       tsLog('工单 #' + order.id + ' 处理完成: ' + (completeRes.message || ''));

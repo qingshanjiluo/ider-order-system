@@ -82,7 +82,7 @@ async function loadOrders(status = '') {
                 <tr>
                   <td class="font-mono text-xs">#${o.id}</td>
                   <td>${o.user_name || o.username || o.user_id || '-'}</td>
-                  <td>${o.order_type || '代练'}</td>
+                  <td>${o.order_type || '购买邀请积分'}</td>
                   <td><span class="badge ${st.class}">${st.label}</span></td>
                   <td class="font-semibold">${formatAdminPrice(o)}</td>
                   <td>${o.account_count || o.quantity || 0}</td>

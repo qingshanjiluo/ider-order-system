@@ -1,5 +1,6 @@
 -- 艾德尔工单系统 - D1 数据库 Schema
--- 赛博朋克修仙工单平台 v3.1
+-- 赛博朋克修仙工单平台 v5.0 (综合版本)
+-- 包含所有 v5-v16 迁移的列和表
 
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,6 +55,11 @@ CREATE TABLE IF NOT EXISTS orders (
   bind_invite_code TEXT DEFAULT '',
   admin_notes TEXT DEFAULT '',
   total_accounts_created INTEGER DEFAULT 0,
+  frozen_points REAL DEFAULT 0,
+  invite_code_used TEXT DEFAULT '',
+  dispatch_map TEXT DEFAULT '',
+  material_type TEXT DEFAULT '',
+  clear_type TEXT DEFAULT '',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   completed_at TEXT,
@@ -99,10 +105,13 @@ CREATE TABLE IF NOT EXISTS game_accounts (
 CREATE TABLE IF NOT EXISTS coupons (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT UNIQUE NOT NULL,
-  discount_percent INTEGER NOT NULL,
+  discount_percent INTEGER NOT NULL DEFAULT 10,
   max_uses INTEGER DEFAULT 1,
   used_count INTEGER DEFAULT 0,
   min_amount REAL DEFAULT 0,
+  coupon_type TEXT DEFAULT 'percent',
+  fixed_amount REAL DEFAULT 0,
+  description TEXT DEFAULT '',
   expires_at TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -187,7 +196,7 @@ CREATE TABLE IF NOT EXISTS order_activities (
 
 CREATE INDEX IF NOT EXISTS idx_order_activities_order ON order_activities(order_id);
 
--- v3.0 additions
+-- v3.0: 兑换码系统
 CREATE TABLE IF NOT EXISTS redeem_codes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT UNIQUE NOT NULL,
@@ -241,7 +250,7 @@ CREATE TABLE IF NOT EXISTS ads (
 CREATE INDEX IF NOT EXISTS idx_account_logs_account ON account_logs(account_id);
 CREATE INDEX IF NOT EXISTS idx_redeem_log_user ON redeem_log(user_id);
 
--- v3.1: 密码重置 Token 表（替代全局 Map，解决多实例冷启动问题）
+-- v3.1: 密码重置 Token 表
 CREATE TABLE IF NOT EXISTS reset_tokens (
   token TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL,
@@ -252,7 +261,7 @@ CREATE TABLE IF NOT EXISTS reset_tokens (
 );
 CREATE INDEX IF NOT EXISTS idx_reset_tokens_expires ON reset_tokens(expires_at);
 
--- v4.0: 角色系统 + 联系留言
+-- v4.0: 联系留言
 CREATE TABLE IF NOT EXISTS contact_messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER DEFAULT 0,
@@ -275,6 +284,10 @@ CREATE TABLE IF NOT EXISTS skins (
   label TEXT NOT NULL,
   description TEXT DEFAULT '',
   price REAL NOT NULL DEFAULT 0,
+  original_price INTEGER DEFAULT 0,
+  discount_price INTEGER DEFAULT 0,
+  category TEXT DEFAULT 'general',
+  rarity TEXT DEFAULT 'common',
   preview_url TEXT DEFAULT '',
   css_url TEXT DEFAULT '',
   is_active INTEGER DEFAULT 1,
@@ -322,6 +335,64 @@ INSERT OR IGNORE INTO skins (name, key, label, description, price, sort_order, i
 ('磨砂玻璃态', 'frost', '磨砂玻璃态', 'Apple 风格玻璃拟态 · 通透模糊，悬浮层次', 68, 7, 1),
 ('极简主义', 'minimal', '极简主义', '少即是多，内容至上 · 极致留白，去装饰化', 48, 8, 1),
 ('粗野主义', 'brutal', '粗野主义', '粗粝不羁，破格醒目 · 厚边框，撞色块，无圆角', 48, 9, 1);
+
+-- v5: 仙市交易 + 充值表
+CREATE TABLE IF NOT EXISTS market_listings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seller_id INTEGER NOT NULL,
+  item_type TEXT NOT NULL,
+  item_name TEXT NOT NULL,
+  quantity INTEGER DEFAULT 1,
+  price REAL NOT NULL,
+  status TEXT DEFAULT 'active',
+  buyer_id INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (seller_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS recharge_orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  amount REAL NOT NULL,
+  status TEXT DEFAULT 'pending',
+  payment_method TEXT DEFAULT '',
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- v13: 聊天室
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  room_id TEXT DEFAULT 'general',
+  user_id INTEGER NOT NULL,
+  username TEXT NOT NULL,
+  content TEXT NOT NULL,
+  type TEXT DEFAULT 'text',
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- v15: 客服系统
+CREATE TABLE IF NOT EXISTS cs_tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  subject TEXT NOT NULL,
+  status TEXT DEFAULT 'open',
+  priority TEXT DEFAULT 'normal',
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS cs_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_id INTEGER NOT NULL,
+  sender_id INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (ticket_id) REFERENCES cs_tickets(id),
+  FOREIGN KEY (sender_id) REFERENCES users(id)
+);
 
 -- Seed admin user (最中幻想 / Pipi20100817)
 INSERT OR IGNORE INTO users (username, password_hash, display_name, invite_code, is_admin, role, level, xp, created_at)

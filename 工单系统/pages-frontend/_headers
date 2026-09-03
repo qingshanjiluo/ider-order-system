@@ -1,0 +1,25 @@
+# Cloudflare Pages 缓存控制
+# 防止静态资源缓存导致新部署不生效
+
+# HTML文件不缓存（确保总是获取最新版本）
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  X-Content-Type-Options: nosniff
+
+# API路由不缓存
+/api/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS
+  Access-Control-Allow-Headers: Content-Type, Authorization
+
+# CSS和JS文件缓存1小时（带版本号的文件可以更长）
+/src/css/*
+  Cache-Control: max-age=3600
+
+/src/js/*
+  Cache-Control: max-age=3600
+
+# 其他静态资源缓存1天
+/assets/*
+  Cache-Control: max-age=86400

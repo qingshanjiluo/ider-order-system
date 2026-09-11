@@ -199,8 +199,16 @@ const api = {
     return this.request('POST', '/gongfa/upgrade', { gongfaId });
   },
 
+  async getMySkills() {
+    return this.request('GET', '/skill/list');
+  },
+
   async getAllSkills() {
     return this.request('GET', '/skill/all');
+  },
+
+  async getEquipmentSlots() {
+    return this.request('GET', '/equipment/slots');
   },
 
   async getSkillShop() {
@@ -356,7 +364,7 @@ const api = {
   },
 
   async dungeonBattle(dungeonId) {
-    return this.request('POST', '/dungeon/battle', { dungeonId });
+    return this.request('POST', '/dungeon/enter', { dungeonId });
   },
 
   async sweepDungeon(dungeonId, times) {

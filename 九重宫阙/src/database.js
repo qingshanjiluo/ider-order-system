@@ -82,10 +82,21 @@ function saveDatabase(data) {
 function getNextId(collection) {
   const db = loadDatabase();
   if (!db.id_counters) db.id_counters = {};
-  const current = db.id_counters[collection] || 0;
-  const next = current + 1;
+  // 自愈式 id 推导：以集合内实际最大 id 为准。
+  // 旧实现仅依赖 id_counters（多数集合从未初始化 → 恒返回 1），
+  // 且缓存 TTL 过期后对象引用更换会丢失计数更新，导致重复 id。
+  let maxId = Number(db.id_counters[collection]) || 0;
+  const list = db[collection];
+  if (Array.isArray(list)) {
+    for (const item of list) {
+      const id = Number(item && item.id);
+      if (Number.isFinite(id) && id > maxId) maxId = id;
+    }
+  }
+  const next = maxId + 1;
   db.id_counters[collection] = next;
-  saveDatabase(db);
+  // 不在此处落盘：调用方保存业务数据时会一并持久化计数器；
+  // 即使调用方未保存，下次调用仍从集合实际最大 id 重新推导，不会重复。
   return next;
 }
 

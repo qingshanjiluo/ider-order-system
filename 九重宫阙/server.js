@@ -83,13 +83,18 @@ app.use('/api/ads', adRoutes);
 app.use('/api/alchemy', alchemyRoutes);
 app.use('/api/cave', caveRoutes);
 
+// API 未匹配端点统一返回 404 JSON（不得落入 SPA fallback 返回 HTML）
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, error: `接口不存在: ${req.method} ${req.originalUrl}` });
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const http = require('http');
 const WebSocket = require('ws');
-const { loadDatabase, saveDatabase } = require('./src/database');
+const { loadDatabase, saveDatabase, getNextId } = require('./src/database');
 const config = require('./src/config');
 
 const server = http.createServer(app);
@@ -191,7 +196,7 @@ function handleChatMessage(client, msg) {
   switch (msg.type) {
     case 'chat': {
       const chatMsg = {
-        id: (db.chat_messages || []).length + 1,
+        id: getNextId('chat_messages'),
         channel: msg.channel || 'world',
         userId: client.userId,
         username: client.username,

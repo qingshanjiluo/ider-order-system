@@ -90,11 +90,13 @@ async function init() {
     btn.onclick = () => switchTab(btn.dataset.tab);
   });
 
-  window.addEventListener('resize', () => {
+  const updateMobileNav = () => {
     const isMobile = window.innerWidth <= 768;
     const mobileNav = document.getElementById('mobile-tab-nav');
     if (mobileNav) mobileNav.style.display = isMobile ? 'flex' : 'none';
-  });
+  };
+  window.addEventListener('resize', updateMobileNav);
+  updateMobileNav(); // 首次加载即按视口宽度初始化（修复移动端无导航）
 }
 
 async function loadGame() {
@@ -126,16 +128,17 @@ async function loadCharacter() {
       speed: stats.speed
     });
 
-    const equips = {
-      weapon: char.equipment?.weapon || null,
-      head: char.equipment?.head || null,
-      armor: char.equipment?.armor || null,
-      legs: char.equipment?.legs || null,
-      boots: char.equipment?.boots || null,
-      ring: char.equipment?.ring || null,
-      necklace: char.equipment?.necklace || null,
-      cloak: char.equipment?.cloak || null
-    };
+    // 装备栏：以后端 /equipment/slots 为唯一数据源（equipments 集合按 slot 存储，
+    // character 对象上并无 equipment 字段——旧实现读取空对象导致装备栏永远空白）
+    let equips = {};
+    try {
+      const slots = await api.getEquipmentSlots();
+      for (const key of ['weapon', 'head', 'chest', 'legs', 'gloves', 'boots', 'necklace', 'ring']) {
+        equips[key] = slots[key] && slots[key].equipped ? slots[key].item : null;
+      }
+    } catch (e) {
+      console.error('Failed to load equipment slots:', e);
+    }
     window._currentEquips = equips;
     ui.updateEquipGrid(equips);
 
@@ -1543,7 +1546,7 @@ async function loadSkillSub(sub, btn) {
 
   switch (sub) {
     case 'my': {
-      const data = await api.getSkills();
+      const data = await api.getMySkills();
       const skills = data.skills || data || [];
       const equipped = skills.filter(s => s.equipped_slot);
       const unequipped = skills.filter(s => !s.equipped_slot);
@@ -1694,7 +1697,7 @@ async function loadSkillSub(sub, btn) {
       break;
     }
     case 'synthesize': {
-      const data = await api.getSkills();
+      const data = await api.getMySkills();
       const skills = data.skills || data || [];
       container.innerHTML = `
         <div style="font-size:12px;font-weight:600;margin-bottom:8px;">技能合成</div>
@@ -3170,7 +3173,7 @@ async function showAdminUserDetail(userId) {
     const data = await api.getAdminUserDetail(userId);
     const u = data.user;
     const c = data.character;
-    const popup = document.getElementById('modal-popup');
+    const popup = document.getElementById('modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
     if (!popup) return;

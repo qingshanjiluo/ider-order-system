@@ -1,108 +1,30 @@
-const fs = require('fs');
-const path = require('path');
-
-const DATA_DIR = path.join(__dirname, '../data');
-const DB_FILE = path.join(DATA_DIR, 'game.json');
-
-let dbCache = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 100; // ms
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
+/**
+ * 数据库兼容层（阶段1 起）
+ * 底层已切换 SQLite（src/db/store.js），对 33 个路由保持原 API 不变：
+ *   loadDatabase / saveDatabase / getNextId / invalidateCache / initDatabase
+ * 旧 JSON 文件存储（game.json 直读写 + 100ms TTL 缓存）已退役；
+ * 首次启动自动从 data/game.json 一次性迁移至 data/game.db。
+ */
+const store = require('./db/store');
 
 function loadDatabase() {
-  const now = Date.now();
-  if (dbCache && (now - cacheTimestamp) < CACHE_TTL) {
-    return dbCache;
-  }
-  ensureDataDir();
-  if (!fs.existsSync(DB_FILE)) {
-    const defaultData = {
-      users: [],
-      characters: [],
-      equipments: [],
-      gongfa: [],
-      pets: [],
-      inventory: [],
-      items: [],
-      realms: [],
-      maps: [],
-      dungeons: [],
-      guilds: [],
-      guild_members: [],
-      achievements: [],
-      checkin: [],
-      shop: [],
-      recipes: [],
-      forge_recipes: [],
-      chat_messages: [],
-      chat_reports: [],
-      user_settings: [],
-      invite_codes: [],
-      talismans: [],
-      formations: [],
-      quests: [],
-      monsters: [],
-      blueprints: [],
-      player_skills: [],
-      character_buffs: [],
-      season_rankings: [],
-      afk_sessions: [],
-      announcements: [
-        { id: 1, title: '欢迎来到九重宫阙', content: '水墨修仙，一念成仙。祝各位道友修行顺利！', type: 'system', priority: 'normal', pinned: true, author: '系统', created_at: new Date().toISOString(), expires_at: null },
-        { id: 2, title: '开服公告', content: '游戏正式上线，首充双倍仙玉，限时活动进行中！', type: 'event', priority: 'high', pinned: false, author: '运营', created_at: new Date().toISOString(), expires_at: null }
-      ],
-      ads: [
-        { id: 1, title: '首充礼包', description: '首次充值享双倍仙玉奖励', type: 'recharge', image: '', packages: [{ id: 1, name: '小额试探', price: 6, jade: 60, bonus_jade: 60, badge: '推荐' }, { id: 2, name: '修仙助力', price: 30, jade: 300, bonus_jade: 300, badge: '' }, { id: 3, name: '大道筑基', price: 98, jade: 980, bonus_jade: 980, badge: '超值' }, { id: 4, name: '飞升之路', price: 328, jade: 3280, bonus_jade: 3280, badge: '豪华' }], enabled: true, created_at: new Date().toISOString() },
-        { id: 2, title: '限时活动', description: '充值满100返利50%，限时3天', type: 'event', image: '', packages: [{ id: 5, name: '活动充值', price: 100, jade: 1000, bonus_jade: 500, badge: '活动' }], enabled: true, created_at: new Date().toISOString() }
-      ],
-      id_counters: {}
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2));
-    dbCache = defaultData;
-    cacheTimestamp = now;
-    return defaultData;
-  }
-  dbCache = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-  cacheTimestamp = now;
-  return dbCache;
+  return store.loadDatabase();
 }
 
 function saveDatabase(data) {
-  ensureDataDir();
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
-  dbCache = data;
-  cacheTimestamp = Date.now();
+  store.saveDatabase(data);
 }
 
 function getNextId(collection) {
-  const db = loadDatabase();
-  if (!db.id_counters) db.id_counters = {};
-  // 自愈式 id 推导：以集合内实际最大 id 为准。
-  // 旧实现仅依赖 id_counters（多数集合从未初始化 → 恒返回 1），
-  // 且缓存 TTL 过期后对象引用更换会丢失计数更新，导致重复 id。
-  let maxId = Number(db.id_counters[collection]) || 0;
-  const list = db[collection];
-  if (Array.isArray(list)) {
-    for (const item of list) {
-      const id = Number(item && item.id);
-      if (Number.isFinite(id) && id > maxId) maxId = id;
-    }
-  }
-  const next = maxId + 1;
-  db.id_counters[collection] = next;
-  // 不在此处落盘：调用方保存业务数据时会一并持久化计数器；
-  // 即使调用方未保存，下次调用仍从集合实际最大 id 重新推导，不会重复。
-  return next;
+  return store.getNextId(collection);
 }
 
 function invalidateCache() {
-  dbCache = null;
-  cacheTimestamp = 0;
+  store.invalidateCache();
+}
+
+function closeDatabase() {
+  store.close();
 }
 
 function initDatabase() {
@@ -151,4 +73,4 @@ function initDatabase() {
   console.log('数据库初始化完成');
 }
 
-module.exports = { loadDatabase, saveDatabase, getNextId, initDatabase, invalidateCache };
+module.exports = { loadDatabase, saveDatabase, getNextId, invalidateCache, initDatabase, closeDatabase };

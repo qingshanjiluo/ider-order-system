@@ -228,4 +228,15 @@ server.listen(PORT, () => {
   console.log(`WebSocket 服务已启动，端口: ${PORT}`);
 });
 
+// 优雅退出：SQLite 落盘 + 关库
+const { closeDatabase } = require('./src/database');
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    console.log(`\n收到 ${sig}，落盘并退出...`);
+    closeDatabase();
+    process.exit(0);
+  });
+}
+process.on('exit', () => { try { closeDatabase(); } catch (_) { /* ignore */ } });
+
 module.exports = { clients, broadcastSystem, broadcastToChannel };

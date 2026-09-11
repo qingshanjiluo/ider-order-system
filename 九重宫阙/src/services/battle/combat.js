@@ -240,13 +240,8 @@ class CombatService {
   }
 
   normalizeElement(element) {
-    const map = {
-      '金': 'earth', '木': 'wind', '水': 'water', '火': 'fire', '土': 'earth',
-      '雷': 'lightning', '风': 'wind', '暗': 'dark', '光': 'holy',
-      'fire': 'fire', 'water': 'water', 'earth': 'earth', 'lightning': 'lightning',
-      'wind': 'wind', 'dark': 'dark', 'holy': 'holy', 'none': 'none'
-    };
-    return map[element] || 'none';
+    // 阶段2：统一委托元素单一事实源（修复旧表 金→earth 的映射冲突）
+    return require('../elements').normalize(element);
   }
 
   generateMonster(mapId, db) {

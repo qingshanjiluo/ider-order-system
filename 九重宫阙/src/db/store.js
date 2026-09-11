@@ -158,6 +158,43 @@ function isDirty() {
   return dirty;
 }
 
+// ---------- v2 关系表通用读写（schema.sql 中定义的表） ----------
+const REL_TABLES = new Set([
+  'sects', 'sect_members', 'sect_buildings', 'sect_posts', 'guild_build_queue',
+  'lifespan_events', 'market_listings', 'market_orders', 'market_rates',
+  'ai_keys', 'ai_generations'
+]);
+
+const okCol = (k) => /^[a-z_][a-z0-9_]*$/.test(k);
+const bindVal = (v) => (typeof v === 'boolean' ? (v ? 1 : 0) : v);
+
+/** 插入关系表记录，返回自增 id */
+function insertRel(table, obj) {
+  boot();
+  if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
+  const cols = Object.keys(obj || {}).filter(okCol);
+  if (!cols.length) throw new Error('无有效列');
+  const placeholders = cols.map(() => '?').join(',');
+  const stmt = sqlite.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${placeholders})`);
+  const info = stmt.run(...cols.map((c) => bindVal(obj[c] === undefined ? null : obj[c])));
+  return Number(info.lastInsertRowid);
+}
+
+/** 查询关系表（等值条件），可选排序 */
+function queryRel(table, where = {}, orderBy = 'id') {
+  boot();
+  if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
+  const keys = Object.keys(where || {}).filter(okCol);
+  let sql = `SELECT * FROM ${table}`;
+  const params = [];
+  if (keys.length) {
+    sql += ' WHERE ' + keys.map((k) => `${k} = ?`).join(' AND ');
+    params.push(...keys.map((k) => bindVal(where[k])));
+  }
+  if (orderBy && /^[a-z_][a-z0-9_]*$/.test(orderBy)) sql += ` ORDER BY ${orderBy}`;
+  return sqlite.prepare(sql).all(...params);
+}
+
 /** 进程退出前调用：落盘 + 关库 */
 function close() {
   if (autosaveTimer) clearInterval(autosaveTimer);
@@ -170,4 +207,4 @@ function close() {
   }
 }
 
-module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close };
+module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel };

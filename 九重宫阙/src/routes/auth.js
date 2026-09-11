@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const store = require('../db/store');
 const { turnstileMiddleware } = require('../middleware/turnstile');
 const config = require('../config');
 
@@ -25,6 +26,25 @@ router.post('/register', turnstileMiddleware, async (req, res) => {
     const charName = nickname || username;
     const factionBonus = { martial: { attack: 3 }, spirit: { mp: 20 }, demon: { speed: 3 } };
     const bonus = factionBonus[faction] || {};
+
+    // v2 灵根生成：五行 1-3（常见）/ 3-5（稀有）；8% 追加特殊灵根（决议 D2）
+    const r = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+    const ELEMENT_KEYS = ['metal', 'wood', 'water', 'fire', 'earth'];
+    const rootCount = Math.random() < 0.2 ? r(3, 5) : r(1, 3);
+    const shuffled = [...ELEMENT_KEYS].sort(() => Math.random() - 0.5);
+    const spirit_roots = shuffled.slice(0, rootCount).map((t) => ({ type: t, purity: r(20, 100) }));
+    if (Math.random() < 0.08) {
+      spirit_roots.push({
+        type: ['sword', 'dan', 'desire', 'wealth', 'supreme', 'cauldron'][r(0, 5)],
+        purity: r(10, 60),
+        special: true
+      });
+    }
+
+    // v2 三层属性 + 时间/寿命/伤势字段（决议 D1/D5）
+    const now = Date.now();
+    const nowIso = new Date(now).toISOString();
+
     db.characters.push({
       id: charId, user_id: userId, name: charName, faction: faction || 'martial',
       realm: '炼气', realm_stage: 1,
@@ -38,9 +58,36 @@ router.post('/register', turnstileMiddleware, async (req, res) => {
       vip_level: 0, vip_exp: 0,
       afk_map: 1, afk_start_time: null,
       season_registered: false, season_points: 0,
-      created_at: new Date().toISOString(), last_login: new Date().toISOString()
+      // v2 属性三层
+      stats: {
+        constitution: r(5, 10), strength: r(5, 10), physique: r(5, 10),
+        wisdom: r(5, 10), soul: r(5, 10), talent: r(5, 15),
+        comprehension: r(5, 15), affinity: r(5, 15), luck: r(5, 15),
+        daoAffinity: r(1, 5), appearance: r(1, 10), fortune: r(1, 10)
+      },
+      spirit_roots,
+      // v2 时间/寿命/伤势
+      age_years: 16,
+      lifespan_bonus_years: 0,
+      lifespan_penalty_years: 0,
+      time_settled_at: now,
+      game_birth_at: nowIso,
+      reincarnation_count: 0,
+      ascended: false,
+      injury: 0,
+      injury_status: 'none',
+      auto_meditate: true,
+      auto_meditate_threshold: 80,
+      created_at: nowIso, last_login: nowIso
     });
     saveDatabase(db);
+    // 编年史：降世
+    try {
+      store.insertRel('lifespan_events', {
+        character_id: charId, game_year: 0, type: 'birth',
+        title: '降世', content: `${charName} 降世，凡身百载`, created_at: nowIso
+      });
+    } catch (e) { console.error('[register] 编年史写入失败:', e.message); }
     const token = jwt.sign({ userId }, config.jwt.secret, { expiresIn: config.jwt.expiresIn });
     res.json({ token, userId, username: charName });
   } catch (error) {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { loadDatabase, saveDatabase } = require('../database');
 const auth = require('../middleware/auth');
+const gameTime = require('../services/gameTime');
 
 router.get('/', auth, (req, res) => {
   try {
@@ -10,7 +11,18 @@ router.get('/', auth, (req, res) => {
     if (!character) {
       return res.status(404).json({ error: '角色不存在' });
     }
-    res.json(character);
+    // 阶段2：时间引擎结算（24h=10年，100% 在线离线折算）
+    gameTime.settleTime(character);
+    let reincarnated = null;
+    if (gameTime.shouldPassAway(character)) {
+      reincarnated = gameTime.passAway(character, db);
+      saveDatabase(db);
+    }
+    res.json({
+      ...character,
+      lifespan: gameTime.lifespanInfo(character),
+      reincarnated
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

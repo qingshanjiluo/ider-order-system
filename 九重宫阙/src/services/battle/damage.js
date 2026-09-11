@@ -1,3 +1,5 @@
+const elements = require('../elements');
+
 class DamageCalculator {
   calculateBaseDamage(attacker, defender) {
     const baseDamage = attacker.attack * 2;
@@ -13,26 +15,22 @@ class DamageCalculator {
     };
   }
 
+  /**
+   * 元素伤害（决议 D2：7 系金木水火土光明黑暗）
+   * 相克 1.3 / 被克 0.7 / 其余 1.0；任意历史命名经 elements.normalize 兼容
+   */
   calculateElementDamage(damage, attackerElement, defenderElement) {
-    const elementEffectiveness = {
-      'fire':      { 'wind': 1.5, 'earth': 1.5, 'water': 0.7, 'fire': 0.5 },
-      'water':     { 'fire': 1.5, 'lightning': 1.5, 'earth': 0.7, 'water': 0.5 },
-      'earth':     { 'lightning': 1.5, 'water': 1.5, 'wind': 0.7, 'earth': 0.5 },
-      'lightning': { 'wind': 1.5, 'holy': 1.5, 'water': 0.7, 'earth': 0.7 },
-      'wind':      { 'holy': 1.5, 'dark': 1.5, 'fire': 0.7, 'earth': 0.7 },
-      'dark':      { 'holy': 1.5, 'fire': 1.5, 'wind': 0.7, 'dark': 0.5 },
-      'holy':      { 'dark': 1.5, 'holy': 0.5, 'wind': 0.7, 'lightning': 0.7 },
-      'none':      {}
-    };
-
-    if (!attackerElement || !defenderElement || attackerElement === 'none' || defenderElement === 'none') {
-      return { damage, effectiveness: 1.0 };
+    const a = elements.normalize(attackerElement);
+    const d = elements.normalize(defenderElement);
+    if (a === 'none' || d === 'none') {
+      return { damage: Math.floor(damage), effectiveness: 1.0, attackerElement: a, defenderElement: d };
     }
-
-    const effectiveness = elementEffectiveness[attackerElement]?.[defenderElement] || 1.0;
+    const effectiveness = elements.effectiveness(a, d);
     return {
       damage: Math.floor(damage * effectiveness),
-      effectiveness
+      effectiveness,
+      attackerElement: a,
+      defenderElement: d
     };
   }
 

@@ -1534,12 +1534,12 @@ async function loadSkillSub(sub, btn) {
   if (!container) return;
 
   const ELEMENT_COLORS = {
-    fire: '#ff6b35', water: '#4fc3f7', earth: '#8d6e63', lightning: '#ffd54f',
-    wind: '#81c784', dark: '#7e57c2', holy: '#fff176', none: '#bdbdbd'
+    metal: '#ffd54f', wood: '#81c784', water: '#4fc3f7', fire: '#ff6b35',
+    earth: '#8d6e63', light: '#fff176', dark: '#7e57c2', none: '#bdbdbd'
   };
   const ELEMENT_NAMES = {
-    fire: '火', water: '水', earth: '土', lightning: '雷',
-    wind: '风', dark: '暗', holy: '圣', none: '无'
+    metal: '金', wood: '木', water: '水', fire: '火',
+    earth: '土', light: '光明', dark: '黑暗', none: '无'
   };
   const SLOT_NAMES = { main: '主技能', sub: '副技能', ultimate: '终极' };
   const TYPE_NAMES = { active: '主动', passive: '被动' };
@@ -1723,12 +1723,12 @@ async function loadSkillSub(sub, btn) {
 
 function renderSkillCard(s, showActions = false) {
   const ELEMENT_COLORS = {
-    fire: '#ff6b35', water: '#4fc3f7', earth: '#8d6e63', lightning: '#ffd54f',
-    wind: '#81c784', dark: '#7e57c2', holy: '#fff176', none: '#bdbdbd'
+    metal: '#ffd54f', wood: '#81c784', water: '#4fc3f7', fire: '#ff6b35',
+    earth: '#8d6e63', light: '#fff176', dark: '#7e57c2', none: '#bdbdbd'
   };
   const ELEMENT_NAMES = {
-    fire: '火', water: '水', earth: '土', lightning: '雷',
-    wind: '风', dark: '暗', holy: '圣', none: '无'
+    metal: '金', wood: '木', water: '水', fire: '火',
+    earth: '土', light: '光明', dark: '黑暗', none: '无'
   };
   const SLOT_NAMES = { main: '主技能', sub: '副技能', ultimate: '终极' };
   const TYPE_NAMES = { active: '主动', passive: '被动' };

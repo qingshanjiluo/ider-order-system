@@ -1,4 +1,5 @@
 const { loadDatabase, saveDatabase } = require('../database');
+const gameTime = require('./gameTime');
 
 const REALMS = [
   { name: '炼气', min_level: 1, max_level: 10, stages: ['前期', '中期', '后期'], exp_requirement: 100 },
@@ -83,8 +84,22 @@ class RealmService {
     } else {
       const nextRealm = this.getNextRealm(character.realm);
       if (nextRealm) {
+        const prevRealm = character.realm;
         character.realm = nextRealm.name;
         character.realm_stage = 1;
+        // 飞升：超脱寿数（决议 D5）
+        if (nextRealm.name === '飞升') {
+          character.ascended = true;
+        }
+        // 编年史：大境界突破
+        gameTime.logEvent(
+          character,
+          'breakthrough',
+          `突破${nextRealm.name}`,
+          `${prevRealm} → ${nextRealm.name}，寿元上限 ${
+            gameTime.getLifespanBase(character) === null ? '超脱' : gameTime.getLifespanBase(character) + ' 年'
+          }`
+        );
       }
     }
 

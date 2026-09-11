@@ -1,4 +1,5 @@
 const { loadDatabase, saveDatabase } = require('../database');
+const gameTime = require('./gameTime');
 
 const VIP_LEVELS = [
   { level: 0, name: '凡人', required: 0, benefits: { expBonus: 1.0, spiritStoneBonus: 1.0, storageSlots: 50 } },
@@ -52,6 +53,11 @@ class CharacterService {
       character.speed = this.calculateSpeed(character.level, character.realm);
       character.hp = character.max_hp;
       character.mp = character.max_mp;
+      // v2 寿命：境界内每升 1 级 +1% 当前境界基础寿元（决议 D5）
+      const realmBase = gameTime.getLifespanBase(character);
+      if (realmBase) {
+        character.lifespan_bonus_years = (character.lifespan_bonus_years || 0) + realmBase * 0.01;
+      }
       leveledUp = true;
     }
 

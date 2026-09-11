@@ -1,10 +1,26 @@
 const { loadDatabase, saveDatabase } = require('../database');
 const characterService = require('./character');
+const injuryService = require('./injury');
 
 class CultivationService {
+  /** 灵气浓度（决议 v2 修炼杠杆）：地图难度 + 洞府地脉加成 */
+  getSpiritDensity(character) {
+    const db = loadDatabase();
+    let density = 1.0;
+    const map = (db.maps || []).find((m) => m.id === (character.afk_map || 1));
+    if (map && map.difficulty) {
+      density += (map.difficulty - 1) * 0.05; // 高阶地图灵气更浓
+    }
+    // 洞府地脉（数据由洞府系统写入，存在即生效）
+    const veinLevel = Number(character.cave_vein_level) || 0;
+    if (veinLevel > 0) density += veinLevel * 0.05;
+    return density;
+  }
+
   getCultivationSpeed(character) {
     const db = loadDatabase();
     let speed = 1.0;
+    // 吐纳功法（主修=修炼类功法全加成；副修功法体系阶段4接入）
     const gongfas = db.gongfa.filter(g => g.character_id === character.id && g.type === '修炼');
     for (const gf of gongfas) {
       const item = db.items.find(i => i.id === gf.item_id);
@@ -19,6 +35,10 @@ class CultivationService {
     const buffService = require('./buff');
     const buffMultiplier = buffService.getBuffMultiplier(character.id, 'exp');
     speed *= buffMultiplier;
+    // 伤势修炼减速（决议 D5）
+    speed *= injuryService.getDebuffs(character).cultivateMultiplier;
+    // 灵气浓度
+    speed *= this.getSpiritDensity(character);
     return speed;
   }
 
@@ -56,8 +76,10 @@ class CultivationService {
 
     if (actualOffline <= 0) return null;
 
-    const speed = this.getCultivationSpeed(character) * 0.5;
-    const expPerSecond = Math.floor(5 * speed);
+    // 决议 D1：离线修炼 100% 效率（与在线一致），离线时间同时 100% 推进游戏年龄
+    // （年龄推进由 gameTime.settleTime 在角色加载/登录时统一结算）
+    const speed = this.getCultivationSpeed(character);
+    const expPerSecond = Math.floor(10 * speed);
     const totalExp = expPerSecond * actualOffline;
 
     const result = characterService.addExp(characterId, totalExp);

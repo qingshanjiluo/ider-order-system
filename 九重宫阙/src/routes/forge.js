@@ -2,23 +2,19 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const elements = require('../services/elements');
+const proficiencyService = require('../services/proficiency');
 
 const QUALITY_ORDER = ['凡器', '法器', '灵器', '法宝', '古宝', '灵宝', '道器', '仙器', '混沌至宝'];
 
 const ELEMENTS = ['金', '木', '水', '火', '土', '光明', '黑暗'];
 
-const ELEMENT_GENERATES = { '金': '水', '水': '木', '木': '火', '火': '土', '土': '金' };
-const ELEMENT_OVERRIDES = { '金': '木', '木': '土', '土': '水', '水': '火', '火': '金' };
-
+// 元素关系委托单一事实源（阶段3）：generates 相生 / overrides 相克 / same / neutral
 function getElementRelation(mainElement, materialElement) {
-  if (!mainElement || !materialElement) return 'neutral';
-  if (ELEMENT_GENERATES[mainElement] === materialElement) return 'generates';
-  if (ELEMENT_OVERRIDES[mainElement] === materialElement) return 'overrides';
-  if (mainElement === materialElement) return 'same';
-  return 'neutral';
+  return elements.relation(mainElement, materialElement);
 }
 
-function calcForgeSuccessRate(mainMat, auxMats, catalysts, flame, charStats) {
+function calcForgeSuccessRate(mainMat, auxMats, catalysts, flame, charStats, profBonus = 0) {
   let base = 0.6;
   const talent = (charStats && charStats.talent) || 10;
   base += talent * 0.01;
@@ -42,6 +38,8 @@ function calcForgeSuccessRate(mainMat, auxMats, catalysts, flame, charStats) {
     base += 0.05;
   }
 
+  base += profBonus; // 炼器熟练度加成（阶段3）
+
   return Math.min(0.95, Math.max(0.1, base));
 }
 
@@ -61,8 +59,8 @@ function calcSuperiorRate(auxMats, catalysts, flame, charStats) {
   return Math.min(0.5, Math.max(0.01, rate));
 }
 
-function generateForgeResult(mainItem, auxMats, catalysts, flame, charStats) {
-  const successRate = calcForgeSuccessRate(mainItem, auxMats, catalysts, flame, charStats);
+function generateForgeResult(db, mainItem, auxMats, catalysts, flame, charStats, profBonus = 0) {
+  const successRate = calcForgeSuccessRate(mainItem, auxMats, catalysts, flame, charStats, profBonus);
   const superiorRate = calcSuperiorRate(auxMats, catalysts, flame, charStats);
 
   const roll = Math.random();
@@ -205,7 +203,8 @@ router.post('/craft', auth, (req, res) => {
 
     const resultItem = db.items.find(i => i.id === recipe.result);
     if (resultItem && resultItem.type === '装备') {
-      db.equipments.push({ id: getNextId('equipments'), character_id: character.id, item_id: resultItem.id, slot: resultItem.subtype || 'weapon', enhance: 0 });
+      const prof = proficiencyService.addExp(character, 'crafting', 6);
+      db.equipments.push({ id: getNextId('equipments'), character_id: character.id, item_id: resultItem.id, slot: resultItem.subtype || 'weapon', enhance: 0, profLevel: prof.level });
     } else {
       const resultQty = recipe.quantity || 1;
       const existingInv = db.inventory.find(i => i.character_id === character.id && i.item_id === recipe.result);
@@ -237,15 +236,26 @@ res.json(recipes);
   }
 });
 
-router.get('/forge-recipes', auth, (req, res) => {
+router.post('/forge', auth, (req, res) => {
   try {
+    const { mainMaterialId, auxMaterialIds, catalystIds, flameType } = req.body;
     const db = loadDatabase();
     const character = db.characters.find(c => c.user_id === req.userId);
     if (!character) return res.status(404).json({ error: '角色不存在' });
+    if (!mainMaterialId) return res.status(400).json({ error: '请指定主材' });
 
     const mainItem = db.items.find(i => i.id === mainMaterialId);
     if (!mainItem) return res.status(400).json({ error: '主材不存在' });
     if (mainItem.type !== '材料' && mainItem.type !== '装备') return res.status(400).json({ error: '主材类型错误' });
+
+    // 图纸门槛（阶段3）：灵品及以上主材需已学会至少一张锻造图纸
+    const PREMIUM_QUALITIES = ['灵品', '宝品', '仙品'];
+    if (PREMIUM_QUALITIES.includes(mainItem.quality)) {
+      const learned = character.learned_blueprints || [];
+      if (learned.length === 0) {
+        return res.status(400).json({ error: `锻造${mainItem.quality}主材需先学习对应图纸` });
+      }
+    }
 
     const inventory = db.inventory.filter(i => i.character_id === character.id);
     const auxItems = (auxMaterialIds || []).map(id => db.items.find(i => i.id === id)).filter(Boolean);
@@ -279,9 +289,12 @@ router.get('/forge-recipes', auth, (req, res) => {
     const flame = flames[flameType] || flames['basic'];
 
     const charStats = character.stats || {};
-    const result = generateForgeResult(mainItem, auxItems, catItems, flame, charStats);
+    const prof = proficiencyService.get(character, 'crafting');
+    const result = generateForgeResult(db, mainItem, auxItems, catItems, flame, charStats, prof.successBonus);
 
     if (result.success) {
+      const profResult = proficiencyService.addExp(character, 'crafting', result.isSuperior ? 25 : 10);
+      result.proficiency = { level: profResult.level, levelName: profResult.levelName, levelUp: profResult.levelUp };
       db.equipments.push({
         id: getNextId('equipments'),
         character_id: character.id,
@@ -481,6 +494,81 @@ router.get('/flames', auth, (req, res) => {
     { id: 'dark', name: '幽暗焰', element: '黑暗', desc: '黑暗属性，大幅提升速度' },
     { id: 'light', name: '神圣焰', element: '光明', desc: '光明属性，大幅提升成功率' }
   ]);
+});
+
+// ---------- 图纸系统（阶段3 · 原始设定 04/07）----------
+router.get('/blueprints', auth, (req, res) => {
+  try {
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const learned = character.learned_blueprints || [];
+    res.json({
+      blueprints: (db.blueprints || []).map(b => ({
+        ...b,
+        learned: learned.includes(b.id),
+        category: b.type === 'pill' ? 'alchemy' : 'crafting'
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/blueprints/learn', auth, (req, res) => {
+  try {
+    const { blueprintId } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+
+    const bp = (db.blueprints || []).find(b => b.id === blueprintId);
+    if (!bp) return res.status(400).json({ error: '图纸不存在' });
+
+    character.learned_blueprints = character.learned_blueprints || [];
+    if (character.learned_blueprints.includes(bp.id)) {
+      return res.status(400).json({ error: '该图纸已学会' });
+    }
+
+    // 按图纸材料清单（按名称）消耗库存
+    const inventory = db.inventory.filter(i => i.character_id === character.id);
+    const nameToItem = new Map((db.items || []).map(i => [i.name, i]));
+    const needs = (bp.materials || []).map(m => ({ item: nameToItem.get(m.name), qty: m.quantity || 1 }));
+    const missing = needs.filter(n => !n.item);
+    if (missing.length) return res.status(400).json({ error: `图纸材料定义异常: ${missing.map(n => n.item).join(',')}` });
+    for (const n of needs) {
+      const owned = inventory.filter(i => i.item_id === n.item.id).reduce((s, i) => s + (i.quantity || 1), 0);
+      if (owned < n.qty) return res.status(400).json({ error: `材料不足: ${n.item.name} ×${n.qty}` });
+    }
+    for (const n of needs) {
+      let remaining = n.qty;
+      for (let i = inventory.length - 1; i >= 0 && remaining > 0; i--) {
+        if (inventory[i].item_id === n.item.id) {
+          const take = Math.min(remaining, inventory[i].quantity || 1);
+          inventory[i].quantity -= take;
+          remaining -= take;
+          if (inventory[i].quantity <= 0) {
+            const idx = db.inventory.findIndex(x => x.id === inventory[i].id);
+            if (idx !== -1) db.inventory.splice(idx, 1);
+          }
+        }
+      }
+    }
+
+    character.learned_blueprints.push(bp.id);
+    const category = bp.type === 'pill' ? 'alchemy' : 'crafting';
+    const prof = proficiencyService.addExp(character, category, 15);
+
+    saveDatabase(db);
+    res.json({
+      success: true,
+      learned: bp.name,
+      proficiency: { level: prof.level, levelName: prof.levelName, levelUp: prof.levelUp },
+      message: `已学会「${bp.name}」，${prof.levelName}经验+15`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 module.exports = router;

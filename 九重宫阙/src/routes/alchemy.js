@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const proficiencyService = require('../services/proficiency');
 
 const QUALITY_ORDER = ['废品', '凡品', '灵品', '宝品', '仙品', '道品'];
 
@@ -55,6 +56,8 @@ function addAlchemyExp(character, amount) {
     character.alchemy.exp -= character.alchemy.level * 100;
     character.alchemy.level++;
   }
+  // 阶段3：同步统一熟练度阶梯（炼丹类别，所有炼丹经验来源单点接入）
+  proficiencyService.addExp(character, 'alchemy', amount);
 }
 
 function getProficiency(character, recipeId) {

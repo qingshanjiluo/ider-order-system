@@ -31,6 +31,26 @@ const STRONG_AGAINST = {
   dark: ['light']
 };
 
+/** 相生环（炼器/炼丹用）：金生水 → 水生木 → 木生火 → 火生土 → 土生金 */
+const GENERATES = {
+  metal: 'water',
+  water: 'wood',
+  wood: 'fire',
+  fire: 'earth',
+  earth: 'metal'
+};
+
+/** 生产系统元素关系：generates 相生 / overrides 相克 / same 同气 / neutral 无关 */
+function relation(mainElement, materialElement) {
+  const m = normalize(mainElement);
+  const n = normalize(materialElement);
+  if (m === 'none' || n === 'none') return 'neutral';
+  if (GENERATES[m] === n) return 'generates';
+  if ((STRONG_AGAINST[m] || []).includes(n)) return 'overrides';
+  if (m === n) return 'same';
+  return 'neutral';
+}
+
 const EFFECT = { strong: 1.3, weak: 0.7, normal: 1.0 };
 
 const LEGACY_MAP = {
@@ -38,7 +58,9 @@ const LEGACY_MAP = {
   '金': 'metal', '雷': 'metal', '木': 'wood', '风': 'wood',
   '水': 'water', '火': 'fire', '土': 'earth',
   '光': 'light', '圣': 'light', '仙': 'light', '星辰': 'light', '阳': 'light',
+  '光明': 'light',
   '暗': 'dark', '阴': 'dark', '魔': 'dark',
+  '黑暗': 'dark',
   '混沌': 'none', '五行': 'none', '阴阳': 'none', '空间': 'none', '造化': 'none', '无': 'none',
   // 英文旧体系（技能/代码历史键）
   fire: 'fire', water: 'water', earth: 'earth',
@@ -80,4 +102,4 @@ function displayMeta() {
   return meta;
 }
 
-module.exports = { ELEMENTS, STRONG_AGAINST, EFFECT, normalize, effectiveness, displayMeta };
+module.exports = { ELEMENTS, STRONG_AGAINST, GENERATES, EFFECT, normalize, effectiveness, relation, displayMeta };

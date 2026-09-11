@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const proficiencyService = require('../services/proficiency');
 
 router.get('/maps', auth, (req, res) => {
   try {
@@ -69,7 +70,8 @@ router.post('/gather', auth, (req, res) => {
     }
 
     const gatheredItems = [];
-    const baseChance = 0.3 + (character.level || 1) * 0.005;
+    const gatherProf = proficiencyService.get(character, 'gathering');
+    const baseChance = 0.3 + (character.level || 1) * 0.005 + gatherProf.successBonus * 0.5; // 熟练度加成（阶段3）
 
     for (const nodeName of gatherNodes) {
       if (Math.random() < baseChance) {
@@ -115,6 +117,8 @@ router.post('/gather', auth, (req, res) => {
 
     const expGained = Math.floor(5 + map.min_level * 2);
     character.exp = (character.exp || 0) + expGained;
+    // 阶段3：采集熟练度
+    const gProf = proficiencyService.addExp(character, 'gathering', 2 + (map.difficulty || 1));
     const { updateQuestProgress } = require('./quests');
     updateQuestProgress(character.id, 'gather', 1);
 
@@ -124,6 +128,7 @@ router.post('/gather', auth, (req, res) => {
       success: true,
       gatheredItems,
       expGained,
+      proficiency: { level: gProf.level, levelName: gProf.levelName, levelUp: gProf.levelUp },
       mapName: map.name
     });
   } catch (error) {

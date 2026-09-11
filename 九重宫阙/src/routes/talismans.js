@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const proficiencyService = require('../services/proficiency');
 
 const TALISMAN_RECIPES = [
   { id: 1, name: '雷击符', type: 'thunder_strike', quality: '灵品', effect: 'attack_damage_up_30', description: '使用后，下一次攻击伤害提升30%' },
@@ -94,6 +95,9 @@ router.post('/craft', auth, (req, res) => {
       if (!db.talismans) db.talismans = [];
       db.talismans.push(talisman);
     }
+
+    // 阶段3：制符积累符箓熟练度
+    proficiencyService.addExp(character, 'talisman', 5);
 
     saveDatabase(db);
     res.json({ success: true, message: `${recipe.name}制作成功`, name: recipe.name });

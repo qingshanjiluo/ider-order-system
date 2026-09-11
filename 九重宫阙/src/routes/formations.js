@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const proficiencyService = require('../services/proficiency');
 
 const FORMATION_TYPES = [
   { id: 1, name: '天罡北斗阵', type: 'big_dipper', bonus_attack: 15, bonus_defense: 10, bonus_speed: 0, bonus_hp: 0, bonus_exp: 0, description: '攻击力+15%，防御力+10%' },
@@ -83,6 +84,9 @@ router.post('/activate', auth, (req, res) => {
       if (!db.formations) db.formations = [];
       db.formations.push(formation);
     }
+
+    // 阶段3：布置阵法积累阵法熟练度
+    proficiencyService.addExp(character, 'formation', 3);
 
     saveDatabase(db);
     res.json({ success: true, message: `${formationDef.name}已激活`, formation: formationDef });

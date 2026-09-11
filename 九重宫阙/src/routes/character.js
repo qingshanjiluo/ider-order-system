@@ -28,6 +28,22 @@ router.get('/', auth, (req, res) => {
   }
 });
 
+router.get('/proficiency', auth, (req, res) => {
+  try {
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const proficiencyService = require('../services/proficiency');
+    const out = {};
+    for (const key of Object.keys(proficiencyService.CATEGORIES)) {
+      out[key] = proficiencyService.get(character, key);
+    }
+    res.json({ proficiency: out, ladder: proficiencyService.LADDER });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.get('/stats', auth, (req, res) => {
   try {
     const db = loadDatabase();

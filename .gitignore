@@ -11,5 +11,6 @@ plans/
 九重宫阙/data/game.json
 九重宫阙/data/*.backup*
 九重宫阙/data/backups/
-
-���ع���/data/*.db*
+九重宫阙/data/game.db
+九重宫阙/data/game.db-wal
+九重宫阙/data/game.db-shm

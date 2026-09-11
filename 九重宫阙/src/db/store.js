@@ -187,8 +187,8 @@ function insertRel(table, obj) {
   return Number(info.lastInsertRowid);
 }
 
-/** 查询关系表（等值条件），可选排序 */
-function queryRel(table, where = {}, orderBy = 'id') {
+/** 查询关系表（等值条件），可选排序（默认 rowid，兼容无 id 列的表如 market_rates） */
+function queryRel(table, where = {}, orderBy = 'rowid') {
   boot();
   if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
   const keys = Object.keys(where || {}).filter(okCol);
@@ -200,6 +200,17 @@ function queryRel(table, where = {}, orderBy = 'id') {
   }
   if (orderBy && /^[a-z_][a-z0-9_]*$/.test(orderBy)) sql += ` ORDER BY ${orderBy}`;
   return sqlite.prepare(sql).all(...params);
+}
+
+/** 按条件更新关系表记录（适配无 id 列的表） */
+function updateRelWhere(table, where, patch) {
+  boot();
+  if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
+  const wKeys = Object.keys(where || {}).filter(okCol);
+  const pCols = Object.keys(patch || {}).filter(okCol);
+  if (!wKeys.length || !pCols.length) return;
+  const sql = `UPDATE ${table} SET ${pCols.map((c) => `${c} = ?`).join(',')} WHERE ${wKeys.map((k) => `${k} = ?`).join(' AND ')}`;
+  sqlite.prepare(sql).run(...pCols.map((c) => bindVal(patch[c])), ...wKeys.map((k) => bindVal(where[k])));
 }
 
 /** 更新关系表记录（按 id） */
@@ -242,4 +253,4 @@ function close() {
   }
 }
 
-module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, deleteRel, incrementRel };
+module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, updateRelWhere, deleteRel, incrementRel };

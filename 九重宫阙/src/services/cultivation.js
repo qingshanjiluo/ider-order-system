@@ -39,6 +39,12 @@ class CultivationService {
     speed *= injuryService.getDebuffs(character).cultivateMultiplier;
     // 灵气浓度
     speed *= this.getSpiritDensity(character);
+    // 宗门通天塔加成（阶段4）
+    try {
+      const sectService = require('./sect');
+      const benefits = sectService.getBenefits(character);
+      if (benefits.inSect) speed *= 1 + benefits.cultivateSpeedBonus;
+    } catch (_) { /* 宗门系统异常不影响修炼 */ }
     return speed;
   }
 

@@ -44,6 +44,13 @@ function boot() {
   sqlite.exec('PRAGMA journal_mode = WAL');
   sqlite.exec('PRAGMA synchronous = NORMAL');
   sqlite.exec(fs.readFileSync(SCHEMA_FILE, 'utf8'));
+  // 增量列迁移（SQLite 无 ADD COLUMN IF NOT EXISTS，靠幂等 try）
+  for (const ddl of [
+    'ALTER TABLE sects ADD COLUMN key TEXT',
+    'ALTER TABLE sects ADD COLUMN gongfa_focus TEXT'
+  ]) {
+    try { sqlite.exec(ddl); } catch (_) { /* 列已存在 */ }
+  }
 
   mirror = { id_counters: {} };
   const tables = sqlite
@@ -195,6 +202,34 @@ function queryRel(table, where = {}, orderBy = 'id') {
   return sqlite.prepare(sql).all(...params);
 }
 
+/** 更新关系表记录（按 id） */
+function updateRel(table, id, patch) {
+  boot();
+  if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
+  const cols = Object.keys(patch || {}).filter(okCol);
+  if (!cols.length) return;
+  const set = cols.map((c) => `${c} = ?`).join(',');
+  sqlite.prepare(`UPDATE ${table} SET ${set} WHERE id = ?`).run(...cols.map((c) => bindVal(patch[c])), id);
+}
+
+/** 删除关系表记录（等值条件） */
+function deleteRel(table, where = {}) {
+  boot();
+  if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
+  const keys = Object.keys(where || {}).filter(okCol);
+  if (!keys.length) throw new Error('deleteRel 需要条件');
+  const sql = `DELETE FROM ${table} WHERE ` + keys.map((k) => `${k} = ?`).join(' AND ');
+  sqlite.prepare(sql).run(...keys.map((k) => bindVal(where[k])));
+}
+
+/** 数值列自增（delta 可负） */
+function incrementRel(table, id, column, delta) {
+  boot();
+  if (!REL_TABLES.has(table)) throw new Error(`非法关系表: ${table}`);
+  if (!okCol(column)) throw new Error(`非法列名: ${column}`);
+  sqlite.prepare(`UPDATE ${table} SET ${column} = COALESCE(${column}, 0) + ? WHERE id = ?`).run(delta, id);
+}
+
 /** 进程退出前调用：落盘 + 关库 */
 function close() {
   if (autosaveTimer) clearInterval(autosaveTimer);
@@ -207,4 +242,4 @@ function close() {
   }
 }
 
-module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel };
+module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, deleteRel, incrementRel };

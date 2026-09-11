@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仙盟系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>仙盟系统</h1>
+        <p>仙盟等级、建筑、职位、盟战、探索</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-06.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="questionnaire-08.html">下一系统 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 5 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">仙盟等级：10级是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">仙盟最高等级为10级，等级越高可解锁更多功能。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，10级')"><div class="option-text">合适，10级</div></div>
+                        <div class="option" onclick="selectOption('q1',this:'太多，简化为5-6级')"><div class="option-text">太多，简化为5-6级</div></div>
+                        <div class="option" onclick="selectOption('q1',this:'太少，增加到15级')"><div class="option-text">太少，增加到15级</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">仙盟建筑：8种建筑是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">8种建筑提供不同功能加成。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，8种建筑')"><div class="option-text">合适，8种建筑</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太多，简化为5-6种')"><div class="option-text">太多，简化为5-6种</div></div>
+                        <div class="option" onclick="selectOption('q2',this:'太少，增加更多')"><div class="option-text">太少，增加更多建筑</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">仙盟职位：5级职位是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">盟主→副盟主→长老→精英→成员，共5级。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'合适，5级职位')"><div class="option-text">合适，5级职位</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'太多，简化为3级')"><div class="option-text">太多，简化为3级</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'太少，增加更多')"><div class="option-text">太少，增加更多职位</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">仙盟战：10v10是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">仙盟战为10v10实时对战。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'合适，10v10')"><div class="option-text">合适，10v10</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'人太多，改为5v5')"><div class="option-text">人太多，改为5v5</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'人太少，增加到20v20')"><div class="option-text">人太少，增加到20v20</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q5 -->
+            <div class="accordion-item" id="item-q5">
+                <div class="accordion-header" onclick="toggleAccordion('q5')">
+                    <span class="check">✓</span><span class="num">Q5.</span>
+                    <span class="title">仙盟探索：是否需要仙盟探索功能？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">仙盟成员可组队探索秘境，获取稀有资源。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q5',this,'需要，增加互动')"><div class="option-text">需要，增加互动</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'不需要，保持简单')"><div class="option-text">不需要，保持简单</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'改为其他形式')"><div class="option-text">改为其他形式</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q5',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-06.html">← 上一系统</a>
+            <a href="questionnaire-08.html">下一系统 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '07';
+    const totalQuestions = 5;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

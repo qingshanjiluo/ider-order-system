@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>变现系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>变现系统</h1>
+        <p>VIP等级、套餐、充值、首充、氪金原则</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-07.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="questionnaire-09.html">下一系统 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 5 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">VIP等级：7级（VIP0-VIP6）是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">VIP0为免费玩家，VIP1-VIP6为付费等级。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，7级VIP')"><div class="option-text">合适，7级VIP</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太多，简化为5级')"><div class="option-text">太多，简化为5级</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太少，增加到10级')"><div class="option-text">太少，增加到10级</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">套餐类型：7种套餐是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">月卡、季卡、年卡、成长基金等多种套餐。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，7种套餐')"><div class="option-text">合适，7种套餐</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太多，简化为3-4种')"><div class="option-text">太多，简化为3-4种</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太少，增加更多')"><div class="option-text">太少，增加更多套餐</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">充值档位：6/30/98/198/328/648元是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">6个充值档位，覆盖不同消费能力玩家。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'档位太多')"><div class="option-text">档位太多，简化</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'缺少小额档位')"><div class="option-text">缺少小额档位（如1元）</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">首充奖励：紫色到红色装备是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">首充6元即可获得紫色至红色装备。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'奖励太好')"><div class="option-text">奖励太好，降低品质</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'奖励太差')"><div class="option-text">奖励太差，提高品质</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q5 -->
+            <div class="accordion-item" id="item-q5">
+                <div class="accordion-header" onclick="toggleAccordion('q5')">
+                    <span class="check">✓</span><span class="num">Q5.</span>
+                    <span class="title">氪金原则：加速但不强制是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">付费可加速进度，但不强制消费。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q5',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'应该更肝')"><div class="option-text">应该更肝，减少付费优势</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'应该更氪')"><div class="option-text">应该更氪，增加付费优势</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q5',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-07.html">← 上一系统</a>
+            <a href="questionnaire-09.html">下一系统 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '08';
+    const totalQuestions = 5;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

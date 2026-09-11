@@ -1,0 +1,64 @@
+:root {
+  --bg: #0d0b08 !important; --bg2: #1a1612 !important; --bg3: #28221c !important;
+  --bg4: #3a322a !important; --border: #4a3f35 !important;
+  --text: #e8ddd0 !important; --text2: #a09080 !important;
+  --gold: #d4a844 !important; --gold2: #b8860b !important;
+  --accent: #c0c0c0 !important; --red: #c04040 !important; --green: #40a060 !important;
+  --radius: 4px !important;
+}
+body { font-family: 'Playfair Display','Noto Serif SC',serif !important; }
+
+.view-login { background: radial-gradient(ellipse at 50% 0%, #1a1612 0%, #0d0b08 60%) !important; }
+.login-card { background: linear-gradient(160deg, #1a1612, #221e18) !important; border: 1px solid #4a3f35 !important; box-shadow: 0 8px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,168,68,0.05) !important; }
+.game-title { font-family: 'Playfair Display',serif !important; font-size: 30px !important; color: #d4a844 !important; text-shadow: 0 0 40px rgba(212,168,68,0.15) !important; letter-spacing: 3px !important; font-weight: 700 !important; }
+
+.game-header { background: linear-gradient(180deg, #1a1612, #0d0b08) !important; border-bottom: 2px solid #4a3f35 !important; position: relative !important; }
+.game-header::after { content: '' !important; position: absolute !important; bottom: -2px !important; left: 15% !important; right: 15% !important; height: 1px !important; background: linear-gradient(90deg, transparent, #d4a844, transparent) !important; }
+.hdr-name { font-family: 'Playfair Display',serif !important; font-size: 16px !important; color: #d4a844 !important; letter-spacing: 2px !important; font-weight: 700 !important; text-shadow: 0 1px 4px rgba(0,0,0,0.3) !important; }
+.realm-badge { background: linear-gradient(135deg, #2a2318, #3a3022) !important; border: 1px solid #4a3f35 !important; color: #d4a844 !important; box-shadow: inset 0 1px 0 rgba(212,168,68,0.1) !important; }
+.btn-icon { color: #a09080 !important; }
+.btn-icon:hover { color: #d4a844 !important; text-shadow: 0 0 10px rgba(212,168,68,0.2) !important; }
+
+.tab-nav { background: #0d0b08 !important; border-bottom: 1px solid #3a322a !important; }
+.tab-btn { color: #8a7a6a !important; font-family: 'Playfair Display',serif !important; font-size: 13px !important; letter-spacing: 1px !important; padding: 10px 24px !important; }
+.tab-btn.active { color: #d4a844 !important; border-bottom: 1px solid #d4a844 !important; }
+.tab-btn:hover { color: #e8ddd0 !important; background: rgba(212,168,68,0.03) !important; }
+
+.battle-sidebar { background: #0d0b08 !important; border-right: 1px solid #3a322a !important; }
+.sidebar-char-name { color: #d4a844 !important; font-family: 'Playfair Display',serif !important; font-weight: 700 !important; }
+.sidebar-section-title { color: #d4a844 !important; border-bottom: 1px solid #3a322a !important; letter-spacing: 2px !important; text-transform: uppercase !important; font-size: 10px !important; }
+
+.stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {
+  background: linear-gradient(160deg, #1a1612, #221e18) !important; border: 1px solid #3a322a !important;
+  padding: 16px 20px !important; box-shadow: 0 4px 20px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.02) !important;
+}
+.skill-card.equipped { border-color: #d4a844 !important; background: linear-gradient(160deg, #221a12, #2a2218) !important; }
+.section-title { color: #d4a844 !important; border-bottom: 1px solid #4a3f35 !important; font-size: 13px !important; letter-spacing: 3px !important; text-transform: uppercase !important; padding-bottom: 8px !important; }
+
+.btn-action { background: linear-gradient(160deg, #1a1612, #28221c) !important; border: 1px solid #4a3f35 !important; color: #e8ddd0 !important; padding: 8px 18px !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03) !important; }
+.btn-action:hover { border-color: #d4a844 !important; box-shadow: inset 0 1px 0 rgba(212,168,68,0.05), 0 2px 12px rgba(212,168,68,0.08) !important; }
+.btn-action.gold { background: linear-gradient(160deg, #3a3022, #4a3f35) !important; border-color: #d4a844 !important; color: #d4a844 !important; }
+.btn-sm { background: #1a1612 !important; border: 1px solid #4a3f35 !important; }
+.btn-primary { background: linear-gradient(135deg, #d4a844, #b8860b) !important; border: none !important; color: #000 !important; box-shadow: 0 2px 12px rgba(212,168,68,0.2) !important; }
+
+.bar-track { background: #28221c !important; border: 1px solid #4a3f35 !important; height: 8px !important; }
+.hp-bar-red { background: linear-gradient(90deg, #6a2020, #c04040) !important; }
+.hp-bar-green { background: linear-gradient(90deg, #2a5a3a, #40a060) !important; }
+.mp-bar-blue { background: linear-gradient(90deg, #2a3a6a, #4080c0) !important; }
+.exp-fill { background: linear-gradient(90deg, #8a6a20, #d4a844) !important; }
+
+.modal-overlay { background: rgba(13,11,8,0.85) !important; backdrop-filter: blur(4px) !important; }
+
+.map-card { background: linear-gradient(160deg, #1a1612, #221e18) !important; border: 1px solid #3a322a !important; }
+.map-card.active { border-color: #d4a844 !important; box-shadow: 0 0 20px rgba(212,168,68,0.06) !important; }
+
+.inv-slot { background: #1a1612 !important; border: 1px solid #3a322a !important; }
+.inv-slot.occupied:hover { border-color: #d4a844 !important; }
+
+.toast { background: rgba(26,22,18,0.95) !important; border: 1px solid #d4a844 !important; color: #d4a844 !important; box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important; }
+
+::-webkit-scrollbar-thumb { background: #4a3f35 !important; }
+::-webkit-scrollbar-track { background: #0d0b08 !important; }
+
+.panel { animation: iderLuxeIn 0.4s ease !important; }
+@keyframes iderLuxeIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }

@@ -3,7 +3,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const API_BASE = 'https://idlexiuxianzhuan.cn';
+const API_BASE = 'https://ideer-game-api.sifangzhiji.workers.dev';
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const CLIENT_VERSION = '1.2.4';
 const TEST_USER = 'zzhx';
@@ -47,7 +47,7 @@ async function apiRequest(method, path, token, body) {
     'X-Sign-T': String(ts), 'X-Sign': sign,
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const r = await httpsReq(method, 'idlexiuxianzhuan.cn', path, headers, bodyStr, 60000);
+  const r = await httpsReq(method, 'ideer-game-api.sifangzhiji.workers.dev', path, headers, bodyStr, 60000);
   let data;
   try { data = JSON.parse(r.body); } catch (e) { throw new Error('非JSON(' + r.status + '): ' + r.body.slice(0, 200)); }
   if (!data || data.ok === false) throw new Error(data && data.error ? data.error : '请求失败(' + r.status + ')');
@@ -105,7 +105,7 @@ async function main() {
 
   let playerData;
   try {
-    playerData = await apiRequest('GET', '/player/data', token, null);
+    playerData = await apiRequest('GET', '/player/state', token, null);
   } catch (e) {}
 
   const results = [];

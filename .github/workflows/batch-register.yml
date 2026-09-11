@@ -1,5 +1,5 @@
 # ════════════════════════════════════════════════════════════
-#  艾德尔修仙传 - 批量注册工具 📝
+#  艾德尔修仙传 - 原版/批量注册工具 📝
 # ════════════════════════════════════════════════════════════
 #  📂 账号文件指向说明
 #  ════════════════════════════════════════════════════════════
@@ -18,7 +18,7 @@
 #  注册成功后，该行前会自动添加「#」标记完成
 #  ════════════════════════════════════════════════════════════
 
-name: 📝 批量注册工具
+name: 📝 原版/批量注册工具
 
 on:
   # 手动触发（最常用）
@@ -68,9 +68,9 @@ jobs:
 
     defaults:
       run:
-        # ⚠️ 所有步骤默认在「批量注册工具」目录下执行
+        # ⚠️ 所有步骤默认在「原版/批量注册工具」目录下执行
         #    因为 batch.js 和 accounts.txt 都在该目录
-        working-directory: 批量注册工具
+        working-directory: 原版/批量注册工具
 
     steps:
       - name: 🔄 检出代码
@@ -84,7 +84,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: 批量注册工具/package-lock.json
+          cache-dependency-path: 原版/批量注册工具/package-lock.json
 
       - name: 📦 安装依赖
         run: npm install
@@ -166,8 +166,8 @@ jobs:
         with:
           name: batch-register-logs-${{ github.event.inputs.batch_index || '1' }}-${{ github.run_id }}
           path: |
-            批量注册工具/*.log
-            批量注册工具/result_*.json
+            原版/批量注册工具/*.log
+            原版/批量注册工具/result_*.json
           compression-level: 6
           retention-days: 7
 

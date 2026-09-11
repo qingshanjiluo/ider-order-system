@@ -1,0 +1,66 @@
+:root {
+  --bg: #f8f6f2 !important; --bg2: #f0ece6 !important; --bg3: #e8e2da !important;
+  --bg4: #ddd6cc !important; --border: #d0c8bc !important;
+  --text: #2a2520 !important; --text2: #8a8078 !important;
+  --gold: #c49a6c !important; --gold2: #a07850 !important;
+  --accent: #6a7a8a !important; --red: #b04a3a !important; --green: #5a8a5a !important;
+  --radius: 0 !important;
+}
+body { font-family: 'Noto Serif SC','Georgia',serif !important; }
+
+.view-login { background: #f8f6f2 !important; }
+.login-card { background: #fff !important; border: 1px solid #ddd6cc !important; box-shadow: none !important; }
+.game-title { font-family: 'Noto Serif SC',serif !important; font-size: 28px !important; color: #2a2520 !important; letter-spacing: 6px !important; font-weight: 300 !important; }
+
+.game-header { background: #fff !important; border-bottom: 1px solid #ddd6cc !important; padding: 12px 24px !important; }
+.hdr-name { font-family: 'Noto Serif SC',serif !important; font-size: 14px !important; color: #c49a6c !important; letter-spacing: 3px !important; font-weight: 400 !important; }
+.realm-badge { background: #f0ece6 !important; border: none !important; color: #8a8078 !important; font-size: 11px !important; }
+.btn-icon { color: #c4b8ac !important; }
+.btn-icon:hover { color: #c49a6c !important; }
+
+.tab-nav { background: #fff !important; border-bottom: 1px solid #e8e2da !important; padding: 0 24px !important; }
+.tab-btn { color: #8a8078 !important; font-size: 12px !important; letter-spacing: 2px !important; padding: 12px 20px !important; text-transform: uppercase !important; }
+.tab-btn.active { color: #2a2520 !important; border-bottom: 2px solid #2a2520 !important; }
+.tab-btn:hover { color: #2a2520 !important; background: rgba(0,0,0,0.01) !important; }
+
+.battle-sidebar { background: #f8f6f2 !important; border-right: 1px solid #e8e2da !important; }
+.sidebar-char-name { color: #2a2520 !important; font-family: 'Noto Serif SC',serif !important; font-weight: 400 !important; letter-spacing: 2px !important; }
+.sidebar-section-title { color: #c49a6c !important; border-bottom: 1px solid #ddd6cc !important; text-transform: uppercase !important; font-size: 10px !important; letter-spacing: 3px !important; padding-bottom: 8px !important; }
+
+.stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {
+  background: #fff !important; border: 1px solid #e8e2da !important;
+  padding: 20px 24px !important; box-shadow: 0 2px 8px rgba(0,0,0,0.02) !important;
+}
+.skill-card.equipped { border-left: 3px solid #c49a6c !important; }
+.section-title { color: #2a2520 !important; border-bottom: 1px solid #e8e2da !important; font-size: 11px !important; letter-spacing: 4px !important; text-transform: uppercase !important; padding-bottom: 10px !important; margin-bottom: 16px !important; font-weight: 600 !important; }
+
+.btn-action { background: #f8f6f2 !important; border: 1px solid #ddd6cc !important; color: #2a2520 !important; padding: 8px 20px !important; font-size: 12px !important; letter-spacing: 1px !important; }
+.btn-action:hover { background: #f0ece6 !important; }
+.btn-action.gold { background: #c49a6c !important; border-color: #a07850 !important; color: #fff !important; }
+.btn-sm { background: #f8f6f2 !important; border: 1px solid #ddd6cc !important; color: #2a2520 !important; }
+.btn-primary { background: #2a2520 !important; border: none !important; color: #fff !important; letter-spacing: 2px !important; text-transform: uppercase !important; font-size: 11px !important; padding: 10px 24px !important; }
+
+.bar-track { background: #e8e2da !important; border: none !important; height: 4px !important; }
+.hp-bar-red { background: #b04a3a !important; }
+.hp-bar-green { background: #5a8a5a !important; }
+.mp-bar-blue { background: #6a7a8a !important; }
+.exp-fill { background: #c49a6c !important; }
+
+.modal-overlay { background: rgba(248,246,242,0.9) !important; }
+
+.map-card { background: #fff !important; border: 1px solid #e8e2da !important; }
+.map-card.active { border-color: #c49a6c !important; background: #f8f6f2 !important; }
+
+.inv-slot { background: #f8f6f2 !important; border: 1px solid #e8e2da !important; }
+.inv-slot.occupied:hover { border-color: #c49a6c !important; }
+
+.toast { background: rgba(255,255,255,0.95) !important; border: 1px solid #ddd6cc !important; color: #2a2520 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important; }
+
+::-webkit-scrollbar-thumb { background: #ddd6cc !important; }
+::-webkit-scrollbar-track { background: #f8f6f2 !important; }
+
+input, select, textarea { background: #fff !important; border: 1px solid #ddd6cc !important; color: #2a2520 !important; padding: 8px 12px !important; }
+input:focus { border-color: #2a2520 !important; }
+
+.panel { animation: iderMagIn 0.35s ease !important; }
+@keyframes iderMagIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

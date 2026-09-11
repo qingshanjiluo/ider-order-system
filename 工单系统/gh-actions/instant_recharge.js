@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 灵石即时充值 - 游戏内挂单支付系统
  * 
  * 流程:
@@ -8,7 +8,7 @@
 const crypto = require('crypto');
 const fetch = require('node-fetch');
 
-const API_BASE = 'https://idlexiuxianzhuan.cn';
+const API_BASE = 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = '1.2.4';
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const SELLER = { username: 'zzhx', password: 'Pipi20100817' };

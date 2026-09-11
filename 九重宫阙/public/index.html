@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>九重宫阙</title>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+
+  <div id="login-view" class="view login-view active">
+    <div class="login-card">
+      <div class="game-title">九重宫阙</div>
+      <div class="game-subtitle">水墨修仙 一念成仙</div>
+      <form id="login-form">
+        <input type="text" id="login-username" class="input-field" placeholder="用户名" autocomplete="username">
+        <input type="password" id="login-password" class="input-field" placeholder="密码" autocomplete="current-password">
+        <div id="turnstile-login" class="cf-turnstile" data-sitekey="0x4AAAAAAAtest" style="margin:12px 0;text-align:center;"></div>
+        <button type="submit" class="btn primary">登录</button>
+        <button type="button" id="show-register" class="btn">注册新账号</button>
+      </form>
+      <form id="register-form" class="hidden">
+        <input type="text" id="reg-username" class="input-field" placeholder="用户名" autocomplete="username">
+        <input type="password" id="reg-password" class="input-field" placeholder="密码" autocomplete="new-password">
+        <input type="text" id="reg-nickname" class="input-field" placeholder="角色昵称">
+        <select id="reg-faction" class="input-field">
+          <option value="martial">武道</option>
+          <option value="spirit">灵道</option>
+          <option value="demon">魔道</option>
+        </select>
+        <div id="turnstile-register" class="cf-turnstile" data-sitekey="0x4AAAAAAAtest" style="margin:12px 0;text-align:center;"></div>
+        <button type="submit" class="btn primary">注册并进入</button>
+        <button type="button" id="show-login" class="btn">返回登录</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="game-view" class="view">
+    <div class="game-header">
+      <div class="header-left">
+        <span class="char-name" id="char-name"></span>
+        <span class="realm-badge" id="realm-badge"></span>
+      </div>
+      <div class="header-right">
+        <span class="resource">灵石 <span id="res-spirit-stone">0</span></span>
+        <span class="resource">仙玉 <span id="res-jade">0</span></span>
+        <div id="chat-toggle-btn" onclick="toggleChatPanel()" style="cursor:pointer;padding:4px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:12px;" title="聊天">聊</div>
+        <button class="btn small" id="logout-btn">退出</button>
+      </div>
+    </div>
+
+    <div class="game-body">
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">角色</div>
+          <div class="nav-item active" data-tab="character">
+            <span class="nav-icon">身</span>
+            <span>角色信息</span>
+          </div>
+          <div class="nav-item" data-tab="cultivation">
+            <span class="nav-icon">修</span>
+            <span>闭关修炼</span>
+          </div>
+          <div class="nav-item" data-tab="battle">
+            <span class="nav-icon">战</span>
+            <span>战斗历练</span>
+          </div>
+          <div class="nav-item" data-tab="dungeon">
+            <span class="nav-icon">副</span>
+            <span>副本挑战</span>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">养成</div>
+          <div class="nav-item" data-tab="skill">
+            <span class="nav-icon">技</span>
+            <span>技能心法</span>
+          </div>
+          <div class="nav-item" data-tab="gongfa">
+            <span class="nav-icon">功</span>
+            <span>功法修炼</span>
+          </div>
+          <div class="nav-item" data-tab="pet">
+            <span class="nav-icon">宠</span>
+            <span>灵宠培养</span>
+          </div>
+          <div class="nav-item" data-tab="weapons">
+            <span class="nav-icon">器</span>
+            <span>法器</span>
+          </div>
+          <div class="nav-item" data-tab="pills">
+            <span class="nav-icon">丹</span>
+            <span>丹药</span>
+          </div>
+          <div class="nav-item" data-tab="talismans">
+            <span class="nav-icon">符</span>
+            <span>符箓</span>
+          </div>
+          <div class="nav-item" data-tab="formations">
+            <span class="nav-icon">阵</span>
+            <span>阵法</span>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">制造</div>
+          <div class="nav-item" data-tab="forge">
+            <span class="nav-icon">炼</span>
+            <span>炼器</span>
+          </div>
+          <div class="nav-item" data-tab="alchemist">
+            <span class="nav-icon">药</span>
+            <span>炼丹</span>
+          </div>
+          <div class="nav-item" data-tab="gathering">
+            <span class="nav-icon">采</span>
+            <span>采集</span>
+          </div>
+          <div class="nav-item" data-tab="cave">
+            <span class="nav-icon">洞</span>
+            <span>洞府</span>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">社交</div>
+          <div class="nav-item" data-tab="guild">
+            <span class="nav-icon">宗</span>
+            <span>仙盟</span>
+          </div>
+          <div class="nav-item" data-tab="arena">
+            <span class="nav-icon">竞</span>
+            <span>竞技排行</span>
+          </div>
+          <div class="nav-item" data-tab="chat">
+            <span class="nav-icon">聊</span>
+            <span>聊天频道</span>
+          </div>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">其他</div>
+          <div class="nav-item" data-tab="shop">
+            <span class="nav-icon">市</span>
+            <span>仙市交易</span>
+          </div>
+          <div class="nav-item" data-tab="afk">
+            <span class="nav-icon">挂</span>
+            <span>挂机修炼</span>
+          </div>
+          <div class="nav-item" data-tab="season">
+            <span class="nav-icon">赛</span>
+            <span>赛季竞技</span>
+          </div>
+          <div class="nav-item" data-tab="vip">
+            <span class="nav-icon">V</span>
+            <span>VIP特权</span>
+          </div>
+          <div class="nav-item" data-tab="achievement">
+            <span class="nav-icon">成</span>
+            <span>成就系统</span>
+          </div>
+          <div class="nav-item" data-tab="settings">
+            <span class="nav-icon">设</span>
+            <span>设置</span>
+          </div>
+          <div class="nav-item" data-tab="invite">
+            <span class="nav-icon">邀</span>
+            <span>邀请好友</span>
+          </div>
+          <div class="nav-item" data-tab="quests">
+            <span class="nav-icon">任</span>
+            <span>任务系统</span>
+          </div>
+          <div class="nav-item" data-tab="admin" id="nav-admin" style="display:none;">
+            <span class="nav-icon">管</span>
+            <span>管理面板</span>
+          </div>
+        </div>
+      </nav>
+
+      <div class="content-area" id="tab-content">
+        <!-- Dynamic content loaded here -->
+      </div>
+    </div>
+
+    <div class="tab-nav" id="mobile-tab-nav" style="display:none;">
+      <button class="tab-btn active" data-tab="character">角色</button>
+      <button class="tab-btn" data-tab="cultivation">修炼</button>
+      <button class="tab-btn" data-tab="battle">战斗</button>
+      <button class="tab-btn" data-tab="dungeon">副本</button>
+      <button class="tab-btn" data-tab="skill">技能</button>
+      <button class="tab-btn" data-tab="gongfa">功法</button>
+      <button class="tab-btn" data-tab="pet">灵宠</button>
+      <button class="tab-btn" data-tab="weapons">法器</button>
+      <button class="tab-btn" data-tab="pills">丹药</button>
+      <button class="tab-btn" data-tab="talismans">符箓</button>
+      <button class="tab-btn" data-tab="formations">阵法</button>
+      <button class="tab-btn" data-tab="forge">炼器</button>
+      <button class="tab-btn" data-tab="alchemist">炼丹</button>
+      <button class="tab-btn" data-tab="gathering">采集</button>
+      <button class="tab-btn" data-tab="cave">洞府</button>
+      <button class="tab-btn" data-tab="guild">仙盟</button>
+      <button class="tab-btn" data-tab="arena">竞技</button>
+      <button class="tab-btn" data-tab="shop">仙市</button>
+      <button class="tab-btn" data-tab="afk">挂机</button>
+      <button class="tab-btn" data-tab="season">赛季</button>
+      <button class="tab-btn" data-tab="vip">VIP</button>
+      <button class="tab-btn" data-tab="achievement">成就</button>
+      <button class="tab-btn" data-tab="chat">聊天</button>
+      <button class="tab-btn" data-tab="settings">设置</button>
+      <button class="tab-btn" data-tab="quests">任务</button>
+      <button class="tab-btn" data-tab="admin" id="mobile-admin-btn" style="display:none;">管理</button>
+    </div>
+  </div>
+
+  <div id="modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title"></span>
+        <button class="modal-close" onclick="ui.closeModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <div id="announcement-popup" class="modal-overlay hidden" style="z-index:2000;">
+    <div class="modal-content" style="max-width:480px;">
+      <div class="modal-header" style="background:var(--red);color:#fff;">
+        <span class="modal-title" id="announcement-title">系统公告</span>
+        <button class="modal-close" onclick="closeAnnouncement()" style="color:#fff;">&times;</button>
+      </div>
+      <div class="modal-body" id="announcement-body" style="max-height:60vh;overflow-y:auto;"></div>
+      <div class="modal-footer">
+        <button class="btn primary" onclick="closeAnnouncement()">我知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ad-popup" class="modal-overlay hidden" style="z-index:2000;">
+    <div class="modal-content" style="max-width:520px;">
+      <div class="modal-header" style="background:linear-gradient(135deg,var(--gold),var(--red));color:#fff;">
+        <span class="modal-title" id="ad-title">限时活动</span>
+        <button class="modal-close" onclick="closeAdPopup()" style="color:#fff;">&times;</button>
+      </div>
+      <div class="modal-body" id="ad-body" style="max-height:60vh;overflow-y:auto;"></div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeAdPopup()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="quest-tracker" style="display:none;position:fixed;top:80px;right:16px;width:260px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 2px 12px rgba(0,0,0,0.2);z-index:900;padding:10px;font-size:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font-weight:600;color:var(--red);">任务追踪</span>
+      <span style="cursor:pointer;color:var(--text-secondary);" onclick="toggleQuestTracker()">&#x2715;</span>
+    </div>
+    <div id="quest-tracker-list"></div>
+  </div>
+
+  <div id="quest-complete-popup" class="modal-overlay hidden" style="z-index:2100;">
+    <div class="modal-content" style="max-width:400px;text-align:center;">
+      <div class="modal-body" style="padding:32px;">
+        <div style="font-size:48px;color:var(--gold);margin-bottom:12px;">任务完成</div>
+        <div id="quest-complete-name" style="font-size:20px;font-weight:700;margin-bottom:16px;"></div>
+        <div id="quest-complete-rewards" style="margin-bottom:20px;"></div>
+        <button class="btn primary" onclick="document.getElementById('quest-complete-popup').classList.add('hidden')">领取奖励</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat-panel" style="display:none;position:fixed;bottom:60px;right:16px;width:320px;max-height:400px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:1000;flex-direction:column;overflow:hidden;">
+    <div style="padding:8px 12px;background:var(--red);color:#fff;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="toggleChatPanel()">
+      <span style="font-weight:600;font-size:13px;">聊天频道</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="chat-online-count" style="font-size:11px;">在线: 0</span>
+        <span style="font-size:16px;">&#x2715;</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:4px;padding:6px 8px;border-bottom:1px solid var(--border);">
+      <button class="btn small active" onclick="switchChatChannel('world', this)" style="flex:1;font-size:11px;">世界</button>
+      <button class="btn small" onclick="switchChatChannel('guild', this)" style="flex:1;font-size:11px;">仙盟</button>
+      <button class="btn small" onclick="switchChatChannel('system', this)" style="flex:1;font-size:11px;">系统</button>
+    </div>
+    <div id="chat-messages" style="flex:1;overflow-y:auto;padding:8px;max-height:280px;font-size:12px;"></div>
+    <div style="padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;">
+      <input id="chat-input" type="text" class="input-field" placeholder="输入消息..." style="flex:1;margin:0;padding:6px 8px;font-size:12px;" maxlength="200" onkeypress="if(event.key==='Enter')sendChatMessage()">
+      <button class="btn small primary" onclick="sendChatMessage()" style="margin:0;">发送</button>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

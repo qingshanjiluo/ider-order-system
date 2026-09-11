@@ -27,7 +27,7 @@ export async function onRequest(context) {
   const statRows = orderStats.results || [];
   const totalAccounts = statRows.reduce((s, r) => s + r.cnt, 0);
 
-  // 2. 判定"有效已交付"账号：挂机/满级且配置完成
+  // 2. 判定"有效已交付"账号：满级即为交付；挂机/进行中需配置完成
   const VALID_SETUP = ['farming', 'active', 'completed'];
   let deliveredCount = 0;
   const failedList = [];
@@ -35,7 +35,10 @@ export async function onRequest(context) {
   for (const r of statRows) {
     if (r.status === 'failed' || r.status === 'error') {
       failedList.push({ status: r.status, setup_status: r.setup_status, count: r.cnt });
-    } else if (r.status === 'completed' || r.status === 'farming' || r.status === 'active') {
+    } else if (r.status === 'completed') {
+      // 满级账号一律视为已交付（宁多勿少），不再依赖 setup_status
+      deliveredCount += r.cnt;
+    } else if (r.status === 'farming' || r.status === 'active') {
       if (VALID_SETUP.includes(r.setup_status)) {
         deliveredCount += r.cnt;
       } else {
@@ -66,8 +69,8 @@ export async function onRequest(context) {
     resetCount++;
   }
 
-  // 5. 计算差额：订购数量 vs 有效交付账号数
-  const quantity = order.quantity || 0;
+  // 5. 计算差额：目标数量（订购数+1冗余） vs 有效交付账号数
+  const quantity = (order.quantity || 0) + 1;
   const shortfall = quantity > 0 ? Math.max(0, quantity - deliveredCount) : 0;
 
   // 6. 有差额或存在待重试账号 → 恢复成 approved 供扫描器补发

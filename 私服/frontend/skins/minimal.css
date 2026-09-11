@@ -1,0 +1,66 @@
+:root {
+  --bg: #ffffff !important; --bg2: #f8f8f8 !important; --bg3: #f0f0f0 !important;
+  --bg4: #e8e8e8 !important; --border: #e0e0e0 !important;
+  --text: #1a1a1a !important; --text2: #888888 !important;
+  --gold: #333333 !important; --gold2: #555555 !important;
+  --accent: #666666 !important; --red: #cc3333 !important; --green: #339933 !important;
+  --radius: 0 !important;
+}
+body { font-family: 'Inter','Noto Sans SC',-apple-system,sans-serif !important; }
+
+.view-login { background: #ffffff !important; }
+.login-card { background: #ffffff !important; border: 1px solid #e0e0e0 !important; box-shadow: none !important; }
+.game-title { font-size: 24px !important; color: #1a1a1a !important; letter-spacing: 2px !important; font-weight: 300 !important; }
+
+.game-header { background: #ffffff !important; border-bottom: 1px solid #e8e8e8 !important; }
+.hdr-name { font-size: 14px !important; color: #333333 !important; font-weight: 400 !important; }
+.realm-badge { background: #f8f8f8 !important; border: none !important; color: #1a1a1a !important; }
+.btn-icon { color: #bbbbbb !important; }
+.btn-icon:hover { color: #333333 !important; }
+
+.tab-nav { background: #ffffff !important; border-bottom: 1px solid #e8e8e8 !important; }
+.tab-btn { color: #bbbbbb !important; padding: 8px 16px !important; font-size: 13px !important; border-bottom: 1px solid transparent !important; margin-bottom: -1px !important; }
+.tab-btn.active { color: #333333 !important; border-bottom-color: #333333 !important; }
+.tab-btn:hover { color: #666666 !important; background: #f8f8f8 !important; }
+
+.battle-sidebar { background: #fafafa !important; border-right: 1px solid #e8e8e8 !important; }
+.sidebar-char-name { color: #1a1a1a !important; font-weight: 500 !important; }
+.sidebar-section-title { color: #666666 !important; border-bottom: 1px solid #e8e8e8 !important; font-size: 10px !important; text-transform: uppercase !important; letter-spacing: 2px !important; padding-bottom: 6px !important; }
+
+.stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {
+  background: #ffffff !important; border: 1px solid #f0f0f0 !important;
+  padding: 16px !important;
+}
+.skill-card.equipped { border: 1px solid #333333 !important; }
+.section-title { color: #1a1a1a !important; border-bottom: 1px solid #e8e8e8 !important; font-size: 11px !important; letter-spacing: 2px !important; text-transform: uppercase !important; padding-bottom: 6px !important; font-weight: 500 !important; }
+
+.btn-action { background: #ffffff !important; border: 1px solid #e0e0e0 !important; color: #1a1a1a !important; padding: 6px 16px !important; font-size: 12px !important; }
+.btn-action:hover { background: #f8f8f8 !important; border-color: #cccccc !important; }
+.btn-action.gold { background: #333333 !important; border-color: #333333 !important; color: #ffffff !important; }
+.btn-sm { background: #ffffff !important; border: 1px solid #e0e0e0 !important; color: #1a1a1a !important; }
+.btn-primary { background: #333333 !important; border: none !important; color: #ffffff !important; }
+
+.bar-track { background: #f0f0f0 !important; border: none !important; height: 4px !important; }
+.hp-bar-red { background: #cc3333 !important; }
+.hp-bar-green { background: #339933 !important; }
+.mp-bar-blue { background: #3366aa !important; }
+.exp-fill { background: #333333 !important; }
+
+.modal-overlay { background: rgba(255,255,255,0.8) !important; }
+
+.map-card { background: #ffffff !important; border: 1px solid #f0f0f0 !important; }
+.map-card.active { border-color: #333333 !important; background: #fafafa !important; }
+
+.inv-slot { background: #fafafa !important; border: 1px solid #f0f0f0 !important; }
+.inv-slot.occupied:hover { border-color: #333333 !important; }
+
+.toast { background: rgba(255,255,255,0.95) !important; border: 1px solid #e0e0e0 !important; color: #1a1a1a !important; }
+
+::-webkit-scrollbar-thumb { background: #e0e0e0 !important; }
+::-webkit-scrollbar-track { background: #ffffff !important; }
+
+input, select, textarea { background: #ffffff !important; border: 1px solid #e0e0e0 !important; color: #1a1a1a !important; }
+input:focus { border-color: #333333 !important; }
+
+.panel { animation: iderMinIn 0.3s ease !important; }
+@keyframes iderMinIn { from { opacity: 0; } to { opacity: 1; } }

@@ -15,8 +15,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '批量注册工具/craft_pills.js'
-      - '批量注册工具/_anti_detect_shared.js'
+      - '原版/批量注册工具/craft_pills.js'
+      - '原版/批量注册工具/_anti_detect_shared.js'
 
 jobs:
   craft:
@@ -31,23 +31,23 @@ jobs:
       with:
         node-version: '22'
         cache: 'npm'
-        cache-dependency-path: '批量注册工具/package-lock.json'
+        cache-dependency-path: '原版/批量注册工具/package-lock.json'
 
     - name: 安装依赖
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         npm install
 
     - name: 准备账号文件
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         echo "${{ github.event.inputs.accounts_data || secrets.ACCOUNTS_DATA || '' }}" > alchemy_accounts.txt
         echo "📋 账号文件内容:"
         cat alchemy_accounts.txt
 
     - name: 运行百艺炼丹
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         export CI=true
         export MAX_ACCOUNTS="${{ github.event.inputs.max_accounts || '' }}"
         echo "🧪 运行百艺炼丹脚本..."
@@ -58,13 +58,13 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: craft-result
-        path: 批量注册工具/craft_result_*.json
+        path: 原版/批量注册工具/craft_result_*.json
         retention-days: 7
 
     - name: 输出结果摘要
       if: always()
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         echo "📊 执行结果:"
         ls -la craft_result_*.json 2>/dev/null || echo "无结果文件"
         echo ""

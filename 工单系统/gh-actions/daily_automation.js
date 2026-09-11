@@ -26,7 +26,7 @@ const fs = require('fs');
 const path = require('path');
 
 // ── 配置 ──
-const API_BASE = 'https://idlexiuxianzhuan.cn';
+const API_BASE = 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = '1.2.4';
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const TRIAL_DAYS = parseInt(process.env.TRIAL_DAYS) || 10;
@@ -86,7 +86,7 @@ async function login(username, password) {
 async function doAlliance(token) {
   log('--- 仙盟日常 ---');
   try {
-    const detail = await api('GET', '/player/state', token);
+    const detail = await api('GET', '/player/sync', token);
     const memberId = (detail && detail.player && detail.player.alliance_id) ? detail.player.alliance_id : null;
     if (!memberId) { log('未加入仙盟，跳过'); return; }
     log('仙盟ID: ' + memberId);
@@ -131,7 +131,7 @@ async function doDisciple(token) {
   log('--- 派出传人 ---');
   try { await api('POST', '/online/disciple/recall', token); log('已召回传人'); await sleep(1500); } catch(e) {}
   try {
-    const state = await api('GET', '/player/state', token);
+    const state = await api('GET', '/player/sync', token);
     const maxMapId = (state && state.player && state.player.max_map_id) ? state.player.max_map_id : 1;
     log('最高地图ID: ' + maxMapId);
     // 材质每日轮换

@@ -1,0 +1,67 @@
+:root {
+  --bg: #e8ddd0 !important; --bg2: #ddd0c0 !important; --bg3: #d0c0ae !important;
+  --bg4: #c4b4a0 !important; --border: #b09880 !important;
+  --text: #3a3028 !important; --text2: #7a6a5a !important;
+  --gold: #8b6f4c !important; --gold2: #6a5038 !important;
+  --accent: #7b8d4e !important; --red: #8a4040 !important; --green: #5a7a4a !important;
+  --radius: 0 !important;
+}
+body { font-family: 'Noto Serif JP','STSong','Yu Mincho','游明朝',serif !important; color: #3a3028 !important; }
+
+.view-login { background: linear-gradient(170deg, #e8ddd0, #ddd0c0) !important; }
+.login-card { background: rgba(232,221,208,0.95) !important; border: 1px solid #b09880 !important; }
+.game-title { font-family: 'Noto Serif JP',serif !important; font-size: 28px !important; color: #3a3028 !important; letter-spacing: 8px !important; font-weight: 400 !important; }
+
+.game-header { background: #ddd0c0 !important; border-bottom: 1px solid #b09880 !important; }
+.game-header::before { content: '◇' !important; position: absolute !important; left: 50% !important; bottom: -8px !important; transform: translateX(-50%) !important; color: #b09880 !important; font-size: 12px !important; background: #e8ddd0 !important; padding: 0 8px !important; }
+.hdr-name { font-family: 'Noto Serif JP',serif !important; font-size: 15px !important; color: #3a3028 !important; letter-spacing: 4px !important; font-weight: 400 !important; }
+.realm-badge { background: #d0c0ae !important; border: 1px solid #b09880 !important; color: #3a3028 !important; }
+.btn-icon { color: #7a6a5a !important; }
+.btn-icon:hover { color: #8b6f4c !important; }
+
+.tab-nav { background: #ddd0c0 !important; border-bottom: 1px solid #b09880 !important; }
+.tab-btn { color: #7a6a5a !important; letter-spacing: 2px !important; padding: 8px 20px !important; border-bottom: 1px solid transparent !important; }
+.tab-btn.active { color: #3a3028 !important; border-bottom-color: #3a3028 !important; }
+.tab-btn:hover { background: rgba(0,0,0,0.02) !important; }
+
+.battle-sidebar { background: #ddd0c0 !important; border-right: 1px solid #b09880 !important; }
+.sidebar-char-name { color: #3a3028 !important; font-size: 16px !important; letter-spacing: 2px !important; }
+.sidebar-section-title { color: #8b6f4c !important; border-bottom: 1px solid #b09880 !important; letter-spacing: 2px !important; padding-bottom: 6px !important; }
+
+.stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {
+  background: #f0e8dc !important; border: 1px solid #c4b4a0 !important;
+  padding: 16px !important;
+}
+.skill-card.equipped { background: #e8ddd0 !important; border-left: 2px solid #8b6f4c !important; }
+.section-title { color: #3a3028 !important; border-bottom: 1px solid #b09880 !important; font-size: 12px !important; letter-spacing: 3px !important; padding-bottom: 6px !important; margin-bottom: 10px !important; font-weight: 400 !important; }
+
+.btn-action { background: #d0c0ae !important; border: 1px solid #b09880 !important; color: #3a3028 !important; padding: 6px 16px !important; }
+.btn-action:hover { background: #c4b4a0 !important; }
+.btn-action.gold { background: #8b6f4c !important; border-color: #6a5038 !important; color: #f0e8dc !important; }
+.btn-sm { background: #d0c0ae !important; border: 1px solid #b09880 !important; }
+.btn-primary { background: #3a3028 !important; border: none !important; color: #f0e8dc !important; }
+
+.bar-track { background: #c4b4a0 !important; height: 6px !important; border: none !important; }
+.hp-bar-red { background: #8a4040 !important; }
+.hp-bar-green { background: #5a7a4a !important; }
+.mp-bar-blue { background: #6a7a8a !important; }
+.exp-fill { background: #8b6f4c !important; }
+
+.modal-overlay { background: rgba(232,221,208,0.85) !important; }
+
+.map-card { background: #f0e8dc !important; border: 1px solid #c4b4a0 !important; }
+.map-card.active { border-color: #8b6f4c !important; background: #e8ddd0 !important; }
+
+.inv-slot { background: #f0e8dc !important; border: 1px solid #c4b4a0 !important; }
+.inv-slot.occupied:hover { border-color: #8b6f4c !important; }
+
+.toast { background: rgba(232,221,208,0.95) !important; border: 1px solid #8b6f4c !important; color: #3a3028 !important; }
+
+::-webkit-scrollbar-thumb { background: #b09880 !important; }
+::-webkit-scrollbar-track { background: #e8ddd0 !important; }
+
+input, select, textarea { background: #f0e8dc !important; border-color: #b09880 !important; color: #3a3028 !important; }
+input:focus { border-color: #3a3028 !important; }
+
+.panel { animation: iderZenIn 0.4s ease !important; }
+@keyframes iderZenIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }

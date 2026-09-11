@@ -39,11 +39,6 @@ export async function onRequest(context) {
 
   // ── approved: 审核通过 ──────────────────────────────
   if (status === 'approved') {
-    // 重新查一次状态防止重复操作
-    const currentOrder = await env.DB.prepare('SELECT status FROM orders WHERE id = ?').bind(orderId).first();
-    if (currentOrder && currentOrder.status === 'approved') {
-      return json({ ok: true, message: '工单已是审核通过状态' });
-    }
     // 如果是从 rejected 重新通过，需要重新扣除冻结积分
     if (order.status === 'rejected' && order.payment_method === 'coin' && order.frozen_points > 0) {
       const user = await env.DB.prepare('SELECT bonus_points FROM users WHERE id = ?').bind(order.user_id).first();
@@ -57,10 +52,10 @@ export async function onRequest(context) {
         '重新通过工单，扣除修仙币 ' + order.frozen_points + ' 个');
     }
 
-    // 更新用户统计（total_spent 使用 bonus_points 统一单位）
+    // 更新用户订单数统计（消费金额 total_spent 改由现金充值审批时累加，此处不再重复计）
     await env.DB.prepare(
-      'UPDATE users SET total_orders = total_orders + 1, total_spent = total_spent + ? WHERE id = ?'
-    ).bind(order.bonus_points, order.user_id).run();
+      'UPDATE users SET total_orders = total_orders + 1 WHERE id = ?'
+    ).bind(order.user_id).run();
 
     // 处理邀请套餐订单
     const isPackage = order.invite_code && order.invite_code.startsWith('PKG:');
@@ -107,11 +102,6 @@ export async function onRequest(context) {
 
   // ── rejected: 拒绝 ─────────────────────────────────
   else if (status === 'rejected') {
-    // 重新查一次状态防止重复操作
-    const currentOrder = await env.DB.prepare('SELECT status FROM orders WHERE id = ?').bind(orderId).first();
-    if (currentOrder && currentOrder.status === 'rejected') {
-      return json({ ok: true, message: '工单已是拒绝状态' });
-    }
     // 修仙币支付：退还冻结的积分
     if (order.payment_method === 'coin' && order.frozen_points > 0) {
       await env.DB.prepare(

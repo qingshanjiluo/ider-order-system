@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功法系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>功法系统</h1>
+        <p>功法装备、技能、品质、获取</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-04.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="questionnaire-06.html">下一系统 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 4 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">功法装备数量：最多4本是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">玩家最多可同时装备4本功法，提供不同被动加成。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，4本')"><div class="option-text">合适，4本功法</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太多，简化为2-3本')"><div class="option-text">太多，简化为2-3本</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太少，增加到5-6本')"><div class="option-text">太少，增加到5-6本</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">功法技能数量：每本最多3个技能是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">每本功法提供最多3个技能，玩家可选择装备。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，3个技能')"><div class="option-text">合适，3个技能</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太多，简化为1-2个')"><div class="option-text">太多，简化为1-2个</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太少，增加到4-5个')"><div class="option-text">太少，增加到4-5个</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">功法品质划分：是否需要神话品质？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">当前品质：白绿蓝紫橙红，是否增加神话品质。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'需要神话品质')"><div class="option-text">需要，增加神话品质</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'不需要，保持6个')"><div class="option-text">不需要，保持6个品质</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'减少品质数量')"><div class="option-text">减少品质数量</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">功法获取方式：副本掉落/商店/任务哪种为主？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">多种获取方式并存，各有侧重。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'副本掉落为主')"><div class="option-text">副本掉落为主</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'商店为主')"><div class="option-text">商店为主</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'任务为主')"><div class="option-text">任务为主</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'三种均衡')"><div class="option-text">三种均衡</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-04.html">← 上一系统</a>
+            <a href="questionnaire-06.html">下一系统 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '05';
+    const totalQuestions = 4;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

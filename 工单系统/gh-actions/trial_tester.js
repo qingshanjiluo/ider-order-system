@@ -22,7 +22,7 @@ const path = require('path');
 const HTTPS_AGENT = new https.Agent({ keepAlive: true, maxSockets: 5, timeout: 60000 });
 
 // 游戏服务器地址（不含/web/路径）
-const API_BASE = 'https://idlexiuxianzhuan.cn';
+const API_BASE = 'https://ideer-game-api.sifangzhiji.workers.dev';
 // 所有工具共用签名密钥
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 // 所有工具共用客户端版本
@@ -77,7 +77,7 @@ async function apiRequest(method, path, token, body) {
     'X-Sign-T': String(ts), 'X-Sign': sign,
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const r = await httpsReq(method, 'idlexiuxianzhuan.cn', path, headers, bodyStr, 60000);
+  const r = await httpsReq(method, 'ideer-game-api.sifangzhiji.workers.dev', path, headers, bodyStr, 60000);
   let data;
   try { data = JSON.parse(r.body); } catch (e) { throw new Error('非JSON(' + r.status + '): ' + r.body.slice(0, 200)); }
   if (!data || data.ok === false) throw new Error(data && data.error ? data.error : '请求失败(' + r.status + ')');

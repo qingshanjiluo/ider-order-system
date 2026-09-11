@@ -309,16 +309,18 @@ function getActionButtons(order) {
 
 function needsReissue(order) {
   // 补发审查：判断是否少于应创建的数量（以实际有效交付账号数为准）
+  // 目标 = 订购数量 + 1（每个工单多发一个冗余账号，宁多勿少）
   if (!ACCOUNT_ORDER_TYPES.includes(order.order_type)) return false;
   const qty = order.quantity || 0;
   const created = order.delivered_count ?? order.account_count ?? order.total_accounts_created ?? 0;
-  return qty > 0 && created < qty;
+  return qty > 0 && created < qty + 1;
 }
 
 function hasExcess(order) {
+  // 只清理超过"订购数量 + 1"（保留1个冗余缓冲）的部分
   const qty = order.quantity || 0;
   const created = order.delivered_count ?? order.account_count ?? order.total_accounts_created ?? 0;
-  return qty > 0 && created > qty;
+  return qty > 0 && created > qty + 1;
 }
 
 async function reissueOrder(orderId) {

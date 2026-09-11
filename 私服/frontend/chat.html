@@ -1,0 +1,208 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>仙 九重天阙 · 聊天</title>
+  <link id="skin-link" rel="stylesheet" data-ideer-skin="1">
+  <script src="js/vendor/vue.global.prod.js?v=3.5.30"></script>
+  <script>if(typeof Vue==='undefined'){document.write('<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"><\/script>');}</script>
+  <style>
+    :root {
+      --bg:#0f1117; --bg2:#171a24; --bg3:#1e2230; --border:#2c3245;
+      --text:#d6d9e3; --text2:#7a8296; --gold:#d4a844; --gold2:#a87f2c;
+      --radius:12px; --accent:#4ecdc4; --red:#e74c3c; --green:#2ecc71;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .chat-header {
+      display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-header .logo { font-weight: 700; color: var(--gold); font-size: 15px; white-space: nowrap; }
+    .chat-header .spacer { flex: 1; }
+    .chat-header a { color: var(--text2); text-decoration: none; font-size: 12px; }
+    .chat-header a:hover { color: var(--gold); }
+    .chat-channel-tabs { display: flex; gap: 6px; }
+    .channel-tab {
+      padding: 6px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+      background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+      transition: all .2s;
+    }
+    .channel-tab.active { background: var(--gold); border-color: var(--gold); color: #fff; font-weight: 600; }
+    .chat-body { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px;
+      scrollbar-width: thin;
+    }
+    .chat-msg { line-height: 1.5; font-size: 13px; word-break: break-word; }
+    .chat-msg .sender { color: var(--gold); font-weight: 600; margin-right: 6px; }
+    .chat-msg .time { color: var(--text2); font-size: 11px; margin-left: 6px; }
+    .chat-msg .text { color: var(--text); }
+    .chat-msg.system { color: var(--accent); font-style: italic; text-align: center; }
+    .chat-empty { text-align: center; color: var(--text2); padding: 40px 0; font-size: 13px; }
+    .chat-input-row {
+      display: flex; gap: 8px; padding: 12px 16px; background: var(--bg2);
+      border-top: 1px solid var(--border); flex-shrink: 0;
+    }
+    .chat-input-row input {
+      flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg3); color: var(--text); font-size: 14px; outline: none;
+    }
+    .chat-input-row input:focus { border-color: var(--gold); }
+    .chat-input-row button {
+      padding: 10px 22px; border-radius: 8px; border: none; background: var(--gold);
+      color: #fff; font-size: 14px; cursor: pointer; font-weight: 600;
+    }
+    .chat-input-row button:disabled { opacity: .5; cursor: not-allowed; }
+    .chat-login-hint {
+      flex-shrink: 0; padding: 8px 16px; background: rgba(212,168,68,.1);
+      border-top: 1px solid rgba(212,168,68,.3); font-size: 12px; color: var(--gold);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .chat-login-hint a { color: var(--gold); font-weight: 600; }
+    .btn-sm { padding: 5px 12px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border); color: var(--text); cursor: pointer; font-size: 12px; }
+    .btn-sm:hover { border-color: var(--gold); color: var(--gold); }
+    .conn-status { font-size: 11px; color: var(--text2); display: flex; align-items: center; gap: 4px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot.on { background: var(--green); }
+    .dot.off { background: var(--red); }
+    @media (max-width: 480px) {
+      .chat-header .logo { font-size: 13px; }
+      .channel-tab { padding: 6px 12px; font-size: 12px; }
+      .chat-input-row button { padding: 10px 16px; }
+    }
+  </style>
+</head>
+<body>
+<div id="chat-app" v-cloak>
+  <div class="chat-header">
+    <span class="logo">💬 仙 九重天阙 · 聊天</span>
+    <div class="chat-channel-tabs">
+      <button class="channel-tab" :class="{active: channel==='world'}" @click="switchChannel('world')">世界</button>
+      <button class="channel-tab" :class="{active: channel==='alliance'}" @click="switchChannel('alliance')" :disabled="!hasAlliance">仙盟</button>
+    </div>
+    <div class="spacer"></div>
+    <span class="conn-status"><span class="dot" :class="connected?'on':'off'"></span>{{ connected ? '已连接' : '已断开' }}</span>
+    <a href="./" style="margin-left:6px">← 回游戏</a>
+    <button class="btn-sm" @click="openSkinPicker()" title="切换皮肤">🎨 换肤</button>
+  </div>
+
+  <div class="chat-body">
+    <div class="chat-messages" ref="msgBox">
+      <div v-if="!messages.length" class="chat-empty">暂无消息，来发第一条吧</div>
+      <div v-for="m in messages" :key="m.id" class="chat-msg" :class="{system: m.system}">
+        <template v-if="!m.system">
+          <span class="sender">{{ m.username }}：</span><span class="text">{{ m.text }}</span>
+          <span class="time">{{ fmtTime(m.ts) }}</span>
+        </template>
+        <template v-else>{{ m.text }}</template>
+      </div>
+    </div>
+    <div v-if="!loggedIn" class="chat-login-hint">
+      <span>⚠ 游客只能浏览世界频道历史</span>
+      <a href="./">前往登录/注册</a>
+    </div>
+    <div class="chat-input-row">
+      <input v-model="input" placeholder="输入消息…" maxlength="40" @keyup.enter="send()" :disabled="!canSend" :placeholder="canSend ? '输入消息…' : '请先登录'" />
+      <button @click="send()" :disabled="!canSend || !input.trim()">{{ sending ? '…' : '发送' }}</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/skinManager.js?v=20260818k"></script>
+<script type="module">
+  import api from './js/api.js?v=20260818k';
+
+  const { createApp, ref, onMounted, onUnmounted, nextTick } = Vue;
+  const app = createApp({
+    setup() {
+      const channel = ref('world');
+      const messages = ref([]);
+      const input = ref('');
+      const connected = ref(false);
+      const sending = ref(false);
+      const loggedIn = ref(api.hasToken());
+      const hasAlliance = ref(false);
+      const msgBox = ref(null);
+      let since = 0;
+      let timer = null;
+      let allianceId = 0;
+
+      const fmtTime = (ts) => {
+        if (!ts) return '';
+        const d = new Date(ts * 1000);
+        const p = (n) => String(n).padStart(2, '0');
+        return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+      };
+
+      const scrollBottom = async () => { await nextTick(); if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight; };
+
+      const loadMessages = async () => {
+        try {
+          const r = await api.chatMessages(channel.value, since, allianceId);
+          if (r?.ok && r.messages?.length) {
+            messages.value.push(...r.messages);
+            if (messages.value.length > 300) messages.value.splice(0, messages.value.length - 300);
+            since = Math.max(since, ...r.messages.map(m => m.id || 0));
+            await scrollBottom();
+          }
+          connected.value = true;
+        } catch (e) { connected.value = false; }
+      };
+
+      const loadAlliance = async () => {
+        try {
+          const p = await api.sync();
+          allianceId = p?.player?.alliance_id || 0;
+          hasAlliance.value = allianceId > 0;
+        } catch (e) {}
+      };
+
+      const switchChannel = (ch) => {
+        if (ch === 'alliance' && !hasAlliance.value) return;
+        channel.value = ch;
+        messages.value = [];
+        since = 0;
+        loadMessages();
+      };
+
+      const send = async () => {
+        if (!loggedIn.value || !input.value.trim()) return;
+        sending.value = true;
+        try {
+          const r = await api.chatSend(channel.value, input.value.trim());
+          if (r?.ok) { input.value = ''; loadMessages(); }
+          else if (r?.error) alert(r.error);
+          else alert('发送失败');
+        } catch (e) { alert(e.message || '发送失败'); }
+        sending.value = false;
+      };
+
+      const openSkinPicker = () => SkinManager.renderPicker(null, {});
+
+      onMounted(() => {
+        SkinManager.init({});
+        loadAlliance();
+        loadMessages();
+        timer = setInterval(loadMessages, 5000);
+      });
+      onUnmounted(() => { if (timer) clearInterval(timer); });
+
+      return { channel, messages, input, connected, sending, loggedIn, hasAlliance, msgBox,
+               fmtTime, switchChannel, send, openSkinPicker };
+    }
+  });
+  app.mount('#chat-app');
+</script>
+<script>
+  window.addEventListener('load', () => { SkinManager.mountFloatButton({}); });
+</script>
+</body>
+</html>

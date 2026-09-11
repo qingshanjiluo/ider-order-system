@@ -21,13 +21,15 @@ export async function onRequest(context) {
   const total = rows.reduce((s, r) => s + r.cnt, 0);
   const byStatus = {};
   const bySetup = {};
-  // 有效 = 挂机/满级 且 配置完成
+  // 有效 = 挂机/满级 且 配置完成；满级(status=completed)一律视为有效（宁多勿少）
   const VALID_SETUP = ['farming', 'active', 'completed'];
   let valid = 0;
   for (const r of rows) {
     byStatus[r.status] = (byStatus[r.status] || 0) + r.cnt;
     bySetup[r.setup_status || ''] = (bySetup[r.setup_status || ''] || 0) + r.cnt;
-    if (['farming', 'active', 'completed'].includes(r.status) && VALID_SETUP.includes(r.setup_status)) {
+    if (r.status === 'completed') {
+      valid += r.cnt;
+    } else if (['farming', 'active'].includes(r.status) && VALID_SETUP.includes(r.setup_status)) {
       valid += r.cnt;
     }
   }

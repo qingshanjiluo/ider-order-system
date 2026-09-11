@@ -1,0 +1,10 @@
+name = "ideer-frontend"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "."
+
+# 生产环境 API 地址覆盖（可选）
+# 若部署后需要把前端 API 指向独立 Worker，可配合前端
+# <script>window.IDEER_API_BASE='https://...';</script> 注入
+# 或在 index.html 顶部设置
+
+# 构建命令：本前端为纯静态（无打包器），直接复制部署即可

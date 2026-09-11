@@ -1,0 +1,66 @@
+:root {
+  --bg: #f0f0f0 !important; --bg2: #ffffff !important; --bg3: #e0e0e0 !important;
+  --bg4: #d0d0d0 !important; --border: #000000 !important;
+  --text: #000000 !important; --text2: #555555 !important;
+  --gold: #ff3300 !important; --gold2: #cc2200 !important;
+  --accent: #0044ff !important; --red: #ff0000 !important; --green: #00cc00 !important;
+  --radius: 0 !important;
+}
+body { font-family: 'Impact','Arial Black','Oswald',sans-serif !important; color: #000 !important; }
+
+.view-login { background: #f0f0f0 !important; }
+.login-card { background: #ffffff !important; border: 3px solid #000 !important; box-shadow: 8px 8px 0 #000 !important; }
+.game-title { font-family: 'Impact',sans-serif !important; font-size: 32px !important; color: #000 !important; letter-spacing: 0 !important; text-transform: uppercase !important; text-shadow: 4px 4px 0 rgba(0,0,0,0.1) !important; }
+
+.game-header { background: #000 !important; border-bottom: 4px solid #ff3300 !important; }
+.hdr-name { font-family: 'Impact',sans-serif !important; font-size: 18px !important; color: #fff !important; text-transform: uppercase !important; letter-spacing: 2px !important; }
+.realm-badge { background: #ff3300 !important; border: 2px solid #fff !important; color: #fff !important; font-size: 11px !important; }
+.btn-icon { color: rgba(255,255,255,0.5) !important; }
+.btn-icon:hover { color: #ff3300 !important; }
+
+.tab-nav { background: #fff !important; border-bottom: 3px solid #000 !important; }
+.tab-btn { color: #888 !important; font-family: 'Arial Black',sans-serif !important; font-size: 13px !important; text-transform: uppercase !important; padding: 10px 20px !important; border: none !important; }
+.tab-btn.active { color: #000 !important; background: #ff3300 !important; color: #fff !important; }
+.tab-btn:hover { color: #000 !important; background: #eee !important; }
+
+.battle-sidebar { background: #fff !important; border-right: 3px solid #000 !important; }
+.sidebar-char-name { font-family: 'Arial Black',sans-serif !important; color: #ff3300 !important; font-size: 16px !important; text-transform: uppercase !important; }
+.sidebar-section-title { color: #000 !important; border-bottom: 2px solid #000 !important; font-size: 11px !important; text-transform: uppercase !important; padding-bottom: 4px !important; }
+
+.stat-card, .skill-card, .modal-panel, .battle-status-panel, .battle-log-box {
+  background: #fff !important; border: 2px solid #000 !important;
+  padding: 12px !important; box-shadow: 4px 4px 0 #000 !important;
+}
+.skill-card.equipped { border-color: #ff3300 !important; background: #fff5f0 !important; }
+.section-title { color: #ff3300 !important; border-bottom: 2px solid #000 !important; font-size: 12px !important; text-transform: uppercase !important; font-family: 'Arial Black',sans-serif !important; padding-bottom: 4px !important; }
+
+.btn-action { background: #fff !important; border: 2px solid #000 !important; color: #000 !important; padding: 8px 16px !important; font-family: 'Arial Black',sans-serif !important; font-size: 12px !important; text-transform: uppercase !important; }
+.btn-action:hover { background: #000 !important; color: #fff !important; }
+.btn-action.gold { background: #ff3300 !important; border-color: #cc2200 !important; color: #fff !important; }
+.btn-sm { background: #fff !important; border: 2px solid #000 !important; color: #000 !important; font-family: monospace !important; }
+.btn-primary { background: #000 !important; border: 2px solid #000 !important; color: #fff !important; font-family: 'Arial Black',sans-serif !important; text-transform: uppercase !important; }
+
+.bar-track { background: #e0e0e0 !important; border: 2px solid #000 !important; height: 12px !important; }
+.hp-bar-red { background: #ff0000 !important; }
+.hp-bar-green { background: #00cc00 !important; }
+.mp-bar-blue { background: #0044ff !important; }
+.exp-fill { background: #ff3300 !important; }
+
+.modal-overlay { background: rgba(240,240,240,0.9) !important; }
+
+.map-card { background: #fff !important; border: 2px solid #000 !important; box-shadow: 3px 3px 0 #000 !important; }
+.map-card.active { border-color: #ff3300 !important; background: #fff5f0 !important; }
+
+.inv-slot { background: #fff !important; border: 2px solid #000 !important; }
+.inv-slot.occupied:hover { border-color: #ff3300 !important; }
+
+.toast { background: #000 !important; border: 2px solid #ff3300 !important; color: #fff !important; }
+
+::-webkit-scrollbar-thumb { background: #000 !important; }
+::-webkit-scrollbar-track { background: #f0f0f0 !important; }
+
+input, select, textarea { background: #fff !important; border: 2px solid #000 !important; color: #000 !important; }
+input:focus { border-color: #ff3300 !important; }
+
+.panel { animation: iderBrutIn 0.2s ease !important; }
+@keyframes iderBrutIn { from { opacity: 0; transform: rotate(-1deg); } to { opacity: 1; transform: rotate(0); } }

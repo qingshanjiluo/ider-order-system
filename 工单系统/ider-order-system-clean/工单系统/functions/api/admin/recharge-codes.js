@@ -1,0 +1,123 @@
+// functions/api/admin/recharge-codes.js — 管理端兑换码CRUD
+import { json, generateRechargeCode } from '../../_utils.js';
+import { authenticate } from '../../_auth.js';
+
+export async function onRequest(context) {
+  const { request, env } = context;
+  const user = await authenticate(request, env);
+  if (!user || !['admin', 'super_admin'].includes(user.role)) return json({ error: '无权限' }, 403);
+
+  // GET — 查询兑换码列表
+  if (request.method === 'GET') {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') || '';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const pageSize = 50;
+    const offset = (page - 1) * pageSize;
+
+    let rows, countRow;
+    if (status) {
+      rows = await env.DB.prepare(
+        "SELECT rc.*, u.username AS user_name, creator.username AS creator_name FROM recharge_codes rc LEFT JOIN users u ON rc.user_id = u.id LEFT JOIN users creator ON rc.created_by = creator.id WHERE rc.status = ? ORDER BY rc.created_at DESC LIMIT ? OFFSET ?"
+      ).bind(status, pageSize, offset).all();
+      countRow = await env.DB.prepare("SELECT COUNT(*) as cnt FROM recharge_codes WHERE status = ?").bind(status).first();
+    } else {
+      rows = await env.DB.prepare(
+        "SELECT rc.*, u.username AS user_name, creator.username AS creator_name FROM recharge_codes rc LEFT JOIN users u ON rc.user_id = u.id LEFT JOIN users creator ON rc.created_by = creator.id ORDER BY rc.created_at DESC LIMIT ? OFFSET ?"
+      ).bind(pageSize, offset).all();
+      countRow = await env.DB.prepare("SELECT COUNT(*) as cnt FROM recharge_codes").first();
+    }
+
+    // 对于 max_uses=0（无限次）的码，从 redeem_log 统计实际使用次数
+    const codes = (rows.results || []).map(c => {
+      if (c.max_uses === 0 || c.max_uses == null) {
+        // 无限次使用的码，返回 used_count = 0 以表示无限制
+        c._unlimited = true;
+      }
+      return c;
+    });
+
+    return json({ ok: true, codes, total: countRow?.cnt || 0, page, pageSize });
+  }
+
+  // POST — 批量生成兑换码
+  if (request.method === 'POST') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const { count = 1, coins = 0, max_uses = 1 } = body;
+
+      if (!coins || coins <= 0) return json({ error: '修仙币数量必须大于0' }, 400);
+      if (count < 1 || count > 100) return json({ error: '生成数量范围为1-100' }, 400);
+      // max_uses: 0=无限次, 1=一次性, >1=指定次数
+      if (max_uses < 0) return json({ error: '使用次数不能为负数' }, 400);
+
+      const generatedCodes = [];
+      const insertStmt = env.DB.prepare(
+        'INSERT INTO recharge_codes (user_id, code, coins, status, created_by, max_uses, used_count) VALUES (?, ?, ?, ?, ?, ?, 0)'
+      );
+
+      for (let i = 0; i < count; i++) {
+        let code = '';
+        let retries = 0;
+        while (retries < 10) {
+          code = generateRechargeCode();
+          const exist = await env.DB.prepare('SELECT id FROM recharge_codes WHERE code = ?').bind(code).first();
+          if (!exist) break;
+          retries++;
+        }
+        // 使用 NULL 而非 0，避免 FOREIGN KEY 约束失败（SQLite FK 不检查 NULL）
+        await insertStmt.bind(null, code, coins, 'pending', user.id, max_uses).run();
+        generatedCodes.push(code);
+      }
+
+      return json({
+        ok: true,
+        message: `成功生成 ${generatedCodes.length} 个兑换码`,
+        codes: generatedCodes,
+        coins,
+        max_uses,
+      });
+    } catch (e) {
+      console.error('recharge-codes POST error:', e);
+      return json({ error: '生成兑换码失败: ' + (e.message || '数据库错误') }, 500);
+    }
+  }
+
+  // PUT — 更新兑换码（如修改使用次数上限）
+  if (request.method === 'PUT') {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const { id, max_uses } = body;
+      if (!id) return json({ error: '缺少参数' }, 400);
+
+      const rc = await env.DB.prepare('SELECT * FROM recharge_codes WHERE id = ?').bind(id).first();
+      if (!rc) return json({ error: '兑换码不存在' }, 404);
+
+      if (max_uses != null) {
+        if (max_uses < 0) return json({ error: '使用次数不能为负数' }, 400);
+        await env.DB.prepare('UPDATE recharge_codes SET max_uses = ? WHERE id = ?').bind(max_uses, id).run();
+      }
+
+      return json({ ok: true, message: '兑换码已更新' });
+    } catch (e) {
+      console.error('recharge-codes PUT error:', e);
+      return json({ error: '更新失败: ' + (e.message || '数据库错误') }, 500);
+    }
+  }
+
+  // DELETE — 删除兑换码
+  if (request.method === 'DELETE') {
+    const body = await request.json().catch(() => ({}));
+    const { id } = body;
+    if (!id) return json({ error: '缺少参数' }, 400);
+
+    const rc = await env.DB.prepare('SELECT * FROM recharge_codes WHERE id = ?').bind(id).first();
+    if (!rc) return json({ error: '兑换码不存在' }, 404);
+    if (rc.status === 'used') return json({ error: '已使用的兑换码不能删除' }, 400);
+
+    await env.DB.prepare('DELETE FROM recharge_codes WHERE id = ?').bind(id).run();
+    return json({ ok: true, message: '兑换码已删除' });
+  }
+
+  return json({ error: 'Method not allowed' }, 405);
+}

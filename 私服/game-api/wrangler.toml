@@ -1,0 +1,47 @@
+name = "ideer-game-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── D1 数据库（游戏存档）──
+[[d1_databases]]
+binding = "DB"
+database_name = "ideer-game"
+database_id = "5e349f6e-722f-4ff9-a157-cfdbc2340409"
+
+# ── KV 命名空间（静态数据缓存）──
+[[kv_namespaces]]
+binding = "GAME_DATA"
+id = "8d128ef057884f90af80b43ded796b94"
+
+# ── Durable Objects（实时聊天 WebSocket）──
+[durable_objects]
+bindings = [
+  { name = "ChatRoom", class_name = "ChatRoom" }
+]
+
+# ── Durable Objects 迁移（免费计划需用 new_sqlite_classes）──
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatRoom"]
+
+# ── 定时触发器（Cron Triggers）──
+# 每10分钟：联赛/擂台赛季结算（合并为单个触发器）
+[triggers]
+crons = ["*/10 * * * *"]
+
+# ── 环境变量 ──
+[vars]
+JWT_SECRET = "9540183c34525dcb1a7233ae9d4f8f0d636f455e4f57e880363b6690cdd96247"
+PASSWORD_PEPPER = "b5beafd50a6d98aaf9c4173192306098d5537eeb0fc65f5ac2ac683da37656fa"
+BOOT_ID = "ideer-game-v1"
+
+# ── 自定义域名（自动创建 DNS 记录并绑定 Worker）──
+[[custom_domains]]
+hostname = "api.zzhxider.cc.cd"
+zone_name = "zzhxider.cc.cd"
+
+# ── 路由（可选备用）──
+# routes = [
+#   { pattern = "api.zzhxider.cc.cd", zone_name = "zzhxider.cc.cd" }
+# ]

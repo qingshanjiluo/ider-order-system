@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九重宫阙 - 风格选择</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+        .hero { text-align: center; padding: 80px 20px 40px; }
+        .hero h1 { font-size: 3em; margin-bottom: 10px; background: linear-gradient(135deg, #e94560, #f39c12); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { color: #888; font-size: 1.1em; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; margin-top: 40px; }
+        .card { position: relative; border-radius: 16px; overflow: hidden; cursor: pointer; transition: all 0.4s; text-decoration: none; color: inherit; }
+        .card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+        .card-bg { height: 250px; display: flex; align-items: center; justify-content: center; font-size: 4em; }
+        .card-info { padding: 25px; }
+        .card-title { font-size: 1.5em; font-weight: bold; margin-bottom: 8px; }
+        .card-desc { color: #aaa; font-size: 0.9em; line-height: 1.6; }
+        .card-tags { display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap; }
+        .tag { padding: 4px 12px; border-radius: 20px; font-size: 0.75em; }
+        
+        /* Style 1 - Ancient Chinese */
+        .style-1 .card-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+        .style-1 .card { background: #16213e; border: 2px solid #0f3460; }
+        .style-1 .card-title { color: #e94560; }
+        .style-1 .tag { background: #e94560; color: white; }
+        
+        /* Style 2 - Cyberpunk */
+        .style-2 .card-bg { background: linear-gradient(135deg, #0d0221 0%, #0a0a2e 50%, #150050 100%); }
+        .style-2 .card { background: #0d0221; border: 2px solid #ff00ff; }
+        .style-2 .card-title { color: #00ffff; }
+        .style-2 .tag { background: #ff00ff; color: white; }
+        
+        /* Style 3 - Dark Gothic */
+        .style-3 .card-bg { background: linear-gradient(135deg, #1a0000 0%, #2d0000 50%, #450000 100%); }
+        .style-3 .card { background: #1a0000; border: 2px solid #8b0000; }
+        .style-3 .card-title { color: #ff4444; }
+        .style-3 .tag { background: #8b0000; color: white; }
+        
+        /* Style 4 - Cute Cartoon */
+        .style-4 .card-bg { background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 50%, #f39c12 100%); }
+        .style-4 .card { background: #ffeaa7; border: 2px solid #fdcb6e; }
+        .style-4 .card-title { color: #e17055; }
+        .style-4 .tag { background: #e17055; color: white; }
+        
+        /* Style 5 - Minimal Modern */
+        .style-5 .card-bg { background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 50%, #e0e0e0 100%); }
+        .style-5 .card { background: #ffffff; border: 2px solid #e0e0e0; }
+        .style-5 .card-title { color: #2d3436; }
+        .style-5 .tag { background: #2d3436; color: white; }
+        
+        .note { text-align: center; margin-top: 40px; padding: 20px; color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>九重宫阙</h1>
+        <p>选择你想要的美术风格</p>
+    </div>
+    
+    <div class="container">
+        <div class="grid">
+            <a href="style-1.html" class="card style-1">
+                <div class="card-bg">水墨</div>
+                <div class="card-info">
+                    <div class="card-title">中国古风水墨</div>
+                    <div class="card-desc">传统水墨画风格，淡雅配色，山水意境，古典仙侠氛围</div>
+                    <div class="card-tags">
+                        <span class="tag">水墨</span>
+                        <span class="tag">古风</span>
+                        <span class="tag">淡雅</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="style-2.html" class="card style-2">
+                <div class="card-bg">赛博</div>
+                <div class="card-info">
+                    <div class="card-title">赛博朋克科技</div>
+                    <div class="card-desc">霓虹灯效，暗色背景，未来科技感，电子修仙</div>
+                    <div class="card-tags">
+                        <span class="tag">霓虹</span>
+                        <span class="tag">科技</span>
+                        <span class="tag">未来</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="style-3.html" class="card style-3">
+                <div class="card-bg">暗黑</div>
+                <div class="card-info">
+                    <div class="card-title">暗黑哥特风</div>
+                    <div class="card-desc">深红黑配色，神秘氛围，暗夜修仙，魔道风格</div>
+                    <div class="card-tags">
+                        <span class="tag">暗黑</span>
+                        <span class="tag">哥特</span>
+                        <span class="tag">神秘</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="style-4.html" class="card style-4">
+                <div class="card-bg">卡通</div>
+                <div class="card-info">
+                    <div class="card-title">清新卡通风</div>
+                    <div class="card-desc">明亮色彩，可爱角色，轻松氛围，休闲修仙</div>
+                    <div class="card-tags">
+                        <span class="tag">清新</span>
+                        <span class="tag">可爱</span>
+                        <span class="tag">休闲</span>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="style-5.html" class="card style-5">
+                <div class="card-bg">极简</div>
+                <div class="card-info">
+                    <div class="card-title">极简现代风</div>
+                    <div class="card-desc">扁平化设计，简洁线条，现代审美，高端质感</div>
+                    <div class="card-tags">
+                        <span class="tag">极简</span>
+                        <span class="tag">现代</span>
+                        <span class="tag">扁平</span>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="note">点击卡片查看各风格详细展示</div>
+    </div>
+</body>
+</html>

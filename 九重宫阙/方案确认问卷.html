@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九重宫阙 - 方案确认问卷</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #1a1a2e; color: #eee; line-height: 1.6; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; color: #e94560; margin: 30px 0; font-size: 2em; }
+        h2 { color: #e94560; margin: 25px 0 15px; border-bottom: 2px solid #e94560; padding-bottom: 8px; }
+        h3 { color: #0f3460; background: #e94560; padding: 8px 15px; border-radius: 5px; margin: 20px 0 10px; }
+        .question { background: #16213e; border-radius: 10px; padding: 20px; margin: 15px 0; border-left: 4px solid #e94560; }
+        .question-title { font-weight: bold; color: #e94560; margin-bottom: 12px; font-size: 1.1em; }
+        .options { display: flex; flex-direction: column; gap: 8px; }
+        .option { display: flex; align-items: center; padding: 10px 15px; background: #0f3460; border-radius: 8px; cursor: pointer; transition: all 0.3s; }
+        .option:hover { background: #1a1a4e; transform: translateX(5px); }
+        .option input { margin-right: 12px; width: 18px; height: 18px; accent-color: #e94560; }
+        .option label { cursor: pointer; flex: 1; }
+        .btn { display: inline-block; padding: 15px 40px; font-size: 1.1em; border: none; border-radius: 8px; cursor: pointer; margin: 10px 5px; font-weight: bold; transition: all 0.3s; }
+        .btn-primary { background: #e94560; color: white; }
+        .btn-primary:hover { background: #c73e54; transform: translateY(-2px); }
+        .btn-secondary { background: #0f3460; color: white; }
+        .btn-secondary:hover { background: #1a1a4e; }
+        .btn-success { background: #2ecc71; color: white; }
+        .btn-success:hover { background: #27ae60; }
+        .btn-group { text-align: center; margin: 30px 0; }
+        .note { background: #2d2d44; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 0.95em; color: #aaa; }
+        #result { display: none; background: #16213e; border-radius: 10px; padding: 20px; margin: 20px 0; }
+        #result pre { background: #0f3460; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; font-size: 14px; max-height: 500px; overflow-y: auto; }
+        .progress { text-align: center; color: #e94560; margin: 10px 0; }
+        .section-desc { color: #888; font-size: 0.9em; margin-bottom: 15px; }
+        .highlight { color: #e94560; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>九重宫阙 - 方案确认问卷</h1>
+    <div class="note">
+        <strong>说明：</strong>以下是我（AI）设计的方案内容，请逐一确认。每个问题有多个选项，选择后点击"生成答案"按钮，然后一键复制结果给我。
+    </div>
+
+    <div class="progress" id="progress">已完成: 0 / 35 题</div>
+
+    <form id="questionnaire">
+
+<!-- ========== 修炼系统 ========== -->
+<h2>一、修炼系统</h2>
+
+<div class="question">
+    <div class="question-title">Q1. 境界划分数量：我设计了8个大境界（炼气→筑基→金丹→元婴→化神→渡劫→大乘→飞升），每个境界分前中后三阶段（元婴以上有半步）。你觉得境界数量是否合适？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q1" id="q1a" value="合适，8个境界"><label for="q1a">合适，8个境界</label></div>
+        <div class="option"><input type="radio" name="q1" id="q1b" value="太多，简化为5-6个"><label for="q1b">太多，简化为5-6个</label></div>
+        <div class="option"><input type="radio" name="q1" id="q1c" value="太少，增加到10个以上"><label for="q1c">太少，增加到10个以上</label></div>
+        <div class="option"><input type="radio" name="q1" id="q1d" value="保持8个，但阶段划分调整"><label for="q1d">保持8个，但阶段划分调整</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q2. 突破失败惩罚：我设计了阶梯式惩罚（失败1次清经验→失败2次降资质→失败3次降境界→失败4次+增加难度）。你觉得这个惩罚力度如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q2" id="q2a" value="合适"><label for="q2a">合适，有挑战性</label></div>
+        <div class="option"><input type="radio" name="q2" id="q2b" value="太重，简化惩罚"><label for="q2b">太重，只清经验+降资质即可</label></div>
+        <div class="option"><input type="radio" name="q2" id="q2c" value="太轻，增加惩罚"><label for="q2c">太轻，应增加更多惩罚</label></div>
+        <div class="option"><input type="radio" name="q2" id="q2d" value="取消降境界惩罚"><label for="q2d">取消降境界，太打击玩家</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q3. 渡劫战斗触发条件：我设计为"化神以上境界突破时触发渡劫战斗"。你觉得从哪个境界开始触发？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q3" id="q3a" value="化神开始"><label for="q3a">化神开始（我原设计）</label></div>
+        <div class="option"><input type="radio" name="q3" id="q3b" value="元婴开始"><label for="q3b">元婴开始，更早增加挑战</label></div>
+        <div class="option"><input type="radio" name="q3" id="q3c" value="渡劫开始"><label for="q3c">渡劫开始，前期轻松一些</label></div>
+        <div class="option"><input type="radio" name="q3" id="q3d" value="所有境界都有"><label for="q3d">所有境界都有，但难度递增</label></div>
+    </div>
+</div>
+
+<!-- ========== 战斗系统 ========== -->
+<h2>二、战斗系统</h2>
+
+<div class="question">
+    <div class="question-title">Q4. 战斗方式：我设计了"自动战斗"为主，PVP支持"实时操作"。你希望战斗以什么为主？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q4" id="q4a" value="自动为主"><label for="q4a">自动为主，PVP可手动（我原设计）</label></div>
+        <div class="option"><input type="radio" name="q4" id="q4b" value="全部自动"><label for="q4b">全部自动，挂机友好</label></div>
+        <div class="option"><input type="radio" name="q4" id="q4c" value="全部手动"><label for="q4c">全部手动，增加操作性</label></div>
+        <div class="option"><input type="radio" name="q4" id="q4d" value="PVE自动，PVP手动"><label for="q4d">PVE自动，PVP手动</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q5. 伤害公式：我设计为"伤害 = 攻击 × (1+暴击加成) × (1-防御减伤)"，防御减伤=防御/(防御+1000)。你觉得这个公式如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q5" id="q5a" value="合适"><label for="q5a">合适，用这个公式</label></div>
+        <div class="option"><input type="radio" name="q5" id="q5b" value="简化"><label for="q5b">太复杂，简化计算</label></div>
+        <div class="option"><input type="radio" name="q5" id="q5c" value="增加更多属性影响"><label for="q5c">太简单，增加更多属性影响</label></div>
+        <div class="option"><input type="radio" name="q5" id="q5d" value="你来设计"><label for="q5d">你来设计更好的公式</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q6. 战斗时间限制：我设计PVE最多3分钟，PVP最多5分钟，仙盟战最多10分钟。你觉得这个时间设置如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q6" id="q6a" value="合适"><label for="q6a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q6" id="q6b" value="太短"><label for="q6b">太短，延长战斗时间</label></div>
+        <div class="option"><input type="radio" name="q6" id="q6c" value="太长"><label for="q6c">太长，缩短战斗时间</label></div>
+    </div>
+</div>
+
+<!-- ========== 副本系统 ========== -->
+<h2>三、副本系统</h2>
+
+<div class="question">
+    <div class="question-title">Q7. 副本类型：我设计了主线副本、精英副本、体力副本、装备副本4种类型。你觉得副本类型是否足够？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q7" id="q7a" value="4种合适"><label for="q7a">4种合适</label></div>
+        <div class="option"><input type="radio" name="q7" id="q7b" value="合并简化"><label for="q7b">太多，合并为2-3种</label></div>
+        <div class="option"><input type="radio" name="q7" id="q7c" value="增加类型"><label for="q7c">太少，增加更多类型</label></div>
+        <div class="option"><input type="radio" name="q7" id="q7d" value="你来设计"><label for="q7d">你来设计副本类型</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q8. 副本评价系统：我设计了1-3星评价（1星通关/2星无阵亡/3星3分钟内通关），3星后可扫荡。你觉得这个评价机制如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q8" id="q8a" value="合适"><label for="q8a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q8" id="q8b" value="简化评价"><label for="q8b">简化，只有通关/未通关</label></div>
+        <div class="option"><input type="radio" name="q8" id="q8c" value="增加评价维度"><label for="q8c">增加更多评价维度</label></div>
+        <div class="option"><input type="radio" name="q8" id="q8d" value="调整扫荡条件"><label for="q8d">调整扫荡条件（如2星即可扫荡）</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q9. BOSS设计：我设计了野外BOSS（每4小时刷新）、世界BOSS（每日1次）、宗门BOSS（每周1次）三种。你觉得BOSS刷新频率如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q9" id="q9a" value="合适"><label for="q9a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q9" id="q9b" value="野外BOSS太频繁"><label for="q9b">野外BOSS太频繁，改为每日</label></div>
+        <div class="option"><input type="radio" name="q9" id="q9c" value="世界BOSS太少"><label for="q9c">世界BOSS太少，改为多次</label></div>
+        <div class="option"><input type="radio" name="q9" id="q9d" value="你来设计频率"><label for="q9d">你来设计合理的频率</label></div>
+    </div>
+</div>
+
+<!-- ========== 装备系统 ========== -->
+<h2>四、装备系统</h2>
+
+<div class="question">
+    <div class="question-title">Q10. 装备品质：我设计了6个品质（白/绿/蓝/紫/橙/红，对应普通/优秀/稀有/史诗/传说/神话）。你觉得品质数量如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q10" id="q10a" value="6个合适"><label for="q10a">6个合适</label></div>
+        <div class="option"><input type="radio" name="q10" id="q10b" value="太多，简化为4个"><label for="q10b">太多，简化为4个（白/蓝/紫/橙）</label></div>
+        <div class="option"><input type="radio" name="q10" id="q10c" value="去掉神话品质"><label for="q10c">去掉神话（红色），5个即可</label></div>
+        <div class="option"><input type="radio" name="q10" id="q10d" value="增加品质"><label for="q10d">增加更多品质层次</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q11. 装备强化：我设计了+1到+15，成功率从100%递减到20%，消耗强化石。你觉得这个强化系统如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q11" id="q11a" value="合适"><label for="q11a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q11" id="q11b" value="成功率太低"><label for="q11b">成功率太低，提高成功率</label></div>
+        <div class="option"><input type="radio" name="q11" id="q11c" value="等级太多"><label for="q11c">等级太多，简化为+10</label></div>
+        <div class="option"><input type="radio" name="q11" id="q11d" value="100%成功"><label for="q11d">改为100%成功，只消耗材料</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q12. 套装效果：我设计了2件+10%、3件+20%、4件+30%、5件+50%的阶梯加成。你觉得套装效果如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q12" id="q12a" value="合适"><label for="q12a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q12" id="q12b" value="加成太高"><label for="q12b">加成太高，降低套装效果</label></div>
+        <div class="option"><input type="radio" name="q12" id="q12c" value="加成太低"><label for="q12c">加成太低，提高套装效果</label></div>
+        <div class="option"><input type="radio" name="q12" id="q12d" value="你来设计"><label for="q12d">你来设计套装效果</label></div>
+    </div>
+</div>
+
+<!-- ========== 功法系统 ========== -->
+<h2>五、功法系统</h2>
+
+<div class="question">
+    <div class="question-title">Q13. 功法装备数量：我设计了最多装备4本功法（攻击/防御/生命/速度各1本）。你觉得装备数量如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q13" id="q13a" value="4本合适"><label for="q13a">4本合适</label></div>
+        <div class="option"><input type="radio" name="q13" id="q13b" value="太少"><label for="q13b">太少，增加到6本</label></div>
+        <div class="option"><input type="radio" name="q13" id="q13c" value="太多"><label for="q13c">太多，简化为2本</label></div>
+        <div class="option"><input type="radio" name="q13" id="q13d" value="取消限制"><label for="q13d">取消数量限制</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q14. 功法技能数量：我设计了每本功法最多3个技能（主动/被动/触发）。你觉得这个数量如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q14" id="q14a" value="3个合适"><label for="q14a">3个合适</label></div>
+        <div class="option"><input type="radio" name="q14" id="q14b" value="太少"><label for="q14b">太少，增加到5个</label></div>
+        <div class="option"><input type="radio" name="q14" id="q14c" value="太多"><label for="q14c">太多，简化为2个</label></div>
+        <div class="option"><input type="radio" name="q14" id="q14d" value="你来设计"><label for="q14d">你来设计技能系统</label></div>
+    </div>
+</div>
+
+<!-- ========== 灵宠系统 ========== -->
+<h2>六、灵宠系统</h2>
+
+<div class="question">
+    <div class="question-title">Q15. 灵宠出战数量：我设计了最多出战1只灵宠。你觉得出战数量如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q15" id="q15a" value="1只合适"><label for="q15a">1只合适</label></div>
+        <div class="option"><input type="radio" name="q15" id="q15b" value="2只"><label for="q15b">2只，增加策略性</label></div>
+        <div class="option"><input type="radio" name="q15" id="q15c" value="3只"><label for="q15c">3只，组队战斗</label></div>
+        <div class="option"><input type="radio" name="q15" id="q15d" value="你来设计"><label for="q15d">你来设计出战数量</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q16. 灵宠培养方式：我设计了喂养（提升属性）、升级（消耗经验）、进化（品质提升）三种方式。你觉得培养方式如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q16" id="q16a" value="3种合适"><label for="q16a">3种合适</label></div>
+        <div class="option"><input type="radio" name="q16" id="q16b" value="简化为2种"><label for="q16b">太多，简化为2种</label></div>
+        <div class="option"><input type="radio" name="q16" id="q16c" value="增加更多方式"><label for="q16c">太少，增加更多培养方式</label></div>
+        <div class="option"><input type="radio" name="q16" id="q16d" value="你来设计"><label for="q16d">你来设计培养系统</label></div>
+    </div>
+</div>
+
+<!-- ========== 仙盟系统 ========== -->
+<h2>七、仙盟系统</h2>
+
+<div class="question">
+    <div class="question-title">Q17. 仙盟等级上限：我设计了10级仙盟，成员上限从15人到100人。你觉得这个规模如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q17" id="q17a" value="合适"><label for="q17a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q17" id="q17b" value="等级太多"><label for="q17b">等级太多，简化为5级</label></div>
+        <div class="option"><input type="radio" name="q17" id="q17c" value="等级太少"><label for="q17c">等级太少，增加到15级</label></div>
+        <div class="option"><input type="radio" name="q17" id="q17d" value="成员上限调整"><label for="q17d">等级合适，但成员上限调整</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q18. 仙盟建筑数量：我设计了8种建筑（议事大厅、灵脉、武馆、防具坊、炼丹房、炼器阁、藏经阁、灵兽园）。你觉得建筑数量如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q18" id="q18a" value="8种合适"><label for="q18a">8种合适</label></div>
+        <div class="option"><input type="radio" name="q18" id="q18b" value="太多"><label for="q18b">太多，简化为4-5种</label></div>
+        <div class="option"><input type="radio" name="q18" id="q18c" value="太少"><label for="q18c">太少，增加更多建筑</label></div>
+        <div class="option"><input type="radio" name="q18" id="q18d" value="你来设计"><label for="q18d">你来设计建筑系统</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q19. 仙盟职位：我设计了5级职位（盟主/副盟主/长老/精英/成员）。你觉得职位体系如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q19" id="q19a" value="合适"><label for="q19a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q19" id="q19b" value="简化"><label for="q19b">太多，简化为3级</label></div>
+        <div class="option"><input type="radio" name="q19" id="q19c" value="增加"><label for="q19c">太少，增加更多职位</label></div>
+    </div>
+</div>
+
+<!-- ========== 变现系统 ========== -->
+<h2>八、变现系统</h2>
+
+<div class="question">
+    <div class="question-title">Q20. VIP等级：我设计了7个VIP等级（VIP0-VIP6），充值金额从6元到648元。你觉得VIP体系如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q20" id="q20a" value="合适"><label for="q20a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q20" id="q20b" value="等级太多"><label for="q20b">等级太多，简化为5级</label></div>
+        <div class="option"><input type="radio" name="q20" id="q20c" value="等级太少"><label for="q20c">等级太少，增加到10级</label></div>
+        <div class="option"><input type="radio" name="q20" id="q20d" value="价格调整"><label for="q20d">等级合适，但价格调整</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q21. 套餐类型：我设计了7种套餐（速升/福地/灵石/灵宠/资质/装备/功法）。你觉得套餐类型如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q21" id="q21a" value="7种合适"><label for="q21a">7种合适</label></div>
+        <div class="option"><input type="radio" name="q21" id="q21b" value="太多"><label for="q21b">太多，简化为3-4种</label></div>
+        <div class="option"><input type="radio" name="q21" id="q21c" value="太少"><label for="q21c">太少，增加更多套餐</label></div>
+        <div class="option"><input type="radio" name="q21" id="q21d" value="你来设计"><label for="q21d">你来设计套餐类型</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q22. 充值档位：我设计了6个充值档位（6/30/98/198/328/648元），首充奖励为紫色到红色装备。你觉得充值体系如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q22" id="q22a" value="合适"><label for="q22a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q22" id="q22b" value="档位太多"><label for="q22b">档位太多，简化</label></div>
+        <div class="option"><input type="radio" name="q22" id="q22c" value="首充奖励调整"><label for="q22c">档位合适，但首充奖励调整</label></div>
+        <div class="option"><input type="radio" name="q22" id="q22d" value="你来设计"><label for="q22d">你来设计充值体系</label></div>
+    </div>
+</div>
+
+<!-- ========== 竞技系统 ========== -->
+<h2>九、竞技系统</h2>
+
+<div class="question">
+    <div class="question-title">Q23. 竞技场排名奖励：我设计了从第1名500竞技币到第101-500名20竞技币的阶梯奖励。你觉得奖励梯度如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q23" id="q23a" value="合适"><label for="q23a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q23" id="q23b" value="差距太大"><label for="q23b">排名差距太大，缩小差距</label></div>
+        <div class="option"><input type="radio" name="q23" id="q23c" value="差距太小"><label for="q23c">排名差距太小，拉大差距</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q24. 擂台赛：我设计为实时操作1v1对战，赛季制排名。你觉得擂台赛形式如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q24" id="q24a" value="合适"><label for="q24a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q24" id="q24b" value="改为异步"><label for="q24b">改为异步对战，减少延迟影响</label></div>
+        <div class="option"><input type="radio" name="q24" id="q24c" value="改为多人"><label for="q24c">改为多人对战（3v3等）</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q25. 服战联赛：我设计为仙盟排名前16参加，淘汰赛制，每周六晚8点比赛。你觉得联赛制度如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q25" id="q25a" value="合适"><label for="q25a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q25" id="q25b" value="前16太少"><label for="q25b">前16太少，扩大到前32</label></div>
+        <div class="option"><input type="radio" name="q25" id="q25c" value="比赛时间调整"><label for="q25c">比赛时间调整</label></div>
+        <div class="option"><input type="radio" name="q25" id="q25d" value="你来设计"><label for="q25d">你来设计联赛制度</label></div>
+    </div>
+</div>
+
+<!-- ========== 赛季系统 ========== -->
+<h2>十、赛季系统</h2>
+
+<div class="question">
+    <div class="question-title">Q26. 赛季周期：我设计为每月1日-月末为一个赛季。你觉得赛季周期如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q26" id="q26a" value="每月合适"><label for="q26a">每月合适</label></div>
+        <div class="option"><input type="radio" name="q26" id="q26b" value="太频繁"><label for="q26b">太频繁，改为每季度</label></div>
+        <div class="option"><input type="radio" name="q26" id="q26c" value="太长"><label for="q26c">太长，改为每两周</label></div>
+        <div class="option"><input type="radio" name="q26" id="q26d" value="你来设计"><label for="q26d">你来设计赛季周期</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q27. 赛季排名奖励：我设计了从第1名10000点券到第501-1000名200点券的阶梯奖励，还有称号和坐骑。你觉得赛季奖励如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q27" id="q27a" value="合适"><label for="q27a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q27" id="q27b" value="奖励太多"><label for="q27b">奖励太多，降低奖励</label></div>
+        <div class="option"><input type="radio" name="q27" id="q27c" value="奖励太少"><label for="q27c">奖励太少，提高奖励</label></div>
+        <div class="option"><input type="radio" name="q27" id="q27d" value="你来设计"><label for="q27d">你来设计赛季奖励</label></div>
+    </div>
+</div>
+
+<!-- ========== 飞升系统 ========== -->
+<h2>十一、飞升系统</h2>
+
+<div class="question">
+    <div class="question-title">Q28. 飞升转化规则：我设计了飞升玩家保留100%资质+50%资源，新玩家随机资质无资源。你觉得这个转化规则如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q28" id="q28a" value="合适"><label for="q28a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q28" id="q28b" value="老玩家优势太大"><label for="q28b">老玩家优势太大，削弱保留内容</label></div>
+        <div class="option"><input type="radio" name="q28" id="q28c" value="新玩家太亏"><label for="q28c">新玩家太亏，给新玩家更多补偿</label></div>
+        <div class="option"><input type="radio" name="q28" id="q28d" value="你来设计"><label for="q28d">你来设计飞升转化规则</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q29. 飞升条件：我设计了飞升需要大乘期+全身传说装备+仙盟前100+完成飞升成就。你觉得条件是否合适？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q29" id="q29a" value="合适"><label for="q29a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q29" id="q29b" value="条件太难"><label for="q29b">条件太难，降低要求</label></div>
+        <div class="option"><input type="radio" name="q29" id="q29c" value="条件太简单"><label for="q29c">条件太简单，增加要求</label></div>
+        <div class="option"><input type="radio" name="q29" id="q29d" value="你来设计"><label for="q29d">你来设计飞升条件</label></div>
+    </div>
+</div>
+
+<!-- ========== 挂机系统 ========== -->
+<h2>十二、挂机系统</h2>
+
+<div class="question">
+    <div class="question-title">Q30. 挂机模式：我设计了修行模式（修炼经验）和刷怪模式（装备材料）两种。你觉得挂机模式如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q30" id="q30a" value="2种合适"><label for="q30a">2种合适</label></div>
+        <div class="option"><input type="radio" name="q30" id="q30b" value="合并为1种"><label for="q30b">太多，合并为1种智能挂机</label></div>
+        <div class="option"><input type="radio" name="q30" id="q30c" value="增加更多模式"><label for="q30c">太少，增加更多模式</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q31. 离线挂机：我设计了最多累计8小时收益。你觉得离线收益时间如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q31" id="q31a" value="8小时合适"><label for="q31a">8小时合适</label></div>
+        <div class="option"><input type="radio" name="q31" id="q31b" value="太短"><label for="q31b">太短，延长到12小时</label></div>
+        <div class="option"><input type="radio" name="q31" id="q31c" value="太长"><label for="q31c">太长，缩短到4小时</label></div>
+        <div class="option"><input type="radio" name="q31" id="q31d" value="无上限"><label for="q31d">无上限，累直到上线</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q32. 体力恢复：我设计了每5分钟恢复1点体力。你觉得恢复速度如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q32" id="q32a" value="合适"><label for="q32a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q32" id="q32b" value="太慢"><label for="q32b">太慢，加快恢复</label></div>
+        <div class="option"><input type="radio" name="q32" id="q32c" value="太快"><label for="q32c">太快，减慢恢复</label></div>
+    </div>
+</div>
+
+<!-- ========== 签到系统 ========== -->
+<h2>十三、签到系统</h2>
+
+<div class="question">
+    <div class="question-title">Q33. 签到补签：我设计了可以花费灵石补签，费用递增（100-500灵石）。你觉得补签机制如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q33" id="q33a" value="合适"><label for="q33a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q33" id="q33b" value="费用太高"><label for="q33b">费用太高，降低费用</label></div>
+        <div class="option"><input type="radio" name="q33" id="q33c" value="取消补签"><label for="q33c">取消补签，签到就是每日</label></div>
+        <div class="option"><input type="radio" name="q33" id="q33d" value="免费补签"><label for="q33d">免费补签，但有次数限制</label></div>
+    </div>
+</div>
+
+<!-- ========== 成就系统 ========== -->
+<h2>十四、成就系统</h2>
+
+<div class="question">
+    <div class="question-title">Q34. 成就类型：我设计了主线/战斗/探索/社交/经济5类成就。你觉得成就分类如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q34" id="q34a" value="5类合适"><label for="q34a">5类合适</label></div>
+        <div class="option"><input type="radio" name="q34" id="q34b" value="太多"><label for="q34b">太多，合并为3类</label></div>
+        <div class="option"><input type="radio" name="q34" id="q34c" value="太少"><label for="q34c">太少，增加更多类型</label></div>
+    </div>
+</div>
+
+<div class="question">
+    <div class="question-title">Q35. 成就奖励：我设计了点券+称号+坐骑+时装作为成就奖励。你觉得成就奖励如何？</div>
+    <div class="options">
+        <div class="option"><input type="radio" name="q35" id="q35a" value="合适"><label for="q35a">合适，保持原设计</label></div>
+        <div class="option"><input type="radio" name="q35" id="q35b" value="奖励太多"><label for="q35b">奖励太多，只保留点券+称号</label></div>
+        <div class="option"><input type="radio" name="q35" id="q35c" value="奖励太少"><label for="q35c">奖励太少，增加更多奖励</label></div>
+    </div>
+</div>
+
+    </form>
+
+    <div class="btn-group">
+        <button type="button" class="btn btn-primary" onclick="generateResult()">生成答案</button>
+        <button type="button" class="btn btn-secondary" onclick="resetForm()">重置问卷</button>
+    </div>
+
+    <div id="result">
+        <h3>你的选择结果（一键复制）：</h3>
+        <pre id="answerText"></pre>
+        <div class="btn-group">
+            <button type="button" class="btn btn-success" onclick="copyResult()">一键复制答案</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 统计进度
+document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', updateProgress);
+});
+
+function updateProgress() {
+    const total = 35;
+    let answered = 0;
+    for (let i = 1; i <= total; i++) {
+        if (document.querySelector(`input[name="q${i}"]:checked`)) answered++;
+    }
+    document.getElementById('progress').textContent = `已完成: ${answered} / ${total} 题`;
+}
+
+function generateResult() {
+    let result = '=== 九重宫阙方案确认结果 ===\n\n';
+    const questions = [
+        'Q1. 境界划分', 'Q2. 突破失败惩罚', 'Q3. 渡劫触发条件',
+        'Q4. 战斗方式', 'Q5. 伤害公式', 'Q6. 战斗时间',
+        'Q7. 副本类型', 'Q8. 副本评价', 'Q9. BOSS刷新频率',
+        'Q10. 装备品质', 'Q11. 装备强化', 'Q12. 套装效果',
+        'Q13. 功法装备数量', 'Q14. 功法技能数量',
+        'Q15. 灵宠出战数量', 'Q16. 灵宠培养方式',
+        'Q17. 仙盟等级', 'Q18. 仙盟建筑', 'Q19. 仙盟职位',
+        'Q20. VIP等级', 'Q21. 套餐类型', 'Q22. 充值档位',
+        'Q23. 竞技场奖励', 'Q24. 擂台赛形式', 'Q25. 服战联赛',
+        'Q26. 赛季周期', 'Q27. 赛季奖励',
+        'Q28. 飞升转化', 'Q29. 飞升条件',
+        'Q30. 挂机模式', 'Q31. 离线挂机', 'Q32. 体力恢复',
+        'Q33. 签到补签', 'Q34. 成就分类', 'Q35. 成就奖励'
+    ];
+    
+    let unanswered = [];
+    for (let i = 1; i <= 35; i++) {
+        const checked = document.querySelector(`input[name="q${i}"]:checked`);
+        if (checked) {
+            result += `${questions[i-1]}：${checked.value}\n`;
+        } else {
+            result += `${questions[i-1]}：未选择\n`;
+            unanswered.push(i);
+        }
+    }
+    
+    if (unanswered.length > 0) {
+        result += `\n⚠️ 未回答题目：${unanswered.join(', ')}`;
+    } else {
+        result += '\n✅ 全部选择完成';
+    }
+    
+    document.getElementById('answerText').textContent = result;
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function copyResult() {
+    const text = document.getElementById('answerText').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('已复制到剪贴板！直接粘贴给我即可。');
+    }).catch(() => {
+        // Fallback
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        alert('已复制到剪贴板！');
+    });
+}
+
+function resetForm() {
+    if (confirm('确定要重置所有选择吗？')) {
+        document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+        updateProgress();
+        document.getElementById('result').style.display = 'none';
+    }
+}
+</script>
+</body>
+</html>

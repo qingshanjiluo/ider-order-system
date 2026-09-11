@@ -1,0 +1,775 @@
+/* ═══════════════════════════════════════
+   水墨修仙 · INKWASH THEME
+   以宣纸为底、墨色为骨、朱砂为魂
+   ═══════════════════════════════════════ */
+
+/* ── CSS 变量覆盖 ── */
+.theme-inkwash {
+  --bg: #F5F0E6;
+  --bg2: #F0EBE0;
+  --bg3: #F5F0E6;
+  --bg4: #E8E0D0;
+  --border: rgba(26,26,26,0.18);
+  --text: #1a1a1a;
+  --text2: rgba(26,26,26,0.55);
+  --gold: #C43A2B;
+  --gold2: #C43A2B;
+  --accent: #8B7355;
+  --red: #C43A2B;
+  --green: #5a7a3a;
+  --radius: 4px;
+  /* 水墨专有变量 */
+  --paper: #F5F0E6;
+  --paper-warm: #F0EBE0;
+  --ink-deep: #1a1a1a;
+  --ink-mid: rgba(26,26,26,0.55);
+  --ink-light: rgba(26,26,26,0.18);
+  --ink-faint: rgba(26,26,26,0.06);
+  --ink-ghost: rgba(26,26,26,0.025);
+  --cinnabar: #C43A2B;
+  --cinnabar-soft: rgba(196,58,43,0.85);
+  --cinnabar-faint: rgba(196,58,43,0.08);
+  --gold-seal: #8B7355;
+}
+
+/* ── 全局重置 ── */
+.theme-inkwash body {
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', 'FangSong', serif;
+  background-color: var(--bg);
+  letter-spacing: 0.04em;
+}
+.theme-inkwash input,
+.theme-inkwash button,
+.theme-inkwash select {
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', serif;
+}
+
+/* ── 宣纸纹理背景 ── */
+.theme-inkwash .inkwash-paper {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(60,50,30,0.008) 60px, rgba(60,50,30,0.008) 61px),
+    repeating-linear-gradient(0deg, transparent, transparent 60px, rgba(60,50,30,0.008) 60px, rgba(60,50,30,0.008) 61px);
+}
+.theme-inkwash .inkwash-noise {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
+/* ── 淡墨山水装饰 ── */
+.theme-inkwash .inkwash-landscape {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100%; height: 50vh;
+  z-index: -1;
+  pointer-events: none;
+}
+.theme-inkwash .inkwash-landscape svg {
+  width: 100%; height: 100%;
+  display: block;
+}
+
+/* ── 云雾层 ── */
+.theme-inkwash .inkwash-mist {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.theme-inkwash .inkwash-mist::before,
+.theme-inkwash .inkwash-mist::after {
+  content: '';
+  position: absolute;
+  width: 150%;
+  height: 200px;
+  background: linear-gradient(90deg, transparent 0%, rgba(245,240,230,0.4) 30%, rgba(245,240,230,0.6) 50%, rgba(245,240,230,0.4) 70%, transparent 100%);
+  filter: blur(40px);
+  animation: inkwashMist 25s ease-in-out infinite;
+}
+.theme-inkwash .inkwash-mist::before {
+  top: 55%; left: -25%;
+}
+.theme-inkwash .inkwash-mist::after {
+  top: 65%; left: -25%;
+  animation-delay: -12s;
+  opacity: 0.6;
+}
+@keyframes inkwashMist {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(15%); }
+}
+
+/* ── 墨角装饰 ── */
+.theme-inkwash .inkwash-corner {
+  position: fixed;
+  width: 200px; height: 200px;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.04;
+  filter: blur(30px);
+  background: radial-gradient(circle at 50% 50%, var(--ink-deep) 0%, transparent 70%);
+}
+.theme-inkwash .inkwash-corner.tr { top: -40px; right: -40px; }
+.theme-inkwash .inkwash-corner.bl { bottom: -40px; left: -40px; }
+
+/* ── 散落墨点 ── */
+.theme-inkwash .inkwash-splash {
+  position: fixed;
+  border-radius: 50%;
+  background: #1a1a1a;
+  pointer-events: none;
+  z-index: -1;
+  animation: inkwashFloat 8s ease-in-out infinite;
+}
+.theme-inkwash .inkwash-splash:nth-child(2n) { animation-delay: -3s; }
+.theme-inkwash .inkwash-splash:nth-child(3n) { animation-delay: -6s; }
+@keyframes inkwashFloat {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.03; }
+  50% { transform: translateY(-6px) scale(1.1); opacity: 0.06; }
+}
+
+/* ── 飞鸟装饰 ── */
+.theme-inkwash .inkwash-birds {
+  position: fixed;
+  top: 8%; right: 8%;
+  width: 120px; height: 30px;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.08;
+}
+
+/* ── inkwash-done 标记 (仅用作 JS 标识，无视觉效果) ── */
+
+/* ── 引首垂线 ── */
+.theme-inkwash .inkwash-header-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, var(--ink-light) 20%, var(--ink-light) 80%, transparent);
+  opacity: 0.5;
+  margin-bottom: 4px;
+}
+
+/* ── 墨线分割 ── */
+.theme-inkwash .inkwash-divider {
+  width: 48px;
+  height: 1px;
+  background: var(--ink-light);
+  margin: 4px auto;
+  opacity: 0.3;
+  position: relative;
+}
+.theme-inkwash .inkwash-divider::before,
+.theme-inkwash .inkwash-divider::after {
+  content: '';
+  position: absolute;
+  width: 3px; height: 3px;
+  border: 1px solid var(--ink-faint);
+  border-radius: 50%;
+  top: 50%; transform: translateY(-50%);
+}
+.theme-inkwash .inkwash-divider::before { left: -10px; }
+.theme-inkwash .inkwash-divider::after { right: -10px; }
+
+/* ── 导航 SVG 图标 ── */
+.theme-inkwash .inkwash-nav-icon {
+  display: inline-block;
+  width: 16px; height: 16px;
+  vertical-align: middle;
+  margin-right: 4px;
+  flex-shrink: 0;
+  color: var(--text2);
+  transition: color 0.3s;
+}
+.theme-inkwash .tab-btn.active .inkwash-nav-icon {
+  color: var(--cinnabar);
+}
+.theme-inkwash .tab-btn:hover .inkwash-nav-icon {
+  color: var(--cinnabar-soft);
+}
+@media (min-width: 1024px) {
+  .theme-inkwash .tab-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .theme-inkwash .inkwash-nav-icon {
+    width: 20px; height: 20px;
+    margin-right: 0;
+    margin-bottom: 2px;
+  }
+}
+
+/* ── 墨染条背景 ── */
+.theme-inkwash .inkwash-bar-bg {
+  background: var(--ink-faint) !important;
+  border-radius: 0 !important;
+  height: 6px !important;
+}
+.theme-inkwash .inkwash-bar-fill {
+  background: linear-gradient(90deg, var(--ink-deep), var(--ink-mid)) !important;
+  border-radius: 0 !important;
+  background-size: 200% 100%;
+  animation: inkwashPour 0.8s ease forwards;
+}
+
+/* ══════════════════════
+   Header · 画卷引首
+   ══════════════════════ */
+.theme-inkwash .game-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 16px 12px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  gap: 6px;
+}
+.theme-inkwash .game-header .hdr-name {
+  font-family: 'Ma Shan Zheng', 'Zhi Mang Xing', cursive;
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  letter-spacing: 0.15em;
+  color: var(--cinnabar, #C43A2B);
+  border: 2px solid var(--cinnabar, #C43A2B);
+  padding: 8px 16px;
+  display: inline-block;
+  transform: rotate(-2deg);
+  background: radial-gradient(circle at 30% 30%, rgba(196,58,43,0.06) 0%, transparent 60%);
+  box-shadow: inset 0 0 30px rgba(196,58,43,0.04), 0 0 0 1px rgba(196,58,43,0.08);
+  transition: transform 0.8s ease;
+  position: relative;
+}
+.theme-inkwash .game-header .hdr-name::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(196,58,43,0.15);
+  pointer-events: none;
+}
+.theme-inkwash .game-header .hdr-name:hover {
+  transform: rotate(-1deg) scale(1.02);
+}
+.theme-inkwash .game-header .hdr-info {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 200;
+  letter-spacing: 0.3em;
+  color: var(--text2);
+  font-size: 0.75rem;
+  order: -1;
+}
+.theme-inkwash .game-header .hdr-info .realm-badge {
+  background: transparent;
+  color: var(--text2);
+  padding: 0;
+  font-size: inherit;
+  border: none;
+}
+.theme-inkwash .game-header .hdr-qq {
+  font-size: 11px;
+  color: var(--text2);
+  letter-spacing: 0.12em;
+  order: -2;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  width: 100%;
+  text-align: center;
+}
+.theme-inkwash .game-header .hdr-res {
+  margin-left: 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  gap: 14px;
+}
+.theme-inkwash .game-header .btn-icon {
+  color: var(--text2);
+  font-size: 16px;
+  padding: 2px 8px;
+}
+.theme-inkwash .game-header .btn-icon:hover {
+  background: var(--cinnabar-faint, rgba(196,58,43,0.08));
+}
+
+/* ══════════════════════
+   Tab Nav · 左竖导航 (PC)
+   ══════════════════════ */
+.theme-inkwash .tab-nav {
+  justify-content: center;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  padding: 4px 8px;
+  gap: 2px;
+}
+.theme-inkwash .tab-btn {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 300;
+  letter-spacing: 0.12em;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid transparent;
+  position: relative;
+  transition: all 0.4s ease;
+}
+.theme-inkwash .tab-btn.active {
+  color: var(--cinnabar, #C43A2B);
+  border-bottom-color: var(--cinnabar, #C43A2B);
+}
+.theme-inkwash .tab-btn:hover {
+  background: linear-gradient(90deg, transparent 50%, rgba(196,58,43,0.06) 100%);
+  background-size: 200% 100%;
+  animation: inkwashSpread 0.4s ease forwards;
+}
+@keyframes inkwashSpread {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+@media (min-width: 1024px) {
+  .theme-inkwash .tab-nav {
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 100;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: none;
+    padding: 12px 8px;
+    gap: 4px;
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 2px 12px rgba(0,0,0,0.04);
+  }
+  .theme-inkwash .tab-btn {
+    writing-mode: vertical-rl;
+    padding: 8px 6px;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    border-bottom: none;
+    border-right: 1px solid transparent;
+  }
+  .theme-inkwash .tab-btn.active {
+    border-bottom-color: transparent;
+    border-right-color: var(--cinnabar, #C43A2B);
+  }
+  .theme-inkwash .tab-btn[data-tab="character"],
+  .theme-inkwash .tab-btn[data-tab="battle"] {
+    display: block;
+  }
+  .theme-inkwash .main-area {
+    margin-left: 48px;
+  }
+}
+
+/* ── 竖排角色名 ── */
+.theme-inkwash .inkwash-vertical-name {
+  font-family: 'Ma Shan Zheng', cursive !important;
+  font-size: 1.2rem !important;
+  letter-spacing: 0.1em !important;
+  writing-mode: vertical-rl !important;
+  margin: 0 auto !important;
+  display: block !important;
+  text-align: center !important;
+  line-height: 1.8 !important;
+  color: var(--ink-deep) !important;
+}
+
+/* ── 卡片朱砂标记 ── */
+.theme-inkwash .inkwash-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--cinnabar);
+  transform: scaleY(0);
+  transition: transform 0.4s ease;
+}
+.theme-inkwash .inkwash-card:hover::before {
+  transform: scaleY(1);
+}
+
+/* ══════════════════════
+   Sidebar · 玉册 (PC)
+   ══════════════════════ */
+@media (min-width: 1024px) {
+  .theme-inkwash .battle-sidebar {
+    width: 180px;
+    border-right: none;
+    border-left: 1px solid var(--border);
+    background: var(--paper-warm, #F0EBE0);
+    padding: 16px 14px;
+    order: 2;
+    position: relative;
+  }
+  .theme-inkwash .battle-sidebar::before {
+    content: '';
+    position: absolute;
+    left: 8px; top: 8px; bottom: 8px;
+    width: 1px;
+    background: var(--ink-ghost);
+    opacity: 0.4;
+  }
+  .theme-inkwash .sidebar-char-realm {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text2);
+    text-align: center;
+    display: block;
+    margin-top: 4px;
+  }
+  .theme-inkwash .sidebar-char-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .theme-inkwash .sidebar-section-title {
+    font-family: 'Noto Serif SC', serif;
+    font-weight: 200;
+    letter-spacing: 0.2em;
+    font-size: 10px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+  }
+  .theme-inkwash .sidebar-attr-grid .attr-item {
+    background: transparent;
+    padding: 3px 4px;
+    font-size: 11px;
+  }
+  .theme-inkwash .sidebar-stat-cards .stat-card.compact {
+    background: transparent;
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+  }
+}
+
+/* ══════════════════════
+   Cards · 水墨卡片
+   ══════════════════════ */
+.theme-inkwash .stat-card,
+.theme-inkwash .skill-card,
+.theme-inkwash .map-card,
+.theme-inkwash .sect-card,
+.theme-inkwash .alliance-card,
+.theme-inkwash .recipe-card,
+.theme-inkwash .dungeon-card,
+.theme-inkwash .listing-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: all 0.6s ease;
+}
+.theme-inkwash .stat-card::before,
+.theme-inkwash .skill-card::before,
+.theme-inkwash .map-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--cinnabar, #C43A2B);
+  transform: scaleY(0);
+  transition: transform 0.4s ease;
+}
+.theme-inkwash .stat-card:hover::before,
+.theme-inkwash .skill-card:hover::before,
+.theme-inkwash .map-card:hover::before {
+  transform: scaleY(1);
+}
+.theme-inkwash .section-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  color: var(--ink-deep, #1a1a1a);
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.theme-inkwash .stat-value {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+}
+
+/* ══════════════════════
+   战斗面板 · 对页古籍
+   ══════════════════════ */
+.theme-inkwash .battle-status-panel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.theme-inkwash .battle-unit .unit-name {
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+}
+.theme-inkwash .battle-unit .unit-name.enemy-name {
+  color: var(--cinnabar, #C43A2B);
+}
+.theme-inkwash .battle-vs {
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: 1rem;
+  color: var(--text2);
+}
+
+/* ── 血条 · 墨染风格 ── */
+.theme-inkwash .bar-track {
+  height: 8px;
+  background: var(--ink-faint, rgba(26,26,26,0.06));
+  border-radius: 0;
+  border: none;
+}
+.theme-inkwash .bar-fill {
+  border-radius: 0;
+  transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.theme-inkwash .hp-bar-green { background: linear-gradient(90deg, #1a1a1a, #4a4a4a); }
+.theme-inkwash .hp-bar-red { background: linear-gradient(90deg, var(--cinnabar, #C43A2B), #8a2a1a); }
+.theme-inkwash .mp-bar-blue { background: linear-gradient(90deg, #3a3a5a, #5a5a8a); }
+.theme-inkwash .action-bar-yellow { background: linear-gradient(90deg, #5a4a2a, #8a7a3a); }
+
+.theme-inkwash .exp-fill,
+.theme-inkwash .exp-bar-fill {
+  background: linear-gradient(90deg, var(--ink-deep, #1a1a1a), var(--ink-mid, rgba(26,26,26,0.55)));
+}
+.theme-inkwash .exp-bar-green {
+  background: linear-gradient(90deg, #3a5a3a, #5a7a4a);
+}
+
+/* ── 战斗日志 ── */
+.theme-inkwash .battle-log-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  font-family: 'Noto Serif SC', serif;
+  font-size: 12px;
+  line-height: 1.8;
+  letter-spacing: 0.06em;
+}
+
+/* ══════════════════════
+   弹窗 · 宣纸墨框
+   ══════════════════════ */
+.theme-inkwash .modal-overlay {
+  background: rgba(0,0,0,0.3);
+}
+.theme-inkwash .modal-panel {
+  background: var(--bg2);
+  border: 1px solid var(--ink-light, rgba(26,26,26,0.18));
+  border-radius: var(--radius);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+.theme-inkwash .modal-title {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: var(--ink-deep, #1a1a1a);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+/* ══════════════════════
+   按钮 · 墨色
+   ══════════════════════ */
+.theme-inkwash .btn-primary {
+  background: var(--ink-deep, #1a1a1a);
+  color: var(--bg);
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.15em;
+  border-radius: var(--radius);
+}
+.theme-inkwash .btn-primary:hover {
+  background: var(--cinnabar, #C43A2B);
+}
+.theme-inkwash .btn-action {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.1em;
+  font-weight: 300;
+}
+.theme-inkwash .btn-action:hover {
+  background: var(--cinnabar-faint, rgba(196,58,43,0.06));
+  border-color: var(--cinnabar, #C43A2B);
+}
+.theme-inkwash .btn-action.gold {
+  color: var(--cinnabar, #C43A2B);
+  border-color: var(--cinnabar, #C43A2B);
+}
+.theme-inkwash .btn-sm {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.08em;
+  font-weight: 300;
+}
+.theme-inkwash .btn-sm:hover {
+  background: var(--cinnabar-faint, rgba(196,58,43,0.06));
+}
+.theme-inkwash .btn-sm.gold {
+  color: var(--cinnabar, #C43A2B);
+  border-color: var(--cinnabar, #C43A2B);
+}
+
+/* ══════════════════════
+   装备/物品
+   ══════════════════════ */
+.theme-inkwash .item-detail {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+}
+.theme-inkwash .item-detail-name {
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.08em;
+}
+
+/* ══════════════════════
+   灵根条
+   ══════════════════════ */
+.theme-inkwash .sr-bar {
+  height: 6px;
+  background: var(--ink-faint, rgba(26,26,26,0.06));
+  border-radius: 0;
+}
+
+/* ══════════════════════
+   命途面板
+   ══════════════════════ */
+.theme-inkwash .mingtu-scroll {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(139,115,85,0.12), transparent 36%),
+    radial-gradient(circle at 90% 25%, rgba(196,58,43,0.08), transparent 34%),
+    linear-gradient(165deg, var(--bg2), var(--bg));
+}
+
+/* ══════════════════════
+   地图
+   ══════════════════════ */
+.theme-inkwash .map-current {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+}
+
+/* ══════════════════════
+   通知 Toast
+   ══════════════════════ */
+.theme-inkwash .toast {
+  background: var(--bg2);
+  border: 1px solid var(--cinnabar, #C43A2B);
+  color: var(--cinnabar, #C43A2B);
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.1em;
+}
+
+/* ══════════════════════
+   登录页
+   ══════════════════════ */
+.theme-inkwash .view-login {
+  background: var(--bg);
+}
+.theme-inkwash .login-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.theme-inkwash .game-title {
+  font-family: 'Ma Shan Zheng', cursive;
+  letter-spacing: 0.15em;
+  color: var(--ink-deep, #1a1a1a);
+  text-shadow: none;
+}
+.theme-inkwash .login-subtitle {
+  font-family: 'Noto Serif SC', serif;
+  font-weight: 200;
+  letter-spacing: 0.3em;
+}
+
+/* ══════════════════════
+   弹窗下拉 / 小控件
+   ══════════════════════ */
+.theme-inkwash .sub-tab {
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.1em;
+}
+.theme-inkwash .sub-tab.active {
+  color: var(--cinnabar, #C43A2B);
+  border-bottom-color: var(--cinnabar, #C43A2B);
+}
+
+/* ══════════════════════
+   技能/功法
+   ══════════════════════ */
+.theme-inkwash .skill-card.equipped {
+  border-left: 3px solid var(--cinnabar, #C43A2B);
+  border-color: var(--border);
+  background: var(--cinnabar-faint, rgba(196,58,43,0.03));
+}
+.theme-inkwash .skill-name {
+  font-family: 'Noto Serif SC', serif;
+  letter-spacing: 0.08em;
+}
+.theme-inkwash .key-badge {
+  background: var(--cinnabar, #C43A2B);
+  font-family: 'Noto Serif SC', serif;
+}
+
+/* ══════════════════════
+   Scrollbar
+   ══════════════════════ */
+.theme-inkwash ::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+/* ══════════════════════
+   注入动画
+   ══════════════════════ */
+@keyframes inkwashIn {
+  0% { opacity: 0; clip-path: inset(0 50% 0 50%); }
+  60% { clip-path: inset(0 0 0 0); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.theme-inkwash .panel {
+  animation: inkwashIn 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── 墨汁注入效果 (血条变化) ── */
+@keyframes inkwashPour {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
+.theme-inkwash .bar-fill,
+.theme-inkwash .exp-fill {
+  background-size: 200% 100%;
+  animation: inkwashPour 0.8s ease forwards;
+}
+
+/* ══════════════════════
+   响应式覆盖 (移动端适配)
+   ══════════════════════ */
+@media (max-width: 767px) {
+  .theme-inkwash .game-header {
+    padding: 14px 10px 10px;
+    gap: 4px;
+  }
+  .theme-inkwash .game-title {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 1023px) and (min-width: 768px) {
+  .theme-inkwash .tab-nav {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}

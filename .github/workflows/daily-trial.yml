@@ -23,7 +23,7 @@ jobs:
         env:
           WORKER_URL: ${{ secrets.WORKER_URL }}
           API_KEY: ${{ secrets.API_KEY }}
-        run: node gh-actions/daily_trial.js
+        run: node 原版/gh-actions/daily_trial.js
 
       - name: 上传日志
         if: always()
@@ -31,6 +31,6 @@ jobs:
         with:
           name: daily-trial-log
           path: |
-            gh-actions/trial_config.json
+            原版/gh-actions/trial_config.json
             trial_test_report.json
           retention-days: 7

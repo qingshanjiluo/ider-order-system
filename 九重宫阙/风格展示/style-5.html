@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>九重宫阙 - 极简现代风</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+  :root {
+    --bg: #fafafa;
+    --card: #ffffff;
+    --dark: #2d3436;
+    --gray: #636e72;
+    --light-gray: #f5f5f5;
+    --border: #e9ecef;
+    --accent: #0984e3;
+    --accent-light: #74b9ff;
+    --accent-bg: #ebf5ff;
+    --success: #00b894;
+    --danger: #d63031;
+    --warning: #fdcb6e;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--dark);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .game-container {
+    display: grid;
+    grid-template-areas:
+      "header header header"
+      "sidebar main actions"
+      "footer footer footer";
+    grid-template-columns: 220px 1fr 200px;
+    grid-template-rows: auto 1fr auto;
+    min-height: 100vh;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    grid-area: header;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    background: rgba(255,255,255,0.9);
+  }
+
+  .game-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--dark);
+    letter-spacing: -0.5px;
+  }
+
+  .player-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .player-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .player-details { text-align: right; }
+
+  .player-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark);
+  }
+
+  .player-realm {
+    font-size: 12px;
+    color: var(--gray);
+  }
+
+  /* ===== LEFT SIDEBAR ===== */
+  .sidebar {
+    grid-area: sidebar;
+    background: var(--card);
+    border-right: 1px solid var(--border);
+    padding: 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sidebar-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray);
+    padding: 8px 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .nav-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray);
+    border-radius: 8px;
+    border: none;
+    background: none;
+  }
+
+  .nav-item:hover {
+    background: var(--light-gray);
+    color: var(--dark);
+  }
+
+  .nav-item.active {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .nav-icon { width: 18px; text-align: center; font-size: 14px; }
+
+  /* ===== MAIN CONTENT ===== */
+  .main-content {
+    grid-area: main;
+    padding: 24px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s;
+  }
+
+  .card:hover { box-shadow: var(--shadow); }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    width: 3px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Character Status */
+  .char-header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .char-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    border: 2px solid var(--border);
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    flex-shrink: 0;
+  }
+
+  .char-info { flex: 1; }
+
+  .char-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  .char-realm {
+    font-size: 13px;
+    color: var(--gray);
+    margin-bottom: 8px;
+  }
+
+  .char-level {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 3px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .bar-group { margin-bottom: 12px; }
+
+  .bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--gray);
+  }
+
+  .bar-track {
+    height: 8px;
+    background: var(--light-gray);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+  }
+
+  .bar-hp { background: var(--danger); }
+  .bar-mp { background: var(--accent); }
+
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 16px 8px;
+    background: var(--light-gray);
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+
+  .stat-item:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent-light);
+  }
+
+  .stat-icon { font-size: 18px; margin-bottom: 6px; }
+
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--dark);
+    letter-spacing: -0.3px;
+  }
+
+  .stat-name {
+    font-size: 11px;
+    color: var(--gray);
+    margin-top: 2px;
+    font-weight: 500;
+  }
+
+  /* Equipment */
+  .equip-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .equip-slot {
+    aspect-ratio: 1;
+    background: var(--light-gray);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .equip-slot:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent-light);
+    transform: translateY(-2px);
+  }
+
+  .equip-slot.equipped {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  .equip-icon { font-size: 22px; }
+
+  .equip-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--gray);
+  }
+
+  .equip-empty {
+    font-size: 9px;
+    color: #ccc;
+    font-weight: 500;
+  }
+
+  /* ===== RIGHT SIDEBAR ===== */
+  .actions {
+    grid-area: actions;
+    background: var(--card);
+    border-left: 1px solid var(--border);
+    padding: 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .action-btn {
+    padding: 12px 10px;
+    background: var(--light-gray);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--dark);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s ease;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .action-btn:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(9, 132, 227, 0.3);
+  }
+
+  .action-btn .icon { font-size: 18px; margin-bottom: 4px; display: block; }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    grid-area: footer;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .chat-input {
+    flex: 1;
+    background: var(--light-gray);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--dark);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .chat-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(9, 132, 227, 0.1);
+  }
+
+  .chat-input::placeholder { color: #b2bec3; }
+
+  .notification-badge {
+    position: relative;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 6px;
+    border-radius: 8px;
+    transition: background 0.2s;
+  }
+
+  .notification-badge:hover { background: var(--light-gray); }
+
+  .notification-badge::after {
+    content: '3';
+    position: absolute;
+    top: 2px; right: 2px;
+    background: var(--danger);
+    color: white;
+    font-size: 9px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+
+  .server-time {
+    font-size: 12px;
+    color: var(--gray);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: #ccc; }
+</style>
+</head>
+<body>
+<div class="game-container">
+
+  <header class="header">
+    <div class="game-title">九重宫阙</div>
+    <div class="player-info">
+      <div class="player-details">
+        <div class="player-name">逍遥散人</div>
+        <div class="player-realm">元婴中期 · Lv.35</div>
+      </div>
+      <div class="player-avatar">仙</div>
+    </div>
+  </header>
+
+  <nav class="sidebar">
+    <div class="sidebar-title">导航</div>
+    <div class="nav-item active"><span class="nav-icon">⚔</span>角色</div>
+    <div class="nav-item"><span class="nav-icon">🎒</span>背包</div>
+    <div class="nav-item"><span class="nav-icon">📜</span>任务</div>
+    <div class="nav-item"><span class="nav-icon">🏰</span>仙盟</div>
+    <div class="nav-item"><span class="nav-icon">🗺</span>地图</div>
+    <div class="nav-item"><span class="nav-icon">🐉</span>灵宠</div>
+    <div class="nav-item"><span class="nav-icon">📖</span>功法</div>
+    <div class="nav-item"><span class="nav-icon">⚗</span>炼丹</div>
+    <div class="nav-item"><span class="nav-icon">🔔</span>邮件</div>
+    <div class="nav-item"><span class="nav-icon">⚙</span>设置</div>
+  </nav>
+
+  <main class="main-content">
+    <div class="card">
+      <div class="card-title">角色信息</div>
+      <div class="char-header">
+        <div class="char-avatar">仙</div>
+        <div class="char-info">
+          <div class="char-name">逍遥散人</div>
+          <div class="char-realm">元婴中期</div>
+          <span class="char-level">Lv.35</span>
+        </div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label"><span>HP</span><span>8,520 / 12,000</span></div>
+        <div class="bar-track"><div class="bar-fill bar-hp" style="width:71%"></div></div>
+      </div>
+      <div class="bar-group">
+        <div class="bar-label"><span>MP</span><span>5,340 / 8,000</span></div>
+        <div class="bar-track"><div class="bar-fill bar-mp" style="width:67%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">属性面板</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-icon">⚔</div>
+          <div class="stat-value">2,458</div>
+          <div class="stat-name">攻击</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-icon">🛡</div>
+          <div class="stat-value">1,872</div>
+          <div class="stat-name">防御</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-icon">❤</div>
+          <div class="stat-value">12,000</div>
+          <div class="stat-name">生命</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-icon">💨</div>
+          <div class="stat-value">1,235</div>
+          <div class="stat-name">速度</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">装备栏</div>
+      <div class="equip-grid">
+        <div class="equip-slot equipped"><div class="equip-icon">🗡</div><div class="equip-name">青莲剑</div></div>
+        <div class="equip-slot equipped"><div class="equip-icon">🛡</div><div class="equip-name">玄武甲</div></div>
+        <div class="equip-slot equipped"><div class="equip-icon">💍</div><div class="equip-name">乾坤戒</div></div>
+        <div class="equip-slot equipped"><div class="equip-icon">📿</div><div class="equip-name">舍利串</div></div>
+        <div class="equip-slot equipped"><div class="equip-icon">👢</div><div class="equip-name">踏云靴</div></div>
+        <div class="equip-slot equipped"><div class="equip-icon">👑</div><div class="equip-name">紫金冠</div></div>
+        <div class="equip-slot"><div class="equip-icon">🪶</div><div class="equip-empty">空</div></div>
+        <div class="equip-slot"><div class="equip-icon">🔮</div><div class="equip-empty">空</div></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="actions">
+    <div class="action-btn"><span class="icon">🧘</span>修炼</div>
+    <div class="action-btn"><span class="icon">🏯</span>副本</div>
+    <div class="action-btn"><span class="icon">🏰</span>仙盟</div>
+    <div class="action-btn"><span class="icon">🛒</span>商店</div>
+    <div class="action-btn"><span class="icon">🎲</span>抽奖</div>
+    <div class="action-btn"><span class="icon">🏆</span>排行</div>
+  </aside>
+
+  <footer class="footer">
+    <div class="notification-badge">🔔</div>
+    <input class="chat-input" type="text" placeholder="输入消息...">
+    <div class="server-time">2026-08-31 19:42</div>
+  </footer>
+
+</div>
+</body>
+</html>

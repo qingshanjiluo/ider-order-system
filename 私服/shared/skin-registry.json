@@ -1,0 +1,53 @@
+{
+  "skins": [
+    {
+      "key": "inkwash",
+      "file": "inkwash.css",
+      "name": "水墨修仙",
+      "desc": "泼墨写意，素雅高远 · 大面积留白，笔触质感"
+    },
+    {
+      "key": "cyber",
+      "file": "cyber.css",
+      "name": "赛博修仙",
+      "desc": "霓虹光污染，数据流涌动 · 紧凑布局，速度感"
+    },
+    {
+      "key": "luxe",
+      "file": "luxe.css",
+      "name": "奢华金属",
+      "desc": "鎏金溢彩，华贵典藏 · 金属光泽，浮雕质感"
+    },
+    {
+      "key": "magazine",
+      "file": "magazine.css",
+      "name": "轻奢杂志",
+      "desc": "杂志级排版，克制优雅 · 大留白，精字距"
+    },
+    {
+      "key": "wabi",
+      "file": "wabi.css",
+      "name": "日式和风",
+      "desc": "侘寂美学，一木一石 · 自然质感，和纸纹理"
+    },
+    {
+      "key": "minimal",
+      "file": "minimal.css",
+      "name": "极简主义",
+      "desc": "少即是多，内容至上 · 极致留白，去装饰化"
+    },
+    {
+      "key": "frost",
+      "file": "frost.css",
+      "name": "磨砂玻璃态",
+      "desc": "Apple 风格玻璃拟态 · 通透模糊，悬浮层次"
+    },
+    {
+      "key": "brutal",
+      "file": "brutal.css",
+      "name": "粗野主义",
+      "desc": "粗粝不羁，破格醒目 · 厚边框，撞色块，无圆角"
+    }
+  ],
+  "defaultSkin": "inkwash"
+}

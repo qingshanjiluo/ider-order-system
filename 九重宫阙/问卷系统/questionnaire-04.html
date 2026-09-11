@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>装备系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>装备系统</h1>
+        <p>装备品质、强化、套装、升星</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-03.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="questionnaire-05.html">下一系统 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 5 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">装备品质：6个品质（白绿蓝紫橙红）是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">从白色普通到红色传说，共6个品质等级。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，6个品质')"><div class="option-text">合适，6个品质等级</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太多，简化为4-5个')"><div class="option-text">太多，简化为4-5个</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太少，增加更多')"><div class="option-text">太少，增加更多品质</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">装备强化：+1到+15，成功率递减是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">强化等级越高，成功率越低，失败可能降级。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'等级太多，简化为+10')"><div class="option-text">等级太多，简化为+10</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'失败不应降级')"><div class="option-text">失败不应降级</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">套装效果：2件+10%~5件+50%是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">集齐套装部件获得百分比属性加成。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'加成太高')"><div class="option-text">加成太高，降低比例</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'加成太低')"><div class="option-text">加成太低，提高比例</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">装备升星：是否需要升星系统？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">升星可进一步提升装备属性，消耗同名装备。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'需要，增加深度')"><div class="option-text">需要，增加养成深度</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'不需要，简化系统')"><div class="option-text">不需要，简化系统</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'改为其他形式')"><div class="option-text">改为其他形式</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q5 -->
+            <div class="accordion-item" id="item-q5">
+                <div class="accordion-header" onclick="toggleAccordion('q5')">
+                    <span class="check">✓</span><span class="num">Q5.</span>
+                    <span class="title">装备获取方式：副本掉落/商店/炼器哪种为主？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">多种获取方式并存，各有侧重。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q5',this,'副本掉落为主')"><div class="option-text">副本掉落为主</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'商店为主')"><div class="option-text">商店为主</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'炼器为主')"><div class="option-text">炼器为主</div></div>
+                        <div class="option" onclick="selectOption('q5',this,'三种均衡')"><div class="option-text">三种均衡</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q5',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-03.html">← 上一系统</a>
+            <a href="questionnaire-05.html">下一系统 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '04';
+    const totalQuestions = 5;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

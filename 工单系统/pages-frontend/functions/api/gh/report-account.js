@@ -22,7 +22,8 @@ export async function onRequest(context) {
           "SELECT COUNT(*) as cnt FROM game_accounts WHERE order_id = ?"
         ).bind(order_id).first();
         const cnt = cntRow?.cnt || 0;
-        if (qty > 0 && cnt >= qty) {
+        // 每个工单多发一个冗余账号（quantity + 1），宁多勿少
+        if (qty > 0 && cnt >= qty + 1) {
           return json({ ok: true, account_id: 0, capped: true, message: '已达订购数量上限，跳过注册' });
         }
       }
@@ -70,7 +71,7 @@ export async function onRequest(context) {
       }
     } else if (status === 'completed') {
       await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
+        "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, setup_status = 'completed', reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
       ).bind(status, level || 0, character_name || '', spirit_roots || '{}', username, order_id).run();
       const acc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
       accountId = acc?.id || 0;

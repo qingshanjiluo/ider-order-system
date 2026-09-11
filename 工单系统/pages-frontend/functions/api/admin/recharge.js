@@ -48,6 +48,16 @@ export async function onRequest(context) {
       await env.DB.prepare(
         "UPDATE users SET bonus_points = bonus_points + ? WHERE id = ?"
       ).bind(order.coins, order.user_id).run();
+
+      // 消费口径：仅现金充值（套餐或直充）计入 total_spent，单位为"修仙币"（1元=400修仙币）
+      const isCashRecharge = order.type === 'cash' ||
+        (order.type === 'package' && String(order.package_id || '').startsWith('cash-'));
+      if (isCashRecharge && order.amount > 0) {
+        await env.DB.prepare(
+          "UPDATE users SET total_spent = COALESCE(total_spent, 0) + ? WHERE id = ?"
+        ).bind(order.amount * 400, order.user_id).run();
+      }
+
       await env.DB.prepare(
         "UPDATE recharge_orders SET status = 'completed', admin_id = ?, completed_at = datetime('now') WHERE id = ?"
       ).bind(user.id, order_id).run();

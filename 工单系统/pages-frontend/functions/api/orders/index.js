@@ -219,8 +219,8 @@ export async function onRequest(context) {
       }
     }
 
-    // 修仙币支付的工单自动通过（已扣款，无需人工审核）
-    const autoApproved = payment_method === 'coin' && !NEW_ORDER_TYPES.includes(order_type);
+    // 修仙币支付的工单自动通过（已扣款，无需人工审核），含新类型工单
+    const autoApproved = payment_method === 'coin';
     const orderStatus = autoApproved ? 'approved' : 'pending';
 
     const result = await env.DB.prepare(
@@ -262,6 +262,10 @@ export async function onRequest(context) {
 
     // ── 11. 发送通知 ──
     if (autoApproved) {
+      // 自动通过的工单也计入用户订单数统计（与人工审核通过一致）
+      await env.DB.prepare(
+        'UPDATE users SET total_orders = total_orders + 1 WHERE id = ?'
+      ).bind(user.id).run();
       await env.DB.prepare(
         "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已自动通过', '工单 #' || ? || ' 修仙币支付成功，已自动通过并开始处理', 'order')"
       ).bind(user.id, orderId).run();

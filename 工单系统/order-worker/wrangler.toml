@@ -1,0 +1,13 @@
+name = "ider-order-worker"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+GAME_API = "https://ideer-game-api.sifangzhiji.workers.dev"
+ORDER_API = "https://ider-order-system.pages.dev"
+SIGN_KEY = "KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l"
+API_KEY = "ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a"
+CLIENT_VERSION = "1.2.4"
+
+[triggers]
+crons = ["*/30 * * * *"]

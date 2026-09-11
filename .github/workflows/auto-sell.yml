@@ -44,4 +44,4 @@ jobs:
           SELL_PASSWORD: ${{ inputs.password || secrets.SELL_PASSWORD }}
           SELL_MIN_QUALITY: ${{ inputs.min_quality }}
           SELL_MAX_QUALITY: ${{ inputs.max_quality }}
-        run: node gh-actions/auto_sell.js
+        run: node 原版/gh-actions/auto_sell.js

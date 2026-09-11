@@ -1,0 +1,51 @@
+name: 确认删除待删除账号
+
+on:
+  schedule:
+    # 每周一、四下午3点执行
+    - cron: '0 15 * * 1,4'
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: '每批处理数量'
+        required: false
+        default: '50'
+        type: string
+      dry_run:
+        description: 'DRY RUN模式（不实际执行）'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  confirm-deletion:
+    name: 确认删除待删除账号
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 执行确认删除
+        working-directory: 工单系统
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}
+          API_KEY: ${{ secrets.API_KEY }}
+          BATCH_SIZE: ${{ inputs.batch_size || '50' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: node gh-actions/confirm_deletion.js
+
+      - name: 上传日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deletion-log-${{ github.run_id }}
+          path: |
+            工单系统/deletion_*.log
+          retention-days: 30

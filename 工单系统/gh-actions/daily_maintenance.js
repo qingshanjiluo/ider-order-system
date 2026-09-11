@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 艾德尔工单系统 - 每日日常维护
  * 遍历所有 farming 账号：
  *   1. 仙盟相关：搜索/加入仙盟 → 灵池沐浴 → 仙园采摘 → 悟道树冥想
@@ -11,7 +11,7 @@ const { ensureCharacter } = require('./_character');
 
 const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
 const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
-const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
+const API_BASE = process.env.API_BASE || 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const ALLIANCE_NAME = process.env.ALLIANCE_NAME || '天地一家大爱盟';

@@ -1,11 +1,11 @@
-// gh-actions/auto_cleanup.js
+﻿// gh-actions/auto_cleanup.js
 // 自动清理脚本：120级满3天后删号（游戏服 + 数据库）
 const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
 
 const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
 const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
-const API_BASE = process.env.API_BASE || 'https://idlexiuxianzhuan.cn';
+const API_BASE = process.env.API_BASE || 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
 const SIGN_KEY = process.env.SIGN_KEY || 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 

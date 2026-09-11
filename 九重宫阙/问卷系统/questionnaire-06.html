@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>灵宠系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>灵宠系统</h1>
+        <p>灵宠出战、培养、技能、获取</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-05.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="questionnaire-07.html">下一系统 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 4 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">灵宠出战数量：最多1只是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">玩家最多可同时出战1只灵宠辅助战斗。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，1只')"><div class="option-text">合适，1只灵宠</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太少，增加到2-3只')"><div class="option-text">太少，增加到2-3只</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'不需要出战')"><div class="option-text">不需要出战，只做辅助</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">灵宠培养方式：喂养/升级/进化3种是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">三种培养方式各有不同效果和资源消耗。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，3种方式')"><div class="option-text">合适，3种培养方式</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太多，简化为1-2种')"><div class="option-text">太多，简化为1-2种</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'太少，增加更多')"><div class="option-text">太少，增加更多培养方式</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">灵宠技能：是否需要灵宠技能系统？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">灵宠可学习主动/被动技能，增加战斗策略。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'需要，增加策略')"><div class="option-text">需要，增加策略性</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'不需要，保持简单')"><div class="option-text">不需要，保持简单</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'只保留被动技能')"><div class="option-text">只保留被动技能</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">灵宠获取方式：蛋孵化/商店/任务哪种为主？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">多种获取方式并存，各有侧重。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'蛋孵化为主')"><div class="option-text">蛋孵化为主</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'商店为主')"><div class="option-text">商店为主</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'任务为主')"><div class="option-text">任务为主</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'三种均衡')"><div class="option-text">三种均衡</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-05.html">← 上一系统</a>
+            <a href="questionnaire-07.html">下一系统 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '06';
+    const totalQuestions = 4;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

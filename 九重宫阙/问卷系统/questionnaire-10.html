@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛季系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>赛季系统</h1>
+        <p>赛季周期、奖励、任务、排名</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-09.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="questionnaire-11.html">下一系统 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 4 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">赛季周期：每月是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">每个赛季持续一个月。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，每月')"><div class="option-text">合适，每月重置</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太短，改为每季度')"><div class="option-text">太短，改为每季度</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太长，改为每两周')"><div class="option-text">太长，改为每两周</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">赛季奖励：点券+称号+坐骑是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">赛季奖励包含点券、专属称号和坐骑。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'奖励太少')"><div class="option-text">奖励太少，增加更多</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'奖励太多')"><div class="option-text">奖励太多，减少一些</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">赛季任务：是否需要赛季专属任务？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">每个赛季提供专属任务，完成可获得额外奖励。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'需要，增加目标感')"><div class="option-text">需要，增加目标感</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'不需要，保持简单')"><div class="option-text">不需要，保持简单</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'改为赛季挑战')"><div class="option-text">改为赛季挑战</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">赛季排名：前1000名奖励是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">赛季排名前1000名玩家获得额外奖励。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'合适，前1000名')"><div class="option-text">合适，前1000名</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'太少，增加到前5000名')"><div class="option-text">太少，增加到前5000名</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'太多，减少到前500名')"><div class="option-text">太多，减少到前500名</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-09.html">← 上一系统</a>
+            <a href="questionnaire-11.html">下一系统 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '10';
+    const totalQuestions = 4;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

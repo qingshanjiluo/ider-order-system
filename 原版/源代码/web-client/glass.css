@@ -1,0 +1,1058 @@
+/* ═══════════════════════════════════════
+   玻璃态 · GLASS THEME
+   毛玻璃质感，深层空间光晕
+   ═══════════════════════════════════════ */
+
+.theme-glass {
+  --glass-bg: #020617;
+  --glass-surface: rgba(255,255,255,0.03);
+  --glass-surface2: rgba(255,255,255,0.06);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-border-bright: rgba(255,255,255,0.15);
+  --glass-text: rgba(255,255,255,0.92);
+  --glass-text2: rgba(255,255,255,0.48);
+  --glass-text3: rgba(255,255,255,0.25);
+  --glass-accent: rgba(255,255,255,0.9);
+  --glass-orb-blue: rgba(59,130,246,0.30);
+  --glass-orb-purple: rgba(139,92,246,0.25);
+  --glass-orb-rose: rgba(236,72,153,0.18);
+  --glass-hp: rgba(255,255,255,0.7);
+  --glass-mp: rgba(255,255,255,0.35);
+  --glass-bar: rgba(255,255,255,0.06);
+  --glass-bar-fill: rgba(255,255,255,0.6);
+  --font-glass: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --bg: var(--glass-bg);
+  --bg2: var(--glass-surface);
+  --text: var(--glass-text);
+  --text2: var(--glass-text2);
+  --text3: var(--glass-text3);
+  --border: var(--glass-border);
+  --font: var(--font-glass);
+  --shadow: 0 8px 32px rgba(0,0,0,0.25);
+  --radius: 16px;
+}
+
+/* ── 全局重置 ── */
+.theme-glass body,
+.theme-glass .view-game,
+.theme-glass .view-login {
+  font-family: var(--font-glass);
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+}
+
+.theme-glass .view-game {
+  background: var(--glass-bg);
+  color: var(--glass-text);
+}
+
+.theme-glass .view-login {
+  background: var(--glass-bg);
+  color: var(--glass-text);
+}
+
+.theme-glass *::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.theme-glass *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.theme-glass *::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.10);
+  border-radius: 4px;
+}
+.theme-glass *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+.theme-glass input,
+.theme-glass textarea,
+.theme-glass select {
+  font-family: var(--font-glass);
+  font-weight: 300;
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  border-radius: 12px;
+  padding: 8px 14px;
+  font-size: 0.8125rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.theme-glass input:focus,
+.theme-glass textarea:focus {
+  outline: none;
+  border-color: var(--glass-border-bright);
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+}
+
+.theme-glass button {
+  font-family: var(--font-glass);
+  font-weight: 400;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: opacity 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+/* ── 玻璃基类 ── */
+.theme-glass .glass-panel {
+  background: var(--glass-surface);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+}
+.theme-glass .glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.03) 100%);
+  pointer-events: none;
+}
+
+/* ── 登录页 ── */
+.theme-glass .view-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.theme-glass .login-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 48px 40px;
+  background: var(--glass-surface);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: 0 8px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+}
+.theme-glass .login-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.02) 100%);
+  pointer-events: none;
+}
+
+.theme-glass .game-title {
+  font-weight: 300;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+  text-align: center;
+  color: var(--glass-text);
+  text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+}
+
+.theme-glass .login-subtitle {
+  font-weight: 300;
+  font-size: 0.75rem;
+  color: var(--glass-text2);
+  text-align: center;
+  margin-bottom: 40px;
+  letter-spacing: 0.06em;
+}
+
+.theme-glass .login-card input {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+}
+
+.theme-glass .login-card .btn-primary {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.8125rem;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  border-radius: 12px;
+  margin-top: 12px;
+  letter-spacing: 0.04em;
+  transition: background 0.3s, border-color 0.3s;
+}
+.theme-glass .login-card .btn-primary:hover {
+  background: rgba(255,255,255,0.15);
+  border-color: var(--glass-border-bright);
+}
+
+/* ── 游戏头 ── */
+.theme-glass .game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: rgba(255,255,255,0.02);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-bottom: 1px solid var(--glass-border);
+  min-height: 44px;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.theme-glass .game-header .hdr-name {
+  font-weight: 400;
+  font-size: 0.875rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: var(--glass-text);
+}
+
+.theme-glass .game-header .hdr-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.6875rem;
+  color: var(--glass-text2);
+  font-weight: 300;
+}
+
+.theme-glass .game-header .hdr-res {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: var(--glass-text2);
+  font-weight: 300;
+}
+
+.theme-glass .game-header .btn-icon {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--glass-text2);
+  font-size: 1rem;
+  line-height: 1;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+.theme-glass .game-header .btn-icon:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--glass-text);
+}
+
+/* ── 导航标签 ── */
+.theme-glass .tab-nav {
+  display: flex;
+  background: rgba(255,255,255,0.015);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid var(--glass-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0;
+}
+
+.theme-glass .tab-btn {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: var(--glass-text2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-radius: 0;
+  position: relative;
+  transition: color 0.3s, background 0.3s;
+}
+.theme-glass .tab-btn.active {
+  color: var(--glass-text);
+  font-weight: 400;
+  background: rgba(255,255,255,0.04);
+}
+.theme-glass .tab-btn:hover {
+  color: var(--glass-text);
+  background: rgba(255,255,255,0.02);
+}
+.theme-glass .tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 30%;
+  right: 30%;
+  height: 2px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 2px;
+}
+
+.theme-glass .glass-nav-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-right: 4px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+/* ── 侧栏 ── */
+.theme-glass .battle-sidebar {
+  padding: 20px 16px;
+  background: var(--glass-surface);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-right: 1px solid var(--glass-border);
+  min-width: 160px;
+}
+
+.theme-glass .battle-sidebar .sidebar-char-name {
+  font-weight: 400;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+  color: var(--glass-text);
+}
+
+.theme-glass .battle-sidebar .sidebar-char-realm {
+  font-size: 0.6875rem;
+  color: var(--glass-text2);
+  font-weight: 300;
+  margin-bottom: 16px;
+}
+
+.theme-glass .exp-bar,
+.theme-glass .sr-bar,
+.theme-glass .bar-track {
+  height: 4px;
+  background: var(--glass-bar);
+  border-radius: 4px;
+  margin: 6px 0;
+  overflow: hidden;
+  border: none;
+}
+
+.theme-glass .exp-fill,
+.theme-glass .sr-fill,
+.theme-glass .bar-fill {
+  height: 100%;
+  background: var(--glass-bar-fill);
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.theme-glass .bar-label {
+  font-size: 0.625rem;
+  color: var(--glass-text3);
+  font-weight: 300;
+  margin-bottom: 2px;
+}
+
+/* ── 战斗面板 ── */
+.theme-glass .battle-status-panel {
+  padding: 16px;
+  background: var(--glass-surface);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  margin: 8px;
+}
+
+.theme-glass .battle-status-panel .bar-track {
+  height: 4px;
+  background: var(--glass-bar);
+  border-radius: 4px;
+  margin: 6px 0;
+}
+
+.theme-glass .battle-status-panel .bar-fill {
+  background: var(--glass-bar-fill);
+  border-radius: 4px;
+}
+
+/* ── 各类卡片 ── */
+.theme-glass .stat-card,
+.theme-glass .skill-card,
+.theme-glass .map-card {
+  background: var(--glass-surface);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.theme-glass .stat-card::before,
+.theme-glass .skill-card::before,
+.theme-glass .map-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.02) 100%);
+  pointer-events: none;
+}
+
+.theme-glass .stat-card:hover,
+.theme-glass .skill-card:hover,
+.theme-glass .map-card:hover {
+  border-color: var(--glass-border-bright);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.theme-glass .stat-card .card-title,
+.theme-glass .skill-card .card-title {
+  font-weight: 400;
+  font-size: 0.8125rem;
+  margin-bottom: 6px;
+  color: var(--glass-text);
+  position: relative;
+}
+
+.theme-glass .stat-card .card-value {
+  font-weight: 300;
+  font-size: 0.75rem;
+  color: var(--glass-text2);
+  position: relative;
+}
+
+/* ── 区域标题 ── */
+.theme-glass .section-title {
+  font-weight: 300;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  padding: 16px 12px 10px;
+  margin: 0;
+  color: var(--glass-text);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* ── 子标签 ── */
+.theme-glass .sub-tab {
+  display: flex;
+  gap: 4px;
+  padding: 8px 4px;
+  overflow-x: auto;
+}
+
+.theme-glass .sub-tab button,
+.theme-glass .sub-tab-item {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  color: var(--glass-text2);
+  background: var(--glass-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+.theme-glass .sub-tab button.active,
+.theme-glass .sub-tab-item.active {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--glass-border-bright);
+  color: var(--glass-text);
+}
+
+/* ── 弹窗 ── */
+.theme-glass .modal-overlay {
+  background: rgba(2,6,23,0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.theme-glass .modal-panel {
+  background: rgba(255,255,255,0.035);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow: 0 16px 64px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  padding: 28px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+.theme-glass .modal-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.02) 100%);
+  pointer-events: none;
+}
+
+.theme-glass .modal-title {
+  font-weight: 300;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  position: relative;
+}
+
+.theme-glass .modal-close {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  font-size: 1rem;
+  color: var(--glass-text2);
+  padding: 6px 10px;
+  line-height: 1;
+  transition: background 0.2s, color 0.2s;
+  cursor: pointer;
+}
+.theme-glass .modal-close:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--glass-text);
+}
+
+/* ── 按钮 ── */
+.theme-glass .btn-primary {
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  padding: 8px 20px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  border-radius: 12px;
+  letter-spacing: 0.03em;
+  transition: background 0.3s, border-color 0.3s;
+}
+.theme-glass .btn-primary:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: var(--glass-border-bright);
+}
+
+.theme-glass .btn-action {
+  background: var(--glass-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text);
+  padding: 6px 16px;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  border-radius: 12px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.theme-glass .btn-action:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--glass-border-bright);
+}
+
+.theme-glass .btn-sm {
+  background: var(--glass-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text2);
+  padding: 4px 12px;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  border-radius: 10px;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+.theme-glass .btn-sm:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--glass-border-bright);
+  color: var(--glass-text);
+}
+
+.theme-glass .btn-icon {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--glass-text2);
+  font-size: 1rem;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+.theme-glass .btn-icon:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--glass-text);
+}
+
+/* ── Toast ── */
+.theme-glass .toast {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  color: var(--glass-text);
+  font-size: 0.75rem;
+  font-weight: 300;
+  padding: 10px 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+
+/* ── 地图 ── */
+.theme-glass .map-current {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.theme-glass .map-current .map-name {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--glass-text);
+}
+
+.theme-glass .map-current .map-desc {
+  font-size: 0.75rem;
+  color: var(--glass-text2);
+  font-weight: 300;
+}
+
+/* ── 物品详情 ── */
+.theme-glass .item-detail {
+  border: none;
+  padding: 0;
+  background: none;
+}
+.theme-glass .item-detail-name {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--glass-text);
+}
+.theme-glass .item-detail-stats {
+  font-size: 0.75rem;
+  color: var(--glass-text2);
+  font-weight: 300;
+}
+
+/* ── 装备槽 ── */
+.theme-glass .equip-slot {
+  background: var(--glass-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 8px;
+  transition: border-color 0.3s;
+}
+.theme-glass .equip-slot:hover {
+  border-color: var(--glass-border-bright);
+}
+
+/* ── 预设行 ── */
+.theme-glass .preset-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--glass-border);
+  margin-bottom: 8px;
+}
+
+/* ── 关键徽章 ── */
+.theme-glass .key-badge {
+  display: inline-block;
+  font-size: 0.625rem;
+  border: 1px solid var(--glass-text2);
+  color: var(--glass-text2);
+  padding: 1px 6px;
+  font-weight: 300;
+  border-radius: 6px;
+}
+
+/* ── 技能卡片装备状态 ── */
+.theme-glass .skill-card.equipped {
+  border-left: 2px solid rgba(255,255,255,0.4);
+}
+
+/* ── 底部面板 ── */
+.theme-glass .panel {
+  padding: 8px;
+}
+
+/* ── 邮件 ── */
+.theme-glass .mail-list .mail-item {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 12px 0;
+}
+.theme-glass .mail-item .mail-title {
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--glass-text);
+}
+.theme-glass .mail-item .mail-date {
+  font-size: 0.6875rem;
+  color: var(--glass-text3);
+  font-weight: 300;
+}
+
+/* ── 宗门 ── */
+.theme-glass .sect-list .sect-item {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+/* ── 坊市 ── */
+.theme-glass .exch-filter-wrap {
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.theme-glass .listing-list .listing-item {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 6px;
+}
+
+.theme-glass .pagination {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.theme-glass .pagination .page-btn {
+  background: var(--glass-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  color: var(--glass-text2);
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 300;
+  border-radius: 10px;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+.theme-glass .pagination .page-btn:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: var(--glass-border-bright);
+  color: var(--glass-text);
+}
+.theme-glass .pagination .page-btn.active {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--glass-border-bright);
+  color: var(--glass-text);
+}
+
+/* ── 洞府 ── */
+.theme-glass .cave-card {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+.theme-glass .cave-formation-wrap {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+/* ── 斗法 ── */
+.theme-glass .duel-list .duel-item {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 6px;
+}
+
+.theme-glass .rank-list .rank-item {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 8px 0;
+}
+
+/* ── 副本 ── */
+.theme-glass .dungeon-layout {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* ── 传人 ── */
+.theme-glass .disciple-card {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+/* ── 仙盟 ── */
+.theme-glass .alliance-list .alli-item {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+.theme-glass .member-list .member-item {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 8px 0;
+}
+
+.theme-glass .warehouse-grid .wh-item {
+  background: var(--glass-surface);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+/* ── 设置 ── */
+.theme-glass .settings-section {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 14px 0;
+}
+
+/* ── 炼器 ── */
+.theme-glass .forge-panel {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* ── 词典 ── */
+.theme-glass .dict-content .dict-entry {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 8px 0;
+}
+
+/* ── 试炼 ── */
+.theme-glass .trial-shop {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+/* ── 命途 ── */
+.theme-glass .mingtu-scroll {
+  border: none;
+  padding: 0;
+}
+.theme-glass .mingtu-node {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 6px;
+}
+
+/* ── 选项列表 ── */
+.theme-glass .opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.theme-glass .opt-item {
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.3s, background 0.3s;
+}
+.theme-glass .opt-item:hover {
+  border-color: var(--glass-border-bright);
+  background: rgba(255,255,255,0.05);
+}
+
+/* ── 背包工具栏 ── */
+.theme-glass .inv-toolbar {
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+/* ── 地图战斗拆分 ── */
+.theme-glass .map-battle-split {
+  display: flex;
+  gap: 8px;
+}
+.theme-glass .map-battle-split > * {
+  flex: 1;
+  background: var(--glass-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+/* ── 快速操作 ── */
+.theme-glass .quick-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+/* ── 加载页 ── */
+.theme-glass .view-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--glass-bg);
+}
+.theme-glass .view-loading .loading-text {
+  font-weight: 300;
+  font-size: 0.8125rem;
+  color: var(--glass-text2);
+  letter-spacing: 0.08em;
+}
+.theme-glass .spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.06);
+  border-top-color: rgba(255,255,255,0.4);
+  animation: glass-spin 1s linear infinite;
+  border-radius: 50%;
+}
+@keyframes glass-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════
+   背景装饰层（CSS 动画光晕 + 噪点）
+   ═══════════════════════════════════════ */
+
+/* 光晕浮动动画 */
+@keyframes glass-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, 40px) scale(1.08); }
+  66% { transform: translate(-30px, 80px) scale(0.95); }
+}
+@keyframes glass-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-80px, -60px) scale(1.1); }
+}
+@keyframes glass-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(50px, -40px) scale(1.05); }
+  66% { transform: translate(-40px, 20px) scale(0.92); }
+}
+
+#glass-decor {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--glass-bg);
+}
+
+.glass-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  will-change: transform;
+}
+
+.glass-orb.orb-1 {
+  width: 600px; height: 600px;
+  background: var(--glass-orb-blue);
+  top: -10%; left: -5%;
+  opacity: 0.5;
+  animation: glass-drift-1 24s ease-in-out infinite;
+}
+
+.glass-orb.orb-2 {
+  width: 500px; height: 500px;
+  background: var(--glass-orb-purple);
+  top: 40%; right: -10%;
+  opacity: 0.4;
+  animation: glass-drift-2 28s ease-in-out infinite;
+}
+
+.glass-orb.orb-3 {
+  width: 400px; height: 400px;
+  background: var(--glass-orb-rose);
+  bottom: -5%; left: 30%;
+  opacity: 0.35;
+  animation: glass-drift-3 32s ease-in-out infinite;
+}
+
+.glass-grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.15;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gn'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gn)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+}
+
+.glass-spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(700px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.035), transparent 50%);
+  transition: background 0.15s ease-out;
+}

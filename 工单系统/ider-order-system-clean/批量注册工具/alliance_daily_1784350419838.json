@@ -1,0 +1,17 @@
+{
+  "run_time": "2026-07-18T04:53:39.838Z",
+  "total": 1,
+  "success": 1,
+  "failed": 0,
+  "duration_seconds": 8,
+  "results": [
+    {
+      "username": "狂蛮仙尊",
+      "status": "success",
+      "done": [
+        "no_rare"
+      ],
+      "error": ""
+    }
+  ]
+}

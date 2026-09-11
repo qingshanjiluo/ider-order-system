@@ -1,0 +1,2 @@
+// 自动生成：enemy_prefixes.json（勿手改，重跑 scripts/build-game-static.mjs 更新）
+export default [{"name":"强壮的","effects":{"minAttack":1.6,"maxAttack":1.6},"probability":0.15},{"name":"敏捷的","effects":{"agility":1.6},"probability":0.15},{"name":"血气丰盈的","effects":{"maxHp":1.6},"probability":0.15},{"name":"坚硬的","effects":{"defense":1.6},"probability":0.15},{"name":"精英","effects":{"maxHp":1.5,"minAttack":1.3,"maxAttack":1.3,"defense":1.3},"probability":0.1},{"name":"首领","effects":{"maxHp":3,"minAttack":1.5,"maxAttack":1.5,"defense":1.5},"probability":0.05}];

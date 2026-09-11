@@ -1,0 +1,6 @@
+node_modules/
+*.log
+result_*.json
+sell_result_*.json
+ban_check_result_*.json
+check_result_*.json

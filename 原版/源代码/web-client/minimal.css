@@ -1,0 +1,755 @@
+/* ═══════════════════════════════════════
+   极简 · MINIMAL THEME
+   减法优先，留白即内容
+   ═══════════════════════════════════════ */
+
+.theme-minimal {
+  --min-bg: #FFFFFF;
+  --min-bg2: #F8F8F8;
+  --min-text: #000000;
+  --min-text2: rgba(0,0,0,0.55);
+  --min-text3: rgba(0,0,0,0.30);
+  --min-border: rgba(0,0,0,0.08);
+  --min-accent: #000000;
+  --min-accent2: rgba(0,0,0,0.15);
+  --min-hp: #000000;
+  --min-mp: #888888;
+  --min-bar: rgba(0,0,0,0.06);
+  --min-bar-fill: #000000;
+  --font-min: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --bg: var(--min-bg);
+  --bg2: var(--min-bg2);
+  --text: var(--min-text);
+  --text2: var(--min-text2);
+  --text3: var(--min-text3);
+  --border: var(--min-border);
+  --font: var(--font-min);
+  /* 无阴影无圆角 */
+  --shadow: none;
+  --radius: 0;
+}
+
+/* ── 全局重置 ── */
+.theme-minimal body,
+.theme-minimal .view-game,
+.theme-minimal .view-login {
+  background: var(--min-bg);
+  color: var(--min-text);
+  font-family: var(--font-min);
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 1.6;
+}
+
+.theme-minimal *::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.theme-minimal *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.theme-minimal *::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.12);
+  border-radius: 0;
+}
+.theme-minimal *::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.2);
+}
+
+.theme-minimal input,
+.theme-minimal textarea,
+.theme-minimal select {
+  font-family: var(--font-min);
+  font-weight: 300;
+  border: 1px solid var(--min-border);
+  background: var(--min-bg);
+  color: var(--min-text);
+  border-radius: 0;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+}
+.theme-minimal input:focus,
+.theme-minimal textarea:focus {
+  outline: none;
+  border-color: var(--min-text);
+}
+
+.theme-minimal button {
+  font-family: var(--font-min);
+  font-weight: 400;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+/* ── 登录页 ── */
+.theme-minimal .view-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.theme-minimal .login-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 48px 0;
+}
+
+.theme-minimal .game-title {
+  font-weight: 200;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.theme-minimal .login-subtitle {
+  font-weight: 300;
+  font-size: 0.75rem;
+  color: var(--min-text2);
+  text-align: center;
+  margin-bottom: 48px;
+  letter-spacing: 0.04em;
+}
+
+.theme-minimal .login-card input {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+}
+
+.theme-minimal .login-card .btn-primary {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.8125rem;
+  background: var(--min-text);
+  color: var(--min-bg);
+  border: none;
+  letter-spacing: 0.03em;
+  margin-top: 12px;
+}
+.theme-minimal .login-card .btn-primary:hover {
+  opacity: 0.8;
+}
+
+/* ── 游戏头 ── */
+.theme-minimal .game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--min-border);
+  min-height: 40px;
+  gap: 8px;
+}
+
+.theme-minimal .game-header .hdr-name {
+  font-weight: 400;
+  font-size: 0.9375rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.theme-minimal .game-header .hdr-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: var(--min-text2);
+  font-weight: 300;
+}
+
+.theme-minimal .game-header .hdr-res {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--min-text2);
+  font-weight: 300;
+}
+
+.theme-minimal .game-header .btn-icon {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--min-text2);
+  font-size: 1rem;
+  line-height: 1;
+}
+.theme-minimal .game-header .btn-icon:hover {
+  color: var(--min-text);
+}
+
+/* ── 导航标签 ── */
+.theme-minimal .tab-nav {
+  display: flex;
+  border-bottom: 1px solid var(--min-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0;
+}
+
+.theme-minimal .tab-btn {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  font-weight: 300;
+  color: var(--min-text2);
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  transition: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.theme-minimal .tab-btn.active {
+  color: var(--min-text);
+  border-bottom-color: var(--min-text);
+  font-weight: 400;
+}
+.theme-minimal .tab-btn:hover {
+  color: var(--min-text);
+}
+
+.theme-minimal .minimal-nav-icon {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  vertical-align: middle;
+  margin-right: 3px;
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+
+/* ── 侧栏 ── */
+.theme-minimal .battle-sidebar {
+  padding: 20px 16px;
+  border-right: 1px solid var(--min-border);
+}
+
+.theme-minimal .battle-sidebar .sidebar-char-name {
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+
+.theme-minimal .battle-sidebar .sidebar-char-realm {
+  font-size: 0.6875rem;
+  color: var(--min-text2);
+  font-weight: 300;
+  margin-bottom: 16px;
+}
+
+.theme-minimal .exp-bar,
+.theme-minimal .sr-bar,
+.theme-minimal .bar-track {
+  height: 2px;
+  background: var(--min-bar);
+  border-radius: 0;
+  margin: 4px 0;
+  overflow: hidden;
+  border: none;
+}
+
+.theme-minimal .exp-fill,
+.theme-minimal .sr-fill,
+.theme-minimal .bar-fill {
+  height: 100%;
+  background: var(--min-bar-fill);
+  border-radius: 0;
+  transition: width 0.3s;
+}
+
+.theme-minimal .bar-label {
+  font-size: 0.625rem;
+  color: var(--min-text3);
+  font-weight: 300;
+  margin-bottom: 1px;
+}
+
+/* ── 战斗面板 ── */
+.theme-minimal .battle-status-panel {
+  padding: 16px;
+}
+
+.theme-minimal .battle-status-panel .bar-track {
+  height: 2px;
+  background: var(--min-bar);
+  border-radius: 0;
+  margin: 6px 0;
+}
+
+.theme-minimal .battle-status-panel .bar-fill {
+  background: var(--min-bar-fill);
+  border-radius: 0;
+}
+
+/* ── 各类卡片 ── */
+.theme-minimal .stat-card,
+.theme-minimal .skill-card,
+.theme-minimal .map-card {
+  background: none;
+  border: 1px solid var(--min-border);
+  border-radius: 0;
+  padding: 12px;
+  margin-bottom: 8px;
+  box-shadow: none;
+  position: relative;
+  transition: none;
+}
+
+.theme-minimal .stat-card:hover,
+.theme-minimal .skill-card:hover,
+.theme-minimal .map-card:hover {
+  border-color: var(--min-text2);
+}
+
+.theme-minimal .stat-card .card-title,
+.theme-minimal .skill-card .card-title {
+  font-weight: 400;
+  font-size: 0.8125rem;
+  margin-bottom: 6px;
+}
+
+.theme-minimal .stat-card .card-value {
+  font-weight: 300;
+  font-size: 0.75rem;
+  color: var(--min-text2);
+}
+
+/* ── 子标签 ── */
+.theme-minimal .sub-tab {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--min-border);
+  overflow-x: auto;
+}
+
+.theme-minimal .sub-tab button,
+.theme-minimal .sub-tab-item {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  color: var(--min-text2);
+  background: none;
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+}
+.theme-minimal .sub-tab button.active,
+.theme-minimal .sub-tab-item.active {
+  color: var(--min-text);
+  border-bottom-color: var(--min-text);
+  font-weight: 400;
+}
+
+/* ── 区域标题 ── */
+.theme-minimal .section-title {
+  font-weight: 300;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+  padding: 16px 0 12px;
+  margin: 0;
+  border-bottom: 1px solid var(--min-border);
+}
+
+/* ── 弹窗 ── */
+.theme-minimal .modal-overlay {
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: none;
+}
+
+.theme-minimal .modal-panel {
+  background: var(--min-bg);
+  border: 1px solid var(--min-text);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 24px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.theme-minimal .modal-title {
+  font-weight: 300;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--min-border);
+}
+
+.theme-minimal .modal-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--min-text2);
+  padding: 4px;
+  line-height: 1;
+}
+.theme-minimal .modal-close:hover {
+  color: var(--min-text);
+}
+
+/* ── 按钮 ── */
+.theme-minimal .btn-primary {
+  background: var(--min-text);
+  color: var(--min-bg);
+  border: none;
+  padding: 8px 20px;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  border-radius: 0;
+}
+.theme-minimal .btn-primary:hover {
+  opacity: 0.8;
+}
+
+.theme-minimal .btn-action {
+  background: none;
+  border: 1px solid var(--min-text);
+  color: var(--min-text);
+  padding: 6px 16px;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  border-radius: 0;
+}
+.theme-minimal .btn-action:hover {
+  background: var(--min-text);
+  color: var(--min-bg);
+}
+
+.theme-minimal .btn-sm {
+  background: none;
+  border: 1px solid var(--min-border);
+  color: var(--min-text2);
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  font-weight: 300;
+  border-radius: 0;
+}
+.theme-minimal .btn-sm:hover {
+  border-color: var(--min-text);
+  color: var(--min-text);
+}
+
+.theme-minimal .btn-icon {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--min-text2);
+  font-size: 1rem;
+}
+
+/* ── Toast ── */
+.theme-minimal .toast {
+  background: var(--min-text);
+  color: var(--min-bg);
+  border-radius: 0;
+  font-size: 0.75rem;
+  font-weight: 300;
+  padding: 8px 16px;
+  box-shadow: none;
+}
+
+/* ── 地图 ── */
+.theme-minimal .map-current {
+  border: 1px solid var(--min-border);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.theme-minimal .map-current .map-name {
+  font-weight: 400;
+  font-size: 0.9375rem;
+}
+
+.theme-minimal .map-current .map-desc {
+  font-size: 0.75rem;
+  color: var(--min-text2);
+  font-weight: 300;
+}
+
+/* ── 物品详情 ── */
+.theme-minimal .item-detail {
+  border: none;
+  padding: 0;
+  background: none;
+}
+.theme-minimal .item-detail-name {
+  font-weight: 400;
+  font-size: 0.9375rem;
+}
+.theme-minimal .item-detail-stats {
+  font-size: 0.75rem;
+  color: var(--min-text2);
+  font-weight: 300;
+}
+
+/* ── 装备槽 ── */
+.theme-minimal .equip-slot {
+  border: 1px solid var(--min-border);
+  padding: 8px;
+  background: none;
+  border-radius: 0;
+}
+
+/* ── 背包 ── */
+.theme-minimal .inv-toolbar {
+  border-bottom: 1px solid var(--min-border);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+/* ── 地图战斗拆分 ── */
+.theme-minimal .map-battle-split {
+  display: flex;
+  gap: 1px;
+  background: var(--min-border);
+}
+.theme-minimal .map-battle-split > * {
+  background: var(--min-bg);
+  flex: 1;
+}
+
+/* ── 邮件 ── */
+.theme-minimal .mail-list .mail-item {
+  border-bottom: 1px solid var(--min-border);
+  padding: 10px 0;
+}
+.theme-minimal .mail-item .mail-title {
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+.theme-minimal .mail-item .mail-date {
+  font-size: 0.6875rem;
+  color: var(--min-text3);
+  font-weight: 300;
+}
+
+/* ── 宗门 ── */
+.theme-minimal .sect-list .sect-item {
+  border: 1px solid var(--min-border);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+/* ── 坊市 ── */
+.theme-minimal .exch-filter-wrap {
+  border-bottom: 1px solid var(--min-border);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.theme-minimal .listing-list .listing-item {
+  border: 1px solid var(--min-border);
+  padding: 10px;
+  margin-bottom: 6px;
+}
+
+.theme-minimal .pagination {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 16px;
+}
+.theme-minimal .pagination .page-btn {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  background: none;
+  border: 1px solid var(--min-border);
+  color: var(--min-text2);
+  font-weight: 300;
+  border-radius: 0;
+}
+.theme-minimal .pagination .page-btn.active {
+  border-color: var(--min-text);
+  color: var(--min-text);
+  font-weight: 400;
+}
+
+/* ── 功法和技能 ── */
+.theme-minimal .skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.theme-minimal .skill-card.equipped {
+  border-left: 2px solid var(--min-text);
+}
+
+.theme-minimal .skill-name {
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+
+.theme-minimal .key-badge {
+  display: inline-block;
+  font-size: 0.625rem;
+  border: 1px solid var(--min-text2);
+  color: var(--min-text2);
+  padding: 1px 5px;
+  font-weight: 300;
+}
+
+/* ── 预设行 ── */
+.theme-minimal .preset-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--min-border);
+  margin-bottom: 8px;
+}
+
+/* ── 传人 ── */
+.theme-minimal .disciple-card {
+  border: 1px solid var(--min-border);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+/* ── 洞府 ── */
+.theme-minimal .cave-card {
+  border: 1px solid var(--min-border);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.theme-minimal .cave-formation-wrap {
+  border: 1px solid var(--min-border);
+  padding: 12px;
+}
+
+/* ── 斗法 ── */
+.theme-minimal .duel-list .duel-item {
+  border: 1px solid var(--min-border);
+  padding: 10px;
+  margin-bottom: 6px;
+}
+
+.theme-minimal .rank-list .rank-item {
+  border-bottom: 1px solid var(--min-border);
+  padding: 8px 0;
+}
+
+/* ── 副本 ── */
+.theme-minimal .dungeon-layout {
+  border: 1px solid var(--min-border);
+  padding: 16px;
+}
+
+/* ── 仙盟 ── */
+.theme-minimal .alliance-list .alli-item {
+  border: 1px solid var(--min-border);
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.theme-minimal .member-list .member-item {
+  border-bottom: 1px solid var(--min-border);
+  padding: 8px 0;
+}
+
+.theme-minimal .warehouse-grid .wh-item {
+  border: 1px solid var(--min-border);
+  padding: 8px;
+}
+
+/* ── 设置 ── */
+.theme-minimal .settings-section {
+  border-bottom: 1px solid var(--min-border);
+  padding: 12px 0;
+}
+
+/* ── 百艺/炼器 ── */
+.theme-minimal .forge-panel {
+  border: 1px solid var(--min-border);
+  padding: 16px;
+}
+
+/* ── 词典 ── */
+.theme-minimal .dict-content .dict-entry {
+  border-bottom: 1px solid var(--min-border);
+  padding: 8px 0;
+}
+
+/* ── 试炼 ── */
+.theme-minimal .trial-shop {
+  border: 1px solid var(--min-border);
+  padding: 16px;
+}
+
+/* ── 命途 ── */
+.theme-minimal .mingtu-scroll {
+  border: none;
+  padding: 0;
+}
+.theme-minimal .mingtu-node {
+  border: 1px solid var(--min-border);
+  padding: 10px;
+  margin-bottom: 6px;
+}
+
+/* ── 底部间隔 ── */
+.theme-minimal .panel {
+  padding: 12px;
+}
+
+/* ── 选项列表 ── */
+.theme-minimal .opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.theme-minimal .opt-item {
+  border: 1px solid var(--min-border);
+  padding: 10px;
+  cursor: pointer;
+  transition: none;
+}
+.theme-minimal .opt-item:hover {
+  border-color: var(--min-text);
+}
+
+/* ── 快速操作栏 ── */
+.theme-minimal .quick-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+/* ── 加载页 ── */
+.theme-minimal .view-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 24px;
+}
+.theme-minimal .view-loading .loading-text {
+  font-weight: 300;
+  font-size: 0.8125rem;
+  color: var(--min-text2);
+  letter-spacing: 0.06em;
+}
+.theme-minimal .spinner {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--min-border);
+  border-top-color: var(--min-text);
+  animation: min-spin 1s linear infinite;
+  border-radius: 0;
+}
+@keyframes min-spin {
+  to { transform: rotate(360deg); }
+}

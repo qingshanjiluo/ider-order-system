@@ -1,7 +1,7 @@
-const crypto = require('crypto');
+﻿const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
 
-const API_BASE = 'https://idlexiuxianzhuan.cn';
+const API_BASE = 'https://ideer-game-api.sifangzhiji.workers.dev';
 const SIGN_KEY = 'KDYJ1iHyB02LgyN1Jljb5pQkTHU1ELC6Vg6ox6FC0iX0dW9l';
 const CLIENT_VERSION = '1.2.4';
 
@@ -31,7 +31,7 @@ async function apiRequest(method, path, token, body) {
   };
   if (token) headers['Authorization'] = 'Bearer ' + token;
   Object.assign(headers, antiDetect.buildAntiDetectHeaders(_apiIdx++));
-  const r = await fetch('https://idlexiuxianzhuan.cn' + path, {
+  const r = await fetch('https://ideer-game-api.sifangzhiji.workers.dev' + path, {
     method, headers, body: bodyStr || undefined,
   });
   const data = await r.json();

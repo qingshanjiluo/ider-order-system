@@ -50,41 +50,48 @@ function checkRateLimit(key, max = 60, windowSec = 60) {
 }
 
 export async function onRequest(context) {
-  const { request, next, env } = context;
-  const corsHeaders = getCorsHeaders(env);
-  
-  // Handle CORS preflight
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-  
-  const url = new URL(request.url);
-  
-  // Rate limiting for API routes
-  if (url.pathname.startsWith('/api/')) {
-    const ip = request.headers.get('CF-Connecting-IP') ||
-               request.headers.get('X-Forwarded-For') ||
-               'unknown';
-    const routeKey = url.pathname.split('/')[3] || 'api';
-    const isAuth = url.pathname.includes('/auth/');
-    const max = isAuth ? 10 : 60;
-    if (!checkRateLimit(ip + ':' + routeKey, max)) {
-      return new Response(JSON.stringify({ error: '请求过于频繁，请稍后再试' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+  try {
+    const { request, next, env } = context;
+    const corsHeaders = getCorsHeaders(env);
+    
+    // Handle CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
     }
+    
+    const url = new URL(request.url);
+    
+    // Rate limiting for API routes
+    if (url.pathname.startsWith('/api/')) {
+      const ip = request.headers.get('CF-Connecting-IP') ||
+                 request.headers.get('X-Forwarded-For') ||
+                 'unknown';
+      const routeKey = url.pathname.split('/')[3] || 'api';
+      const isAuth = url.pathname.includes('/auth/');
+      const max = isAuth ? 10 : 60;
+      if (!checkRateLimit(ip + ':' + routeKey, max)) {
+        return new Response(JSON.stringify({ error: '请求过于频繁，请稍后再试' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    
+    const response = await next();
+    
+    // Add CORS headers to all responses
+    const newHeaders = new Headers(response.headers);
+    Object.entries(corsHeaders).forEach(([k, v]) => newHeaders.set(k, v));
+    
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders,
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'Middleware error: ' + (err.message || String(err)) }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
-  
-  const response = await next();
-  
-  // Add CORS headers to all responses
-  const newHeaders = new Headers(response.headers);
-  Object.entries(corsHeaders).forEach(([k, v]) => newHeaders.set(k, v));
-  
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers: newHeaders,
-  });
 }

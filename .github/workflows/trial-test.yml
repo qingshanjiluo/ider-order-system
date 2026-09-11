@@ -47,7 +47,7 @@ jobs:
           CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
           TEST_USERNAME: ${{ inputs.username || secrets.TEST_USERNAME }}
           TEST_PASSWORD: ${{ inputs.password || secrets.TEST_PASSWORD }}
-        run: node gh-actions/trial_tester.js
+        run: node 原版/gh-actions/trial_tester.js
 
       - name: 上传测试报告
         uses: actions/upload-artifact@v4

@@ -23,7 +23,7 @@ export async function onRequest(context) {
     deleteIds = ids.map(Number).filter(Boolean);
   } else if (targetOrderId) {
     if (excess_only) {
-      // 超额清理：保留该工单前 quantity 个（失败/错误优先删，等级最低优先删），其余清理
+      // 超额清理：保留该工单前 quantity+1 个（含1个冗余缓冲，失败/错误优先删，等级最低优先删），其余清理
       const order = await env.DB.prepare('SELECT quantity FROM orders WHERE id = ?').bind(targetOrderId).first();
       if (order && order.quantity > 0) {
         // 排序：健康账号优先保留；failed/error 最靠后（最先被清理）
@@ -31,7 +31,8 @@ export async function onRequest(context) {
           "SELECT id FROM game_accounts WHERE order_id = ? AND health_status != 'cleaned' ORDER BY CASE WHEN status IN ('failed','error') THEN 3 WHEN status IN ('farming','active','completed') THEN 0 ELSE 2 END, COALESCE(level,0) DESC, id ASC"
         ).bind(targetOrderId).all();
         const allRows = allAcc.results || [];
-        const keepIds = allRows.slice(0, order.quantity).map(a => a.id);
+        const keepCount = order.quantity + 1;
+        const keepIds = allRows.slice(0, keepCount).map(a => a.id);
         deleteIds = allRows.filter(a => !keepIds.includes(a.id)).map(a => a.id);
       } else {
         // quantity=0 → 清理全部

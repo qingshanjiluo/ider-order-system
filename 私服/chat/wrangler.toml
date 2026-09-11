@@ -1,0 +1,23 @@
+name = "ideer-chat"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── 运行模式 ──
+# proxy     ：反代到原游戏 server 的 /chat（推荐，数据与原游戏一致）
+# standalone：D1 独立存储（需配置下方 d1_databases 与 JWT_SECRET）
+[vars]
+CHAT_MODE = "proxy"
+GAME_ORIGIN = "https://idlexiuxianzhuan.cn"
+JWT_SECRET = "REPLACE_WITH_GAME_JWT_SECRET"
+
+# ── standalone 模式所需：D1 数据库 ──
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "ideer-chat"
+# database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# ── 路由（生产域名，部署后按实际替换）──
+# routes = [
+#   { pattern = "chat.你的域名.com", zone_name = "你的域名.com" }
+# ]

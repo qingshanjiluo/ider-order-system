@@ -1,0 +1,40 @@
+/* 共享样式 - 用于所有问卷页面 */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Microsoft YaHei', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); padding: 20px; text-align: center; }
+.header h1 { color: #e94560; font-size: 1.8em; }
+.header p { color: #888; margin-top: 5px; font-size: 0.9em; }
+.nav { display: flex; justify-content: space-between; padding: 12px 20px; background: #0f3460; }
+.nav a { color: #e94560; text-decoration: none; padding: 8px 16px; border-radius: 6px; transition: all 0.3s; font-size: 0.9em; }
+.nav a:hover { background: #e94560; color: white; }
+.container { max-width: 800px; margin: 0 auto; padding: 15px; }
+.progress { text-align: center; color: #e94560; font-size: 0.95em; margin: 10px 0; }
+.saved { text-align: center; opacity: 0; transition: opacity 0.3s; position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #2ecc71; color: white; padding: 8px 20px; border-radius: 20px; z-index: 100; }
+.saved.show { opacity: 1; }
+.accordion { margin: 10px 0; }
+.accordion-item { background: #16213e; border-radius: 10px; margin: 8px 0; overflow: hidden; border: 2px solid #0f3460; transition: border-color 0.3s; }
+.accordion-item.answered { border-color: #2ecc71; }
+.accordion-header { padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.accordion-header:hover { background: #1a1a4e; }
+.accordion-header .num { color: #e94560; font-weight: bold; margin-right: 10px; }
+.accordion-header .title { flex: 1; font-size: 0.95em; }
+.accordion-header .arrow { color: #e94560; transition: transform 0.3s; }
+.accordion-item.active .accordion-header .arrow { transform: rotate(180deg); }
+.accordion-header .check { color: #2ecc71; margin-right: 10px; display: none; }
+.accordion-item.answered .accordion-header .check { display: inline; }
+.accordion-body { max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+.accordion-item.active .accordion-body { max-height: 800px; }
+.accordion-content { padding: 0 20px 20px; }
+.options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.option { padding: 12px 15px; background: #0f3460; border-radius: 8px; cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
+.option:hover { background: #1a1a4e; border-color: #e94560; }
+.option.selected { background: #e94560; border-color: #e94560; }
+.option-text { font-size: 0.9em; }
+.custom-section { margin-top: 12px; }
+.custom-label { color: #888; font-size: 0.85em; margin-bottom: 6px; }
+.custom-input { width: 100%; padding: 12px; background: #0f3460; border: 2px solid #34495e; border-radius: 8px; color: white; font-size: 0.9em; }
+.custom-input:focus { outline: none; border-color: #e94560; }
+.custom-input::placeholder { color: #666; }
+.bottom-nav { display: flex; justify-content: space-between; margin-top: 20px; padding: 15px 0; }
+.bottom-nav a { padding: 12px 24px; background: #e94560; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; }
+.bottom-nav a:hover { background: #c73e54; }

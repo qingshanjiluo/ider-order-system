@@ -1,0 +1,1888 @@
+[
+  {
+    "id": 11,
+    "name": "铁剑",
+    "type": "weapon",
+    "subtype": "剑",
+    "element": "金",
+    "material": "金属",
+    "description": "一把普通的铁剑",
+    "stats": {
+      "minAttack": 10,
+      "maxAttack": 20,
+      "strength": 5
+    },
+    "quality": 1
+  },
+  {
+    "id": 12,
+    "name": "精钢刀",
+    "type": "weapon",
+    "subtype": "刀",
+    "element": "金",
+    "material": "金属",
+    "description": "精钢打造的刀",
+    "stats": {
+      "minAttack": 15,
+      "maxAttack": 21,
+      "strength": 3
+    },
+    "quality": 1
+  },
+  {
+    "id": 13,
+    "name": "长枪",
+    "type": "weapon",
+    "subtype": "长兵",
+    "element": "木",
+    "material": "金属",
+    "description": "长枪在手，横扫千军",
+    "stats": {
+      "minAttack": 17,
+      "maxAttack": 23,
+      "strength": 4
+    },
+    "quality": 1
+  },
+  {
+    "id": 14,
+    "name": "铁爪",
+    "type": "weapon",
+    "subtype": "拳爪",
+    "element": "金",
+    "material": "金属",
+    "description": "锋利的铁爪",
+    "stats": {
+      "minAttack": 12,
+      "maxAttack": 16,
+      "agility": 6
+    },
+    "quality": 1
+  },
+  {
+    "id": 15,
+    "name": "短弓",
+    "type": "weapon",
+    "subtype": "弓",
+    "element": "木",
+    "material": "草木",
+    "description": "轻便的短弓",
+    "stats": {
+      "minAttack": 8,
+      "maxAttack": 18,
+      "agility": 8
+    },
+    "quality": 1
+  },
+  {
+    "id": 16,
+    "name": "木琴",
+    "type": "weapon",
+    "subtype": "音律",
+    "element": "木",
+    "material": "草木",
+    "description": "蕴含灵力的木琴",
+    "stats": {
+      "minAttack": 6,
+      "maxAttack": 14,
+      "zhenyuan": 7
+    },
+    "quality": 1
+  },
+  {
+    "id": 17,
+    "name": "符文杖",
+    "type": "weapon",
+    "subtype": "节杖",
+    "element": "火",
+    "material": "草木",
+    "description": "刻有符文的法杖",
+    "stats": {
+      "minAttack": 9,
+      "maxAttack": 16,
+      "lingli": 6
+    },
+    "quality": 1
+  },
+  {
+    "id": 18,
+    "name": "布衣",
+    "type": "chest",
+    "subtype": "chest",
+    "element": "无",
+    "material": "草木",
+    "description": "简单的布衣",
+    "stats": {
+      "hp": 30,
+      "defense": 5
+    },
+    "quality": 1
+  },
+  {
+    "id": 100,
+    "name": "基础剑诀",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "基础剑法",
+    "quality": 1
+  },
+  {
+    "id": 101,
+    "name": "基础刀法",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "基础刀法",
+    "quality": 1
+  },
+  {
+    "id": 102,
+    "name": "基础枪法",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "基础枪法",
+    "quality": 1
+  },
+  {
+    "id": 103,
+    "name": "基础拳法",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "基础拳法",
+    "quality": 1
+  },
+  {
+    "id": 104,
+    "name": "基础弓术",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "基础弓术",
+    "quality": 1
+  },
+  {
+    "id": 105,
+    "name": "基础音律",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "基础音律",
+    "quality": 1
+  },
+  {
+    "id": 106,
+    "name": "基础符术",
+    "type": "book",
+    "element": "火",
+    "material": "草木",
+    "description": "基础符术",
+    "quality": 1
+  },
+  {
+    "id": 110,
+    "name": "金刚功",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "金属性功法",
+    "quality": 1
+  },
+  {
+    "id": 111,
+    "name": "生生诀",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "木属性功法",
+    "quality": 1
+  },
+  {
+    "id": 112,
+    "name": "寒冰诀",
+    "type": "book",
+    "element": "水",
+    "material": "草木",
+    "description": "水属性功法",
+    "quality": 1
+  },
+  {
+    "id": 113,
+    "name": "烈焰心法",
+    "type": "book",
+    "element": "火",
+    "material": "草木",
+    "description": "火属性功法",
+    "quality": 1
+  },
+  {
+    "id": 114,
+    "name": "厚土功",
+    "type": "book",
+    "element": "土",
+    "material": "草木",
+    "description": "土属性功法",
+    "quality": 1
+  },
+  {
+    "id": 115,
+    "name": "混元功",
+    "type": "book",
+    "element": "混元",
+    "material": "草木",
+    "description": "混元功法",
+    "quality": 1
+  },
+  {
+    "id": 120,
+    "name": "金蛇剑法",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "高级剑法",
+    "quality": 1
+  },
+  {
+    "id": 121,
+    "name": "狂风刀法",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "高级刀法",
+    "quality": 1
+  },
+  {
+    "id": 122,
+    "name": "落雁长枪",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "高级枪法",
+    "quality": 1
+  },
+  {
+    "id": 123,
+    "name": "幻影拳",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "高级拳法",
+    "quality": 1
+  },
+  {
+    "id": 124,
+    "name": "穿云箭",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "高级弓术",
+    "quality": 1
+  },
+  {
+    "id": 125,
+    "name": "天籁之音",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "高级音律",
+    "quality": 1
+  },
+  {
+    "id": 126,
+    "name": "雷火符",
+    "type": "book",
+    "element": "火",
+    "material": "草木",
+    "description": "高级符术",
+    "quality": 1
+  },
+  {
+    "id": 130,
+    "name": "万剑归宗",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "顶级剑法",
+    "quality": 1
+  },
+  {
+    "id": 131,
+    "name": "天魔刀",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "顶级刀法",
+    "quality": 1
+  },
+  {
+    "id": 132,
+    "name": "霸王枪",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "顶级枪法",
+    "quality": 1
+  },
+  {
+    "id": 133,
+    "name": "降龙拳",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "顶级拳法",
+    "quality": 1
+  },
+  {
+    "id": 134,
+    "name": "落日弓",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "顶级弓术",
+    "quality": 1
+  },
+  {
+    "id": 135,
+    "name": "仙乐",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "顶级音律",
+    "quality": 1
+  },
+  {
+    "id": 136,
+    "name": "天雷符",
+    "type": "book",
+    "element": "火",
+    "material": "草木",
+    "description": "顶级符术",
+    "quality": 1
+  },
+  {
+    "id": 140,
+    "name": "御剑术",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "剑法秘籍",
+    "quality": 1
+  },
+  {
+    "id": 141,
+    "name": "拔刀术",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "刀法秘籍",
+    "quality": 1
+  },
+  {
+    "id": 142,
+    "name": "梨花枪",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "枪法秘籍",
+    "quality": 1
+  },
+  {
+    "id": 143,
+    "name": "拈花指",
+    "type": "book",
+    "element": "金",
+    "material": "草木",
+    "description": "拳法秘籍",
+    "quality": 1
+  },
+  {
+    "id": 144,
+    "name": "后羿弓",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "弓术秘籍",
+    "quality": 1
+  },
+  {
+    "id": 145,
+    "name": "凤求凰",
+    "type": "book",
+    "element": "木",
+    "material": "草木",
+    "description": "音律秘籍",
+    "quality": 1
+  },
+  {
+    "id": 146,
+    "name": "五雷符",
+    "type": "book",
+    "element": "火",
+    "material": "草木",
+    "description": "符术秘籍",
+    "quality": 1
+  },
+  {
+    "id": 159,
+    "name": "纸",
+    "type": "material",
+    "element": "无",
+    "material": "草木",
+    "description": "普通的纸张",
+    "quality": 1
+  },
+  {
+    "id": 160,
+    "name": "万物之形",
+    "type": "consumable",
+    "element": "无",
+    "material": "玉质",
+    "description": "蕴含造化之力的神秘宝物，可用于命途重置",
+    "effects": [],
+    "quality": 7
+  },
+  {
+    "id": 161,
+    "name": "灵墨",
+    "type": "material",
+    "element": "无",
+    "material": "液体",
+    "description": "蕴含灵力的墨水",
+    "quality": 1
+  },
+  {
+    "id": 162,
+    "name": "沉沼符",
+    "type": "talisman",
+    "element": "土",
+    "material": "纸质",
+    "description": "造成土属性伤害",
+    "quality": 1
+  },
+  {
+    "id": 163,
+    "name": "锐兵符",
+    "type": "talisman",
+    "element": "金",
+    "material": "纸质",
+    "description": "造成金属性伤害",
+    "quality": 1
+  },
+  {
+    "id": 164,
+    "name": "柔水符",
+    "type": "talisman",
+    "element": "水",
+    "material": "纸质",
+    "description": "造成水属性伤害",
+    "quality": 1
+  },
+  {
+    "id": 165,
+    "name": "缠绕符",
+    "type": "talisman",
+    "element": "木",
+    "material": "纸质",
+    "description": "造成木属性伤害",
+    "quality": 1
+  },
+  {
+    "id": 166,
+    "name": "烈火符",
+    "type": "talisman",
+    "element": "火",
+    "material": "纸质",
+    "description": "造成火属性伤害",
+    "quality": 1
+  },
+  {
+    "id": 168,
+    "name": "作者信物",
+    "type": "consumable",
+    "element": "混元",
+    "material": "玉质",
+    "description": "作者的信物",
+    "effects": [],
+    "quality": 8
+  },
+  {
+    "id": 170,
+    "name": "作者小信物",
+    "type": "consumable",
+    "element": "混元",
+    "material": "玉质",
+    "description": "作者的小信物",
+    "effects": [],
+    "quality": 4
+  },
+  {
+    "id": 199,
+    "name": "阵盘坯",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的阵盘坯",
+    "quality": 1
+  },
+  {
+    "id": 200,
+    "name": "定形点阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形点阵盘",
+    "quality": 1
+  },
+  {
+    "id": 201,
+    "name": "定形长二阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形长二阵盘",
+    "quality": 1
+  },
+  {
+    "id": 202,
+    "name": "定形直三阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形直三阵盘",
+    "quality": 1
+  },
+  {
+    "id": 203,
+    "name": "定形L三阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形L三阵盘",
+    "quality": 1
+  },
+  {
+    "id": 204,
+    "name": "定形直四阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形直四阵盘",
+    "quality": 1
+  },
+  {
+    "id": 205,
+    "name": "定形L四阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形L四阵盘",
+    "quality": 1
+  },
+  {
+    "id": 206,
+    "name": "定形T四阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形T四阵盘",
+    "quality": 1
+  },
+  {
+    "id": 207,
+    "name": "定形Z四阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形Z四阵盘",
+    "quality": 1
+  },
+  {
+    "id": 208,
+    "name": "定形U五阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形U五阵盘",
+    "quality": 1
+  },
+  {
+    "id": 209,
+    "name": "定形L五阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形L五阵盘",
+    "quality": 1
+  },
+  {
+    "id": 210,
+    "name": "定形T五阵盘",
+    "type": "array_plate",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的定形T五阵盘",
+    "quality": 1
+  },
+  {
+    "id": 220,
+    "name": "乾位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的乾位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 221,
+    "name": "坤位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的坤位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 222,
+    "name": "震位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的震位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 223,
+    "name": "巽位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的巽位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 224,
+    "name": "艮位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的艮位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 225,
+    "name": "兑位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的兑位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 226,
+    "name": "坎位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的坎位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 227,
+    "name": "离位阵纹",
+    "type": "array_rune",
+    "element": "无",
+    "material": "玉质",
+    "description": "用于洞府阵法的离位阵纹",
+    "quality": 1
+  },
+  {
+    "id": 239,
+    "name": "造化宝珠",
+    "type": "material",
+    "element": "混元",
+    "material": "玉质",
+    "description": "造化之力凝聚的宝珠，用于装备造化",
+    "quality": 8
+  },
+  {
+    "id": 400,
+    "name": "凡品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "凡品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 1
+  },
+  {
+    "id": 401,
+    "name": "凡品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "凡品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 1
+  },
+  {
+    "id": 402,
+    "name": "凡品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "凡品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 1
+  },
+  {
+    "id": 403,
+    "name": "凡品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "凡品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 1
+  },
+  {
+    "id": 404,
+    "name": "凡品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "凡品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 1
+  },
+  {
+    "id": 405,
+    "name": "灵品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "灵品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 2
+  },
+  {
+    "id": 406,
+    "name": "灵品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "灵品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 2
+  },
+  {
+    "id": 407,
+    "name": "灵品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "灵品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 2
+  },
+  {
+    "id": 408,
+    "name": "灵品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "灵品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 2
+  },
+  {
+    "id": 409,
+    "name": "灵品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "灵品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 2
+  },
+  {
+    "id": 410,
+    "name": "仙品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "仙品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 3
+  },
+  {
+    "id": 411,
+    "name": "仙品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "仙品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 3
+  },
+  {
+    "id": 412,
+    "name": "仙品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "仙品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 3
+  },
+  {
+    "id": 413,
+    "name": "仙品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "仙品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 3
+  },
+  {
+    "id": 414,
+    "name": "仙品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "仙品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 3
+  },
+  {
+    "id": 415,
+    "name": "宝品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "宝品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 4
+  },
+  {
+    "id": 416,
+    "name": "宝品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "宝品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 4
+  },
+  {
+    "id": 417,
+    "name": "宝品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "宝品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 4
+  },
+  {
+    "id": 418,
+    "name": "宝品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "宝品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 4
+  },
+  {
+    "id": 419,
+    "name": "宝品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "宝品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 4
+  },
+  {
+    "id": 420,
+    "name": "玄品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "玄品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 5
+  },
+  {
+    "id": 421,
+    "name": "玄品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "玄品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 5
+  },
+  {
+    "id": 422,
+    "name": "玄品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "玄品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 5
+  },
+  {
+    "id": 423,
+    "name": "玄品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "玄品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 5
+  },
+  {
+    "id": 424,
+    "name": "玄品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "玄品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 5
+  },
+  {
+    "id": 425,
+    "name": "地品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "地品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 6
+  },
+  {
+    "id": 426,
+    "name": "地品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "地品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 6
+  },
+  {
+    "id": 427,
+    "name": "地品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "地品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 6
+  },
+  {
+    "id": 428,
+    "name": "地品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "地品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 6
+  },
+  {
+    "id": 429,
+    "name": "地品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "地品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 6
+  },
+  {
+    "id": 430,
+    "name": "天品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "天品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 7
+  },
+  {
+    "id": 431,
+    "name": "天品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "天品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 7
+  },
+  {
+    "id": 432,
+    "name": "天品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "天品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 7
+  },
+  {
+    "id": 433,
+    "name": "天品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "天品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 7
+  },
+  {
+    "id": 434,
+    "name": "天品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "天品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 7
+  },
+  {
+    "id": 435,
+    "name": "道品金草",
+    "type": "herb",
+    "element": "金",
+    "material": "草木",
+    "description": "道品金属性药草，炼丹主药",
+    "category": "main",
+    "quality": 8
+  },
+  {
+    "id": 436,
+    "name": "道品木草",
+    "type": "herb",
+    "element": "木",
+    "material": "草木",
+    "description": "道品木属性药草，炼丹主药",
+    "category": "main",
+    "quality": 8
+  },
+  {
+    "id": 437,
+    "name": "道品水草",
+    "type": "herb",
+    "element": "水",
+    "material": "草木",
+    "description": "道品水属性药草，炼丹主药",
+    "category": "main",
+    "quality": 8
+  },
+  {
+    "id": 438,
+    "name": "道品火草",
+    "type": "herb",
+    "element": "火",
+    "material": "草木",
+    "description": "道品火属性药草，炼丹主药",
+    "category": "main",
+    "quality": 8
+  },
+  {
+    "id": 439,
+    "name": "道品土草",
+    "type": "herb",
+    "element": "土",
+    "material": "草木",
+    "description": "道品土属性药草，炼丹主药",
+    "category": "main",
+    "quality": 8
+  },
+  {
+    "id": 440,
+    "name": "凡品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "凡品金属性灵石，炼丹辅材",
+    "quality": 1
+  },
+  {
+    "id": 441,
+    "name": "凡品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "凡品木属性灵石，炼丹辅材",
+    "quality": 1
+  },
+  {
+    "id": 442,
+    "name": "凡品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "凡品水属性灵石，炼丹辅材",
+    "quality": 1
+  },
+  {
+    "id": 443,
+    "name": "凡品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "凡品火属性灵石，炼丹辅材",
+    "quality": 1
+  },
+  {
+    "id": 444,
+    "name": "凡品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "凡品土属性灵石，炼丹辅材",
+    "quality": 1
+  },
+  {
+    "id": 445,
+    "name": "灵品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "灵品金属性灵石，炼丹辅材",
+    "quality": 2
+  },
+  {
+    "id": 446,
+    "name": "灵品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "灵品木属性灵石，炼丹辅材",
+    "quality": 2
+  },
+  {
+    "id": 447,
+    "name": "灵品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "灵品水属性灵石，炼丹辅材",
+    "quality": 2
+  },
+  {
+    "id": 448,
+    "name": "灵品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "灵品火属性灵石，炼丹辅材",
+    "quality": 2
+  },
+  {
+    "id": 449,
+    "name": "灵品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "灵品土属性灵石，炼丹辅材",
+    "quality": 2
+  },
+  {
+    "id": 450,
+    "name": "仙品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "仙品金属性灵石，炼丹辅材",
+    "quality": 3
+  },
+  {
+    "id": 451,
+    "name": "仙品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "仙品木属性灵石，炼丹辅材",
+    "quality": 3
+  },
+  {
+    "id": 452,
+    "name": "仙品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "仙品水属性灵石，炼丹辅材",
+    "quality": 3
+  },
+  {
+    "id": 453,
+    "name": "仙品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "仙品火属性灵石，炼丹辅材",
+    "quality": 3
+  },
+  {
+    "id": 454,
+    "name": "仙品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "仙品土属性灵石，炼丹辅材",
+    "quality": 3
+  },
+  {
+    "id": 455,
+    "name": "宝品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "宝品金属性灵石，炼丹辅材",
+    "quality": 4
+  },
+  {
+    "id": 456,
+    "name": "宝品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "宝品木属性灵石，炼丹辅材",
+    "quality": 4
+  },
+  {
+    "id": 457,
+    "name": "宝品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "宝品水属性灵石，炼丹辅材",
+    "quality": 4
+  },
+  {
+    "id": 458,
+    "name": "宝品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "宝品火属性灵石，炼丹辅材",
+    "quality": 4
+  },
+  {
+    "id": 459,
+    "name": "宝品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "宝品土属性灵石，炼丹辅材",
+    "quality": 4
+  },
+  {
+    "id": 460,
+    "name": "玄品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "玄品金属性灵石，炼丹辅材",
+    "quality": 5
+  },
+  {
+    "id": 461,
+    "name": "玄品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "玄品木属性灵石，炼丹辅材",
+    "quality": 5
+  },
+  {
+    "id": 462,
+    "name": "玄品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "玄品水属性灵石，炼丹辅材",
+    "quality": 5
+  },
+  {
+    "id": 463,
+    "name": "玄品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "玄品火属性灵石，炼丹辅材",
+    "quality": 5
+  },
+  {
+    "id": 464,
+    "name": "玄品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "玄品土属性灵石，炼丹辅材",
+    "quality": 5
+  },
+  {
+    "id": 465,
+    "name": "地品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "地品金属性灵石，炼丹辅材",
+    "quality": 6
+  },
+  {
+    "id": 466,
+    "name": "地品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "地品木属性灵石，炼丹辅材",
+    "quality": 6
+  },
+  {
+    "id": 467,
+    "name": "地品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "地品水属性灵石，炼丹辅材",
+    "quality": 6
+  },
+  {
+    "id": 468,
+    "name": "地品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "地品火属性灵石，炼丹辅材",
+    "quality": 6
+  },
+  {
+    "id": 469,
+    "name": "地品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "地品土属性灵石，炼丹辅材",
+    "quality": 6
+  },
+  {
+    "id": 470,
+    "name": "天品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "天品金属性灵石，炼丹辅材",
+    "quality": 7
+  },
+  {
+    "id": 471,
+    "name": "天品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "天品木属性灵石，炼丹辅材",
+    "quality": 7
+  },
+  {
+    "id": 472,
+    "name": "天品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "天品水属性灵石，炼丹辅材",
+    "quality": 7
+  },
+  {
+    "id": 473,
+    "name": "天品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "天品火属性灵石，炼丹辅材",
+    "quality": 7
+  },
+  {
+    "id": 474,
+    "name": "天品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "天品土属性灵石，炼丹辅材",
+    "quality": 7
+  },
+  {
+    "id": 475,
+    "name": "道品金石",
+    "type": "material",
+    "element": "金",
+    "material": "玉质",
+    "description": "道品金属性灵石，炼丹辅材",
+    "quality": 8
+  },
+  {
+    "id": 476,
+    "name": "道品木石",
+    "type": "material",
+    "element": "木",
+    "material": "玉质",
+    "description": "道品木属性灵石，炼丹辅材",
+    "quality": 8
+  },
+  {
+    "id": 477,
+    "name": "道品水石",
+    "type": "material",
+    "element": "水",
+    "material": "玉质",
+    "description": "道品水属性灵石，炼丹辅材",
+    "quality": 8
+  },
+  {
+    "id": 478,
+    "name": "道品火石",
+    "type": "material",
+    "element": "火",
+    "material": "玉质",
+    "description": "道品火属性灵石，炼丹辅材",
+    "quality": 8
+  },
+  {
+    "id": 479,
+    "name": "道品土石",
+    "type": "material",
+    "element": "土",
+    "material": "玉质",
+    "description": "道品土属性灵石，炼丹辅材",
+    "quality": 8
+  },
+  {
+    "id": 480,
+    "name": "凡品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "凡品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 1
+  },
+  {
+    "id": 481,
+    "name": "灵品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "灵品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 2
+  },
+  {
+    "id": 482,
+    "name": "仙品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "仙品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 3
+  },
+  {
+    "id": 483,
+    "name": "宝品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "宝品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 4
+  },
+  {
+    "id": 484,
+    "name": "玄品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "玄品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 5
+  },
+  {
+    "id": 485,
+    "name": "地品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "地品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 6
+  },
+  {
+    "id": 486,
+    "name": "天品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "天品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 7
+  },
+  {
+    "id": 487,
+    "name": "道品灵引",
+    "type": "herb",
+    "element": "无",
+    "material": "草木",
+    "description": "道品催化灵引，提升炼丹成功率",
+    "category": "catalyst",
+    "quality": 8
+  },
+  {
+    "id": 488,
+    "name": "筑基丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "一品筑基丹，突破用",
+    "effects": [],
+    "quality": 1,
+    "alchemyGrade": 1,
+    "gradeName": "一品"
+  },
+  {
+    "id": 489,
+    "name": "强体散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "一品强体散，属性增益",
+    "effects": [],
+    "quality": 1,
+    "alchemyGrade": 1,
+    "gradeName": "一品"
+  },
+  {
+    "id": 490,
+    "name": "回血液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "一品回血液，恢复",
+    "effects": [],
+    "quality": 1,
+    "alchemyGrade": 1,
+    "gradeName": "一品"
+  },
+  {
+    "id": 491,
+    "name": "结丹丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "二品结丹丹，突破用",
+    "effects": [],
+    "quality": 2,
+    "alchemyGrade": 2,
+    "gradeName": "二品"
+  },
+  {
+    "id": 492,
+    "name": "增灵散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "二品增灵散，属性增益",
+    "effects": [],
+    "quality": 2,
+    "alchemyGrade": 2,
+    "gradeName": "二品"
+  },
+  {
+    "id": 493,
+    "name": "回气液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "二品回气液，恢复",
+    "effects": [],
+    "quality": 2,
+    "alchemyGrade": 2,
+    "gradeName": "二品"
+  },
+  {
+    "id": 494,
+    "name": "元婴丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "三品元婴丹，突破用",
+    "effects": [],
+    "quality": 3,
+    "alchemyGrade": 3,
+    "gradeName": "三品"
+  },
+  {
+    "id": 495,
+    "name": "悟道散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "三品悟道散，属性增益",
+    "effects": [],
+    "quality": 3,
+    "alchemyGrade": 3,
+    "gradeName": "三品"
+  },
+  {
+    "id": 496,
+    "name": "回元液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "三品回元液，恢复",
+    "effects": [],
+    "quality": 3,
+    "alchemyGrade": 3,
+    "gradeName": "三品"
+  },
+  {
+    "id": 497,
+    "name": "化神丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "四品化神丹，突破用",
+    "effects": [],
+    "quality": 4,
+    "alchemyGrade": 4,
+    "gradeName": "四品"
+  },
+  {
+    "id": 498,
+    "name": "脱凡散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "四品脱凡散，属性增益",
+    "effects": [],
+    "quality": 4,
+    "alchemyGrade": 4,
+    "gradeName": "四品"
+  },
+  {
+    "id": 499,
+    "name": "回神液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "四品回神液，恢复",
+    "effects": [],
+    "quality": 4,
+    "alchemyGrade": 4,
+    "gradeName": "四品"
+  },
+  {
+    "id": 500,
+    "name": "炼虚丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "五品炼虚丹，突破用",
+    "effects": [],
+    "quality": 5,
+    "alchemyGrade": 5,
+    "gradeName": "五品"
+  },
+  {
+    "id": 501,
+    "name": "合道散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "五品合道散，属性增益",
+    "effects": [],
+    "quality": 5,
+    "alchemyGrade": 5,
+    "gradeName": "五品"
+  },
+  {
+    "id": 502,
+    "name": "回虚液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "五品回虚液，恢复",
+    "effects": [],
+    "quality": 5,
+    "alchemyGrade": 5,
+    "gradeName": "五品"
+  },
+  {
+    "id": 503,
+    "name": "合体丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "六品合体丹，突破用",
+    "effects": [],
+    "quality": 6,
+    "alchemyGrade": 6,
+    "gradeName": "六品"
+  },
+  {
+    "id": 504,
+    "name": "归元散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "六品归元散，属性增益",
+    "effects": [],
+    "quality": 6,
+    "alchemyGrade": 6,
+    "gradeName": "六品"
+  },
+  {
+    "id": 505,
+    "name": "回体液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "六品回体液，恢复",
+    "effects": [],
+    "quality": 6,
+    "alchemyGrade": 6,
+    "gradeName": "六品"
+  },
+  {
+    "id": 506,
+    "name": "大乘丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "七品大乘丹，突破用",
+    "effects": [],
+    "quality": 7,
+    "alchemyGrade": 7,
+    "gradeName": "七品"
+  },
+  {
+    "id": 507,
+    "name": "渡劫散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "七品渡劫散，属性增益",
+    "effects": [],
+    "quality": 7,
+    "alchemyGrade": 7,
+    "gradeName": "七品"
+  },
+  {
+    "id": 508,
+    "name": "回劫液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "七品回劫液，恢复",
+    "effects": [],
+    "quality": 7,
+    "alchemyGrade": 7,
+    "gradeName": "七品"
+  },
+  {
+    "id": 509,
+    "name": "真仙丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "八品真仙丹，突破用",
+    "effects": [],
+    "quality": 8,
+    "alchemyGrade": 8,
+    "gradeName": "八品"
+  },
+  {
+    "id": 510,
+    "name": "证道散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "八品证道散，属性增益",
+    "effects": [],
+    "quality": 8,
+    "alchemyGrade": 8,
+    "gradeName": "八品"
+  },
+  {
+    "id": 511,
+    "name": "回仙液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "八品回仙液，恢复",
+    "effects": [],
+    "quality": 8,
+    "alchemyGrade": 8,
+    "gradeName": "八品"
+  },
+  {
+    "id": 512,
+    "name": "至高丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "九品至高丹，突破用",
+    "effects": [],
+    "quality": 9,
+    "alchemyGrade": 9,
+    "gradeName": "九品"
+  },
+  {
+    "id": 513,
+    "name": "大道散",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "九品大道散，属性增益",
+    "effects": [],
+    "quality": 9,
+    "alchemyGrade": 9,
+    "gradeName": "九品"
+  },
+  {
+    "id": 514,
+    "name": "回道液",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "九品回道液，恢复",
+    "effects": [],
+    "quality": 9,
+    "alchemyGrade": 9,
+    "gradeName": "九品"
+  },
+  {
+    "id": 515,
+    "name": "废丹",
+    "type": "consumable",
+    "element": "无",
+    "material": "丹药",
+    "description": "炼制失败的丹药，效果未知",
+    "effects": [
+      {
+        "type": "random_stat_down",
+        "value": 1
+      }
+    ],
+    "quality": 1
+  }
+]

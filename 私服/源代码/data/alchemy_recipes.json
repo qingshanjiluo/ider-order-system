@@ -1,0 +1,980 @@
+[
+  {
+    "id": 1,
+    "name": "筑基丹",
+    "result": {
+      "id": 500,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 400,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 440,
+          "count": 1
+        },
+        {
+          "itemId": 442,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 480,
+          "count": 1
+        }
+      ]
+    },
+    "time": 60,
+    "grade": 1
+  },
+  {
+    "id": 2,
+    "name": "结丹丹",
+    "result": {
+      "id": 503,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 405,
+          "count": 2
+        },
+        {
+          "itemId": 407,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 446,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 481,
+          "count": 1
+        }
+      ]
+    },
+    "time": 90,
+    "grade": 2
+  },
+  {
+    "id": 3,
+    "name": "元婴丹",
+    "result": {
+      "id": 506,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 410,
+          "count": 2
+        },
+        {
+          "itemId": 413,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 452,
+          "count": 2
+        },
+        {
+          "itemId": 454,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 482,
+          "count": 1
+        }
+      ]
+    },
+    "time": 120,
+    "grade": 3
+  },
+  {
+    "id": 4,
+    "name": "化神丹",
+    "result": {
+      "id": 509,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 416,
+          "count": 2
+        },
+        {
+          "itemId": 419,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 455,
+          "count": 2
+        },
+        {
+          "itemId": 458,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 483,
+          "count": 1
+        }
+      ]
+    },
+    "time": 150,
+    "grade": 4
+  },
+  {
+    "id": 5,
+    "name": "炼虚丹",
+    "result": {
+      "id": 512,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 422,
+          "count": 3
+        },
+        {
+          "itemId": 420,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 461,
+          "count": 2
+        },
+        {
+          "itemId": 464,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 484,
+          "count": 1
+        }
+      ]
+    },
+    "time": 180,
+    "grade": 5
+  },
+  {
+    "id": 6,
+    "name": "合体丹",
+    "result": {
+      "id": 515,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 428,
+          "count": 3
+        },
+        {
+          "itemId": 426,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 465,
+          "count": 3
+        },
+        {
+          "itemId": 467,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 485,
+          "count": 1
+        }
+      ]
+    },
+    "time": 240,
+    "grade": 6
+  },
+  {
+    "id": 7,
+    "name": "大乘丹",
+    "result": {
+      "id": 518,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 434,
+          "count": 3
+        },
+        {
+          "itemId": 430,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 471,
+          "count": 3
+        },
+        {
+          "itemId": 473,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 486,
+          "count": 1
+        }
+      ]
+    },
+    "time": 300,
+    "grade": 7
+  },
+  {
+    "id": 8,
+    "name": "真仙丹",
+    "result": {
+      "id": 521,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 435,
+          "count": 4
+        },
+        {
+          "itemId": 437,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 479,
+          "count": 3
+        },
+        {
+          "itemId": 476,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 487,
+          "count": 1
+        }
+      ]
+    },
+    "time": 360,
+    "grade": 8
+  },
+  {
+    "id": 9,
+    "name": "至高丹",
+    "result": {
+      "id": 524,
+      "count": 1
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 436,
+          "count": 4
+        },
+        {
+          "itemId": 438,
+          "count": 3
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 475,
+          "count": 3
+        },
+        {
+          "itemId": 477,
+          "count": 3
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 487,
+          "count": 2
+        }
+      ]
+    },
+    "time": 600,
+    "grade": 9
+  },
+  {
+    "id": 10,
+    "name": "强体散",
+    "result": {
+      "id": 501,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 404,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 440,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 480,
+          "count": 1
+        }
+      ]
+    },
+    "time": 45,
+    "grade": 1
+  },
+  {
+    "id": 11,
+    "name": "增灵散",
+    "result": {
+      "id": 504,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 407,
+          "count": 1
+        },
+        {
+          "itemId": 408,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 449,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 481,
+          "count": 1
+        }
+      ]
+    },
+    "time": 60,
+    "grade": 2
+  },
+  {
+    "id": 12,
+    "name": "悟道散",
+    "result": {
+      "id": 507,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 411,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 453,
+          "count": 1
+        },
+        {
+          "itemId": 450,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 482,
+          "count": 1
+        }
+      ]
+    },
+    "time": 90,
+    "grade": 3
+  },
+  {
+    "id": 13,
+    "name": "脱凡散",
+    "result": {
+      "id": 510,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 415,
+          "count": 2
+        },
+        {
+          "itemId": 417,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 459,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 483,
+          "count": 1
+        }
+      ]
+    },
+    "time": 120,
+    "grade": 4
+  },
+  {
+    "id": 14,
+    "name": "合道散",
+    "result": {
+      "id": 513,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 423,
+          "count": 2
+        },
+        {
+          "itemId": 421,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 460,
+          "count": 2
+        },
+        {
+          "itemId": 462,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 484,
+          "count": 1
+        }
+      ]
+    },
+    "time": 150,
+    "grade": 5
+  },
+  {
+    "id": 15,
+    "name": "归元散",
+    "result": {
+      "id": 516,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 425,
+          "count": 3
+        },
+        {
+          "itemId": 429,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 466,
+          "count": 2
+        },
+        {
+          "itemId": 468,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 485,
+          "count": 1
+        }
+      ]
+    },
+    "time": 180,
+    "grade": 6
+  },
+  {
+    "id": 16,
+    "name": "渡劫散",
+    "result": {
+      "id": 519,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 432,
+          "count": 3
+        },
+        {
+          "itemId": 434,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 470,
+          "count": 3
+        },
+        {
+          "itemId": 472,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 486,
+          "count": 1
+        }
+      ]
+    },
+    "time": 240,
+    "grade": 7
+  },
+  {
+    "id": 17,
+    "name": "证道散",
+    "result": {
+      "id": 522,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 438,
+          "count": 3
+        },
+        {
+          "itemId": 436,
+          "count": 3
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 479,
+          "count": 2
+        },
+        {
+          "itemId": 475,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 487,
+          "count": 1
+        }
+      ]
+    },
+    "time": 300,
+    "grade": 8
+  },
+  {
+    "id": 18,
+    "name": "大道散",
+    "result": {
+      "id": 525,
+      "count": 2
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 435,
+          "count": 4
+        },
+        {
+          "itemId": 439,
+          "count": 3
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 476,
+          "count": 3
+        },
+        {
+          "itemId": 478,
+          "count": 3
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 487,
+          "count": 2
+        }
+      ]
+    },
+    "time": 480,
+    "grade": 9
+  },
+  {
+    "id": 19,
+    "name": "回血液",
+    "result": {
+      "id": 502,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 403,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 441,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 480,
+          "count": 1
+        }
+      ]
+    },
+    "time": 30,
+    "grade": 1
+  },
+  {
+    "id": 20,
+    "name": "回气液",
+    "result": {
+      "id": 505,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 409,
+          "count": 1
+        },
+        {
+          "itemId": 405,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 447,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 481,
+          "count": 1
+        }
+      ]
+    },
+    "time": 45,
+    "grade": 2
+  },
+  {
+    "id": 21,
+    "name": "回元液",
+    "result": {
+      "id": 508,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 410,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 451,
+          "count": 1
+        },
+        {
+          "itemId": 454,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 482,
+          "count": 1
+        }
+      ]
+    },
+    "time": 60,
+    "grade": 3
+  },
+  {
+    "id": 22,
+    "name": "回神液",
+    "result": {
+      "id": 511,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 418,
+          "count": 2
+        },
+        {
+          "itemId": 416,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 455,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 483,
+          "count": 1
+        }
+      ]
+    },
+    "time": 90,
+    "grade": 4
+  },
+  {
+    "id": 23,
+    "name": "回虚液",
+    "result": {
+      "id": 514,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 420,
+          "count": 2
+        },
+        {
+          "itemId": 424,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 463,
+          "count": 2
+        },
+        {
+          "itemId": 461,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 484,
+          "count": 1
+        }
+      ]
+    },
+    "time": 120,
+    "grade": 5
+  },
+  {
+    "id": 24,
+    "name": "回体液",
+    "result": {
+      "id": 517,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 427,
+          "count": 3
+        },
+        {
+          "itemId": 425,
+          "count": 1
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 469,
+          "count": 2
+        },
+        {
+          "itemId": 466,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 485,
+          "count": 1
+        }
+      ]
+    },
+    "time": 150,
+    "grade": 6
+  },
+  {
+    "id": 25,
+    "name": "回劫液",
+    "result": {
+      "id": 520,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 430,
+          "count": 3
+        },
+        {
+          "itemId": 431,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 472,
+          "count": 3
+        },
+        {
+          "itemId": 474,
+          "count": 1
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 486,
+          "count": 1
+        }
+      ]
+    },
+    "time": 200,
+    "grade": 7
+  },
+  {
+    "id": 26,
+    "name": "回仙液",
+    "result": {
+      "id": 523,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 439,
+          "count": 3
+        },
+        {
+          "itemId": 437,
+          "count": 2
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 475,
+          "count": 3
+        },
+        {
+          "itemId": 478,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 487,
+          "count": 1
+        }
+      ]
+    },
+    "time": 280,
+    "grade": 8
+  },
+  {
+    "id": 27,
+    "name": "回道液",
+    "result": {
+      "id": 526,
+      "count": 3
+    },
+    "ingredients": {
+      "main": [
+        {
+          "itemId": 436,
+          "count": 4
+        },
+        {
+          "itemId": 438,
+          "count": 3
+        }
+      ],
+      "sub": [
+        {
+          "itemId": 475,
+          "count": 3
+        },
+        {
+          "itemId": 479,
+          "count": 2
+        }
+      ],
+      "catalyst": [
+        {
+          "itemId": 487,
+          "count": 2
+        }
+      ]
+    },
+    "time": 400,
+    "grade": 9
+  }
+]

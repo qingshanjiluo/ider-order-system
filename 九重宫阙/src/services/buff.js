@@ -1,0 +1,74 @@
+const { loadDatabase, saveDatabase } = require('../database');
+
+class BuffService {
+  getActiveBuffs(characterId) {
+    const db = loadDatabase();
+    if (!db.character_buffs) db.character_buffs = [];
+    const now = Date.now();
+    return db.character_buffs.filter(b => b.character_id === characterId && b.expires_at > now);
+  }
+
+  addBuff(characterId, type, value, durationMs) {
+    const db = loadDatabase();
+    if (!db.character_buffs) db.character_buffs = [];
+
+    const existing = db.character_buffs.find(b => b.character_id === characterId && b.type === type);
+    if (existing) {
+      existing.value = Math.max(existing.value, value);
+      existing.expires_at = Math.max(existing.expires_at, Date.now() + durationMs);
+    } else {
+      db.character_buffs.push({
+        id: Date.now(),
+        character_id: characterId,
+        type,
+        value,
+        expires_at: Date.now() + durationMs,
+        created_at: Date.now()
+      });
+    }
+    saveDatabase(db);
+  }
+
+  removeBuff(characterId, type) {
+    const db = loadDatabase();
+    if (!db.character_buffs) return;
+    db.character_buffs = db.character_buffs.filter(b => !(b.character_id === characterId && b.type === type));
+    saveDatabase(db);
+  }
+
+  cleanupExpired() {
+    const db = loadDatabase();
+    if (!db.character_buffs) return;
+    const now = Date.now();
+    db.character_buffs = db.character_buffs.filter(b => b.expires_at > now);
+    saveDatabase(db);
+  }
+
+  getBuffMultiplier(characterId, statType) {
+    const buffs = this.getActiveBuffs(characterId);
+    let multiplier = 1.0;
+    for (const buff of buffs) {
+      if (buff.type === statType || buff.type === 'all') {
+        multiplier += (buff.value - 1.0);
+      }
+    }
+    return multiplier;
+  }
+
+  applyGuildShopBuff(characterId, itemName) {
+    const buffDefinitions = {
+      '培元丹': { type: 'exp', value: 1.5, duration: 3600000 },
+      '聚灵丹': { type: 'attack', value: 1.2, duration: 3600000 },
+      '铁壁丹': { type: 'defense', value: 1.2, duration: 3600000 },
+      '疾风丹': { type: 'speed', value: 1.3, duration: 3600000 }
+    };
+    const def = buffDefinitions[itemName];
+    if (def) {
+      this.addBuff(characterId, def.type, def.value, def.duration);
+      return { success: true, buff: def, message: `${itemName}效果已激活，持续${def.duration / 60000}分钟` };
+    }
+    return { success: false, message: '该物品无法使用' };
+  }
+}
+
+module.exports = new BuffService();

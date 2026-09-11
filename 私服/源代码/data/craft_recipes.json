@@ -1,0 +1,224 @@
+[
+  {
+    "id": 1,
+    "name": "造纸",
+    "category": "craft_item",
+    "result": {
+      "id": 159,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 400,
+        "count": 2
+      }
+    ],
+    "time": 20,
+    "display_name": "造纸",
+    "grade": 0
+  },
+  {
+    "id": 2,
+    "name": "灵墨",
+    "category": "craft_item",
+    "result": {
+      "id": 161,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 400,
+        "count": 1
+      },
+      {
+        "itemId": 440,
+        "count": 1
+      }
+    ],
+    "time": 20,
+    "display_name": "灵墨",
+    "grade": 0
+  },
+  {
+    "id": 3,
+    "name": "烧制木炭",
+    "category": "craft_item",
+    "result": {
+      "id": 400,
+      "count": 2
+    },
+    "ingredients": [
+      {
+        "itemId": 401,
+        "count": 3
+      }
+    ],
+    "time": 15,
+    "display_name": "烧制木炭",
+    "grade": 0
+  },
+  {
+    "id": 6,
+    "name": "演化万物之形",
+    "category": "craft_item",
+    "result": {
+      "id": 160,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 425,
+        "count": 5
+      },
+      {
+        "itemId": 426,
+        "count": 5
+      },
+      {
+        "itemId": 427,
+        "count": 5
+      },
+      {
+        "itemId": 428,
+        "count": 5
+      },
+      {
+        "itemId": 429,
+        "count": 5
+      }
+    ],
+    "time": 600,
+    "display_name": "演化万物之形",
+    "grade": 0
+  },
+  {
+    "id": 5,
+    "name": "沉沼符",
+    "category": "talisman",
+    "result": {
+      "id": 162,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 159,
+        "count": 1
+      },
+      {
+        "itemId": 161,
+        "count": 1
+      },
+      {
+        "itemId": 444,
+        "count": 1
+      }
+    ],
+    "time": 20,
+    "display_name": "沉沼符",
+    "grade": 0
+  },
+  {
+    "id": 7,
+    "name": "锐兵符",
+    "category": "talisman",
+    "result": {
+      "id": 163,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 159,
+        "count": 1
+      },
+      {
+        "itemId": 161,
+        "count": 1
+      },
+      {
+        "itemId": 440,
+        "count": 1
+      }
+    ],
+    "time": 20,
+    "display_name": "锐兵符",
+    "grade": 0
+  },
+  {
+    "id": 8,
+    "name": "柔水符",
+    "category": "talisman",
+    "result": {
+      "id": 164,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 159,
+        "count": 1
+      },
+      {
+        "itemId": 161,
+        "count": 1
+      },
+      {
+        "itemId": 442,
+        "count": 1
+      }
+    ],
+    "time": 20,
+    "display_name": "柔水符",
+    "grade": 0
+  },
+  {
+    "id": 9,
+    "name": "缠绕符",
+    "category": "talisman",
+    "result": {
+      "id": 165,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 159,
+        "count": 1
+      },
+      {
+        "itemId": 161,
+        "count": 1
+      },
+      {
+        "itemId": 441,
+        "count": 1
+      }
+    ],
+    "time": 20,
+    "display_name": "缠绕符",
+    "grade": 0
+  },
+  {
+    "id": 10,
+    "name": "烈火符",
+    "category": "talisman",
+    "result": {
+      "id": 166,
+      "count": 1
+    },
+    "ingredients": [
+      {
+        "itemId": 159,
+        "count": 1
+      },
+      {
+        "itemId": 161,
+        "count": 1
+      },
+      {
+        "itemId": 443,
+        "count": 1
+      }
+    ],
+    "time": 20,
+    "display_name": "烈火符",
+    "grade": 0
+  }
+]

@@ -1383,89 +1383,75 @@ async function handleRoute(method, path, request, env, url) {
 
     let accountId = 0;
     if (status === 'creating') {
-      // 服务端硬上限：防止并发扫描/重复注册导致超量注册
-      const ordInfo = await env.DB.prepare(
-        'SELECT quantity, status FROM orders WHERE id = ?'
-      ).bind(order_id).first();
+      // 优化：单次查询获取订单信息和账号数量
+      const batchResult = await env.DB.batch([
+        env.DB.prepare('SELECT quantity, status, user_id FROM orders WHERE id = ?').bind(order_id),
+        env.DB.prepare("SELECT COUNT(*) as cnt FROM game_accounts WHERE order_id = ?").bind(order_id),
+        env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id),
+      ]);
+      const ordInfo = batchResult[0]?.results?.[0];
+      const cntRow = batchResult[1]?.results?.[0];
+      const existing = batchResult[2]?.results?.[0];
+
       if (ordInfo) {
         const qty = ordInfo.quantity || 0;
-        const cntRow = await env.DB.prepare(
-          "SELECT COUNT(*) as cnt FROM game_accounts WHERE order_id = ?"
-        ).bind(order_id).first();
         const cnt = cntRow?.cnt || 0;
-        // 已注册数 >= 订购数时不再创建新账号（重试已存在账号除外）
         if (qty > 0 && cnt >= qty) {
           return json({ ok: true, account_id: 0, capped: true, message: '已达订购数量上限，跳过注册' });
         }
       }
-      const existing = await env.DB.prepare(
-        'SELECT id FROM game_accounts WHERE username = ? AND order_id = ?'
-      ).bind(username, order_id).first();
+
       if (!existing) {
         const ins = await env.DB.prepare(
           "INSERT INTO game_accounts (order_id, username, password, server_username, server_password, status, created_at) VALUES (?, ?, ?, ?, ?, 'registering', datetime('now'))"
         ).bind(order_id, username, password, server_username || '', server_password || '').run();
         accountId = ins.meta?.last_row_id || 0;
-        const ord = await env.DB.prepare('SELECT user_id FROM orders WHERE id = ?').bind(order_id).first();
-        await logActivity(env, order_id, ord?.user_id || 0, 'account_created', '创建账号: ' + username);
-        await env.DB.prepare(
-          "INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (?, ?, 'register', ?)"
-        ).bind(accountId, order_id, '注册账号: ' + username).run();
+        // 优化：使用batch合并日志写入
+        await env.DB.batch([
+          logActivity(env, order_id, ordInfo?.user_id || 0, 'account_created', '创建账号: ' + username),
+          env.DB.prepare("INSERT INTO account_logs (account_id, order_id, log_type, message) VALUES (?, ?, 'register', ?)").bind(accountId, order_id, '注册账号: ' + username),
+        ]);
       } else {
         accountId = existing.id;
-        // 重试失败账号：重置状态
         await env.DB.prepare(
           "UPDATE game_accounts SET status = 'registering', setup_status = 'pending', error_msg = '' WHERE id = ? AND status = 'failed'"
         ).bind(accountId).run();
       }
     } else if (status === 'character_created') {
-      await env.DB.prepare(
-        "UPDATE game_accounts SET status = 'created', character_name = ?, spirit_roots = ?, setup_status = 'character_created', last_check_at = datetime('now'), health_status = 'ok', created_result = ? WHERE username = ? AND order_id = ?"
-      ).bind(character_name || '', spirit_roots || '{}', created_result || '', username, order_id).run();
-      await env.DB.prepare(
-        "UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed')) WHERE id = ?"
-      ).bind(order_id, order_id).run();
-      const acc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
-      accountId = acc?.id || 0;
-      if (accountId) {
-        await env.DB.prepare(
-          "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'character', ?, ?)"
-        ).bind(accountId, order_id, '创建角色: ' + (character_name || ''), created_result || '').run();
-      }
+      // 优化：使用batch合并查询和更新
+      const existingAcc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
+      accountId = existingAcc?.id || 0;
+      
+      await env.DB.batch([
+        env.DB.prepare("UPDATE game_accounts SET status = 'created', character_name = ?, spirit_roots = ?, setup_status = 'character_created', last_check_at = datetime('now'), health_status = 'ok', created_result = ? WHERE username = ? AND order_id = ?").bind(character_name || '', spirit_roots || '{}', created_result || '', username, order_id),
+        env.DB.prepare("UPDATE orders SET total_accounts_created = (SELECT COUNT(*) FROM game_accounts WHERE order_id = ? AND status NOT IN ('failed')) WHERE id = ?").bind(order_id, order_id),
+        accountId ? env.DB.prepare("INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'character', ?, ?)").bind(accountId, order_id, '创建角色: ' + (character_name || ''), created_result || '') : null,
+      ].filter(Boolean));
     } else if (status === 'farming' || status === 'active') {
       const ss = setup_status || 'farming';
-      await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = COALESCE(NULLIF(?, 0), level), map_id = ?, map_name = ?, skills = COALESCE(NULLIF(?, '[]'), skills), techniques = COALESCE(NULLIF(?, '[]'), techniques), equipment = COALESCE(NULLIF(?, '[]'), equipment), is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = COALESCE(NULLIF(?, ''), character_name), spirit_roots = COALESCE(?, spirit_roots), created_result = COALESCE(NULLIF(?, ''), created_result) WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || null, created_result || '', username, order_id).run();
-      const acc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
-      accountId = acc?.id || 0;
-      if (accountId) {
-        await env.DB.prepare(
-          "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'setup_complete', ?, ?)"
-        ).bind(accountId, order_id, '配置完成 Lv.' + (level || 1) + ' 开始挂机', JSON.stringify({ status, level, map_id, map_name })).run();
-      }
+      const existingAcc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
+      accountId = existingAcc?.id || 0;
+      
+      await env.DB.batch([
+        env.DB.prepare("UPDATE game_accounts SET status = ?, level = COALESCE(NULLIF(?, 0), level), map_id = ?, map_name = ?, skills = COALESCE(NULLIF(?, '[]'), skills), techniques = COALESCE(NULLIF(?, '[]'), techniques), equipment = COALESCE(NULLIF(?, '[]'), equipment), is_farming = 1, last_check_at = datetime('now'), health_status = 'ok', setup_status = ?, character_name = COALESCE(NULLIF(?, ''), character_name), spirit_roots = COALESCE(?, spirit_roots), created_result = COALESCE(NULLIF(?, ''), created_result) WHERE username = ? AND order_id = ?").bind(status, level || 0, map_id || 0, map_name || '', JSON.stringify(skills || []), JSON.stringify(techniques || []), JSON.stringify(equipment || []), ss, character_name || '', spirit_roots || null, created_result || '', username, order_id),
+        accountId ? env.DB.prepare("INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'setup_complete', ?, ?)").bind(accountId, order_id, '配置完成 Lv.' + (level || 1) + ' 开始挂机', JSON.stringify({ status, level, map_id, map_name })) : null,
+      ].filter(Boolean));
     } else if (status === 'completed') {
-      await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, character_name || '', spirit_roots || '{}', username, order_id).run();
-      const acc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
-      accountId = acc?.id || 0;
-      if (accountId) {
-        await env.DB.prepare(
-          "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'levelup_completed', ?, ?)"
-        ).bind(accountId, order_id, '🎉 满级 ' + level + '!', JSON.stringify({ level })).run();
-      }
+      const existingAcc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
+      accountId = existingAcc?.id || 0;
+      
+      await env.DB.batch([
+        env.DB.prepare("UPDATE game_accounts SET status = ?, level = ?, character_name = ?, spirit_roots = ?, reached_120_at = datetime('now'), stop_monitor_at = datetime('now', '+2 days'), last_check_at = datetime('now'), health_status = 'completed' WHERE username = ? AND order_id = ?").bind(status, level || 0, character_name || '', spirit_roots || '{}', username, order_id),
+        accountId ? env.DB.prepare("INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'levelup_completed', ?, ?)").bind(accountId, order_id, '🎉 满级 ' + level + '!', JSON.stringify({ level })) : null,
+      ].filter(Boolean));
     } else if (status === 'error' || status === 'failed') {
-      await env.DB.prepare(
-        "UPDATE game_accounts SET status = ?, level = ?, error_msg = ?, last_check_at = datetime('now'), health_status = 'error' WHERE username = ? AND order_id = ?"
-      ).bind(status, level || 0, error_msg || '', username, order_id).run();
-      const acc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
-      accountId = acc?.id || 0;
-      if (accountId) {
-        await env.DB.prepare(
-          "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'error', ?, ?)"
-        ).bind(accountId, order_id, error_msg || status, JSON.stringify({ status, error_msg })).run();
-      }
+      const existingAcc = await env.DB.prepare('SELECT id FROM game_accounts WHERE username = ? AND order_id = ?').bind(username, order_id).first();
+      accountId = existingAcc?.id || 0;
+      
+      await env.DB.batch([
+        env.DB.prepare("UPDATE game_accounts SET status = ?, level = ?, error_msg = ?, last_check_at = datetime('now'), health_status = 'error' WHERE username = ? AND order_id = ?").bind(status, level || 0, error_msg || '', username, order_id),
+        accountId ? env.DB.prepare("INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, 'error', ?, ?)").bind(accountId, order_id, error_msg || status, JSON.stringify({ status, error_msg })) : null,
+      ].filter(Boolean));
     } else {
       await env.DB.prepare(
         "UPDATE game_accounts SET status = ?, level = ?, last_check_at = datetime('now') WHERE username = ? AND order_id = ?"
@@ -1657,64 +1643,56 @@ async function handleRoute(method, path, request, env, url) {
   if (path === '/api/gh/complete-order' && method === 'POST') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const { order_id } = body;
-    const stats = await env.DB.prepare(
-      "SELECT status, setup_status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status, setup_status"
-    ).bind(order_id).all();
-    const rows = stats.results || [];
-    const total = rows.reduce((s, r) => s + r.cnt, 0);
-    const getCount = (statuses) => rows.filter(r => statuses.includes(r.status)).reduce((s, r) => s + r.cnt, 0);
-    const setupPhase = ['pending', 'registering', 'created'];
-    const farmingPhase = ['farming', 'active'];
-    const finalPhase = ['completed', 'failed', 'error'];
-
-    const settingUp = getCount(setupPhase);
-    const farming = getCount(farmingPhase);
-    const finished = getCount(finalPhase);
-    const failed = getCount(['failed', 'error']);
-
-    const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
+    
+    // 优化：单次查询获取所有需要的数据
+    const batchResult = await env.DB.batch([
+      env.DB.prepare("SELECT status, setup_status, COUNT(*) as cnt FROM game_accounts WHERE order_id = ? GROUP BY status, setup_status").bind(order_id),
+      env.DB.prepare("SELECT user_id, status, quantity FROM orders WHERE id = ?").bind(order_id),
+    ]);
+    
+    const rows = batchResult[0]?.results || [];
+    const order = batchResult[1]?.results?.[0];
+    
     if (!order) return json({ error: '工单不存在' }, 404);
 
-    // 有效已交付账号：挂机/满级且配置完成
+    const total = rows.reduce((s, r) => s + r.cnt, 0);
+    const getCount = (statuses) => rows.filter(r => statuses.includes(r.status)).reduce((s, r) => s + r.cnt, 0);
+    
+    const settingUp = getCount(['pending', 'registering', 'created']);
+    const farming = getCount(['farming', 'active']);
+    const finished = getCount(['completed', 'failed', 'error']);
+
     const VALID_SETUP = ['farming', 'active', 'completed'];
     const delivered = rows
       .filter(r => ['farming', 'active', 'completed'].includes(r.status) && VALID_SETUP.includes(r.setup_status))
       .reduce((s, r) => s + r.cnt, 0);
 
-    // 阶段1: 初始交付 — 全部离开设置阶段，仍有账号在挂机
+    const quantityMet = delivered >= (order.quantity || 0);
+
+    // 阶段1: 初始交付
     if (settingUp === 0 && farming > 0) {
-      await env.DB.prepare(
-        "UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'"
-      ).bind(total, order_id).run();
-      await env.DB.prepare(
-        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已交付', '工单 #' || ? || ' 账号已全部创建并配置完成，开始自动挂机', 'order')"
-      ).bind(order.user_id, order_id).run();
-      await logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段');
-      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, failed, delivered });
+      await env.DB.batch([
+        env.DB.prepare("UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'").bind(total, order_id),
+        env.DB.prepare("INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已交付', '工单 #' || ? || ' 账号已全部创建并配置完成，开始自动挂机', 'order')").bind(order.user_id, order_id),
+        logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段'),
+      ]);
+      return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, delivered });
     }
 
-    // 阶段2: 最终完成 — 无挂中账号，全部已完成/失败/错误，且有效交付数达到订购数
-    const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
-    const quantityMet = orderQty && delivered >= orderQty.quantity;
-    if (!quantityMet && orderQty) {
-      await logActivity(env, order_id, order.user_id, 'processing',
-        `账号未达标: 有效交付 ${delivered}/${orderQty.quantity}，暂不自动完成（不足订购数）`);
-    }
+    // 阶段2: 最终完成
     if (settingUp === 0 && farming === 0 && finished === total && total > 0 && quantityMet) {
-      await env.DB.prepare(
-        "UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
-      ).bind(order_id).run();
-      await env.DB.prepare(
-        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已完成', '工单 #' || ? || ' 已全部完成，账号已到达120级', 'order')"
-      ).bind(order.user_id, order_id).run();
-      await logActivity(env, order_id, order.user_id, 'completed', '所有账号已到120级，工单自动完成');
+      await env.DB.batch([
+        env.DB.prepare("UPDATE orders SET status = 'completed', completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?").bind(order_id),
+        env.DB.prepare("INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已完成', '工单 #' || ? || ' 已全部完成，账号已到达120级', 'order')").bind(order.user_id, order_id),
+        logActivity(env, order_id, order.user_id, 'completed', '所有账号已到120级，工单自动完成'),
+      ]);
       return json({ ok: true, message: '订单已完成', status: 'completed' });
     }
 
     return json({
       ok: true,
       message: '仍有账号未完成',
-      detail: { settingUp, farming, finished, total },
+      detail: { settingUp, farming, finished, total, delivered, quantityMet },
     });
   }
 
@@ -2052,6 +2030,65 @@ async function handleRoute(method, path, request, env, url) {
       "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, ?, ?, ?)"
     ).bind(account_id || 0, order_id || 0, log_type || 'info', message || '', raw_output || '').run();
     return json({ ok: true });
+  }
+
+  // ── GH: 批量上报日志（减少D1调用） ──────────────────────
+  if (path === '/api/gh/report-logs-batch' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { logs } = body;
+    if (!Array.isArray(logs) || logs.length === 0) return json({ error: '缺少logs数组' }, 400);
+    
+    const batchLogs = logs.slice(0, 50);
+    const statements = batchLogs.map(log => 
+      env.DB.prepare(
+        "INSERT INTO account_logs (account_id, order_id, log_type, message, raw_output) VALUES (?, ?, ?, ?, ?)"
+      ).bind(log.account_id || 0, log.order_id || 0, log.log_type || 'info', log.message || '', log.raw_output || '')
+    );
+    
+    await env.DB.batch(statements);
+    return json({ ok: true, inserted: batchLogs.length });
+  }
+
+  // ── GH: 批量上报账号状态（减少D1调用） ──────────────────────
+  if (path === '/api/gh/report-accounts-batch' && method === 'POST') {
+    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
+    const { accounts } = body;
+    if (!Array.isArray(accounts) || accounts.length === 0) return json({ error: '缺少accounts数组' }, 400);
+    
+    const batchAccounts = accounts.slice(0, 20);
+    const results = [];
+    
+    for (const acc of batchAccounts) {
+      try {
+        const { order_id, username, status, level, map_id, map_name, character_name, spirit_roots, health_status, setup_status } = acc;
+        const reportStatus = (level >= 120) ? 'completed' : (status || 'farming');
+        
+        await env.DB.prepare(
+          `UPDATE game_accounts SET 
+            status = ?, level = ?, map_id = ?, map_name = ?,
+            character_name = COALESCE(NULLIF(?, ''), character_name),
+            spirit_roots = COALESCE(NULLIF(?, ''), spirit_roots),
+            last_check_at = datetime('now'),
+            health_status = ?,
+            setup_status = COALESCE(NULLIF(?, ''), setup_status),
+            reached_120_at = CASE WHEN ? >= 120 THEN datetime('now') ELSE reached_120_at END,
+            stop_monitor_at = CASE WHEN ? >= 120 THEN datetime('now', '+2 days') ELSE stop_monitor_at END
+          WHERE username = ? AND order_id = ?`
+        ).bind(
+          reportStatus, level || 0, map_id || 0, map_name || '',
+          character_name || '', spirit_roots || '{}',
+          health_status || 'ok', setup_status || '',
+          level || 0, level || 0,
+          username, order_id
+        ).run();
+        
+        results.push({ username, ok: true });
+      } catch (e) {
+        results.push({ username: acc.username, ok: false, error: e.message });
+      }
+    }
+    
+    return json({ ok: true, processed: results.length, results });
   }
 
   // ── Public config with announcements/ads ──────

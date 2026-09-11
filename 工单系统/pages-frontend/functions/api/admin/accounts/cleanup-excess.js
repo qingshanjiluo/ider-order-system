@@ -28,7 +28,7 @@ export async function onRequest(context) {
           (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') as account_count
          FROM orders o
          WHERE o.quantity > 0
-           AND (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') > o.quantity
+           AND (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') > o.quantity + 1
          ORDER BY ((SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') - o.quantity) DESC
          LIMIT ?`
       ).bind(Math.min(max_orders || MAX_ORDERS_PER_CALL, MAX_ORDERS_PER_CALL)).all();
@@ -50,7 +50,9 @@ export async function onRequest(context) {
         "SELECT id FROM game_accounts WHERE order_id = ? AND health_status != 'cleaned' ORDER BY CASE WHEN status IN ('failed','error') THEN 3 WHEN status IN ('farming','active','completed') THEN 0 ELSE 2 END, COALESCE(level,0) DESC, id ASC"
       ).bind(oid).all();
       const allRows = allAcc.results || [];
-      const keepIds = allRows.slice(0, order.quantity).map(a => a.id);
+      // 保留 订购数量 + 1 个（含1个冗余缓冲）
+      const keepCount = order.quantity + 1;
+      const keepIds = allRows.slice(0, keepCount).map(a => a.id);
       const excessIds = allRows.filter(a => !keepIds.includes(a.id)).map(a => a.id);
 
       if (!excessIds.length) continue;
@@ -99,7 +101,7 @@ export async function onRequest(context) {
 
     const more = await env.DB.prepare(
       `SELECT COUNT(*) as cnt FROM orders o WHERE o.quantity > 0
-        AND (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') > o.quantity`
+        AND (SELECT COUNT(*) FROM game_accounts ga WHERE ga.order_id = o.id AND ga.health_status != 'cleaned') > o.quantity + 1`
     ).first();
 
     return json({

@@ -220,7 +220,7 @@ export async function onRequest(context) {
     }
 
     // 修仙币支付的工单自动通过（已扣款，无需人工审核）
-    const autoApproved = payment_method === 'coin' && !NEW_ORDER_TYPES.includes(order_type);
+    const autoApproved = payment_method === 'coin';
     const orderStatus = autoApproved ? 'approved' : 'pending';
 
     const result = await env.DB.prepare(
@@ -252,6 +252,13 @@ export async function onRequest(context) {
     ).run();
 
     const orderId = result.meta.last_row_id;
+
+    // 自动通过的工单递增用户统计
+    if (autoApproved) {
+      await env.DB.prepare(
+        'UPDATE users SET total_orders = total_orders + 1, total_spent = total_spent + ? WHERE id = ?'
+      ).bind(frozenPoints, user.id).run();
+    }
 
     // 订单创建成功后递增优惠码使用次数
     if (couponId) {

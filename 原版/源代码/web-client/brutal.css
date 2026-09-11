@@ -1,0 +1,843 @@
+/* ═══════════════════════════════════════
+   粗野主义 · BRUTAL THEME
+   裸露结构，拒绝修饰，直面真实
+   ═══════════════════════════════════════ */
+
+.theme-brutal {
+  --brutal-black: #0A0A0A;
+  --brutal-white: #F0F0F0;
+  --brutal-concrete: #C8C8C8;
+  --brutal-concrete2: #D8D8D8;
+  --brutal-concrete3: #B0B0B0;
+  --brutal-red: #FF2200;
+  --brutal-blue: #0033FF;
+  --brutal-yellow: #FFDD00;
+  --brutal-text: #0A0A0A;
+  --brutal-text2: #444444;
+  --brutal-text3: #888888;
+  --brutal-hp: #0A0A0A;
+  --brutal-mp: #666666;
+  --brutal-bar: #D0D0D0;
+  --brutal-bar-fill: #0A0A0A;
+  --font-brutal: 'Anton', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --border-thick: 3px solid #0A0A0A;
+
+  --bg: var(--brutal-white);
+  --bg2: var(--brutal-concrete);
+  --text: var(--brutal-text);
+  --text2: var(--brutal-text2);
+  --text3: var(--brutal-text3);
+  --border: var(--brutal-black);
+  --font: var(--font-brutal);
+  --shadow: none;
+  --radius: 0;
+}
+
+/* ── 全局 ── */
+.theme-brutal body,
+.theme-brutal .view-game,
+.theme-brutal .view-login {
+  background: var(--brutal-white);
+  color: var(--brutal-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-weight: 400;
+  line-height: 1.3;
+  cursor: default;
+}
+
+.theme-brutal ::selection {
+  background: var(--brutal-red);
+  color: var(--brutal-white);
+}
+
+/* ── 滚动条 ── */
+.theme-brutal *::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+.theme-brutal *::-webkit-scrollbar-track {
+  background: var(--brutal-concrete);
+  border-left: 2px solid var(--brutal-black);
+}
+.theme-brutal *::-webkit-scrollbar-thumb {
+  background: var(--brutal-black);
+  border: 2px solid var(--brutal-concrete);
+}
+.theme-brutal *::-webkit-scrollbar-thumb:hover {
+  background: var(--brutal-red);
+}
+
+/* ── 表单元素 ── */
+.theme-brutal input,
+.theme-brutal textarea,
+.theme-brutal select {
+  font-family: inherit;
+  font-weight: 700;
+  border: 3px solid var(--brutal-black);
+  background: var(--brutal-white);
+  color: var(--brutal-text);
+  border-radius: 0;
+  padding: 10px 14px;
+  font-size: 0.875rem;
+}
+.theme-brutal input:focus,
+.theme-brutal textarea:focus {
+  outline: none;
+  background: var(--brutal-yellow);
+  border-color: var(--brutal-black);
+}
+.theme-brutal select {
+  cursor: pointer;
+}
+
+.theme-brutal button {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 400;
+  border-radius: 0;
+  cursor: pointer;
+  transition: none;
+}
+
+/* ── 登录页 ── */
+.theme-brutal .view-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px;
+}
+
+.theme-brutal .login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 60px 40px;
+  border: 4px solid var(--brutal-black);
+  background: var(--brutal-white);
+  position: relative;
+}
+
+.theme-brutal .game-title {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 2.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+  text-align: center;
+  line-height: 1;
+  color: var(--brutal-text);
+}
+
+.theme-brutal .login-subtitle {
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--brutal-text2);
+  text-align: center;
+  margin-bottom: 40px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.theme-brutal .login-card input {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 14px 16px;
+  font-size: 1rem;
+}
+
+.theme-brutal .login-card .btn-primary {
+  width: 100%;
+  padding: 16px;
+  font-size: 1rem;
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+  border: 3px solid var(--brutal-black);
+  margin-top: 16px;
+  letter-spacing: 0.1em;
+}
+.theme-brutal .login-card .btn-primary:hover {
+  background: var(--brutal-red);
+  border-color: var(--brutal-red);
+  color: var(--brutal-white);
+}
+
+/* ── 游戏头 ── */
+.theme-brutal .game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+  border-bottom: 4px solid var(--brutal-black);
+  min-height: 48px;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.theme-brutal .game-header .hdr-name {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--brutal-white);
+}
+
+.theme-brutal .game-header .hdr-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.6875rem;
+  color: #AAA;
+  font-weight: 700;
+}
+
+.theme-brutal .game-header .hdr-res {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6875rem;
+  color: #AAA;
+  font-weight: 700;
+}
+
+.theme-brutal .game-header .btn-icon {
+  background: none;
+  border: 2px solid transparent;
+  padding: 4px;
+  color: #888;
+  font-size: 0.9rem;
+  line-height: 1;
+  transition: none;
+}
+.theme-brutal .game-header .btn-icon:hover {
+  color: var(--brutal-white);
+  border-color: var(--brutal-white);
+}
+
+/* ── 导航标签 ── */
+.theme-brutal .tab-nav {
+  display: flex;
+  background: var(--brutal-concrete);
+  border-bottom: 3px solid var(--brutal-black);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0;
+}
+
+.theme-brutal .tab-btn {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--brutal-text2);
+  background: var(--brutal-concrete);
+  border: none;
+  border-right: 2px solid var(--brutal-black);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  border-radius: 0;
+  text-transform: uppercase;
+  transition: none;
+}
+.theme-brutal .tab-btn.active {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+.theme-brutal .tab-btn:hover {
+  background: var(--brutal-red);
+  color: var(--brutal-white);
+}
+
+.theme-brutal .brutal-nav-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: middle;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+/* ── 侧栏 ── */
+.theme-brutal .battle-sidebar {
+  padding: 20px 16px;
+  background: var(--brutal-concrete);
+  border-right: 3px solid var(--brutal-black);
+  min-width: 160px;
+}
+
+.theme-brutal .battle-sidebar .sidebar-char-name {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 16px;
+  color: var(--brutal-text);
+}
+
+.theme-brutal .battle-sidebar .sidebar-char-realm {
+  font-size: 0.6875rem;
+  color: var(--brutal-text2);
+  font-weight: 700;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.theme-brutal .exp-bar,
+.theme-brutal .sr-bar,
+.theme-brutal .bar-track {
+  height: 6px;
+  background: var(--brutal-bar);
+  border-radius: 0;
+  margin: 8px 0;
+  overflow: hidden;
+  border: none;
+}
+
+.theme-brutal .exp-fill,
+.theme-brutal .sr-fill,
+.theme-brutal .bar-fill {
+  height: 100%;
+  background: var(--brutal-bar-fill);
+  border-radius: 0;
+  transition: none;
+}
+
+.theme-brutal .bar-label {
+  font-size: 0.625rem;
+  color: var(--brutal-text2);
+  font-weight: 700;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ── 战斗面板 ── */
+.theme-brutal .battle-status-panel {
+  padding: 16px;
+  border: 3px solid var(--brutal-black);
+  margin: 8px;
+  background: var(--brutal-white);
+}
+
+.theme-brutal .battle-status-panel .bar-track {
+  height: 6px;
+  background: var(--brutal-bar);
+  border-radius: 0;
+  margin: 8px 0;
+}
+
+.theme-brutal .battle-status-panel .bar-fill {
+  background: var(--brutal-bar-fill);
+  border-radius: 0;
+}
+
+/* ── 卡片 ── */
+.theme-brutal .stat-card,
+.theme-brutal .skill-card,
+.theme-brutal .map-card {
+  border: 3px solid var(--brutal-black);
+  border-radius: 0;
+  padding: 14px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+  box-shadow: none;
+  transition: none;
+}
+
+.theme-brutal .stat-card:hover,
+.theme-brutal .skill-card:hover,
+.theme-brutal .map-card:hover {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+
+.theme-brutal .stat-card:hover *,
+.theme-brutal .skill-card:hover *,
+.theme-brutal .map-card:hover * {
+  color: var(--brutal-white) !important;
+}
+
+.theme-brutal .stat-card .card-title,
+.theme-brutal .skill-card .card-title {
+  font-weight: 700;
+  font-size: 0.8125rem;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.theme-brutal .stat-card .card-value {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--brutal-text2);
+}
+
+/* ── 子标签 ── */
+.theme-brutal .sub-tab {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 3px solid var(--brutal-black);
+}
+
+.theme-brutal .sub-tab button,
+.theme-brutal .sub-tab-item {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--brutal-text2);
+  background: var(--brutal-concrete);
+  border: none;
+  border-right: 2px solid var(--brutal-black);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: 0;
+}
+.theme-brutal .sub-tab button.active,
+.theme-brutal .sub-tab-item.active {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+.theme-brutal .sub-tab button:hover,
+.theme-brutal .sub-tab-item:hover {
+  background: var(--brutal-red);
+  color: var(--brutal-white);
+}
+
+/* ── 区域标题 ── */
+.theme-brutal .section-title {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 12px 8px;
+  margin: 0;
+  border-bottom: 3px solid var(--brutal-black);
+}
+
+/* ── 弹窗 ── */
+.theme-brutal .modal-overlay {
+  background: rgba(10,10,10,0.6);
+}
+
+.theme-brutal .modal-panel {
+  background: var(--brutal-white);
+  border: 4px solid var(--brutal-black);
+  border-radius: 0;
+  box-shadow: 8px 8px 0 var(--brutal-black);
+  padding: 28px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.theme-brutal .modal-title {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 3px solid var(--brutal-black);
+}
+
+.theme-brutal .modal-close {
+  background: var(--brutal-black);
+  border: none;
+  font-size: 1rem;
+  color: var(--brutal-white);
+  padding: 6px 12px;
+  line-height: 1;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+.theme-brutal .modal-close:hover {
+  background: var(--brutal-red);
+}
+
+/* ── 按钮 ── */
+.theme-brutal .btn-primary {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+  border: 3px solid var(--brutal-black);
+  padding: 10px 24px;
+  font-size: 0.875rem;
+  letter-spacing: 0.08em;
+  border-radius: 0;
+}
+.theme-brutal .btn-primary:hover {
+  background: var(--brutal-red);
+  border-color: var(--brutal-red);
+}
+
+.theme-brutal .btn-action {
+  background: var(--brutal-white);
+  border: 3px solid var(--brutal-black);
+  color: var(--brutal-text);
+  padding: 8px 18px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.theme-brutal .btn-action:hover {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+
+.theme-brutal .btn-sm {
+  background: var(--brutal-concrete);
+  border: 2px solid var(--brutal-black);
+  color: var(--brutal-text);
+  padding: 6px 12px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border-radius: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.theme-brutal .btn-sm:hover {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+
+.theme-brutal .btn-icon {
+  background: none;
+  border: 2px solid transparent;
+  padding: 4px;
+  color: var(--brutal-text2);
+  font-size: 1rem;
+  border-radius: 0;
+}
+.theme-brutal .btn-icon:hover {
+  border-color: var(--brutal-black);
+  color: var(--brutal-black);
+}
+
+/* ── Toast ── */
+.theme-brutal .toast {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+  border-radius: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 10px 18px;
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── 地图 ── */
+.theme-brutal .map-current {
+  border: 3px solid var(--brutal-black);
+  padding: 16px;
+  margin-bottom: 8px;
+  background: var(--brutal-white);
+}
+
+.theme-brutal .map-current .map-name {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.theme-brutal .map-current .map-desc {
+  font-size: 0.75rem;
+  color: var(--brutal-text2);
+  font-weight: 400;
+}
+
+/* ── 物品 ── */
+.theme-brutal .item-detail {
+  border: none;
+  padding: 0;
+  background: none;
+}
+.theme-brutal .item-detail-name {
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+.theme-brutal .item-detail-stats {
+  font-size: 0.75rem;
+  color: var(--brutal-text2);
+  font-weight: 400;
+}
+
+/* ── 装备槽 ── */
+.theme-brutal .equip-slot {
+  border: 3px solid var(--brutal-black);
+  padding: 8px;
+  background: var(--brutal-white);
+  border-radius: 0;
+}
+
+/* ── 预设行 ── */
+.theme-brutal .preset-row {
+  display: flex;
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom: 3px solid var(--brutal-concrete);
+  margin-bottom: 8px;
+}
+
+/* ── 关键徽章 ── */
+.theme-brutal .key-badge {
+  display: inline-block;
+  font-size: 0.625rem;
+  border: 2px solid var(--brutal-black);
+  color: var(--brutal-text);
+  padding: 1px 6px;
+  font-weight: 700;
+  background: var(--brutal-yellow);
+}
+
+/* ── 技能卡片装备 ── */
+.theme-brutal .skill-card.equipped {
+  border-left: 6px solid var(--brutal-red);
+}
+
+/* ── 背包 ── */
+.theme-brutal .inv-toolbar {
+  border-bottom: 3px solid var(--brutal-black);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+/* ── 地图战斗拆分 ── */
+.theme-brutal .map-battle-split {
+  display: flex;
+  gap: 0;
+}
+.theme-brutal .map-battle-split > * {
+  flex: 1;
+  border: 3px solid var(--brutal-black);
+  padding: 12px;
+  margin: -1px;
+}
+
+/* ── 邮件 ── */
+.theme-brutal .mail-list .mail-item {
+  border-bottom: 2px solid var(--brutal-black);
+  padding: 12px 0;
+}
+.theme-brutal .mail-item .mail-title {
+  font-weight: 700;
+  font-size: 0.8125rem;
+}
+.theme-brutal .mail-item .mail-date {
+  font-size: 0.6875rem;
+  color: var(--brutal-text3);
+  font-weight: 400;
+}
+
+/* ── 宗门 ── */
+.theme-brutal .sect-list .sect-item {
+  border: 3px solid var(--brutal-black);
+  padding: 14px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+/* ── 坊市 ── */
+.theme-brutal .exch-filter-wrap {
+  border-bottom: 3px solid var(--brutal-black);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.theme-brutal .listing-list .listing-item {
+  border: 3px solid var(--brutal-black);
+  padding: 12px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+.theme-brutal .pagination {
+  display: flex;
+  gap: 0;
+  justify-content: center;
+  margin-top: 16px;
+}
+.theme-brutal .pagination .page-btn {
+  background: var(--brutal-white);
+  border: 2px solid var(--brutal-black);
+  color: var(--brutal-text);
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 0;
+  margin: -1px;
+}
+.theme-brutal .pagination .page-btn:hover {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+.theme-brutal .pagination .page-btn.active {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+
+/* ── 洞府 ── */
+.theme-brutal .cave-card {
+  border: 3px solid var(--brutal-black);
+  padding: 14px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+.theme-brutal .cave-formation-wrap {
+  border: 3px solid var(--brutal-black);
+  padding: 14px;
+  background: var(--brutal-white);
+}
+
+/* ── 斗法 ── */
+.theme-brutal .duel-list .duel-item {
+  border: 3px solid var(--brutal-black);
+  padding: 12px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+.theme-brutal .rank-list .rank-item {
+  border-bottom: 2px solid var(--brutal-black);
+  padding: 8px 0;
+}
+
+/* ── 副本 ── */
+.theme-brutal .dungeon-layout {
+  border: 3px solid var(--brutal-black);
+  padding: 16px;
+  background: var(--brutal-white);
+}
+
+/* ── 传人 ── */
+.theme-brutal .disciple-card {
+  border: 3px solid var(--brutal-black);
+  padding: 14px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+/* ── 仙盟 ── */
+.theme-brutal .alliance-list .alli-item {
+  border: 3px solid var(--brutal-black);
+  padding: 14px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+.theme-brutal .member-list .member-item {
+  border-bottom: 2px solid var(--brutal-black);
+  padding: 8px 0;
+}
+
+.theme-brutal .warehouse-grid .wh-item {
+  border: 2px solid var(--brutal-black);
+  padding: 8px;
+  background: var(--brutal-white);
+}
+
+/* ── 设置 ── */
+.theme-brutal .settings-section {
+  border-bottom: 2px solid var(--brutal-black);
+  padding: 14px 0;
+}
+
+/* ── 炼器 ── */
+.theme-brutal .forge-panel {
+  border: 3px solid var(--brutal-black);
+  padding: 16px;
+  background: var(--brutal-white);
+}
+
+/* ── 词典 ── */
+.theme-brutal .dict-content .dict-entry {
+  border-bottom: 2px solid var(--brutal-black);
+  padding: 8px 0;
+}
+
+/* ── 试炼 ── */
+.theme-brutal .trial-shop {
+  border: 3px solid var(--brutal-black);
+  padding: 16px;
+  background: var(--brutal-white);
+}
+
+/* ── 命途 ── */
+.theme-brutal .mingtu-scroll {
+  border: none;
+  padding: 0;
+}
+.theme-brutal .mingtu-node {
+  border: 3px solid var(--brutal-black);
+  padding: 12px;
+  margin-bottom: 6px;
+  background: var(--brutal-white);
+}
+
+/* ── 选项列表 ── */
+.theme-brutal .opt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.theme-brutal .opt-item {
+  border: 3px solid var(--brutal-black);
+  padding: 12px;
+  cursor: pointer;
+  background: var(--brutal-white);
+  transition: none;
+}
+.theme-brutal .opt-item:hover {
+  background: var(--brutal-black);
+  color: var(--brutal-white);
+}
+
+/* ── 快速操作 ── */
+.theme-brutal .quick-actions {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+/* ── 加载页 ── */
+.theme-brutal .view-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--brutal-white);
+}
+.theme-brutal .view-loading .loading-text {
+  font-family: 'Anton', Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 1rem;
+  color: var(--brutal-text2);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.theme-brutal .spinner {
+  width: 24px;
+  height: 24px;
+  border: 4px solid var(--brutal-concrete);
+  border-top-color: var(--brutal-black);
+  animation: brutal-spin 0.6s linear infinite;
+  border-radius: 0;
+}
+@keyframes brutal-spin {
+  to { transform: rotate(360deg); }
+}

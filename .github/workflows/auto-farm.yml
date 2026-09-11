@@ -51,4 +51,4 @@ jobs:
           FARM_USERNAME: ${{ inputs.username || secrets.FARM_USERNAME }}
           FARM_PASSWORD: ${{ inputs.password || secrets.FARM_PASSWORD }}
           FARM_MAP_ID: ${{ github.event.inputs.map_id }}
-        run: node gh-actions/auto_farm.js
+        run: node 原版/gh-actions/auto_farm.js

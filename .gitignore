@@ -7,3 +7,7 @@ Thumbs.db
 *.user.js
 源代码/browser-plugin/icons/*
 plans/
+*.bundle
+九重宫阙/data/game.json
+九重宫阙/data/*.backup*
+九重宫阙/data/backups/

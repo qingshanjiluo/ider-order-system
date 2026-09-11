@@ -1,0 +1,71 @@
+name: Deploy 艾德尔私服
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-game-api:
+    name: 部署 game-api Worker + D1
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 私服/game-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 迁移 D1 schema
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler d1 execute ideer-game --remote --file=migrations/001_schema.sql || true
+      - name: 部署 Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+  deploy-chat:
+    name: 部署 chat Worker
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: 私服/chat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 部署 Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
+
+  deploy-frontend:
+    name: 部署前端 Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 注入生产 API 地址
+        working-directory: 私服/frontend
+        env:
+          IDEER_API_BASE: ${{ secrets.IDEER_API_BASE }}
+          IDEER_CHAT_BASE: ${{ secrets.IDEER_CHAT_BASE }}
+        run: |
+          if [ -n "$IDEER_API_BASE" ]; then
+            sed -i "s|</head>|<script>window.IDEER_API_BASE='${IDEER_API_BASE}';window.IDEER_CHAT_BASE='${IDEER_CHAT_BASE}';</script></head>|" index.html chat.html
+          fi
+      - name: 部署 Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 私服/frontend
+          command: pages deploy . --project-name=ideer-frontend

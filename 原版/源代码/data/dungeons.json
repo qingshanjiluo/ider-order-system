@@ -1,0 +1,22 @@
+[
+  {"id": 1, "name": "荒石村试炼", "level_min": 10, "level_max": 30, "monster_ids": [101, 102], "daily_limit": 3, "quality": 1, "waves": 2, "description": "修仙者的起点，野猪与妖蛛横行。适合炼气初期修士历练。"},
+  {"id": 2, "name": "青竹林秘境", "level_min": 30, "level_max": 50, "monster_ids": [103, 104], "daily_limit": 3, "quality": 1, "waves": 2, "description": "竹妖与竹灵盘踞的灵气之地，适合炼气初期修士挑战。"},
+  {"id": 3, "name": "清风镇剿匪", "level_min": 50, "level_max": 70, "monster_ids": [105, 106], "daily_limit": 3, "quality": 1, "waves": 2, "description": "清风镇周边强盗横行，需清剿匪患。适合炼气中期修士。"},
+  {"id": 4, "name": "迷雾森林深处", "level_min": 70, "level_max": 90, "monster_ids": [107, 108], "daily_limit": 3, "quality": 1, "waves": 2, "description": "迷雾森林深处妖兽聚集，适合炼气后期修士探索。"},
+  {"id": 5, "name": "黑风山剿匪", "level_min": 90, "level_max": 110, "monster_ids": [109, 110], "daily_limit": 3, "quality": 2, "waves": 2, "description": "黑风山贼巢穴，寨主武艺高强。适合炼气后期修士清剿。"},
+  {"id": 6, "name": "乱石滩清剿", "level_min": 110, "level_max": 130, "monster_ids": [111, 112], "daily_limit": 3, "quality": 2, "waves": 2, "description": "乱石滩盗匪出没，需清剿以保商路安全。"},
+  {"id": 7, "name": "枯骨林深处", "level_min": 130, "level_max": 150, "monster_ids": [113, 114, 115], "daily_limit": 2, "quality": 2, "waves": 3, "description": "枯骨林深处亡灵聚集，阴气冲天。适合筑基初期修士。"},
+  {"id": 8, "name": "雷云峰之巅", "level_min": 150, "level_max": 170, "monster_ids": [116, 117], "daily_limit": 2, "quality": 3, "waves": 3, "description": "雷云峰顶雷电交加，妖兽盘踞。适合筑基中期修士。"},
+  {"id": 9, "name": "烈焰谷核心", "level_min": 170, "level_max": 190, "monster_ids": [118, 119, 120], "daily_limit": 2, "quality": 3, "waves": 3, "description": "烈焰谷深处怨灵横行，火焰之力强大。适合筑基后期修士。"},
+  {"id": 10, "name": "坠龙崖禁地", "level_min": 190, "level_max": 210, "monster_ids": [121, 122, 123], "daily_limit": 2, "quality": 4, "waves": 3, "description": "坠龙崖禁地尸妖盘踞，传说真龙陨落于此。适合金丹初期修士。"},
+  {"id": 11, "name": "万剑冢深处", "level_min": 210, "level_max": 230, "monster_ids": [124, 125, 126], "daily_limit": 2, "quality": 4, "waves": 3, "description": "万剑冢核心禁地，剑灵与剑圣残魂镇守。适合金丹中期修士。"},
+  {"id": 12, "name": "归墟之心", "level_min": 230, "level_max": 250, "monster_ids": [127, 128, 129], "daily_limit": 2, "quality": 5, "waves": 3, "description": "归墟核心区域，心魔与骨魔游荡。适合金丹后期修士。"},
+  {"id": 13, "name": "古战场遗址", "level_min": 250, "level_max": 270, "monster_ids": [130, 131, 132], "daily_limit": 2, "quality": 5, "waves": 3, "description": "上古大战遗留的战场，魔尊与怨魂盘踞。适合元婴初期修士。"},
+  {"id": 14, "name": "无尽风域核心", "level_min": 270, "level_max": 290, "monster_ids": [133, 134, 135], "daily_limit": 2, "quality": 6, "waves": 4, "description": "无尽风域核心区域，狂风之力强大。适合元婴中期修士。"},
+  {"id": 15, "name": "魔渊深处", "level_min": 290, "level_max": 310, "monster_ids": [136, 137, 138, 139], "daily_limit": 2, "quality": 7, "waves": 4, "description": "魔渊深处化神魔修与妖兽盘踞。适合元婴后期修士。"},
+  {"id": 16, "name": "虚空裂隙禁地", "level_min": 310, "level_max": 330, "monster_ids": [140, 141, 142, 143], "daily_limit": 2, "quality": 8, "waves": 4, "description": "虚空裂隙禁地，炼虚期生灵游荡。适合化神期修士。"},
+  {"id": 17, "name": "天穹古墟秘境", "level_min": 330, "level_max": 350, "monster_ids": [144, 145, 146, 147], "daily_limit": 2, "quality": 8, "waves": 4, "description": "天穹古墟秘境，合体期大能曾在此悟道。适合炼虚期修士。"},
+  {"id": 18, "name": "九幽冥海深处", "level_min": 350, "level_max": 370, "monster_ids": [148, 149, 150, 151], "daily_limit": 2, "quality": 9, "waves": 4, "description": "九幽冥海深处，冥界入口亡灵大军集结。适合合体期修士。"},
+  {"id": 19, "name": "天劫雷池试炼", "level_min": 370, "level_max": 390, "monster_ids": [152, 153, 154, 155], "daily_limit": 2, "quality": 9, "waves": 4, "description": "天劫雷池试炼之地，雷霆万钧。适合大乘期修士。"},
+  {"id": 20, "name": "飞升天劫", "level_min": 390, "level_max": 400, "monster_ids": [156, 157, 158, 159, 160], "daily_limit": 2, "quality": 9, "waves": 5, "description": "飞升台之巅，大乘修士与天劫使者等待。渡过此劫，方可飞升第二重天。"}
+]

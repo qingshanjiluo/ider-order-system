@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成就系统 - 方案确认</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <h1>成就系统</h1>
+        <p>成就分类、奖励、难度、数量</p>
+    </div>
+    <div class="nav">
+        <a href="questionnaire-13.html">← 上一系统</a>
+        <a href="index.html">目录</a>
+        <a href="summary.html">查看总结 →</a>
+    </div>
+
+    <div class="container">
+        <div class="saved" id="savedMsg">✓ 已自动保存</div>
+        <div class="progress">完成进度：<span id="progressText">0</span> / 4 题</div>
+
+        <div class="accordion">
+            <!-- Q1 -->
+            <div class="accordion-item" id="item-q1">
+                <div class="accordion-header" onclick="toggleAccordion('q1')">
+                    <span class="check">✓</span><span class="num">Q1.</span>
+                    <span class="title">成就分类：5类（主线/战斗/探索/社交/经济）是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">成就分为5个大类，覆盖游戏各个方面。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q1',this,'合适，5类')"><div class="option-text">合适，5类</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太多，简化为3类')"><div class="option-text">太多，简化为3类</div></div>
+                        <div class="option" onclick="selectOption('q1',this,'太少，增加更多')"><div class="option-text">太少，增加更多分类</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q1',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q2 -->
+            <div class="accordion-item" id="item-q2">
+                <div class="accordion-header" onclick="toggleAccordion('q2')">
+                    <span class="check">✓</span><span class="num">Q2.</span>
+                    <span class="title">成就奖励：点券+称号+坐骑+时装是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">成就奖励包含多种类型。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q2',this,'合适，保持原设计')"><div class="option-text">合适，保持原设计</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'奖励太少')"><div class="option-text">奖励太少，增加更多</div></div>
+                        <div class="option" onclick="selectOption('q2',this,'奖励太多')"><div class="option-text">奖励太多，减少一些</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q2',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q3 -->
+            <div class="accordion-item" id="item-q3">
+                <div class="accordion-header" onclick="toggleAccordion('q3')">
+                    <span class="check">✓</span><span class="num">Q3.</span>
+                    <span class="title">成就难度：是否需要更难的成就？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">是否增加高难度成就满足硬核玩家。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q3',this,'需要，增加挑战')"><div class="option-text">需要，增加挑战</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'不需要，保持简单')"><div class="option-text">不需要，保持简单</div></div>
+                        <div class="option" onclick="selectOption('q3',this,'分级难度')"><div class="option-text">分级难度</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q3',this.value)"></div>
+                </div></div>
+            </div>
+
+            <!-- Q4 -->
+            <div class="accordion-item" id="item-q4">
+                <div class="accordion-header" onclick="toggleAccordion('q4')">
+                    <span class="check">✓</span><span class="num">Q4.</span>
+                    <span class="title">成就数量：每个分类10个成就是否合适？</span><span class="arrow">▼</span>
+                </div>
+                <div class="accordion-body"><div class="accordion-content">
+                    <p style="color:#888;font-size:0.85em;margin-bottom:10px;">每个分类包含10个成就，共50个。</p>
+                    <div class="options">
+                        <div class="option" onclick="selectOption('q4',this,'合适，每类10个')"><div class="option-text">合适，每类10个</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'太少，增加到20个')"><div class="option-text">太少，增加到20个</div></div>
+                        <div class="option" onclick="selectOption('q4',this,'太多，减少到5个')"><div class="option-text">太多，减少到5个</div></div>
+                    </div>
+                    <div class="custom-section"><div class="custom-label">或输入你的想法：</div><input type="text" class="custom-input" placeholder="自定义回答..." onchange="saveCustom('q4',this.value)"></div>
+                </div></div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <a href="questionnaire-13.html">← 上一系统</a>
+            <a href="summary.html">查看总结 →</a>
+        </div>
+    </div>
+
+    <script>
+    const systemId = '14';
+    const totalQuestions = 4;
+    </script>
+    <script src="shared.js"></script>
+</body>
+</html>

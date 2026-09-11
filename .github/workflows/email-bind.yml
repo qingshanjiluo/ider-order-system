@@ -31,7 +31,7 @@ on:
         required: false
         default: ''
       accounts_file:
-        description: '📄 仓库账号文件路径（如 accounts_email.txt 或 批量注册工具/my_acc.txt）'
+        description: '📄 仓库账号文件路径（如 accounts_email.txt 或 原版/批量注册工具/my_acc.txt）'
         required: false
         default: ''
       provider:
@@ -61,7 +61,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: 批量注册工具
+        working-directory: 原版/批量注册工具
 
     steps:
       - name: 🔄 检出代码
@@ -74,7 +74,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: 批量注册工具/package-lock.json
+          cache-dependency-path: 原版/批量注册工具/package-lock.json
 
       - name: 📦 安装依赖
         run: npm install
@@ -92,7 +92,7 @@ jobs:
 
           # 1) 如果指定了 accounts_file 且文件存在，复制到工作目录
           if [ -n "$ACCOUNTS_FILE_INPUT" ]; then
-            # 检查工作目录下（批量注册工具/）和仓库根目录（../）
+            # 检查工作目录下（原版/批量注册工具/）和仓库根目录（../）
             if [ -f "$ACCOUNTS_FILE_INPUT" ]; then
               echo "📄 使用仓库账号文件: $ACCOUNTS_FILE_INPUT"
               cp "$ACCOUNTS_FILE_INPUT" accounts_email.txt
@@ -170,8 +170,8 @@ jobs:
         with:
           name: email-bind-results-${{ github.run_id }}
           path: |
-            批量注册工具/email_bind_result_*.json
-            批量注册工具/email_bind_result_*.txt
+            原版/批量注册工具/email_bind_result_*.json
+            原版/批量注册工具/email_bind_result_*.txt
           compression-level: 6
           retention-days: 7
 

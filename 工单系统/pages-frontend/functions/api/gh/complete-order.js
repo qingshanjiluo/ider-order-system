@@ -27,17 +27,20 @@ export async function onRequest(context) {
     const settingUp = getCount(setupPhase);
     const farming = getCount(farmingPhase);
     const finished = getCount(finalPhase);
-    // 有效已交付账号：挂机/满级且配置完成
+    // 有效已交付账号：满级一律有效；挂机/进行中需配置完成（宁多勿少）
     const VALID_SETUP = ['farming', 'active', 'completed'];
     const delivered = rows
-      .filter(r => ['farming', 'active', 'completed'].includes(r.status) && VALID_SETUP.includes(r.setup_status))
+      .filter(r => r.status === 'completed' || (['farming', 'active'].includes(r.status) && VALID_SETUP.includes(r.setup_status)))
       .reduce((s, r) => s + r.cnt, 0);
 
     const order = await env.DB.prepare("SELECT user_id, status FROM orders WHERE id = ?").bind(order_id).first();
     if (!order) return json({ error: '工单不存在' }, 404);
+    const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
+    // 目标数量 = 订购数量 + 1（每个工单多发一个冗余，宁多勿少）
+    const targetQty = orderQty ? (orderQty.quantity || 0) + 1 : 0;
 
-    // 阶段1: 初始交付（所有账号已离开设置阶段）
-    if (settingUp === 0 && total > 0 && farming + finished === total) {
+    // 阶段1: 初始交付（所有账号已离开设置阶段，且数量达标）
+    if (settingUp === 0 && total > 0 && farming + finished === total && delivered >= targetQty) {
       await env.DB.prepare(
         "UPDATE orders SET status = 'processing', updated_at = datetime('now'), total_accounts_created = ? WHERE id = ? AND status = 'approved'"
       ).bind(total, order_id).run();
@@ -47,9 +50,14 @@ export async function onRequest(context) {
       await logActivity(env, order_id, order.user_id, 'processing', '全部账号已交付，进入挂机阶段');
       return json({ ok: true, message: '工单已交付，进入挂机阶段', status: 'processing', total, delivered });
     }
+    // 数量不足时保持 approved，等待扫描器继续补号
+    if (settingUp === 0 && total > 0 && farming + finished === total && delivered < targetQty) {
+      await logActivity(env, order_id, order.user_id, 'processing',
+        `账号数量未达标: 有效交付 ${delivered}/${targetQty}，保持待补发（扫描器将继续创建）`);
+      return json({ ok: true, message: '账号数量未达标，保持补发', status: order.status, total, delivered, target: targetQty });
+    }
 
     // 阶段2: 最终完成（所有账号已120级或失败/错误，且已创建账号数达到订购数）
-    const orderQty = await env.DB.prepare("SELECT quantity FROM orders WHERE id = ?").bind(order_id).first();
     const quantityMet = orderQty && delivered >= orderQty.quantity;
     if (!quantityMet && orderQty) {
       await logActivity(env, order_id, order.user_id, 'processing',

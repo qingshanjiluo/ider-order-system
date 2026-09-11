@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九重宫阙 - 水墨修仙风格</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f5f0e8;
+            --bg2: #ece5d8;
+            --bg3: #e0d7c8;
+            --bg4: #d5ccbc;
+            --border: #c4b8a4;
+            --text: #3a3228;
+            --text2: #8a7a6a;
+            --red: #c41e3a;
+            --red2: #8b1528;
+            --green: #4a7a4a;
+            --blue: #4a5a7a;
+            --gold: #c9a96e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ===== 顶部标题栏 ===== */
+        .game-title-bar {
+            background: linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        .game-title-bar::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 15%;
+            right: 15%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--text), transparent);
+            opacity: 0.2;
+        }
+        .game-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 36px;
+            letter-spacing: 16px;
+            color: var(--text);
+            font-weight: 400;
+        }
+
+        /* ===== 头部信息栏 ===== */
+        .game-header {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .char-name {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 20px;
+            color: var(--text);
+            letter-spacing: 4px;
+        }
+        .realm-badge {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            color: var(--red);
+            padding: 4px 14px;
+            font-size: 13px;
+            letter-spacing: 2px;
+        }
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        .resource {
+            font-size: 14px;
+            color: var(--text2);
+        }
+        .resource span {
+            color: var(--gold);
+            font-weight: 600;
+        }
+
+        /* ===== 导航标签 ===== */
+        .tab-nav {
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
+        .tab-btn {
+            padding: 14px 28px;
+            color: var(--text2);
+            font-size: 14px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: inherit;
+        }
+        .tab-btn:hover {
+            color: var(--text);
+            background: rgba(0,0,0,0.02);
+        }
+        .tab-btn.active {
+            color: var(--red);
+            border-bottom-color: var(--red);
+        }
+
+        /* ===== 主内容区 ===== */
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr 260px;
+            gap: 0;
+            min-height: calc(100vh - 180px);
+        }
+
+        /* ===== 左侧边栏 - 角色信息 ===== */
+        .sidebar-left {
+            background: var(--bg2);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+        }
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+        .section-title {
+            color: var(--red);
+            font-size: 13px;
+            letter-spacing: 3px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+        }
+        .char-avatar {
+            width: 100%;
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, var(--bg3), var(--bg4));
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--border);
+            font-size: 13px;
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: var(--text2); }
+        .stat-value { color: var(--text); font-weight: 600; }
+
+        /* ===== HP/MP 条 ===== */
+        .bar-group { margin-bottom: 12px; }
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: var(--text2);
+        }
+        .bar-track {
+            height: 8px;
+            background: var(--bg3);
+            border: none;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            transition: width 0.5s;
+        }
+        .hp-fill { background: linear-gradient(90deg, var(--red2), var(--red)); }
+        .mp-fill { background: linear-gradient(90deg, var(--blue), #6a8aaa); }
+        .exp-fill { background: var(--text); }
+
+        /* ===== 中间内容区 ===== */
+        .content-main {
+            padding: 24px;
+            background: var(--bg);
+        }
+
+        /* 角色面板 */
+        .char-panel {
+            background: #faf6f0;
+            border: 1px solid var(--border);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .char-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .char-panel-title {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 18px;
+            color: var(--text);
+            letter-spacing: 4px;
+        }
+
+        /* 装备格子 */
+        .equip-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .equip-slot {
+            aspect-ratio: 1;
+            background: #faf6f0;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .equip-slot:hover {
+            border-color: var(--red);
+            background: #f5ede0;
+        }
+        .equip-slot .icon { font-size: 28px; margin-bottom: 4px; }
+        .equip-slot .name { font-size: 11px; color: var(--text2); }
+        .equip-slot.empty { opacity: 0.5; }
+        .equip-slot.empty .icon { font-size: 20px; color: var(--border); }
+
+        /* ===== 右侧边栏 - 快捷操作 ===== */
+        .sidebar-right {
+            background: var(--bg2);
+            border-left: 1px solid var(--border);
+            padding: 20px;
+        }
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 10px;
+            background: #faf6f0;
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 14px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+        .action-btn:hover {
+            background: var(--bg3);
+            border-color: var(--text);
+        }
+        .action-btn.primary {
+            background: var(--red);
+            border-color: var(--red2);
+            color: #fff;
+        }
+        .action-btn.primary:hover {
+            background: var(--red2);
+        }
+
+        /* ===== 地图选择 ===== */
+        .map-section {
+            margin-top: 20px;
+        }
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .map-card {
+            background: #faf6f0;
+            border: 1px solid var(--border);
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .map-card:hover, .map-card.active {
+            border-color: var(--red);
+            background: #f5ede0;
+        }
+        .map-card .map-icon { font-size: 24px; margin-bottom: 6px; }
+        .map-card .map-name { font-size: 12px; color: var(--text); letter-spacing: 1px; }
+        .map-card .map-level { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+        /* ===== 功能列表 ===== */
+        .func-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .func-item {
+            background: #faf6f0;
+            border: 1px solid var(--border);
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .func-item:hover {
+            border-color: var(--red);
+            background: #f5ede0;
+        }
+        .func-item .func-icon { font-size: 28px; margin-bottom: 8px; }
+        .func-item .func-name { font-size: 13px; color: var(--text); letter-spacing: 2px; }
+
+        /* ===== 战斗日志 ===== */
+        .battle-log {
+            background: #faf6f0;
+            border: 1px solid var(--border);
+            padding: 16px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            font-size: 12px;
+            color: var(--text2);
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-entry .time { color: var(--border); margin-right: 8px; }
+        .log-entry .highlight { color: var(--red); }
+
+        /* ===== 底部信息 ===== */
+        .footer-bar {
+            background: var(--bg2);
+            border-top: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        /* ===== 动画 ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; letter-spacing: 8px; }
+            to { opacity: 1; letter-spacing: 0; }
+        }
+        .content-main { animation: fadeIn 0.5s ease; }
+
+        /* ===== 滚动条 ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: var(--border); }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1024px) {
+            .main-content { grid-template-columns: 1fr; }
+            .sidebar-left, .sidebar-right { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 标题 -->
+    <div class="game-title-bar">
+        <div class="game-title">九重宫阙</div>
+    </div>
+
+    <!-- 头部信息 -->
+    <div class="game-header">
+        <div class="header-left">
+            <span class="char-name">逍遥散人</span>
+            <span class="realm-badge">元婴中期</span>
+        </div>
+        <div class="header-right">
+            <div class="resource">灵石 <span>128,450</span></div>
+            <div class="resource">宗门 <span>3,200</span></div>
+            <div class="resource">Lv.35</div>
+        </div>
+    </div>
+
+    <!-- 导航标签 -->
+    <div class="tab-nav">
+        <button class="tab-btn active">角色</button>
+        <button class="tab-btn">修炼</button>
+        <button class="tab-btn">副本</button>
+        <button class="tab-btn">仙盟</button>
+        <button class="tab-btn">商店</button>
+        <button class="tab-btn">灵宠</button>
+    </div>
+
+    <!-- 主内容 -->
+    <div class="main-content">
+        <!-- 左侧 - 角色信息 -->
+        <div class="sidebar-left">
+            <div class="sidebar-section">
+                <div class="section-title">角色信息</div>
+                <div class="char-avatar">道</div>
+                <div class="stat-row">
+                    <span class="stat-label">境界</span>
+                    <span class="stat-value">元婴中期</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">等级</span>
+                    <span class="stat-value">Lv.35</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">攻击</span>
+                    <span class="stat-value">2,450</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">防御</span>
+                    <span class="stat-value">1,820</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">生命</span>
+                    <span class="stat-value">15,600</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">速度</span>
+                    <span class="stat-value">380</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">状态</div>
+                <div class="bar-group">
+                    <div class="bar-label">
+                        <span>生命</span>
+                        <span>12,800 / 15,600</span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill hp-fill" style="width: 82%"></div>
+                    </div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label">
+                        <span>灵力</span>
+                        <span>3,200 / 4,800</span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill mp-fill" style="width: 67%"></div>
+                    </div>
+                </div>
+                <div class="bar-group">
+                    <div class="bar-label">
+                        <span>经验</span>
+                        <span>68,400 / 120,000</span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill exp-fill" style="width: 57%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间 - 主内容 -->
+        <div class="content-main">
+            <div class="char-panel">
+                <div class="char-panel-header">
+                    <div class="char-panel-title">装备栏</div>
+                    <span style="font-size: 12px; color: var(--text2);">战斗力：24,580</span>
+                </div>
+                <div class="equip-grid">
+                    <div class="equip-slot">
+                        <div class="icon">⚔️</div>
+                        <div class="name">青云剑</div>
+                    </div>
+                    <div class="equip-slot">
+                        <div class="icon">🛡️</div>
+                        <div class="name">玄天甲</div>
+                    </div>
+                    <div class="equip-slot">
+                        <div class="icon">💍</div>
+                        <div class="name">太虚戒</div>
+                    </div>
+                    <div class="equip-slot">
+                        <div class="icon">📿</div>
+                        <div class="name">念珠</div>
+                    </div>
+                    <div class="equip-slot">
+                        <div class="icon">👒</div>
+                        <div class="name">道冠</div>
+                    </div>
+                    <div class="equip-slot">
+                        <div class="icon">👢</div>
+                        <div class="name">云履</div>
+                    </div>
+                    <div class="equip-slot empty">
+                        <div class="icon">+</div>
+                        <div class="name">空</div>
+                    </div>
+                    <div class="equip-slot empty">
+                        <div class="icon">+</div>
+                        <div class="name">空</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 功能入口 -->
+            <div class="func-list">
+                <div class="func-item">
+                    <div class="func-icon">🧘</div>
+                    <div class="func-name">闭关修炼</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">⚔️</div>
+                    <div class="func-name">副本挑战</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">🏔️</div>
+                    <div class="func-name">宗门大殿</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">🛒</div>
+                    <div class="func-name">仙市交易</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">🐉</div>
+                    <div class="func-name">灵宠培养</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">📜</div>
+                    <div class="func-name">功法修炼</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">🔮</div>
+                    <div class="func-name">炼器炼丹</div>
+                </div>
+                <div class="func-item">
+                    <div class="func-icon">🏆</div>
+                    <div class="func-name">竞技排行</div>
+                </div>
+            </div>
+
+            <!-- 战斗日志 -->
+            <div class="battle-log">
+                <div class="section-title">战斗日志</div>
+                <div class="log-entry">
+                    <span class="time">[14:32]</span>
+                    你在<span class="highlight">青云山麓</span>击败了<span class="highlight">妖狐</span>，获得灵石 x120
+                </div>
+                <div class="log-entry">
+                    <span class="time">[14:28]</span>
+                    修炼获得经验 <span class="highlight">+2,400</span>
+                </div>
+                <div class="log-entry">
+                    <span class="time">[14:15]</span>
+                    装备<span class="highlight">青云剑</span>强化至 +8
+                </div>
+                <div class="log-entry">
+                    <span class="time">[14:02]</span>
+                    仙盟任务完成，获得贡献 <span class="highlight">+500</span>
+                </div>
+                <div class="log-entry">
+                    <span class="time">[13:45]</span>
+                    击败<span class="highlight">BOSS·千年妖王</span>，获得古宝 x1
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧 - 快捷操作 -->
+        <div class="sidebar-right">
+            <div class="sidebar-section">
+                <div class="section-title">快捷操作</div>
+                <button class="action-btn primary">开始修炼</button>
+                <button class="action-btn">扫荡副本</button>
+                <button class="action-btn">领取签到</button>
+                <button class="action-btn">仙盟任务</button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">当前任务</div>
+                <div style="font-size: 13px; color: var(--text2); line-height: 1.8;">
+                    <div>• 击杀妖兽 12/20</div>
+                    <div>• 完成副本 2/5</div>
+                    <div>• 强化装备 3/3 ✓</div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">地图选择</div>
+                <div class="map-grid">
+                    <div class="map-card active">
+                        <div class="map-icon">🌿</div>
+                        <div class="map-name">青云山</div>
+                        <div class="map-level">Lv.30-40</div>
+                    </div>
+                    <div class="map-card">
+                        <div class="map-icon">🔥</div>
+                        <div class="map-name">火焰山</div>
+                        <div class="map-level">Lv.40-50</div>
+                    </div>
+                    <div class="map-card">
+                        <div class="map-icon">❄️</div>
+                        <div class="map-name">冰雪原</div>
+                        <div class="map-level">Lv.50-60</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <div class="footer-bar">
+        <span>九重宫阙 v1.0</span>
+        <span>服务器：一区·混沌初开</span>
+        <span>在线：1,234人</span>
+    </div>
+
+    <script>
+    // 标签切换
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // 地图选择
+    document.querySelectorAll('.map-card').forEach(card => {
+        card.addEventListener('click', function() {
+            document.querySelectorAll('.map-card').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // 功能入口点击
+    document.querySelectorAll('.func-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const name = this.querySelector('.func-name').textContent;
+            alert(`打开：${name}`);
+        });
+    });
+    </script>
+</body>
+</html>

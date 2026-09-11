@@ -1,0 +1,15 @@
+/js/*
+  Content-Type: application/javascript
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/*.js
+  Content-Type: application/javascript
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/css/*
+  Content-Type: text/css
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/*.css
+  Content-Type: text/css
+  Cache-Control: no-cache, no-store, must-revalidate

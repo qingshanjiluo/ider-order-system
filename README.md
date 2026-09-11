@@ -1,66 +1,59 @@
-# 艾德尔修仙传 — 自动化工具集
+# 艾德尔修仙传 — 项目工作区
 
-基于 ESP32-S3 (ESP-IDF) 后端 + Web 前端的修仙游戏项目，附带完整批量自动化工具链。
-
-## 目录结构
+本工作区包含四个子项目，已于 2026-09-11 整理为以下结构：
 
 ```
 艾德尔机器人/
-├── 源代码/                    # 游戏服务端源码（ESP-IDF + C/JS）
-│   └── server/               # Express 游戏服务器
-│       ├── routes/           # API 路由（auth, player, alliance, cave...）
-│       ├── game/             # 游戏逻辑（战斗/洞府/炼丹/装备...）
-│       └── data/             # 游戏数据（items/skills/maps...）
-├── 批量注册工具/               # # 批量自动化工具（Node.js）
-│   ├── batch.js              # 批量注册
-│   ├── batch_email_bind.js   # 邮箱绑定（交互式）
-│   ├── batch_email_bind_ci.js# 邮箱绑定（CI/命令行）
-│   ├── batch_alliance_daily.js# 仙盟日常 + 洞府采集
-│   ├── auto_farm.js          # 自动刷怪
-│   ├── auto_alchemy.js       # 自动炼丹
-│   ├── _anti_detect_shared.js# 反检测核心模块
-│   └── README.md             # 工具集说明
-├── .github/workflows/        # GitHub Actions 自动化工作流
-│   ├── email-bind.yml        # 邮箱绑定
-│   ├── alliance-daily.yml    # 仙盟日常
-│   ├── auto-farm.yml         # 自动刷怪
-│   ├── auto-alchemy.yml      # 自动炼丹
-│   ├── batch-register.yml    # 批量注册
-│   └── ...
-└── README.md                 # 本文件
+├── 原版/          # 原版游戏（Node.js + Express + MySQL/SQLite）与批量自动化工具链
+│   ├── 源代码/            # 游戏服务端 + web-client 前端 + 爬虫 + AI训练器
+│   ├── 批量注册工具/       # 批量注册/邮箱绑定/仙盟日常/自动刷怪等 Node 工具
+│   ├── gh-actions/        # 游戏自动化脚本（GitHub Actions 调用）
+│   ├── docs/              # 游戏 API 参考、审计报告、油猴皮肤脚本
+│   ├── sql/ migrations/   # 原版数据库脚本
+│   ├── 仙盟仓库管理插件.js / 账号切换*.js
+│   └── 新建文件夹 (6)(1).rar
+├── 私服/          # 私服《仙·九重天阙》（Cloudflare 全托管：Pages + Workers + D1 + DO）
+│   ├── frontend/          # 前端 SPA（含皮肤切换器）
+│   ├── game-api/          # 游戏 API Worker（D1）
+│   ├── chat/              # 聊天服务 Worker
+│   ├── shared/ scripts/ .github/
+│   └── PLAN.md            # 私服部署与改造规划
+├── 工单系统/       # 代练工单 + 账号自动化平台（Cloudflare Pages + Functions + D1）
+│   ├── 工单系统/          # （原根级工单系统主体：pages-frontend / functions / worker / gh-actions）
+│   ├── order-worker/      # 独立订单 Worker
+│   ├── ider-order-system-clean/  # 2026-08-27 历史快照（独立 git 仓库，含独有 withdrawals DDL）
+│   └── test-api.mjs / 全面审计报告.md / 皮肤系统完整设计文档.md / test-report-*.md
+└── 九重宫阙/       # ★ 当前开发重点：水墨修仙挂机页游（Node.js + Express + JSON 存储）
+    ├── server.js          # 入口：Express + WebSocket
+    ├── src/               # routes(33) / services / middleware / data / scripts
+    ├── public/            # 无框架 SPA（api.js + app.js + 水墨风 CSS）
+    ├── data/game.json     # JSON 文件数据库
+    ├── 方案规划/           # 确认版设计方案 + 42 份系统设计文档
+    ├── 开发文档/           # 系统审计报告 + 修复实施计划
+    └── 开发计划.md / AUDIT-REPORT-2026-09-10.md
 ```
 
-## GitHub Actions 使用
+## 各子项目技术栈速览
 
-### 邮箱绑定
-仓库 → Actions → **📧 一键邮箱绑定** → Run workflow
+| 项目 | 后端 | 前端 | 存储 | 部署 |
+|------|------|------|------|------|
+| 原版 | Node.js + Express | web-client（多主题） | SQLite/MySQL + Redis | 自有服务器 |
+| 私服 | Cloudflare Workers | Vue3 无构建 SPA | D1 + Durable Objects | Cloudflare 全托管 |
+| 工单系统 | Pages Functions（115 端点） | 原生 ES Modules SPA | D1（25+ 表） | Cloudflare Pages |
+| 九重宫阙 | Node.js + Express + WS | 原生 JS SPA（3312 行 app.js） | JSON 文件（game.json） | 本地 / 可迁移 CF |
 
-提供账号方式：
-- 文本框填入：`user1,pass1;user2,pass2`
-- 或预先提交 `accounts_email.txt` 到仓库
-- 或设置 Secrets: `ACCOUNTS_DATA`
+## GitHub Actions 说明
 
-### 仙盟日常
-仓库 → Actions → **🏯 仙盟日常 + 洞府采集** → Run workflow
+- 游戏自动化工作流已同步指向 `原版/批量注册工具/` 与 `原版/gh-actions/`。
+- 私服部署工作流（deploy-ideer.yml）已同步指向 `私服/`。
+- 工单系统自动化工作流使用 `working-directory: 工单系统`，不受整理影响。
+- 根目录保留：`.github/`（CI）、`.wrangler/`（部署缓存）、`node_modules/`、`package-lock.json`。
 
-自动执行：沐浴 → 采摘 → 悟道 → 开启洞府采集
-未加入仙盟时自动申请「天地一家大爱盟」。
-
-### 防封号
-所有工具内置独立IP伪造、浏览器指纹轮换、随机延迟、智能分段暂停。
-
-## 本地运行
+## 九重宫阙本地运行
 
 ```bash
-cd 批量注册工具
+cd 九重宫阙
 npm install
-node batch_alliance_daily.js        # 交互模式
-CI=true node batch_email_bind_ci.js  # CI模式
+npm start            # http://localhost:3000
+npm run init-db      # 初始化数据库（如需）
 ```
-
-## 技术栈
-
-- **后端**: Node.js + Express + MySQL
-- **自动化**: Node.js + GitHub Actions
-- **反检测**: IP伪造 / 指纹轮换 / 随机延迟
-- **临时邮箱**: Mail.tm / Tempy.email API

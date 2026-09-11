@@ -68,7 +68,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: 批量注册工具
+        working-directory: 原版/批量注册工具
 
     steps:
       - name: 🔄 检出代码
@@ -81,7 +81,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: 批量注册工具/package-lock.json
+          cache-dependency-path: 原版/批量注册工具/package-lock.json
 
       - name: 📦 安装依赖
         run: npm install
@@ -154,7 +154,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: alliance-daily-results-${{ github.run_id }}
-          path: 批量注册工具/alliance_daily_*.json
+          path: 原版/批量注册工具/alliance_daily_*.json
           compression-level: 6
           retention-days: 7
 

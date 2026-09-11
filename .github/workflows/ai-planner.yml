@@ -26,8 +26,8 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '批量注册工具/ai_planner.js'
-      - '批量注册工具/_anti_detect_shared.js'
+      - '原版/批量注册工具/ai_planner.js'
+      - '原版/批量注册工具/_anti_detect_shared.js'
 
 jobs:
   ai-plan:
@@ -42,23 +42,23 @@ jobs:
       with:
         node-version: '22'
         cache: 'npm'
-        cache-dependency-path: '批量注册工具/package-lock.json'
+        cache-dependency-path: '原版/批量注册工具/package-lock.json'
 
     - name: 安装依赖
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         npm install
 
     - name: 准备账号文件
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         echo "${{ github.event.inputs.accounts_data || secrets.ACCOUNTS_DATA || '' }}" > planner_accounts.txt
         echo "📋 账号文件内容:"
         cat planner_accounts.txt
 
     - name: 运行 AI 规划器
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         export DEEPSEEK_API_KEY="${{ github.event.inputs.deepseek_api_key || secrets.DEEPSEEK_API_KEY }}"
         export PLAN_PROMPT="${{ github.event.inputs.plan_prompt || '自动战斗30分钟，然后卖出所有材料' }}"
         export MAX_ACCOUNTS="${{ github.event.inputs.max_accounts || '' }}"
@@ -74,13 +74,13 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ai-plan-result
-        path: 批量注册工具/ai_plan_result_*.json
+        path: 原版/批量注册工具/ai_plan_result_*.json
         retention-days: 7
 
     - name: 输出结果摘要
       if: always()
       run: |
-        cd 批量注册工具
+        cd 原版/批量注册工具
         echo "📊 执行结果:"
         ls -la ai_plan_result_*.json 2>/dev/null || echo "无结果文件"
         echo ""

@@ -32,6 +32,10 @@ router.post('/battle', auth, async (req, res) => {
     if (injuryService.shouldAutoMeditate(character)) {
       return res.status(400).json({ error: '伤势过重，调息休整中（可关闭自动调息或使用疗伤丹）' });
     }
+    // 阶段7：参与仙盟建设期间不能刷怪（机会成本）
+    if ((character.guild_build_until || 0) > Date.now()) {
+      return res.status(400).json({ error: '参与仙盟建设中，无法战斗' });
+    }
 
     let result;
     if (enemyId) {

@@ -34,9 +34,11 @@ router.post('/create', auth, (req, res) => {
     if (!character) {
       return res.status(404).json({ error: '角色不存在' });
     }
-    const createCost = 1000;
-    if ((character.spirit_stone || 0) < createCost) {
-      return res.status(400).json({ error: `灵石不足，创建仙盟需要${createCost}灵石` });
+    // 阶段7：创建门槛由 1000 灵石改为 仙盟令×1（原始设定 09，稀缺凭证）
+    ensureGuildTokenItems(db);
+    const tokenIdx = db.inventory.findIndex(i => i.character_id === character.id && GUILD_TOKEN_ITEMS.some(t => t.itemId === i.item_id));
+    if (tokenIdx === -1) {
+      return res.status(400).json({ error: '创建仙盟需要「仙盟令」（礼包/拍卖/邀请奖励获取）' });
     }
     const existing = db.guilds.find(g => g.name === name);
     if (existing) {
@@ -51,9 +53,12 @@ router.post('/create', auth, (req, res) => {
       id: getNextId('guild_members'), guild_id: guildId, character_id: character.id,
       role: '盟主', joined_at: new Date().toISOString()
     });
-    character.spirit_stone -= createCost;
+    // 消耗仙盟令
+    const tokenInv = db.inventory[tokenIdx];
+    tokenInv.quantity = (tokenInv.quantity || 1) - 1;
+    if (tokenInv.quantity <= 0) db.inventory.splice(tokenIdx, 1);
     saveDatabase(db);
-    res.json({ success: true, guildId });
+    res.json({ success: true, guildId, message: '仙盟令已消耗，仙盟创立' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -415,6 +420,20 @@ const GUILD_TOKEN_ITEMS = [
   { id: 'supreme_token', name: '至尊仙盟令', itemId: 83, quality: '仙品', contribution: 200 }
 ];
 
+/** 确保仙盟令物品存在于 items 表（幂等） */
+function ensureGuildTokenItems(db) {
+  for (const t of GUILD_TOKEN_ITEMS) {
+    if (!db.items.find(i => i.id === t.itemId)) {
+      db.items.push({ id: t.itemId, name: t.name, type: '凭证', quality: t.quality, stats: '{}', description: `创建/资助仙盟的稀缺凭证（${t.quality}）` });
+    }
+  }
+}
+
+/** 阶段7：参与建设期间的机会成本（不能修炼/刷怪） */
+function isBuilding(character) {
+  return (character.guild_build_until || 0) > Date.now();
+}
+
 const GUILD_BUILDINGS = [
   { id: 'hall', name: '仙盟大厅', description: '仙盟核心建筑，等级影响其他建筑上限', maxLevel: 10, upgradeTime: 3600, costBase: 500, effect: 'maxMemberBonus', perLevel: 5 },
   { id: 'treasury', name: '仙盟宝库', description: '存储仙盟物资，等级影响存储上限', maxLevel: 8, upgradeTime: 2400, costBase: 300, effect: 'storageBonus', perLevel: 100 },
@@ -449,13 +468,17 @@ router.get('/buildings', auth, (req, res) => {
     });
     if (completedBuilds.length > 0) saveDatabase(db);
 
-    const buildings = GUILD_BUILDINGS.map(b => ({
-      ...b,
-      currentLevel: guild.buildings[b.id] || 0,
-      isUpgrading: guild.buildQueue.some(q => q.buildingId === b.id),
-      upgradeFinishTime: (guild.buildQueue.find(q => q.buildingId === b.id) || {}).completedAt || null,
-      upgradeCost: Math.floor(b.costBase * Math.pow(1.5, (guild.buildings[b.id] || 0)))
-    }));
+    const buildings = GUILD_BUILDINGS.map(b => {
+      const job = guild.buildQueue.find(q => q.buildingId === b.id);
+      return {
+        ...b,
+        currentLevel: guild.buildings[b.id] || 0,
+        isUpgrading: Boolean(job),
+        participants: job ? (job.participants || []).length : 0,
+        upgradeFinishTime: job ? job.completedAt : null,
+        upgradeCost: Math.floor(b.costBase * Math.pow(1.5, (guild.buildings[b.id] || 0)))
+      };
+    });
 
     res.json({ buildings, buildQueue: guild.buildQueue, funds: guild.funds || 0 });
   } catch (error) {
@@ -486,6 +509,10 @@ router.post('/buildings/upgrade', auth, (req, res) => {
     if (guild.buildQueue.some(q => q.buildingId === buildingId)) {
       return res.status(400).json({ error: '该建筑正在升级中' });
     }
+    // 阶段7：建设队列全局串行（原始设定 09——与其他队列串行）
+    if (guild.buildQueue.length > 0) {
+      return res.status(400).json({ error: '建设队列串行中，须等待当前建筑完工', queue: guild.buildQueue.length });
+    }
 
     if (buildingId !== 'hall') {
       const hallLevel = guild.buildings['hall'] || 0;
@@ -500,11 +527,91 @@ router.post('/buildings/upgrade', auth, (req, res) => {
       buildingId,
       startLevel: currentLevel,
       startedAt: Date.now(),
-      completedAt: Date.now() + building.upgradeTime * 1000
+      completedAt: Date.now() + building.upgradeTime * 1000,
+      participants: []
     });
     saveDatabase(db);
 
-    res.json({ success: true, message: `开始升级${building.name}`, funds: guild.funds, queueLength: guild.buildQueue.length });
+    res.json({ success: true, message: `开始升级${building.name}（队列串行）`, funds: guild.funds, queueLength: guild.buildQueue.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 阶段7：参与建设——机会成本（建设期间不能修炼/刷怪）+ 人数加速（每多1人剩余时间÷1.25，下限10%）
+router.post('/buildings/participate', auth, (req, res) => {
+  try {
+    const { buildingId } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const member = db.guild_members.find(m => m.character_id === character.id);
+    if (!member) return res.status(400).json({ error: '未加入仙盟' });
+
+    const guild = db.guilds.find(g => g.id === member.guild_id);
+    if (!guild || !guild.buildQueue) return res.status(400).json({ error: '没有进行中的建设' });
+    const job = guild.buildQueue.find(q => q.buildingId === buildingId);
+    if (!job) return res.status(400).json({ error: '该建筑不在建设队列中' });
+    if (isBuilding(character)) return res.status(400).json({ error: '已在参与建设' });
+
+    job.participants = job.participants || [];
+    if (!job.participants.includes(character.id)) job.participants.push(character.id);
+    const speedup = Math.max(0.1, 1 / (1 + 0.25 * (job.participants.length - 1)));
+    const remaining = Math.max(0, job.completedAt - Date.now()) * speedup;
+    job.completedAt = Date.now() + remaining;
+    character.guild_build_until = job.completedAt;
+    member.contribution = (member.contribution || 0) + 5; // 参与建设微量贡献
+    saveDatabase(db);
+    res.json({
+      success: true,
+      participants: job.participants.length,
+      speedup,
+      buildUntil: job.completedAt,
+      message: `参与建设（${job.participants.length}人协作，剩余时间×${speedup.toFixed(2)}）；期间无法修炼与刷怪`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 阶段7：成员赠送灵石（原始设定 09）
+router.post('/gift', auth, (req, res) => {
+  try {
+    const { targetCharacterId, amount } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const senderMember = db.guild_members.find(m => m.character_id === character.id);
+    if (!senderMember) return res.status(400).json({ error: '未加入仙盟' });
+    const target = db.characters.find(c => c.id === Number(targetCharacterId));
+    if (!target || target.id === character.id) return res.status(400).json({ error: '目标成员无效' });
+    const targetMember = db.guild_members.find(m => m.character_id === target.id);
+    if (!targetMember || targetMember.guild_id !== senderMember.guild_id) return res.status(400).json({ error: '对方不在同一仙盟' });
+    const amt = Math.floor(Number(amount));
+    if (!(amt > 0)) return res.status(400).json({ error: '数额无效' });
+    if ((character.spirit_stone || 0) < amt) return res.status(400).json({ error: '灵石不足' });
+    character.spirit_stone -= amt;
+    target.spirit_stone = (target.spirit_stone || 0) + amt;
+    saveDatabase(db);
+    res.json({ success: true, amount: amt, to: target.name, balance: character.spirit_stone });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 阶段7：邀请奖励——首次领取初级仙盟令（获取渠道之一）
+router.post('/token/claim', auth, (req, res) => {
+  try {
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    if (character.guild_token_claimed) return res.status(400).json({ error: '邀请奖励已领取' });
+    ensureGuildTokenItems(db);
+    const tokenDef = GUILD_TOKEN_ITEMS[0];
+    db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: tokenDef.itemId, quantity: 1 });
+    character.guild_token_claimed = true;
+    saveDatabase(db);
+    res.json({ success: true, item: tokenDef.name, message: '邀请奖励：初级仙盟令×1（拍卖行亦可流通各品阶仙盟令）' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

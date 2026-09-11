@@ -13,6 +13,10 @@ router.post('/cultivate', auth, (req, res) => {
     if (!character) {
       return res.status(404).json({ error: '角色不存在' });
     }
+    // 阶段7：参与仙盟建设期间不能修炼（机会成本）
+    if ((character.guild_build_until || 0) > Date.now()) {
+      return res.status(400).json({ error: '参与仙盟建设中，无法修炼' });
+    }
     const result = cultivationService.cultivate(character.id, duration || 60);
     res.json(result);
   } catch (error) {

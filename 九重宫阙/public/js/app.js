@@ -1550,14 +1550,18 @@ async function loadSkillSub(sub, btn) {
       const skills = data.skills || data || [];
       const equipped = skills.filter(s => s.equipped_slot);
       const unequipped = skills.filter(s => !s.equipped_slot);
+      // 阶段5：消费服务端槽位上限与 CD 惩罚
+      const SERVER_MAX = data.slotLimits || {};
+      const cdPenalty = data.cdPenalty || 1;
+      const totalEquipped = equipped.length;
 
       container.innerHTML = `
         <div style="margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px;">装备槽位</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px;">装备槽位 ${data.cdPenalty > 1 ? `<span style="color:#ff6b35;font-size:10px;">⚠ 冷却×${data.cdPenalty}</span>` : ''}</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:12px;">
             ${['main','sub','ultimate'].map(slot => {
               const slotSkills = equipped.filter(s => s.equipped_slot === slot);
-              const maxSlots = slot === 'ultimate' ? 1 : 3;
+              const maxSlots = SERVER_MAX[slot] || (slot === 'ultimate' ? 1 : 3);
               const filled = slotSkills.length;
               return `
                 <div style="padding:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">

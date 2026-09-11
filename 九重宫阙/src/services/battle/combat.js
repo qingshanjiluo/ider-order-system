@@ -169,6 +169,16 @@ class CombatService {
       const charSkills = this.getCharacterSkills(char.id, db);
       const dominantElement = this.getDominantElement(charSkills);
 
+      // 阶段5：伤势战斗 debuff（D5）
+      const injuryService = require('../injury');
+      const injuryDebuff = injuryService.getDebuffs(char);
+      // 阶段5：宗门演武馆战力加成
+      let sectCombat = 0;
+      try {
+        const benefits = require('../sect').getBenefits(char);
+        if (benefits.inSect) sectCombat = benefits.combatBonus || 0;
+      } catch (_) { /* 宗门异常不阻塞战斗 */ }
+
       const spiritRoots = char.spirit_roots || [];
       let rootElementBonus = 1.0;
       for (const root of spiritRoots) {
@@ -186,14 +196,15 @@ class CombatService {
         maxHp: totalHp,
         mp: char.mp || Math.floor(baseMp * realmMultiplier),
         maxMp: Math.floor(baseMp * realmMultiplier),
-        attack: Math.floor((baseAttack + equipAttack + petAttack) * realmMultiplier * tempAttackBonus * moodAttack),
-        defense: Math.floor((baseDefense + equipDefense + petDefense) * realmMultiplier * tempDefenseBonus * moodDefense),
-        speed: Math.floor((baseSpeed + equipSpeed) * realmMultiplier * tempSpeedBonus * moodSpeed),
+        attack: Math.floor((baseAttack + equipAttack + petAttack) * realmMultiplier * tempAttackBonus * moodAttack * injuryDebuff.combatMultiplier * (1 + sectCombat)),
+        defense: Math.floor((baseDefense + equipDefense + petDefense) * realmMultiplier * tempDefenseBonus * moodDefense * injuryDebuff.combatMultiplier * (1 + sectCombat)),
+        speed: Math.floor((baseSpeed + equipSpeed) * realmMultiplier * tempSpeedBonus * moodSpeed * injuryDebuff.combatMultiplier * (1 + sectCombat)),
         crit_rate: (char.crit_rate || 0.05) + (stats.luck || 10) * 0.001,
         crit_damage: char.crit_damage || 1.5,
         element: dominantElement,
         skills: charSkills,
-        skillDamageMultiplier: gongfaSkillDamage * rootElementBonus
+        skillDamageMultiplier: gongfaSkillDamage * rootElementBonus,
+        injuryHeavy: injuryDebuff.heavy
       };
     } else if (type === 'monster' || type === 'custom') {
       return this.generateMonster(id, db);
@@ -203,8 +214,9 @@ class CombatService {
 
   getCharacterSkills(characterId, db) {
     if (!db) db = loadDatabase();
-    const gongfas = (db.gongfa || []).filter(g => g.character_id === characterId && g.type === '战斗');
     const skills = [];
+    // 功法战斗技能（旧体系保留）
+    const gongfas = (db.gongfa || []).filter(g => g.character_id === characterId && g.type === '战斗');
     for (const gf of gongfas) {
       const item = (db.items || []).find(i => i.id === gf.item_id);
       if (item) {
@@ -217,7 +229,46 @@ class CombatService {
         });
       }
     }
+    // 阶段5：已装备玩家技能（main/sub/ultimate 槽）真实参战
+    const skillService = require('../skill');
+    const DATA = skillService.SKILLS_DATA || [];
+    const equipped = (db.player_skills || []).filter(ps => ps.character_id === characterId && ps.equipped_slot);
+    for (const ps of equipped) {
+      const def = DATA.find(s => s.id === ps.skill_id);
+      if (!def) continue;
+      if (def.type === 'passive') continue; // 被动不进回合技池
+      skills.push({
+        name: def.name,
+        multiplier: (def.damage_mult || 1.0) * (1 + ((ps.level || 1) - 1) * 0.1),
+        level: ps.level || 1,
+        element: def.element,
+        slot: ps.equipped_slot,
+        keyRounds: def.key_rounds || null
+      });
+    }
     return skills;
+  }
+
+  /**
+   * 阶段5：战后结算（伤势积累 + 重伤扣寿）。
+   * opts.arena=true → 擂台规则：伤势减半积累、免扣寿（评审决议）
+   */
+  aftermath(character, result, opts = {}) {
+    const injuryService = require('../injury');
+    if (!result || !result.success) return result;
+    const dmgTaken = Math.max(0, (result.attackerMaxHp || 0) - (result.attackerFinalHp || 0));
+    if (opts.arena) {
+      injuryService.accumulate(character, dmgTaken * 0.5, result.attackerMaxHp, false);
+    } else {
+      injuryService.accumulate(character, dmgTaken, result.attackerMaxHp, false);
+      if (result.winner === 'defender') {
+        result.heavyInjury = injuryService.triggerHeavyInjury(character, 'defeat');
+      } else if (result.attackerFinalHp >= 0 && result.attackerFinalHp < (result.attackerMaxHp || 1) * 0.1) {
+        result.heavyInjury = injuryService.triggerHeavyInjury(character, 'nearDeath');
+      }
+    }
+    result.injury = { value: Math.round(character.injury || 0), status: character.injury_status || 'none' };
+    return result;
   }
 
   getDominantElement(skills) {

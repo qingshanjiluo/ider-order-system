@@ -173,6 +173,15 @@ router.post('/enter', auth, async (req, res) => {
     }
 
     const winner = attacker.hp > 0 ? 'attacker' : 'defender';
+    // 阶段5：副本战后伤势结算（PVE 全额积累 + 重伤扣寿）
+    const battleResult = {
+      success: true,
+      winner,
+      attackerMaxHp: attacker.maxHp,
+      attackerFinalHp: Math.max(0, attacker.hp)
+    };
+    const combatService = require('../services/battle/combat');
+    combatService.aftermath(character, battleResult);
     const rating = winner === 'attacker' ? calculateRating({
       attackerMaxHp: attacker.maxHp,
       attackerFinalHp: Math.max(0, attacker.hp)
@@ -189,8 +198,8 @@ router.post('/enter', auth, async (req, res) => {
       rewards.grantedItems = grantDungeonItems(character, rewards.items, db);
       const { updateQuestProgress } = require('./quests');
       updateQuestProgress(character.id, 'dungeon', 1);
-      saveDatabase(db);
     }
+    saveDatabase(db);
 
     res.json({
       success: true,
@@ -199,6 +208,8 @@ router.post('/enter', auth, async (req, res) => {
       battleLog,
       rewards,
       rating,
+      injury: battleResult.injury,
+      heavyInjury: battleResult.heavyInjury || null,
       attackerMaxHp: attacker.maxHp,
       attackerFinalHp: Math.max(0, attacker.hp),
       defenderMaxHp: customMonster.maxHp,

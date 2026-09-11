@@ -3,6 +3,7 @@ const router = express.Router();
 const { loadDatabase, saveDatabase } = require('../database');
 const auth = require('../middleware/auth');
 const gameTime = require('../services/gameTime');
+const injuryService = require('../services/injury');
 
 router.get('/', auth, (req, res) => {
   try {
@@ -12,7 +13,14 @@ router.get('/', auth, (req, res) => {
       return res.status(404).json({ error: '角色不存在' });
     }
     // 阶段2：时间引擎结算（24h=10年，100% 在线离线折算）
-    gameTime.settleTime(character);
+    const settled = gameTime.settleTime(character);
+    // 阶段5：伤势自然恢复（每游戏日-20；洞府×2 —— 由洞府系统写入 in_cave 标记）
+    const nowTick = Date.now();
+    const elapsedHours = character.last_recover_tick_at
+      ? (nowTick - character.last_recover_tick_at) / 3600000
+      : 0;
+    character.last_recover_tick_at = nowTick;
+    const recovered = injuryService.meditateRecover(character, elapsedHours, Boolean(character.in_cave));
     let reincarnated = null;
     if (gameTime.shouldPassAway(character)) {
       reincarnated = gameTime.passAway(character, db);
@@ -21,6 +29,8 @@ router.get('/', auth, (req, res) => {
     res.json({
       ...character,
       lifespan: gameTime.lifespanInfo(character),
+      injury: { value: Math.round(character.injury || 0), status: character.injury_status || 'none', autoMeditating: injuryService.shouldAutoMeditate(character), recovered: Math.round(recovered) },
+      timeAdvanced: { years: Number(settled.advancedYears.toFixed(4)) },
       reincarnated
     });
   } catch (error) {

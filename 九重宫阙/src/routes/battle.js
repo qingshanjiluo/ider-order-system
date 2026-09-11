@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const combatService = require('../services/battle/combat');
 const characterService = require('../services/character');
+const injuryService = require('../services/injury');
 const { loadDatabase, saveDatabase } = require('../database');
 
 router.get('/enemy', auth, (req, res) => {
@@ -27,6 +28,10 @@ router.post('/battle', auth, async (req, res) => {
     if (!character) {
       return res.status(404).json({ error: '角色不存在' });
     }
+    // 阶段5：自动调息闸门（D5）
+    if (injuryService.shouldAutoMeditate(character)) {
+      return res.status(400).json({ error: '伤势过重，调息休整中（可关闭自动调息或使用疗伤丹）' });
+    }
 
     let result;
     if (enemyId) {
@@ -36,6 +41,8 @@ router.post('/battle', auth, async (req, res) => {
     }
 
     if (result.success) {
+      // 阶段5：战后伤势结算（PVE 全额积累 + 重伤扣寿）
+      combatService.aftermath(character, result);
       character.total_battles = (character.total_battles || 0) + 1;
       if (result.winner === 'attacker') {
         character.win_streak = (character.win_streak || 0) + 1;

@@ -59,6 +59,7 @@ router.get('/list', auth, (req, res) => {
     res.json({
       skills,
       maxSlots,
+      slotLimits: { main: 3, sub: 3, ultimate: 1 },
       equippedCount,
       cdPenalty,
       baseSlots,

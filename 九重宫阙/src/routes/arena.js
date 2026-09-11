@@ -131,10 +131,17 @@ router.post('/match', auth, async (req, res) => {
       return res.status(400).json({ error: '没有可匹配的对手' });
     }
     const opponent = opponents[Math.floor(Math.random() * opponents.length)];
+    // 阶段5：自动调息闸门
+    const injuryService = require('../services/injury');
+    if (injuryService.shouldAutoMeditate(character)) {
+      return res.status(400).json({ error: '伤势过重，调息休整中（可关闭自动调息或使用疗伤丹）' });
+    }
     const result = await combatService.startBattle(character.id, opponent.id, 'character', 'character');
     if (!result.success) {
       return res.status(500).json({ error: '战斗失败' });
     }
+    // 阶段5：擂台规则——伤势减半积累、免扣寿
+    combatService.aftermath(character, result, { arena: true });
     if (result.winner === 'attacker') {
       const rewards = { exp: 50, spiritStone: 20 };
       characterService.addExp(character.id, rewards.exp);
@@ -142,9 +149,12 @@ router.post('/match', auth, async (req, res) => {
       character.total_battles = (character.total_battles || 0) + 1;
       character.win_streak = (character.win_streak || 0) + 1;
       character.arena_points = (character.arena_points || 0) + 10;
-      saveDatabase(db);
       result.rewards = rewards;
+    } else {
+      character.total_battles = (character.total_battles || 0) + 1;
+      character.win_streak = 0;
     }
+    saveDatabase(db);
     result.opponent = { name: opponent.name, realm: opponent.realm, level: opponent.level };
     res.json(result);
   } catch (error) {

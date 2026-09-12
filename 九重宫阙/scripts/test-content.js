@@ -706,5 +706,50 @@ t('挂载点先判满槽再造物（失败不得留下半件功法）', () => {
   assert.ok(/技能槽位已满/.test(src.slice(slotAt, pushAt)), '满槽未给出可读错误');
 });
 
+console.log('== 十四期：境界 ↔ 寿元 数据契约（E6 扩容防护）==');
+t('db.realms 每一级寿元严格递增；显式 null 只允许在末位（飞升脱尘）', () => {
+  const realms = (require('../src/database').loadDatabase().realms || [])
+    .slice().sort((a, b) => a.id - b.id);
+  assert.ok(realms.length >= 10, `境界表行数异常：${realms.length}`);
+  const nullIdx = realms.findIndex(x => balance.LIFESPAN_YEARS[x.name] === null);
+  assert.ok(nullIdx === -1 || nullIdx === realms.length - 1,
+    `null 寿元出现在第 ${nullIdx} 行（只允许末位，否则高境界反而有数）`);
+  let prev = -1, prevName = '';
+  for (const r of realms) {
+    assert.ok(r.name in balance.LIFESPAN_YEARS, `${r.name} 在 LIFESPAN_YEARS 缺键（两文件必须同步扩容）`);
+    const l = balance.LIFESPAN_YEARS[r.name];
+    if (l === null) continue;
+    assert.ok(l > prev, `${r.name} 寿元 ${l} 未超过前一级 ${prevName}=${prev}`);
+    prev = l; prevName = r.name;
+  }
+  assert.strictEqual(prev, balance.LIFESPAN_CAP, 'ladder 末位数值寿元应正好顶到 LIFESPAN_CAP');
+});
+t('寿元表显式 null 仅属于飞升；凡人与顶格值符合发布文案', () => {
+  const nulls = Object.entries(balance.LIFESPAN_YEARS).filter(([, v]) => v === null).map(([k]) => k);
+  assert.deepStrictEqual(nulls, ['飞升'], `显式 null 只应属于飞升，实得：${nulls.join(',')}`);
+  assert.strictEqual(balance.LIFESPAN_YEARS['凡人'], 100);
+  assert.strictEqual(balance.lifespanOf('渡劫'), balance.LIFESPAN_CAP);
+  assert.strictEqual(balance.LIFESPAN_CAP, 1000000, '顶格百万，对应发布文案「百万寿元」');
+});
+t('不变量 1：延寿 bonus 封顶 ≤ 35%，任何境界都不被掏穿', () => {
+  assert.ok(balance.LONGEVITY_BONUS_CAP_RATIO <= 0.35);
+  const caps = Object.values(balance.LIFESPAN_YEARS).filter((v) => typeof v === 'number');
+  assert.ok(caps.length >= 10, `寿元表数值项过少：${caps.length}`);
+  for (const cap of caps) {
+    assert.ok(balance.yearsOfRatio(cap, balance.LONGEVITY_BONUS_CAP_RATIO) <= cap * 0.35 + 1e-9,
+      `cap=${cap} 的 bonus 越界`);
+  }
+});
+t('E3 槽位与 ladder 同源：每个境界序号都得 2..8 且单调封顶', () => {
+  const n = (require('../src/database').loadDatabase().realms || []).length;
+  assert.ok(n >= 10);
+  for (let i = 0; i < n; i++) {
+    const c = balance.skillSlotCap(i);
+    assert.ok(c >= 2 && c <= 8, `序号 ${i} 槽位 ${c} 越界`);
+    if (i > 0) assert.ok(c >= balance.skillSlotCap(i - 1), '槽位上限不得回退');
+  }
+  assert.strictEqual(balance.skillSlotCap(n + 5), 8, '超出 ladder 仍应封顶 8 槽');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

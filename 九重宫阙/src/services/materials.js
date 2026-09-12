@@ -107,6 +107,8 @@ const TIER_EQUIP_CAP = {
 };
 
 const TIER_NAMES = { 1: '凡材', 2: '良材', 3: '珍材', 4: '奇材', 5: '仙材' };
+const TIER_QUALITY = { 1: '凡品', 2: '灵品', 3: '宝品', 4: '仙品', 5: '道品' };
+const TIER_PRICE = { 1: 20, 2: 80, 3: 300, 4: 1200, 5: 5000 };
 
 function gradeOf(item) {
   if (!item || item.type !== '材料') return null;
@@ -117,6 +119,26 @@ function gradeOf(item) {
   const def = MATERIAL_CATALOG[item.name];
   if (!def) return null;
   return { ...def };
+}
+
+/** 目录中的材料若尚未入库则创建（修复：新增材料只进目录未入库，导致引用它的图纸无法学习） */
+function ensureMaterialItems(db) {
+  if (!db.items) db.items = [];
+  let created = 0;
+  for (const [name, def] of Object.entries(MATERIAL_CATALOG)) {
+    if (db.items.find(i => i.name === name)) continue;
+    const id = getNextId('items');
+    db.items.push({
+      id,
+      name,
+      type: '材料',
+      quality: TIER_QUALITY[def.tier],
+      stats: JSON.stringify({ tier: def.tier, role: def.role, element: def.element, grade_name: TIER_NAMES[def.tier] }),
+      description: `${TIER_NAMES[def.tier]}·${def.role === 'main' ? '主材' : '辅材'}（${def.element}系）`
+    });
+    created++;
+  }
+  return created;
 }
 
 function ensureMaterialGrades(db) {
@@ -214,14 +236,44 @@ function ensureShopStock(db) {
   return changed;
 }
 
+/** 装备图鉴入库（内容富集七期）：六部位八品阶 96 件，低阶上架坊市 */
+function ensureEquipmentItems(db) {
+  const { EQUIPMENT_LIBRARY, EQUIPMENT_SHOP } = require('../data/equipment-library');
+  if (!db.items) db.items = [];
+  if (!db.shop) db.shop = [];
+  let changed = 0;
+  for (const def of EQUIPMENT_LIBRARY) {
+    let item = db.items.find(i => i.name === def.name);
+    if (!item) {
+      const id = getNextId('items');
+      db.items.push({
+        id, name: def.name, type: '装备', subtype: def.subtype, quality: def.quality,
+        realm: def.realm, stats: JSON.stringify(def.stats), description: def.desc
+      });
+      item = db.items.find(i => i.id === id);
+      changed++;
+    }
+    const price = EQUIPMENT_SHOP[def.quality];
+    if (price && !db.shop.find(s => s.item_id === item.id)) {
+      db.shop.push({ id: getNextId('shop'), item_id: item.id, price, stock: 999, description: def.desc });
+      changed++;
+    }
+  }
+  return changed;
+}
+
 function ensureAll(db) {
+  const a0 = ensureMaterialItems(db);
   const a = ensureMaterialGrades(db);
   const b = ensureShopStock(db);
   const c = ensureMapNodes(db);
   const e = ensureBlueprints(db);
+  const f = ensureEquipmentItems(db);
+  let m = 0;
+  try { m = require('../data/monster-library').ensureMonsters(db); } catch { /* 怪物库异常不阻断 boot */ }
   let d = 0;
   try { const alchemy = require('../routes/alchemy'); if (alchemy.__ensureRecipes) { d = alchemy.__ensureRecipes(db) || 0; } } catch { /* alchemy 未就绪则跳过 */ }
-  return { materialGrades: a, shopEntries: b, mapNodes: c, blueprints: e, recipes: d, changed: a + b + c + e + d };
+  return { materialItems: a0, materialGrades: a, shopEntries: b, mapNodes: c, blueprints: e, equipment: f, monsters: m, recipes: d, changed: a0 + a + b + c + e + f + m + d };
 }
 
-module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, gradeOf, ensureAll, ensureMaterialGrades, ensureShopStock };
+module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, BLUEPRINT_CATALOG, gradeOf, ensureAll, ensureMaterialGrades, ensureMaterialItems, ensureShopStock, ensureBlueprints, ensureEquipmentItems };

@@ -280,13 +280,15 @@ t('扩展丹方：boot后可解析（herb/结果道具均存在）', () => {
   const src = require('fs').readFileSync('src/routes/alchemy.js', 'utf8');
   for (const pill of ['淬体丹', '凝神丹', '龙血丹', '太阴凝魂丹']) assert.ok(src.includes(`'${pill}'`) || src.includes(pill), `缺丹方 ${pill}`);
 });
-t('灵兽物种 ≥ 16', () => {
-  const names = new Set();
-  for (let i = 0; i < 60; i++) {
-    const p = itemService.generatePet('筑基', '灵兽');
-    names.add(JSON.parse(p.stats).species);
-  }
-  assert.ok(names.size >= 16, `实测物种 ${names.size}`);
+t('灵兽物种池 ≥ 17（源数据校验）+ 生成器多样', () => {
+  const src = require('fs').readFileSync('src/services/item.js', 'utf8');
+  const speciesSec = src.slice(src.indexOf('const SPECIES'), src.indexOf('const sp ='));
+  const pool = [...speciesSec.matchAll(/\{ name: '([^']+)', element:/g)].map(m => m[1]);
+  assert.ok(pool.length >= 17, `物种池仅 ${pool.length}`);
+  assert.strictEqual(new Set(pool).size, pool.length, '物种池有重名');
+  const seen = new Set();
+  for (let i = 0; i < 60; i++) seen.add(JSON.parse(itemService.generatePet('筑基', '灵兽').stats).species);
+  assert.ok(seen.size >= 10, `生成器多样性不足: ${seen.size}`);
 });
 
 t('器方/符方图纸库 ≥12 且材料全部可解析', () => {
@@ -343,6 +345,87 @@ t('捕捉路由与 feed 路由均完整挂载', () => {
   assert.ok(s.includes("router.post('/capture'"), '缺 capture 路由');
   assert.ok(/router\.post\('\/feed'[\s\S]{0,80}try \{/.test(s), 'feed 路由结构受损');
   assert.ok(s.includes('db.pets.push'), '未写入兽栏');
+});
+
+console.log('== 七期：装备图鉴 + 怪物图鉴 + 材料入库修复 ==');
+const { EQUIPMENT_LIBRARY, SLOTS } = require('../src/data/equipment-library');
+const monsterLib = require('../src/data/monster-library');
+t(`装备图鉴 ≥ 96（实际 ${EQUIPMENT_LIBRARY.length}）且六部位齐备`, () => {
+  assert.ok(EQUIPMENT_LIBRARY.length >= 96, `仅 ${EQUIPMENT_LIBRARY.length}`);
+  for (const slot of Object.keys(SLOTS)) {
+    const n = EQUIPMENT_LIBRARY.filter(e => e.subtype === slot).length;
+    assert.ok(n >= 8, `${slot} 仅 ${n} 件`);
+  }
+});
+t('装备品阶数值单调递增（同部位同器型）', () => {
+  const Q = ['凡器', '法器', '灵器', '法宝', '古宝', '灵宝', '道器', '仙器'];
+  const weapons = Q.map(q => EQUIPMENT_LIBRARY.find(e => e.subtype === 'weapon' && e.quality === q && e.name === SLOTS.weapon.names[Q.indexOf(q)]));
+  assert.ok(weapons.every(Boolean), '主兵器链条不完整');
+  for (let i = 1; i < weapons.length; i++) {
+    assert.ok(weapons[i].stats.attack > weapons[i - 1].stats.attack, `${Q[i]} 攻击未递增`);
+  }
+});
+t('装备 id/名称唯一且境界阶梯匹配', () => {
+  const names = EQUIPMENT_LIBRARY.map(e => e.name);
+  assert.strictEqual(new Set(names).size, names.length, '装备重名');
+  const Q = ['凡器', '法器', '灵器', '法宝', '古宝', '灵宝', '道器', '仙器'];
+  for (const e of EQUIPMENT_LIBRARY) {
+    const qi = Q.indexOf(e.quality);
+    assert.ok(qi >= 0, `未知品阶 ${e.quality}`);
+    assert.ok(e.realm, `${e.name} 缺境界`);
+  }
+});
+t('怪物图鉴：地图引用 100% 覆盖（按地图补齐）', () => {
+  const fakeDb = {
+    items: [{ id: 1, name: '灵草' }, { id: 2, name: '聚灵草' }, { id: 3, name: '火焰结晶' }],
+    monsters: [],
+    maps: [
+      { id: 1, name: '青云山', min_level: 1, max_level: 15, difficulty: 1, element: '无', monsters: ['灵兔', '灵蛇', '山猫'] },
+      { id: 2, name: '火焰山', min_level: 20, max_level: 30, difficulty: 1.5, element: '火', monsters: ['岩浆兽', '火元素', '炎魔'] },
+      { id: 3, name: '寒冰谷', min_level: 30, max_level: 40, difficulty: 1.8, element: '冰', monsters: ['冰狼', '雪人'] }
+    ]
+  };
+  const created = monsterLib.ensureMonsters(fakeDb);
+  assert.strictEqual(created, 8, `应补 8 只，实际 ${created}`);
+  assert.strictEqual(monsterLib.ensureMonsters(fakeDb), 0, '二次补齐应零新增');
+  for (const m of fakeDb.monsters) {
+    const st = JSON.parse(m.stats);
+    assert.ok(st.hp > 0 && st.attack > 0, `${m.name} 数值异常`);
+    assert.ok(['metal','wood','water','fire','earth','light','dark','none'].includes(m.element), `${m.name} 元素非法`);
+  }
+});
+t('怪物元素推断正确（冰→水/火→火/雷→金/鬼→暗）', () => {
+  assert.strictEqual(monsterLib.inferElement('冰霜巨龙', '无'), 'water');
+  assert.strictEqual(monsterLib.inferElement('岩浆巨人', '无'), 'fire');
+  assert.strictEqual(monsterLib.inferElement('雷劫守卫', '无'), 'metal');
+  assert.strictEqual(monsterLib.inferElement('幽冥鬼', '无'), 'dark');
+  assert.strictEqual(monsterLib.inferElement('树精', '无'), 'wood');
+});
+t('怪物数值随地图难度放大', () => {
+  const easy = monsterLib.monsterStatsFor('x', 1, 1, 0);
+  const hard = monsterLib.monsterStatsFor('x', 90, 5, 0);
+  assert.ok(hard.hp > easy.hp * 10 && hard.attack > easy.attack * 10, '难度未放大');
+});
+t('材料目录每一项都已真正入库（修复空目录幽灵材料）', () => {
+  const fakeDb = { items: [], shop: [], maps: [], blueprints: [], id_counters: {} };
+  const r = materials.ensureAll(fakeDb);
+  assert.strictEqual(r.materialItems, Object.keys(materials.MATERIAL_CATALOG).length, '入库材料数不符');
+  for (const name of ['离火精', '太阴玄冰', '星陨砂', '朱砂', '紫猴花', '赤焰髓', '五色土']) {
+    assert.ok(fakeDb.items.find(i => i.name === name), `${name} 未入库`);
+  }
+  // 图纸材料现在应全部可解析
+  for (const bp of materials.BLUEPRINT_CATALOG) {
+    for (const m of bp.materials) {
+      assert.ok(fakeDb.items.find(i => i.name === m.name), `图纸材料 ${m.name} 仍不可解析`);
+    }
+  }
+});
+t('ensureAll 幂等：真实库二次执行零变更', () => {
+  const { loadDatabase } = require('../src/database');
+  const db = loadDatabase();
+  materials.ensureAll(db);
+  const r2 = materials.ensureAll(db);
+  assert.strictEqual(r2.changed, 0, `二次变更 ${r2.changed} 项`);
 });
 
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);

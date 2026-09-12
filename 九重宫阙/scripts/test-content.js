@@ -649,5 +649,34 @@ t('显式 opts 覆盖自动解析（调用方可指定破境丹等）', () => {
   assert.strictEqual(p.parts.pill, 15);
 });
 
+console.log('== 十二期：契机丹可得性与 R11 调参锁 ==');
+t('破境丹：库里有定义、坊市有上架（不可为半幽灵）', () => {
+  const pills = require('../src/data/pill-library.js');
+  const list = pills.PILLS || pills.default || [];
+  const def = list.find(p => p.name === '破境丹');
+  assert.ok(def, 'pill-library 缺破境丹');
+  assert.strictEqual(def.category, '突破');
+  const catalog = require('fs').readFileSync('src/services/materials.js', 'utf8');
+  assert.ok(/破境丹/.test(catalog), 'SHOP_CATALOG 未上架破境丹 → 玩家不可得');
+  const db = require('../src/database').loadDatabase();
+  const items = (db.items || []).filter(x => x.name === '破境丹');
+  assert.strictEqual(items.length, 1, `破境丹应唯一，实得 ${items.length}`);
+  const listed = (db.shop || []).filter(s => items.some(i => i.id === s.item_id));
+  assert.strictEqual(listed.length, 1, '破境丹未上架或重复上架');
+});
+t('持有契机丹 → 概率 +15；未持有 → 无幽灵加成', () => {
+  assert.deepStrictEqual(balance.BREAKTHROUGH_PILL_NAMES, ['破境丹']);
+  const src = require('fs').readFileSync('src/services/realm.js', 'utf8');
+  assert.ok(/_findPillRow\(character\.id\)/.test(src) && /pillRow\.quantity/.test(src), '一次性消耗逻辑丢失（会退化为随身永驻 +15%）');
+  assert.strictEqual(realmService.resolveBreakthroughMods({ realm: '金丹', id: -1 }).pill, false, '无丹不得白送契机');
+});
+t('R11 锁：天道庇护 10%/次，足以打断失败螺旋', () => {
+  assert.strictEqual(balance.BREAKTHROUGH_MODS.heavenShieldEach, 10, '护栏值被改回（渡劫寿尽率会回到 20%+）');
+  const p = realmService.breakthroughProbability({ realm: '渡劫', inner_demon: 5, breakthrough_failures: 5, injury: 0 }).parts;
+  assert.strictEqual(p.heavenShield, 30, '连败 5 次应累计 +30（10×(5−3+1)）');
+  const noShield = 20 + p.innerDemon + p.failures;
+  assert.ok(p.base + p.innerDemon + p.failures + p.heavenShield > noShield, '庇护必须真的抬升概率');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

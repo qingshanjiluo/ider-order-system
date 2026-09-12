@@ -12,31 +12,37 @@ class CombatService {
     }
 
     const battleLog = [];
-    let round = 1;
+    let round = 0;
     let useSkillIndex = skillIndex;
 
+    // E3：先手由速度决定（此前攻方无条件先手，speed 是空转属性）；
+    // 攻方的技能索引只在攻方行动那一下生效，不因先手归属而丢失。
     while (attacker.hp > 0 && defender.hp > 0) {
-      const attackerResult = this.executeRound(attacker, defender, 'attacker', useSkillIndex);
-      battleLog.push(attackerResult.log);
-      defender.hp -= attackerResult.damage;
-
-      if (defender.hp <= 0) {
-        battleLog.push(`${defender.name} 被击败！`);
-        break;
-      }
-
-      const defenderResult = this.executeRound(defender, attacker, 'defender', null);
-      battleLog.push(defenderResult.log);
-      attacker.hp -= defenderResult.damage;
-
-      if (attacker.hp <= 0) {
-        battleLog.push(`${attacker.name} 被击败！`);
-        break;
-      }
-
       round++;
+      const attackerFirst = this.decideInitiative(attacker, defender);
+      const first = attackerFirst ? attacker : defender;
+      const second = attackerFirst ? defender : attacker;
+
+      const r1 = this.executeRound(first, second, attackerFirst ? 'attacker' : 'defender',
+        attackerFirst ? useSkillIndex : null);
+      battleLog.push(r1.log);
+      second.hp -= r1.damage;
+      if (attackerFirst) useSkillIndex = null;
+      if (second.hp <= 0) {
+        battleLog.push(`${second.name} 被击败！`);
+        break;
+      }
+
+      const r2 = this.executeRound(second, first, attackerFirst ? 'defender' : 'attacker', useSkillIndex);
+      battleLog.push(r2.log);
+      first.hp -= r2.damage;
       useSkillIndex = null;
-      if (round > 50) {
+      if (first.hp <= 0) {
+        battleLog.push(`${first.name} 被击败！`);
+        break;
+      }
+
+      if (round >= 50) {
         battleLog.push('战斗超时，平局！');
         break;
       }
@@ -48,7 +54,7 @@ class CombatService {
     return {
       success: true,
       winner,
-      rounds: round - 1,
+      rounds: round,
       battleLog,
       rewards,
       attackerMaxHp: attacker.maxHp,
@@ -356,6 +362,16 @@ class CombatService {
       element: this.normalizeElement(map.element),
       skills: []
     };
+  }
+
+  /**
+   * E3 · 先手判定：速度高者先手；同速则攻方先手（保证结果确定、可复现）。
+   * speed 缺失或为 0 按 0 处理，不允许 undefined 比较把先手随机化。
+   */
+  decideInitiative(attacker, defender) {
+    const as = (attacker && attacker.speed) || 0;
+    const ds = (defender && defender.speed) || 0;
+    return as >= ds;
   }
 
   calculateRewards(winner, attacker, defender, db) {

@@ -783,5 +783,33 @@ t('damage.js 已接比值减伤且不残留线性相减', () => {
   assert.ok(!/defenseReduction/.test(src), '旧的线性相减实现仍残留');
 });
 
+console.log('== 十六期：E3 先手判定与回合计数 ==');
+t('decideInitiative：速度高者先手、同速归攻方、缺字段按 0 处理', () => {
+  const cm = require('../src/services/battle/combat');
+  const svc = typeof cm === 'function' ? new cm() : cm;
+  assert.strictEqual(typeof svc.decideInitiative, 'function', 'decideInitiative 未挂上服务实例');
+  assert.strictEqual(svc.decideInitiative({ speed: 100 }, { speed: 50 }), true, '攻方更快应先手');
+  assert.strictEqual(svc.decideInitiative({ speed: 50 }, { speed: 100 }), false, '守方更快应抢得先手');
+  assert.strictEqual(svc.decideInitiative({ speed: 80 }, { speed: 80 }), true, '同速须归攻方（确定性）');
+  assert.strictEqual(svc.decideInitiative({}, {}), true, '双方缺 speed 不得变成 undefined 比较');
+  assert.strictEqual(svc.decideInitiative({ speed: 0 }, { speed: 1 }), false);
+  assert.strictEqual(svc.decideInitiative(null, { speed: 5 }), false, '入参缺失须降级而非抛错');
+});
+t('主循环已按先手排序，且攻方技能不因守方先手而丢失', () => {
+  const src = require('fs').readFileSync('src/services/battle/combat.js', 'utf8');
+  assert.ok(/this\.decideInitiative\(attacker, defender\)/.test(src), '主循环未接入先手判定');
+  assert.ok(!/this\.executeRound\(attacker, defender, 'attacker', useSkillIndex\)/.test(src),
+    '仍是攻方无条件先手的旧循环');
+  assert.ok(/attackerFirst \? useSkillIndex : null/.test(src), '技能索引未与先手归属解耦');
+});
+t('回合计数不再差一（rounds: round 而非 round - 1）', () => {
+  const src = require('fs').readFileSync('src/services/battle/combat.js', 'utf8');
+  assert.ok(/rounds: round,/.test(src), 'rounds 仍可能被少算一回合');
+  assert.ok(!/rounds: round - 1/.test(src), '残留差一实现');
+  assert.ok(/let round = 0;/.test(src) && /while \(attacker\.hp > 0 && defender\.hp > 0\) \{\s*\n\s*round\+\+/.test(src),
+    '回合数应在每轮开始时自增');
+  assert.ok(/if \(round >= 50\)/.test(src), '超时上限判定未随新计数方式调整');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

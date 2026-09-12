@@ -48,6 +48,16 @@ app.use(express.json());
 app.use(sanitizeMiddleware); // Sanitize all inputs
 app.use(rateLimit); // Apply rate limiting globally
 
+// E2 安全加固：反向代理下取真实 IP（限流依赖）+ 生产环境密钥断言
+app.set('trust proxy', 1);
+if (process.env.NODE_ENV === 'production') {
+  const secret = process.env.JWT_SECRET || '';
+  if (!secret || secret.length < 32 || /change|default|secret|example/i.test(secret)) {
+    console.error('[FATAL] 生产环境必须设置强随机 JWT_SECRET（≥32 字符，且不含 change/default/secret/example）');
+    process.exit(1);
+  }
+}
+
 // 健康检查（容器/负载探针；置于限流之后、鉴权之前，无需 token）
 app.use('/api/health', require('./src/routes/health'));
 app.use(express.static(path.join(__dirname, 'public')));

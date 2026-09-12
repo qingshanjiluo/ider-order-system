@@ -62,6 +62,21 @@ t('③ 谎话回归：轮58 抓到的过期断言不得再出现在清单里', (
   assert.ok(/NO-GO|GO/.test(s), '清单没有结论');
 });
 
+t('⑤ 人工签核项只能由人推进（清单说的已签数必须等于待核清单里真有的勾）', () => {
+  const sheetPath = path.join(ROOT, '覆盖率待核清单.md');
+  assert.ok(fs.existsSync(sheetPath), '缺《覆盖率待核清单.md》：先 npm run review:gen（第 7 项没有载体就没人能签）');
+  const sheet = fs.readFileSync(sheetPath, 'utf8');
+  const signed = (sheet.match(/^\| \d+ \|.*\| - \[[xX]\] \|$/gm) || []).length;
+  const total = (sheet.match(/^\| \d+ \|/gm) || []).length;
+  assert.ok(total >= 20, '待核清单只有 ' + total + ' 条，凑不满 20 ⇒ 抽取逻辑坏了，不是人没签');
+  const doc = rd('上线验收清单.md');
+  const row = doc.split('\n').find((l) => l.startsWith('| 7 |')) || '';
+  const m = row.match(/人工已签 (\d+)\/20/);
+  assert.ok(m, '第 7 项不再报已签数 ⇒ 疑似被改回硬编码（false 或 true 都不许）：' + row.slice(0, 80));
+  assert.strictEqual(Number(m[1]), signed, '清单声称已签 ' + m[1] + ' 条，待核清单里真有 ' + signed + ' 条 ⇒ 要么清单过期，要么有人在替人签字');
+  if (signed < 20) assert.ok(/🔴/.test(row), '人没签满 20 条，第 7 项却判绿 —— 这是自评放水');
+});
+
 t('④ 每个门控项都必须带实测依据（不许空格子自我认证）', () => {
   const s = rd('上线验收清单.md');
   const rows = s.split('\n').filter((l) => /^\| \d+ \| .* \| .🟢 过|🔴 不过. \|/.test(l.replace(/\s+$/, '')) || /^\| \d+ \|[^|]+\|[^|]+\|/.test(l));

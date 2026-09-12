@@ -133,6 +133,25 @@ G('六条不变量逐条有断言（含第 3 条全表引用扫描）',
 // 轮61：P5 第 3/4/5 项只认真实演练产物。守护进程一起来之后，"docker version 能跑"就不再是证据
 // —— 它连一次 build 都没做。演练脚本从 GitHub 新克隆构建镜像，只认已提交的代码，天然排除"我这台机器上是好的"。
 const DRILL = headline('部署演练.md');
+/** 待核清单（轮61/62）：机器不替人签字 —— 已勾数从《覆盖率待核清单.md》的表格行里读，
+ *  没签满 20 行第 7 项就判红。轮61 曾把这段插在写盘之前就退出的补丁里，导致生成器
+ *  运行期 ReferenceError（node --check 抓不到未定义标识符），故此处配一条运行期冒烟。 */
+const REVIEW_SHEET = (() => {
+  const empty = { total: 0, signed: 0, need: 20, clickable: 0, unwired: 0 };
+  if (!exists('覆盖率待核清单.md')) return empty;
+  const t = rd('覆盖率待核清单.md');
+  const h = headline('覆盖率待核清单.md') || {};
+  return {
+    total: Number(h.total) || (t.match(/^\| \d+ \|/gm) || []).length,
+    // 只数表格行里的勾：说明文字出现同类字符不算签字（轮61 曾把已签数算成 1）
+    signed: (t.match(/^\| \d+ \|.*\| - \[[xX]\] \|$/gm) || []).length,
+    need: Number(h.signedNeeded) || 20,
+    clickable: Number(h.wired != null ? h.wired : h.clickable) || 0,
+    unwired: Number(h.unwired) || 0
+  };
+})();
+console.log('  待核清单 = ' + REVIEW_SHEET.total + ' 条，人工已签 ' + REVIEW_SHEET.signed + '/' + REVIEW_SHEET.need);
+
 G('docker build + 真守护进程 up + 容器内 /api/health',
   !!DRILL && DRILL.failed === 0 && DRILL.buildUpHealthOk === true,
   DRILL
@@ -154,8 +173,9 @@ G('数值复跑四张表贴进本清单',
   !!(BAL && ECO && BAL.failed === 0 && ECO.failed === 0 && RB.ok && SB.ok),
   `追赶 ${BAL ? BAL.passed + '/失败' + BAL.failed : '未取到'}　经济 ${ECO ? ECO.passed + '/失败' + ECO.failed : '未取到'}　` +
   `R11 ${RB.ok ? '通过' : '判红'}（sim-breakthrough 3000 世；其内部硬断言含"渡劫寿尽率 <5%"，退出码即结论，不再靠解析它的措辞）　战斗 ${SB.ok ? '通过' : '判红'}（sim-battle 四段胜率带；退出码即结论）`);
-G('前端覆盖率清单人工核对 20 条', false, COV ? `机器侧已有：后端 ${COV.total} 端点 / 可点 ${COV.clickable} / 幽灵 ${COV.ghost}；人工 20 条未做` : '覆盖率报告未取到');
-
+G('前端覆盖率清单人工核对 20 条', REVIEW_SHEET.signed >= REVIEW_SHEET.need,
+  `待核清单 ${REVIEW_SHEET.total} 条（前端有调用 ${REVIEW_SHEET.clickable}／未见调用 ${REVIEW_SHEET.unwired}），人工已签 ${REVIEW_SHEET.signed}/${REVIEW_SHEET.need}。` +
+  `重出：npm run review:gen；签字：把 覆盖率待核清单.md 表格最后一列的空格改成 x —— 这一步只能由人做，脚本只会保留已有的勾。`);
 // ---- 探针：清单里的"缺口"必须是可复核的判定，不是手写散文（轮59 血泪：E3/E4 的缺口列就是手抄烂掉的）----
 const COMBAT_SRC = exists('src/services/battle/combat.js') ? rd('src/services/battle/combat.js') : '';
 const SKILLSTATE_SRC = exists('src/services/battle/skillState.js') ? rd('src/services/battle/skillState.js') : '';

@@ -165,6 +165,7 @@ const SHOP_CATALOG = [
   { name: '回气丹',   type: '丹药',   quality: '凡品', price: 50,     stats: { effect_type: 'mp', effect_value: 50 },  desc: '恢复50点灵力' },
   { name: '培元丹',   type: '丹药',   quality: '凡品', price: 120,    stats: { effect_type: 'hp', effect_value: 100 }, desc: '恢复100点气血' },
   { name: '疗伤丹',   type: '丹药',   quality: '灵品', price: 500,    stats: { effect_type: 'heal_all' },              desc: '清空全部伤势（阶段5 疗伤丹）' },
+  { name: '破境丹',   type: '丹药',   quality: '古宝', price: 5000,  stats: {}, desc: '持有则下次突破成功率+15%，判定后消耗一枚' },
   { name: '血石',     type: '特殊灵石', quality: '灵品', price: 2000,  stats: {}, desc: '魔教秘石，使用后修炼效率-30%（24游戏小时）' },
   { name: '五行灵石', type: '特殊灵石', quality: '仙品', price: 50000, stats: {}, desc: '五行俱全：3-5灵根增益，1-2灵根反噬' },
   { name: '造化灵石', type: '特殊灵石', quality: '宝品', price: 12000, stats: {}, desc: '使用有概率获得功法/物品/灵石机缘' },

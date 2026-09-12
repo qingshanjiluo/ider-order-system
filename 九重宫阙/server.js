@@ -47,6 +47,9 @@ app.use(cors());
 app.use(express.json());
 app.use(sanitizeMiddleware); // Sanitize all inputs
 app.use(rateLimit); // Apply rate limiting globally
+
+// 健康检查（容器/负载探针；置于限流之后、鉴权之前，无需 token）
+app.use('/api/health', require('./src/routes/health'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/auth', authRoutes);

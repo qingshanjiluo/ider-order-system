@@ -1,0 +1,26 @@
+/**
+ * 测试聚合器（npm test 入口）
+ * 串行跑内容/回归测试，任一失败即非零退出；供 CI 与发版前门禁使用。
+ */
+const { spawnSync } = require('child_process');
+const path = require('path');
+
+const SUITES = [
+  ['内容完整性', 'scripts/test-content.js'],
+  ['阶段2 回归', 'scripts/test-phase2.js'],
+  ['阶段3 回归', 'scripts/test-phase3.js'],
+  ['阶段6 回归', 'scripts/test-phase6.js']
+];
+
+let failed = 0;
+for (const [label, rel] of SUITES) {
+  const file = path.join(__dirname, '..', rel);
+  if (!require('fs').existsSync(file)) { console.log(`⏭️  ${label} 跳过（无 ${rel}）`); continue; }
+  const r = spawnSync(process.execPath, [file], { stdio: 'inherit', cwd: path.join(__dirname, '..') });
+  const ok = r.status === 0;
+  console.log(`${ok ? '✅' : '❌'} ${label}`);
+  if (!ok) failed++;
+}
+
+console.log(failed ? `\n🔴 ${failed} 个测试套件失败` : '\n🟢 全部测试套件通过');
+process.exit(failed ? 1 : 0);

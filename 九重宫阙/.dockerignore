@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+data/*.db
+data/*.db-wal
+data/*.db-shm
+backups
+logs
+.env
+.git
+.gitignore
+*.md
+scripts/test-*.js

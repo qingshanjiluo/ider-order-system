@@ -1582,7 +1582,17 @@ t('BOM 锁：任何 .js/.json 不得带 UTF-8 BOM（PS5.1 的 Set-Content -Encod
     if (b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) bad.push('package.json');
   }
   assert.deepStrictEqual(bad, [], `这些文件带 BOM：${bad.join(', ')}（Node 的 require 容忍，JSON.parse 不容忍）`);
-});
+})
+t('BOM 锁扩展到项目文档：根目录 *.md 不得含 U+FEFF（实测追加接缝漏过 1 个）', () => {
+  const root27 = path21.join(__dirname, '..');
+  const docsWithBom = [];
+  for (const name of fs21.readdirSync(root27)) {
+    if (!name.endsWith('.md')) continue;
+    const buf = fs21.readFileSync(path21.join(root27, name));
+    if ((buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) || buf.toString('utf8').indexOf('\uFEFF') >= 0) docsWithBom.push(name);
+  }
+  assert.deepStrictEqual(docsWithBom, [], `这些文档含 BOM/零宽字符：${docsWithBom.join(', ')}`);
+});;
 
 t('门禁洁净性：npm test 必须走 gate.js 外壳（store 有 20s autosave，测试经服务写脏镜像）', () => {
   const pkg24 = require(path21.join(__dirname, '..', 'package.json'));

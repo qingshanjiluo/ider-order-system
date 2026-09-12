@@ -19,7 +19,7 @@ if (res.changed > 0) saveDatabase(db);
 const after = snapshot(loadDatabase());
 closeDatabase();
 
-console.log(`[content:ensure] ensureAll changed = ${res.changed}（材料入库 ${res.equipment || 0}／分级 ${res.materialGrades}／图纸 ${res.blueprints}／副本 ${res.dungeons}／货架 ${res.shopEntries}／卫生 ${res.hygiene}）`);
+console.log(`[content:ensure] ensureAll changed = ${res.changed}（材料入库 ${res.equipment || 0}／分级 ${res.materialGrades}／地图 ${res.maps}／图纸 ${res.blueprints}／副本 ${res.dungeons}／货架 ${res.shopEntries}／卫生 ${res.hygiene}）`);
 for (const k of Object.keys(after)) {
   const mark = after[k] === before[k] ? ' =' : ' ->';
   console.log(`    ${k.padEnd(11)} ${before[k]}${mark}${after[k]}`);

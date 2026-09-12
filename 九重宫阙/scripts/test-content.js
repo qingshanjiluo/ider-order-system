@@ -2009,6 +2009,129 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
       assert.ok(src.includes(k + ':'), '来源路径少了 ' + k + ' 一种口径');
     }
   });
+  console.log('== 册一期：P1 地图 32 / 副本 50 与"不得引入生成式软怪"（轮45）==');
+  t('P1 数量下限：地图 ≥32、副本 ≥50（规划 T1-2 差口口径）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let m = 0, d = 0;
+    try {
+      m = dbf.prepare('SELECT data FROM col_maps').all().length;
+      d = dbf.prepare('SELECT data FROM col_dungeons').all().length;
+    } finally { dbf.close(); }
+    assert.ok(m >= 32, '地图 ' + m + ' 张，未达 P1 目标 32（规划表：20 -> 32）');
+    assert.ok(d >= 50, '副本 ' + d + ' 个，未达 P1 目标 50（规划表：32 -> 50）');
+  });
+  t('map-library 目录必须字段齐备、词表合法，且只引用存档已有的怪与材料', () => {
+    const ml = require(path21.join(__dirname, '..', 'src', 'data', 'map-library.js'));
+    const monsterLib = require(path21.join(__dirname, '..', 'src', 'data', 'monster-library.js'));
+    assert.ok(Array.isArray(ml.MAPS) && ml.MAPS.length >= 12, '地图目录不足 12 条');
+    const names = ml.MAPS.map(x => String(x.name));
+    assert.strictEqual(new Set(names).size, names.length, 'MAPS 目录内有重名');
+    for (const def of ml.MAPS) {
+      for (const k of ['name', 'element', 'min_level', 'max_level', 'difficulty', 'drop_rate', 'exp_per_second', 'spirit_stone_per_second', 'monsters', 'gather_nodes', 'description']) {
+        assert.ok(def[k] !== undefined && def[k] !== null && def[k] !== '', `${def.name} 缺字段 ${k}（消费方各取一字段，缺一个就是一条静默缺陷）`);
+      }
+      assert.ok(Object.prototype.hasOwnProperty.call(monsterLib.MAP_ELEMENT, def.element), `${def.name} element "${def.element}" 不在 MAP_ELEMENT 词表（词表没有"金"）`);
+      assert.ok(Number(def.min_level) <= Number(def.max_level), `${def.name} 等级带倒置`);
+      assert.ok(def.monsters.length >= 2, `${def.name} 至少两只怪`);
+      assert.ok(def.gather_nodes.length >= 1, `${def.name} 至少一个采集点`);
+    }
+    // 按 min_level 排序后 exp_per_second 不得在目录内部出现倒退（目录自身必须是一条递增曲线）
+    const sorted = ml.MAPS.slice().sort((a, b) => a.min_level - b.min_level);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i].min_level > sorted[i - 1].max_level) {
+        assert.ok(Number(sorted[i].exp_per_second) >= Number(sorted[i - 1].exp_per_second), `目录内收益倒挂：${sorted[i].name} 比 ${sorted[i - 1].name} 段更高却给得更少`);
+      }
+    }
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let monNames = [], itemNames = [], mapNames = [];
+    try {
+      monNames = new Set(dbf.prepare('SELECT data FROM col_monsters').all().map(x => String(JSON.parse(x.data).name)));
+      itemNames = new Set(dbf.prepare('SELECT data FROM col_items').all().map(x => String(JSON.parse(x.data).name)));
+      mapNames = new Set(dbf.prepare('SELECT data FROM col_maps').all().map(x => String(JSON.parse(x.data).name)));
+    } finally { dbf.close(); }
+    const ghostMon = [];
+    for (const def of ml.MAPS) for (const n of def.monsters) if (!monNames.has(String(n))) ghostMon.push(def.name + ' -> ' + n);
+    assert.deepStrictEqual(ghostMon, [], '地图目录引用了存档不存在的怪名 —— 会被 ensureMonsters 按线性公式合成出偏软怪（轮45 实测 0.23~0.97 倍池中位）并位移"池内 ≤2 倍中位"闸');
+    const ghostGather = [];
+    for (const def of ml.MAPS) for (const n of def.gather_nodes) if (!itemNames.has(String(n))) ghostGather.push(def.name + ' -> ' + n);
+    assert.deepStrictEqual(ghostGather, [], '采集点名字没有对应物品');
+    for (const n of names) assert.ok(mapNames.has(n), `目录里的 ${n} 未进存档（content:ensure 未执行或 ensureAll 漏挂 ensureMaps）`);
+  });
+  t('已知偏差登记：怪物合成曲线偏软（P4 修好后必须回来复核本锁）', () => {
+    const monsterLib = require(path21.join(__dirname, '..', 'src', 'data', 'monster-library.js'));
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let mons = [], realms = [];
+    try {
+      mons = dbf.prepare('SELECT data FROM col_monsters').all().map(x => JSON.parse(x.data));
+      realms = dbf.prepare('SELECT data FROM col_realms').all().map(x => JSON.parse(x.data));
+    } finally { dbf.close(); }
+    const poolOf = (lo, hi) => {
+      const mid = (Number(lo) + Number(hi)) / 2;
+      const rr = realms.find(x => mid >= Number(x.min_level) && mid <= Number(x.max_level));
+      if (!rr) return null;
+      const hp = mons.filter(m => {
+        let r = m.level_range;
+        if (typeof r === 'string') { try { r = JSON.parse(r); } catch (e) { return false; } }
+        return Array.isArray(r) && (Number(r[0]) + Number(r[1])) / 2 >= Number(rr.min_level) && (Number(r[0]) + Number(r[1])) / 2 <= Number(rr.max_level);
+      }).map(m => { try { return Number(JSON.parse(m.stats || '{}').hp); } catch (e) { return 0; } }).filter(h => h > 0).sort((a, b) => a - b);
+      return hp.length ? { name: rr.name, med: hp[Math.floor(hp.length / 2)] } : null;
+    };
+    const top = poolOf(95, 100);
+    assert.ok(top && top.med > 0, '取不到飞升池的 hp 中位，本锁失去依据');
+    const synth = monsterLib.monsterStatsFor('任意新怪', 95, 6, 0);   // 给到 difficulty=6（目录里最难的图）
+    const ratio = synth.hp / top.med;
+    console.log(`      · 实测：difficulty=6 的合成怪 hp=${synth.hp}，飞升池中位 ${top.med}，比值 ${ratio.toFixed(2)}`);
+    assert.ok(ratio < 0.6, '合成公式已不再偏软 —— 曲线被改过：请复核 map-library "只引用既有怪"的约定，并把本锁的比值上限改成新的实测口径');
+  });
+  t('副本目录：无重名、type 落在词表、rewards.items 可解析，且 5 个原孤儿副本已接回', () => {
+    const dl = require(path21.join(__dirname, '..', 'src', 'data', 'dungeon-library.js'));
+    const legal = new Set(['公共副本', '宗门副本', '秘境', '天劫', '飞升副本']);
+    const names = dl.DUNGEONS.map(x => String(x.name));
+    assert.strictEqual(new Set(names).size, names.length, 'DUNGEONS 目录内有重名');
+    for (const def of dl.DUNGEONS) {
+      assert.ok(legal.has(def.type), `${def.name} type "${def.type}" 不在副本类型词表`);
+      assert.ok(Number(def.min_level) <= Number(def.max_level), `${def.name} 等级带倒置`);
+      assert.ok(Number(def.difficulty) >= 1, `${def.name} difficulty 须 ≥1`);
+    }
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let dg = [], itemIds = new Set();
+    try {
+      dg = dbf.prepare('SELECT data FROM col_dungeons').all().map(x => JSON.parse(x.data));
+      itemIds = new Set(dbf.prepare('SELECT data FROM col_items').all().map(x => Number(JSON.parse(x.data).id)));
+    } finally { dbf.close(); }
+    const archived = new Set(dg.map(d => String(d.name)));
+    for (const n of ['五行试炼', '魔道巢穴', '远古战场', '天劫降临', '仙界试炼']) {
+      assert.ok(archived.has(n), `轮42 查明的孤儿副本 ${n} 仍未接回存档`);
+    }
+    const ghost = [];
+    for (const d of dg) {
+      let rw = {};
+      try { rw = JSON.parse(d.rewards || '{}'); } catch (e) { ghost.push(d.name + ' rewards 不是合法 JSON'); continue; }
+      for (const i of (Array.isArray(rw.items) ? rw.items : [])) if (!itemIds.has(Number(i))) ghost.push(d.name + ' -> 物品 #' + i);
+    }
+    assert.deepStrictEqual(ghost, [], '副本奖励引用了不存在的物品 id');
+  });
+  t('挂机收益倒挂棘轮：全库"高段反而给得少"的对数不得高于 2（历史债在 混沌深渊）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let maps = [];
+    try { maps = dbf.prepare('SELECT data FROM col_maps').all().map(x => JSON.parse(x.data)); } finally { dbf.close(); }
+    const by = maps.slice().sort((a, b) => a.min_level - b.min_level || a.exp_per_second - b.exp_per_second);
+    const viol = [];
+    for (let i = 0; i < by.length; i++) {
+      for (let j = i + 1; j < by.length; j++) {
+        const lo = by[i], hi = by[j];
+        if (Number(hi.min_level) > Number(lo.max_level) && Number(hi.exp_per_second) < Number(lo.exp_per_second)) {
+          viol.push(`${hi.name}(${hi.min_level}-${hi.max_level}:${hi.exp_per_second}) 低于 ${lo.name}(${lo.min_level}-${lo.max_level}:${lo.exp_per_second})`);
+        }
+      }
+    }
+    assert.ok(viol.length <= 2, '倒挂对从 2 涨到 ' + viol.length + '：新增地图必须给出高于所有更低段地图的挂机收益（P4 sim-economy 之前先不制造新的）\n      ' + viol.join('\n      '));
+  });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

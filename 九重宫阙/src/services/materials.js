@@ -375,6 +375,10 @@ function ensureAll(db) {
   const a0 = ensureMaterialItems(db);
   const a = ensureMaterialGrades(db);
   const b = ensureShopStock(db);
+  // 轮45：地图目录（必须在 ensureMapNodes 之前跑，新地图的采集点才会被挂上；
+  // 也在 ensureMonsters 之前，新地图引用的新怪名由怪物库按难度合成）
+  let mp = 0;
+  try { mp = require('../data/map-library').ensureMaps(db); } catch { /* 地图库异常不阻断 */ }
   const c = ensureMapNodes(db);
   const e = ensureBlueprints(db);
   const f = ensureEquipmentItems(db);
@@ -391,7 +395,7 @@ function ensureAll(db) {
   try { m = require('../data/monster-library').ensureMonsters(db); } catch { /* 怪物库异常不阻断 boot */ }
   let d = 0;
   try { const alchemy = require('../routes/alchemy'); if (alchemy.__ensureRecipes) { d = alchemy.__ensureRecipes(db) || 0; } } catch { /* alchemy 未就绪则跳过 */ }
-  return { materialItems: a0, materialGrades: a, shopEntries: b, mapNodes: c, blueprints: e, equipment: f, pills: g, dungeons: du, hygiene: hy, monsters: m, recipes: d, changed: a0 + a + b + c + e + f + g + du + hy + m + d };
+  return { materialItems: a0, materialGrades: a, shopEntries: b, maps: mp, mapNodes: c, blueprints: e, equipment: f, pills: g, dungeons: du, hygiene: hy, monsters: m, recipes: d, changed: a0 + a + b + mp + c + e + f + g + du + hy + m + d };
 }
 
 module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, BLUEPRINT_CATALOG, gradeOf, ensureAll, ensureMaterialGrades, ensureMaterialItems, ensureShopStock, ensureBlueprints, ensureEquipmentItems };

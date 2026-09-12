@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const B = require('../config/balance');
 const router = express.Router();
 const auth = require('../middleware/auth');

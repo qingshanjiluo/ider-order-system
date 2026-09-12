@@ -12,6 +12,8 @@
     "seed:expand-data": "node src/scripts/expand-data.js",
     "seed:expand-systems": "node src/scripts/expand-systems.js",
     "fix:maps": "node src/scripts/fix-maps.js",
+    "seed:rebalance": "node scripts/rebalance-monsters.js --apply",
+    "sim:battle": "node scripts/sim-battle.js",
     "test": "node scripts/run-all-tests.js",
     "test:content": "node scripts/test-content.js",
     "backup": "node scripts/backup.js",

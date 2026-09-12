@@ -1,4 +1,4 @@
-﻿/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
+/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
 const assert = require('assert');
 const skillService = require('../src/services/skill');
 const itemService = require('../src/services/item');
@@ -1473,6 +1473,110 @@ t('境界顺序数组不得再有多份副本', () => {
   };
   for (const r of roots) scan(path21.join(__dirname, '..', r));
   assert.deepStrictEqual(hits, [], `仍有硬编码境界数组：${hits.join(', ')}（应统一用 balance.REALM_ORDER）`);
+});
+
+console.log('== 廿四期：P1/E3 怪物重排（离群封死 + 迁移可复现）==');
+t('每个境界池内 hp 不得超过中位 2 倍（5~10 倍无标记精英不得复活）', () => {
+  const db24 = require('../src/database').loadDatabase();
+  const pools = {};
+  for (const m of db24.monsters || []) {
+    let r = m.level_range;
+    if (typeof r === 'string') { try { r = JSON.parse(r); } catch (e) { r = null; } }
+    if (!Array.isArray(r)) continue;
+    let st = {}; try { st = JSON.parse(m.stats || '{}'); } catch (e) { continue; }
+    const hp = Number(st.hp);
+    if (!Number.isFinite(hp) || hp <= 0) continue;
+    const mid = (Number(r[0]) + Number(r[1])) / 2;
+    const rr = (db24.realms || []).find(x => mid >= Number(x.min_level) && mid <= Number(x.max_level));
+    if (!rr) continue;
+    (pools[rr.name] = pools[rr.name] || []).push(hp);
+  }
+  const names = Object.keys(pools);
+  assert.ok(names.length >= 8, `只覆盖到 ${names.length} 个境界池，样本不足以支撑本锁`);
+  for (const n of names) {
+    const a = pools[n].slice().sort((x, y) => x - y);
+    const med = a[Math.floor(a.length / 2)] || 1;
+    const ratio = a[a.length - 1] / med;
+    assert.ok(ratio <= 2.0, `${n} 池最硬怪是中位的 ${ratio.toFixed(2)} 倍（>2 = 又混进了未标级的精英）`);
+  }
+});
+t('双向 TTK 窗口：每个境界的参考玩家能打穿中位怪，也不会被一回合摸死', () => {
+  const db24 = require('../src/database').loadDatabase();
+  const pools = {};
+  for (const m of db24.monsters || []) {
+    let r = m.level_range;
+    if (typeof r === 'string') { try { r = JSON.parse(r); } catch (e) { r = null; } }
+    if (!Array.isArray(r)) continue;
+    let st = {}; try { st = JSON.parse(m.stats || '{}'); } catch (e) { continue; }
+    if (!Number.isFinite(Number(st.hp))) continue;
+    const mid = (Number(r[0]) + Number(r[1])) / 2;
+    const rr = (db24.realms || []).find(x => mid >= Number(x.min_level) && mid <= Number(x.max_level));
+    if (!rr) continue;
+    (pools[rr.name] = pools[rr.name] || []).push(st);
+  }
+  const medOf = (list, key) => {
+    const a = list.map(x => Number(x[key]) || 0).sort((x, y) => x - y);
+    return a[Math.floor(a.length / 2)] || 0;
+  };
+  let checked = 0;
+  for (const realm of (require('../src/config/balance').REALM_ORDER || [])) {
+    const list = pools[realm];
+    if (!list || !list.length) continue;
+    const row = (db24.realms || []).find(x => x.name === realm);
+    const lv = Math.floor((Number(row.min_level) + Number(row.max_level)) / 2);
+    const P = { name: 'p', level: lv, realm, hp: charSvc.calculateHpMax(lv, realm), maxHp: charSvc.calculateHpMax(lv, realm), mp: 999, attack: charSvc.calculateAttack(lv, realm), defense: charSvc.calculateDefense(lv, realm), element: 'none', crit_rate: 0 };
+    const M = { name: 'm', level: lv, hp: medOf(list, 'hp'), maxHp: medOf(list, 'hp'), mp: 0, attack: medOf(list, 'attack'), defense: medOf(list, 'defense'), element: 'none', crit_rate: 0 };
+    const pDmg = dmgCalc.calculateFinalDamage(P, M, null).damage;
+    const mDmg = dmgCalc.calculateFinalDamage(M, P, null).damage;
+    const myR = pDmg > 0 ? M.maxHp / pDmg : Infinity;
+    const theirR = mDmg > 0 ? P.maxHp / mDmg : Infinity;
+    assert.ok(myR <= 8, `${realm} 参考玩家击杀中位怪要 ${myR.toFixed(1)} 回合（>8 = 又变磨盘）`);
+    assert.ok(theirR >= 2.5, `${realm} 中位怪 ${theirR.toFixed(1)} 回合摸死玩家（<2.5 = 秒躺，先手权无意义）`);
+    checked++;
+  }
+  assert.ok(checked >= 8, `只校验了 ${checked} 个境界，覆盖不足`);
+});
+t('重排脚本默认 dry-run，写库只可能发生在 --apply 分支里', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'rebalance-monsters.js'), 'utf8');
+  assert.ok(/process\.argv\.indexOf\('--apply'\)/.test(src), '没有 --apply 闸门（会被无意触发写库）');
+  assert.ok(src.indexOf('saveDatabase(db)') > src.indexOf('if (APPLY) {'), 'saveDatabase 不在 APPLY 块内');
+  const n = (src.match(/saveDatabase\s*\(/g) || []).length;
+  assert.strictEqual(n, 1, `出现 ${n} 处 saveDatabase 调用（应只有一处且受 --apply 保护）`);
+});
+t('数据迁移必须挂在 npm 入口（否则重跑 init-db 会把平衡冲掉）', () => {
+  const pkg = require(path21.join(__dirname, '..', 'package.json'));
+  assert.ok(pkg.scripts['seed:rebalance'] && /rebalance-monsters\.js\s+--apply/.test(pkg.scripts['seed:rebalance']),
+    'seed:rebalance 未挂载：怪物平衡会变成只存在于运行时快照里的一次性改动');
+  assert.ok(pkg.scripts['sim:battle'] && /sim-battle\.js/.test(pkg.scripts['sim:battle']), 'sim:battle 未挂载（E3 无法一条命令复验）');
+  assert.ok(fs21.existsSync(path21.join(__dirname, '..', 'scripts', 'sim-battle.js')));
+});
+
+t('BOM 锁：任何 .js/.json 不得带 UTF-8 BOM（PS5.1 的 Set-Content -Encoding utf8 会加）', () => {
+  const fsB = require('fs'), pathB = require('path');
+  const bad = [];
+  const walk = (d) => {
+    for (const e of fsB.readdirSync(d, { withFileTypes: true })) {
+      if (e.name === 'node_modules') continue;
+      const p = pathB.join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.(js|json)$/.test(e.name)) continue;
+      const b = fsB.readFileSync(p);
+      if (b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) {
+        bad.push(pathB.relative(pathB.join(__dirname, '..'), p).split(pathB.sep).join('/'));
+      }
+    }
+  };
+  const root = pathB.join(__dirname, '..');
+  for (const r of ['src', 'scripts', 'public']) {
+    const abs = pathB.join(root, r);
+    if (fsB.existsSync(abs)) walk(abs);
+  }
+  const pkg = pathB.join(root, 'package.json');
+  if (fsB.existsSync(pkg)) {
+    const b = fsB.readFileSync(pkg);
+    if (b.length >= 3 && b[0] === 0xEF && b[1] === 0xBB && b[2] === 0xBF) bad.push('package.json');
+  }
+  assert.deepStrictEqual(bad, [], `这些文件带 BOM：${bad.join(', ')}（Node 的 require 容忍，JSON.parse 不容忍）`);
 });
 
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);

@@ -1,4 +1,4 @@
-﻿const { loadDatabase, saveDatabase } = require('../database');
+const { loadDatabase, saveDatabase } = require('../database');
 const characterService = require('./character');
 const injuryService = require('./injury');
 const model = require('./cultivation-model');

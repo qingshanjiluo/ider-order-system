@@ -1,4 +1,4 @@
-﻿const { loadDatabase, saveDatabase } = require('../database');
+const { loadDatabase, saveDatabase } = require('../database');
 const gameTime = require('./gameTime');
 
 const VIP_LEVELS = [

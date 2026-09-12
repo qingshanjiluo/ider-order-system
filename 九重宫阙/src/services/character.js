@@ -53,7 +53,7 @@ class CharacterService {
     while ((!capLevel || (character.level || 1) < capLevel) && character.exp >= (character.exp_to_next || 100)) {
       character.exp -= (character.exp_to_next || 100);
       character.level = (character.level || 1) + 1;
-      character.exp_to_next = this.calculateExpForLevel(character.level);
+      character.exp_to_next = this.calculateExpForLevel(character.level, character.realm);
       character.max_hp = this.calculateHpMax(character.level, character.realm);
       character.max_mp = this.calculateMpMax(character.level, character.realm);
       character.attack = this.calculateAttack(character.level, character.realm);
@@ -79,8 +79,15 @@ class CharacterService {
     return { character, leveledUp, expGained: finalAmount, vipExpBonus: vipBonus.expBonus, bottleneck, realmCapLevel: capLevel || null };
   }
 
-  calculateExpForLevel(level) {
-    return Math.floor(100 * Math.pow(1.5, level - 1));
+  /**
+   * 下一级所需修为（E9 曲线调平 · 轮54）。真源在 `services/exp-curve.js`，本方法只做"按角色境界查行 + 兜底"。
+   * 兜底分支只在境界行查不到（脏数据）时生效；**建角与转世已不再走这里**，它们直接调 exp-curve，
+   * 于是"出厂 exp_to_next"与真实曲线不可能再分叉（轮54 之前那两处是硬编码 100）。
+   */
+  calculateExpForLevel(level, realm = null) {
+    const row = realm ? (loadDatabase().realms || []).find((r) => r.name === realm) : null;
+    const n = require('./exp-curve').needForLevel(row, level);
+    return n != null ? n : Math.floor(100 * Math.pow(1.5, (Number(level) || 1) - 1));
   }
 
   /**

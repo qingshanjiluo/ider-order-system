@@ -17,6 +17,8 @@ const SUITES = [
   ['E5 大限劫路由', 'scripts/test-tribulation.js'],
   ['G1 功法与技能获取链', 'scripts/test-gongfa-e2e.js'],
   ['G2 好友与市场', 'scripts/test-social-market-e2e.js'],
+  // 轮54：经验曲线真源与"速度只填满境界"探针（曲线改了必须立刻能看出有没有接上）
+  ['G3 经验真源', 'scripts/test-exp-curve-e2e.js'],
   ['S1 入口 boot 探针', 'scripts/probe-server.js'],
   ['S2 P3 可见性', 'scripts/test-p3-visibility-e2e.js'],
   ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js'],

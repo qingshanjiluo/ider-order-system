@@ -128,17 +128,15 @@ router.post('/complete', auth, (req, res) => {
     const expGain = rewards.exp || 0;
     const spiritStoneGain = rewards.spirit_stone || 0;
 
-    character.exp = (character.exp || 0) + expGain;
     character.spirit_stone = (character.spirit_stone || 0) + spiritStoneGain;
 
+    // 轮54：这里原本自带一套私有升级循环（`exp_to_next *= 1.5`、`max_hp += 10`、且**没有境界等级封顶**），
+    // 于是交任务可以一路刷过 max_level、绕开突破判定，并且等级/属性与真源分叉 —— 直接违反 T0-2 铁律。
+    // 现在只加修为，升级全部交给唯一入口 characterService.addExp（内含等级封顶、圆满钉值、寿元成长、属性重算）。
     let levelUp = false;
-    while (character.exp >= (character.exp_to_next || 100)) {
-      character.exp -= (character.exp_to_next || 100);
-      character.level = (character.level || 1) + 1;
-      character.exp_to_next = Math.floor((character.exp_to_next || 100) * 1.5);
-      character.max_hp = (character.max_hp || 100) + 10;
-      character.hp = character.max_hp;
-      levelUp = true;
+    if (expGain > 0) {
+      const r = require('../services/character').addExp(character.id, expGain);
+      levelUp = !!(r && r.leveledUp);
     }
 
     saveDatabase(db);

@@ -88,7 +88,8 @@ const STRICT = process.argv.includes('--strict');
   });
 
   // ================= B. 30 世净收支 =================
-  const expForLevel = (L) => charService.calculateExpForLevel(L);
+  // 必须带 realm：轮54 起等级曲线以 realms.exp_requirement 为真源，不传就退回旧曲线（sim-balance 同批改过）
+  const expForLevel = (L, realm) => charService.calculateExpForLevel(L, realm);
   const realms = ORDER.map((r) => db.realms.find((x) => x.name === r)).filter(Boolean);
   const mapFor = (r) => {
     const mid = Math.floor((Number(r.min_level) + Number(r.max_level)) / 2);
@@ -103,7 +104,7 @@ const STRICT = process.argv.includes('--strict');
   let cum = 0, cumYears = 0, cumCost = 0;
   for (const r of realms) {
     let need = 0;
-    for (let L = Number(r.min_level); L < Number(r.max_level); L++) need += expForLevel(L);
+    for (let L = Number(r.min_level); L < Number(r.max_level); L++) need += expForLevel(L, r.name);
     const map = mapFor(r);
     const yearIncome = map ? Number(map.spirit_stone_per_second) * SEC_PER_YEAR : 0;
     const years = need / (B.CULTIVATION_V0[r.name] * SEC_PER_YEAR);       // P1 口径（无功法），与 sim-balance 一致

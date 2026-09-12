@@ -48,7 +48,11 @@ router.post('/register', turnstileMiddleware, async (req, res) => {
     db.characters.push({
       id: charId, user_id: userId, name: charName, faction: faction || 'martial',
       realm: '炼气', realm_stage: 1,
-      level: 1, exp: 0, exp_to_next: 100,
+      // 出厂 exp_to_next 取自经验曲线真源（轮54：此前硬编码 100，与"炼气满境需 5.2e6"的量级分叉，
+      // 会让新号白送第一级、且前端显示的需求与实收不一致）
+      level: 1, exp: 0,
+      exp_to_next: require('../services/exp-curve').needForLevel(
+        (db.realms || []).find((r) => r.name === '炼气'), 1) || 100,
       hp: 100 + (bonus.hp || 0), max_hp: 100 + (bonus.hp || 0),
       mp: 50 + (bonus.mp || 0), max_mp: 50 + (bonus.mp || 0),
       attack: 10 + (bonus.attack || 0), defense: 5, speed: 5 + (bonus.speed || 0),

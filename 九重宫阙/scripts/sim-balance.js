@@ -31,6 +31,7 @@ const B = require('../src/config/balance');
 const gameTime = require('../src/services/gameTime');
 const { expPerSecond } = require('../src/services/cultivation-model');
 const charService = require('../src/services/character');
+const realmService = require('../src/services/realm');
 const { loadDatabase, closeDatabase } = require('../src/database');
 
 const SECONDS_PER_GAME_YEAR = 3600 / gameTime.GAME_YEARS_PER_REAL_HOUR;
@@ -39,7 +40,17 @@ const STRICT = process.argv.includes('--strict');
 const ri = (r) => ORDER.indexOf(r);
 
 // (3) 的目标带（原文照抄《修炼与寿元系统模型.md》§2.2）
-const TARGET_RATIO = { 炼气: [60, Infinity], 筑基: [40, 55], 金丹: [15, 30], 元婴: [5, 15] };
+/**
+ * 铁律(3) 目标带。轮54 两处修订，理由都是实测出来的，不是审美：
+ *  ① 炼气原来是 `(60, ∞]` —— 没有上限，正是它让"余量 100%（本境只用掉 0.03 年）"一路绿灯，
+ *     前四境变成毫无追赶压力的走过场。故加上限 80%。
+ *  ② 金丹 15~30 → 25~35、元婴 5~15 → 20~28：原文的元婴带与**铁律(4) 直接互斥** ——
+ *     (4) 要求"连败 3 + 重伤 2"后 cap 仍够修完本境，而最坏折寿本身就是 19% cap
+ *     （3×BREAKTHROUGH_LIFE_COST.max 5% + 2×INJURY_LIFE_COST.defeat 2%）⇒ 余量低于 19% 时
+ *     (4) 必红。轮54 首轮实测（元婴 cumT 4471 > capAfter 4050）把这条矛盾钉住了，故把下限抬到 19% 之上。
+ * 判定口径同时改为 **P1 裸修**（详见下面铁律(3) 的注释）。
+ */
+const TARGET_RATIO = { 炼气: [60, 80], 筑基: [40, 55], 金丹: [25, 35], 元婴: [20, 28] };
 
 /** 三画像：字段名与 services/cultivation.js 注入给模型的 ctx 完全一致 */
 const PROFILES = {
@@ -84,7 +95,7 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
   const db = loadDatabase();
   const realms = db.realms || [];
   const expForLevel = charService.calculateExpForLevel
-    ? (L) => charService.calculateExpForLevel(L)
+    ? (L, realm) => charService.calculateExpForLevel(L, realm)     // 必须带 realm：不带就退回旧曲线（轮54 首跑就被这个兼容分支骗过一次，于是加了下面的真源一致性锁）
     : (L) => Math.floor(100 * Math.pow(1.5, L - 1));
 
   // ---- 结构自检：等级区间必须连续覆盖 1..100，否则"填满本境界"的口径无从谈起
@@ -95,7 +106,7 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
 
   const fillExpOf = (r) => {
     let sum = 0;
-    for (let L = Number(r.min_level); L < Number(r.max_level); L++) sum += expForLevel(L);
+    for (let L = Number(r.min_level); L < Number(r.max_level); L++) sum += expForLevel(L, r.name);
     return sum;
   };
   const rateOf = (profile, realm) => expPerSecond(profile.ctxOf(realm)).rate;
@@ -115,7 +126,7 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
         realm: r.name, levelRange: `${r.min_level}-${r.max_level}`, base: B.CULTIVATION_V0[r.name],
         zones: expPerSecond(p.ctxOf(r.name)).speed, capped: expPerSecond(p.ctxOf(r.name)).capped,
         yearRate, need, years, cumT: cum, L, margin: L ? (L - cum) / L * 100 : NaN,
-        gateExp: Number(r.exp_requirement) || 0, pinExp: expForLevel(Number(r.max_level))
+        gateExp: Number(r.exp_requirement) || 0, pinExp: expForLevel(Number(r.max_level), r.name)
       });
     }
     tables[key] = list;
@@ -140,7 +151,35 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
   console.log(`\n  ℹ 乘区2（功法）实际只吃"品阶 × 层数"：存档 gongfa 集合里 cultivation_speed ${ghostField ? '存在' : '一行都没有'}` +
     `（模型第 95 行读它，读不到就当没有 ⇒ 该通道恒等 1.0）`);
   console.log('  ℹ 突破的修为闸门 exp_requirement 与等级曲线钉住的 exp 相比：');
-  for (const x of tables.P1) console.log(`     ${x.realm}: 圆满时 exp 被钉在 ${big(x.pinExp)}，而 exp_requirement=${big(x.gateExp)} ⇒ 闸门${x.pinExp >= x.gateExp ? '恒成立（形同虚设）' : '才是真门槛'}`);
+  const maxDrift = Math.max(...tables.P1.map((x) => Math.abs(x.need - x.gateExp) / x.gateExp));
+  console.log(`  ℹ 真源一致：境界内等级需求之和 vs realms.exp_requirement，十境最大偏差 ${(maxDrift * 100).toFixed(3)}%` +
+    `（轮53 是两套数各说各话：曲线钉值恒盖过闸门 ⇒ 闸门形同虚设；轮54 起曲线由 exp_requirement 摊分而来）`);
+
+  // ================= 轮54 前置锁：真源一致 + 突破行为探针 =================
+  // 这两条是"曲线调平"的地基：如果等级曲线与 realms.exp_requirement 又各自说话，
+  // 下面所有 cumT 表就都是假的（轮54 首跑就因未传 realm 而退回旧曲线、量出旧数字 ✗ 教训落成锁）。
+  await t('真源一致：境界内等级需求之和 == realms.exp_requirement（±1%）', () => {
+    for (const x of tables.P1) {
+      const gate = Number(x.gateExp);
+      assert.ok(gate > 0, `${x.realm} 的 exp_requirement 为 ${gate}：真源缺失，曲线无从校准`);
+      const drift = Math.abs(x.need - gate) / gate;
+      assert.ok(drift <= 0.01,
+        `${x.realm}：曲线累计 ${big(x.need)} 与 exp_requirement ${big(gate)} 偏离 ${(drift * 100).toFixed(2)}% —— 两处又各说各话（形同虚设/重复计价的病会复发）`);
+    }
+  });
+
+  await t('突破行为探针：满级即可冲、未满级不可冲、exp 不再被重复计价', () => {
+    const lq = db.realms.find((r) => r.name === '炼气');
+    const full = { realm: '炼气', realm_stage: 1, level: Number(lq.max_level), exp: 1 };
+    assert.strictEqual(realmService.canBreakthrough(full), true,
+      '炼气已圆满但 exp 远小于 exp_requirement 就不给突破 ⇒ 同一份修为被升级与闸门各收一次（重复计价回来了）');
+    const notFull = { realm: '炼气', realm_stage: 1, level: Number(lq.max_level) - 1, exp: Number(lq.exp_requirement) * 10 };
+    assert.strictEqual(realmService.canBreakthrough(notFull), false,
+      '未达 max_level 却可突破，且给再多 exp 也算 ⇒ 铁律"速度只填满境界、不得绕过突破瓶颈"被打穿');
+    const fs2 = db.realms.find((r) => r.name === '飞升');
+    assert.strictEqual(realmService.canBreakthrough({ realm: '飞升', realm_stage: 4, level: Number(fs2.max_level), exp: 1e18 }), false,
+      '飞升是终点境界，不该再给突破判定');
+  });
 
   // ================= 铁律 (1) =================
   await t('铁律(1) 前四境靠自然寿元可达（最慢画像 P1，cumT 最大方向）', () => {
@@ -163,43 +202,41 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
   // ================= 铁律 (3) =================
   const r3 = [];
   for (const realm of Object.keys(TARGET_RATIO)) {
-    const x = tables.P2.find((v) => v.realm === realm);
+    const x = tables.P1.find((v) => v.realm === realm);
     const [lo, hi] = TARGET_RATIO[realm];
     const ok = x.margin > lo && (hi === Infinity || x.margin <= hi);
     r3.push({ realm, actual: x.margin, lo, hi, ok });
     console.log(`  ${ok ? '✅' : '⚠️'} 铁律(3) ${realm}：实测余量比 ${pct(x.margin)}，目标 (${lo}%, ${hi === Infinity ? '∞' : hi}%]${ok ? '' : ' ← 偏离'}`);
   }
-  const hua = tables.P2.find((v) => v.realm === '化神');
+  const hua = tables.P1.find((v) => v.realm === '化神');
   console.log(`  ${hua.margin < 0 ? '✅' : '⚠️'} 铁律(3) 化神起应为负：实测 ${pct(hua.margin)}`);
 
-  await t('铁律(3) 追赶压力方向锁（余量比不得比基线更大 = 不得更松）', () => {
-    // 当前实测（P2）：筑基 99.8% / 金丹 98.1% / 元婴 80.7%，全部**远高于**目标带 —— 前段几乎没有寿元压力，
-    // 而化神单境要 3.13 万游戏年（L 才 2 万），曲线在元婴→化神之间跳了约 34 倍。
-    // 也就是说"停着就会死"目前只在纸面上，真正成立的是"化神起数学上不可能"。
-    // 调平之前先把方向钉死：这些数字只许往目标带里走，一格都不许更松。
-    // （上限是轮53 实测基线向上取整到 0.1，不是拍脑袋 —— 首版我用心算填了 99.6，当场把自己的基线判红了。）
-    const CEIL = { 炼气: 100.0, 筑基: 99.9, 金丹: 98.2, 元婴: 80.8 };
-    for (const [realm, ceil] of Object.entries(CEIL)) {
-      const x = tables.P2.find((v) => v.realm === realm);
-      assert.ok(x.margin <= ceil + 1e-9,
-        `${realm} 余量比 ${pct(x.margin)} 超过方向锁上限 ${ceil}%：追赶压力被调得更松了（目标带见《修炼与寿元系统模型.md》§2.2）`);
-    }
-    assert.ok(hua.margin < 0, `化神余量比 ${pct(hua.margin)} 不为负：化神仍可自然达成，与准则(2) 矛盾`);
+  await t('铁律(3) 目标带锁（P1 裸修口径，四境必须落带内）', () => {
+    // 轮53 的写法是"方向锁"（只准往目标带走），因为当时曲线整体偏松一个数量级。
+    // 轮54 把 realms.exp_requirement 按 --solve 反解之后，带本身就是验收条件，于是升级为双边硬锁：
+    // 上限防"走过场"（原来的 ∞ 就是这么把 100% 放过去的），下限防"把追赶压成不可能"（并受铁律(4) 的 19% 折寿底线约束）。
+    const bad = r3.filter((v) => !v.ok);
+    assert.deepStrictEqual(bad, [], `未落进目标带：${bad.map((v) => `${v.realm}=${pct(v.actual)}∉(${v.lo},${v.hi === Infinity ? '∞' : v.hi}]`).join(' ')}`);
+    assert.ok(hua.margin < 0, `化神余量比 ${pct(hua.margin)} 不为负：化神仍可裸修自然达成，与准则(2) 矛盾（设计意图是这里必须有一道真墙）`);
 
-    // 病根指标：相邻境界"本境耗时"的跳变倍数。1.5^L 每境 ×57.7，V0 每境只 ×~1.7，L 只 ×~3.5
-    // ⇒ 每进一境净跳 ~34 倍，这才是"前段无聊、化神墙死"的数学来源。调平后这个数必须显著下降。
+    // 结构锁（取代轮53 的"最大跳变 ≤34.5"）：轮53 病根是**每一境都跳 ×33**（1.5^L 每境 ×57.7，V0 只 ×1.7、L 只 ×3.3），
+    // 均匀陡峭 = 前段走过场 + 后段数学墙死。轮54 的设计意图换成"**前段平滑 + 元婴→化神一道真墙**"，
+    // 所以这里锁的是形状而不是斜率：普通跨境不得超过 8×，唯独元婴→化神必须 ≥ 20×（墙必须存在且可感知）。
     const jumps = [];
-    for (let i = 0; i + 1 < tables.P2.length; i++) {
-      jumps.push({ from: tables.P2[i].realm, to: tables.P2[i + 1].realm, k: tables.P2[i + 1].years / tables.P2[i].years });
+    for (let i = 0; i + 1 < tables.P1.length; i++) {
+      jumps.push({ from: tables.P1[i].realm, to: tables.P1[i + 1].realm, k: tables.P1[i + 1].years / tables.P1[i].years });
     }
-    const worst = jumps.reduce((a, b) => (b.k > a.k ? b : a), jumps[0]);
-    console.log(`  ℹ 跨境耗时跳变（P2）：${jumps.map((j) => `${j.from}→${j.to} ×${j.k.toFixed(1)}`).join('  ')}`);
-    assert.ok(worst.k <= 34.5,
-      `最大跳变 ${worst.from}→${worst.to} ×${worst.k.toFixed(1)} 超过基线锁 34.5：境界曲线比轮53 更陡了（玩家会在这一境被数学墙死）`);
-    if (STRICT) {
-      const bad = r3.filter((v) => !v.ok);
-      assert.deepStrictEqual(bad, [], `--strict：${bad.map((v) => `${v.realm}=${pct(v.actual)}∉(${v.lo},${v.hi}]`).join(' ')} 未落进目标带`);
-    }
+    const by = (name) => jumps.find((j) => `${j.from}→${j.to}` === name);
+    const cliff = by('元婴→化神');
+    const smooth = jumps.filter((j) => j !== cliff);
+    const worst = smooth.reduce((a, b) => (b.k > a.k ? b : a), smooth[0]);
+    console.log(`  ℹ 跨境耗时跳变（P1）：${jumps.map((j) => `${j.from}→${j.to} ×${j.k.toFixed(1)}${j === cliff ? '【设计墙】' : ''}`).join('  ')}`);
+    assert.ok(worst.k <= 8,
+      `普通跨境最大跳变 ${worst.from}→${worst.to} ×${worst.k.toFixed(1)} 超过 8×：境界之间又变成"每境指数墙"，前段会退回走过场（轮53 病根复发）`);
+    assert.ok(cliff && cliff.k >= 20,
+      `元婴→化神跳变 ${cliff ? `×${cliff.k.toFixed(1)}` : '(未找到)'} < 20：那道"必须经营寿元"的墙被抹平了，化神起裸修就能自然达成`);
+    // --strict 自轮54 起与默认口径等价（目标带已经从"方向锁"升级为双边硬锁），保留只为兼容既有命令。
+    if (STRICT) console.log('  ℹ --strict：目标带锁已常驻，本开关不再改变判定强度');
   });
 
   // ================= 铁律 (4) =================
@@ -215,14 +252,68 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
     console.log(`  ℹ 铁律(4) 口径：最坏折寿 = 3×${(BL.max * 100).toFixed(1)}%（突破失败封顶）+ 2×${(INJ.defeat * 100).toFixed(1)}%（战败）= ${(worstRatio * 100).toFixed(1)}% cap；化神起按准则(2) 本就必须靠应劫续命，故只对前四境判死`);
   });
 
+  // ================= 反解：满足铁律(3) 目标带所需的每境需求 =================
+  if (process.argv.includes('--solve')) {
+    // 目标取《修炼与寿元系统模型.md》§2.2 各带的**中值**（炼气只有下限，取 70% 余量 = cumT 60 年，留追赶感）。
+    // cumT 目标 = L(r) × (1 − 余量目标/100)，本境耗时 = cumT(r) − cumT(r−1)，
+    // 每境需求 = 本境耗时 × V0(r) × 每年秒数（P1 口径：总乘区 1.0，即"新手裸修"也要落进带里）。
+    // 目标带取 TARGET_RATIO 各带的**中值**（金丹/元婴的下限已被铁律(4) 的 19% 折寿底线抬高，见上面注释）。
+    const TARGET_MARGIN = { 炼气: 70, 筑基: 47.5, 金丹: 30, 元婴: 22 };
+    // 化神起余量必须为负（铁律 2/3），且元婴→化神必须有一道**可感知的真墙**（结构锁要求跳变 ≥20×）。
+    // 这个数是按最严的那条反推的：铁律(2) 要 12 倍极限画像也修不满 ⇒
+    //   need(化神) > L(元婴) × V0(化神) × 每年秒数 × SPEED_CAP_TOTAL = 5000 × 96 × 8640 × 12 ≈ 4.98e10 → 取 6.0e10（含 ~20% 余量）
+    const CLIFF_NEED = 6.0e10;
+    // 化神之后按"需求 ×6.5"递推（V0 每境 ×~1.72 ⇒ 净耗时每境 ×~3.8），刚好贴着 L 的阶梯（×2~3.4）略快于寿元增长，
+    // 使铁律(2) 在每一对相邻境界上都成立而又不必再造第二套曲线。
+    const TAIL = 6.5;
+    console.log('\n  【反解：铁律(3) 目标带 ⇒ 每境所需 exp】（P1 裸修口径）');
+    console.log('    境界 | 目标余量 | cumT 目标(年) | 本境耗时(年) | V0 | 需求 exp | 现状需求 | 倍差');
+    let prevCum = 0, prevNeed = 0;
+    const solve = [];
+    for (const r of rows) {
+      const L = B.lifespanOf(r.name);
+      const v0 = B.CULTIVATION_V0[r.name];
+      const cur = tables.P1.find((x) => x.realm === r.name);
+      let need;
+      if (TARGET_MARGIN[r.name] != null) {
+        need = Math.max(0.01, L * (1 - TARGET_MARGIN[r.name] / 100) - prevCum) * v0 * SECONDS_PER_GAME_YEAR;
+      } else if (r.name === '化神') {
+        need = CLIFF_NEED;                               // 唯一的人为锚点：元婴→化神那道墙
+      } else {
+        need = prevNeed * TAIL;                          // 化神之后按固定倍率递推，不再另造曲线
+      }
+      const years = need / (v0 * SECONDS_PER_GAME_YEAR);
+      const targetCum = prevCum + years;                 // 三个分支都必须落到这两个量上（漏一个就打印出 undefined/NaN）
+      const round = Number(need.toPrecision(2));          // 2 位有效数字，便于当作人工设定的常数
+      solve.push({ realm: r.name, need: round, years, targetCum });
+      console.log(`    ${r.name} | ${TARGET_MARGIN[r.name] != null ? TARGET_MARGIN[r.name] + '%' : '负（墙）'}` +
+        ` | ${big(targetCum)} | ${big(years)} | ${v0} | ${round.toExponential(1)} | ${big(cur.need)} | ×${(round / cur.need).toExponential(1)}`);
+      prevCum = targetCum; prevNeed = round;
+    }
+    // 飞升是终点境界（无 cumT 判据），按同一尾率给出，只为让 realms 表自洽、不留旧数量级的孤儿值。
+    const asc = Number((prevNeed * TAIL).toPrecision(2));
+    const obj = {};
+    for (const x of solve) obj[x.realm] = Math.round(x.need);
+    obj['飞升'] = Math.round(asc);
+    console.log('\n  建议 realms.exp_requirement（可直接喂给 apply-realm-need.js）：');
+    console.log('    ' + Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join(', '));
+    // 落成工件而不是打印一行"你自己复制过去"：数字进 git 才可评审，也不再靠 shell 传参（轮54 一次
+    // Invoke-Expression 把中文标题行当命令执行的教训）。
+    const artifact = path.join(__dirname, '..', 'src', 'data', 'realm-need.json');
+    fs.writeFileSync(artifact, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+    console.log('  已写出工件：src/data/realm-need.json  ⇒ node scripts/apply-realm-need.js src/data/realm-need.json');
+    console.log('  （把上表写进 realms 定义并重跑本脚本：`--strict` 应当转绿）');
+  }
+
+
   // ---- 报告
   const repArg = process.argv.indexOf('--report');
   if (repArg !== -1 && process.argv[repArg + 1]) {
     const out = [];
-    out.push('# 数值追赶校验表（sim-balance 实测 · 轮53）');
+    out.push('# 数值追赶校验表（sim-balance 实测 · 轮53 建表 / 轮54 调平后重出）');
     out.push('');
     out.push(`> 由 \`node scripts/sim-balance.js --report 数值追赶校验.md\` 生成，勿手改。`);
-    out.push(`> 口径：需求 = Σ \`characterService.calculateExpForLevel(L)\`（真实等级区间，读自存档 \`realms\`）；`);
+    out.push(`> 口径：需求 = Σ \`characterService.calculateExpForLevel(L, realm)\`（**必须带 realm**，真源是存档 \`realms.exp_requirement\`；不传就退回旧曲线，轮54 踩过）；`);
     out.push('> 速度 = 生产同款九乘区 `cultivation-model.expPerSecond()`；1 游戏年 = ' + SECONDS_PER_GAME_YEAR + ' 真实秒（24h=10 年）。');
     out.push('');
     for (const key of Object.keys(PROFILES)) {
@@ -235,25 +326,37 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
     }
     out.push('## 铁律判定');
     out.push('');
-    out.push(`- (1) 前四境自然可达（P1）：**成立** — 元婴 cumT ${big(tables.P1.find((v) => v.realm === '元婴').cumT)} 年 < L 5000 年`);
-    out.push(`- (2) 元婴后必须经营寿元（P3）：**成立** — 极限 build 下 cumT(化神) ${big(tables.P3.find((v) => v.realm === '化神').cumT)} 年 ≫ L(元婴) 5000 年`);
-    out.push('- (3) 目标余量带：**未成立** — ' + r3.map((v) => `${v.realm} 实测 ${pct(v.actual)}（目标 ${v.lo}~${v.hi === Infinity ? '∞' : v.hi}%）`).join('，'));
-    out.push('  ⇒ 偏差方向是**太宽松**：玩家在炼气~金丹几乎感受不到寿元压力，化神起又直接变成天文数字，中间没有"经营"的空间。');
+    const e1ok = tables.P1.filter((v) => ri(v.realm) <= ri('元婴')).every((x) => x.cumT < x.L);
+    const e2ok = (() => { const p3 = tables.P3; for (let i = ri('元婴'); i < p3.length - 1; i++) if (!(p3[i].L - p3[i + 1].cumT < 0)) return false; return true; })();
+    out.push(`- (1) 前四境自然可达（P1）：**${e1ok ? '成立' : '不成立'}** — 元婴 cumT ${big(tables.P1.find((v) => v.realm === '元婴').cumT)} 年 vs L 5000 年`);
+    out.push(`- (2) 元婴后必须经营寿元（P3）：**${e2ok ? '成立' : '不成立'}** — 极限 build 下 cumT(化神) ${big(tables.P3.find((v) => v.realm === '化神').cumT)} 年 vs L(元婴) 5000 年`);
+    const ok3 = r3.every((v) => v.ok) && hua.margin < 0;
+    out.push(`- (3) 目标余量带：**${ok3 ? '成立' : '未成立'}**（判定口径 = P1 裸修）— ` +
+      r3.map((v) => `${v.realm} 实测 ${pct(v.actual)}（目标 ${v.lo}~${v.hi === Infinity ? '∞' : v.hi}%）`).join('，') +
+      `；化神 ${pct(hua.margin)}`);
+    out.push(ok3
+      ? '  ⇒ 轮54 用 `--solve` 反解并重排 `realms.exp_requirement` 后，裸修节奏变成"追赶快到手时还剩一档余量"，化神起才是负值（必须经营寿元）。'
+      : '  ⇒ 若普遍偏高＝前段走过场、偏低＝把追赶压成不可能；重排命令：`npm run realm:solve && npm run realm:apply`。');
     const jr = [];
-    for (let i = 0; i + 1 < tables.P2.length; i++) jr.push(`${tables.P2[i].realm}→${tables.P2[i + 1].realm} ×${(tables.P2[i + 1].years / tables.P2[i].years).toFixed(1)}`);
-    out.push(`- 病根（跨境耗时跳变，P2）：${jr.join('　')}。等级曲线 \`100×1.5^L\` 每境约 ×57.7，而 ` +
-      `V0 每境只 ×~1.7、L 每境只 ×~3.3 ⇒ **每一境都要多花约 33 倍时间，寿元却只多 3.3 倍**（跳变是均匀的，并非化神才有 cliff）。` +
-      `所以"停着就会死"在纸面上成立、在体验上不成立：前段毫无压力，越往后是指数式墙。`);
-    out.push(`  元婴→化神这一跳最致命：化神单境，常规画像要 ${big(tables.P2[4].years)} 游戏年、已超过 L(化神)=${big(tables.P2[4].L)} 年` +
-      `（常规玩家到这一步必死）；只有撞满 SPEED_CAP_TOTAL 的极限画像才 ${big(tables.P3[4].years)} 年、勉强够用。` +
-      `也就是说化神不是"需要经营寿元"，而是"只有毕业 build 才可能到达"。`);
-    out.push(`- (4) 连败3+重伤2 不致死：**成立** — 最坏 ${pc1(3 * B.BREAKTHROUGH_LIFE_COST.max + 2 * B.INJURY_LIFE_COST.defeat)} cap，元婴仍余 ${pct(tables.P1.find((v) => v.realm === '元婴').L * 0.81 / tables.P1.find((v) => v.realm === '元婴').cumT * 100 - 100)} 富余`);
+    for (let i = 0; i + 1 < tables.P1.length; i++) jr.push(`${tables.P1[i].realm}→${tables.P1[i + 1].realm} ×${(tables.P1[i + 1].years / tables.P1[i].years).toFixed(1)}`);
+    out.push(`- 跨境耗时跳变（P1，轮54 调平后）：${jr.join('　')}。` +
+      `对照轮53 旧曲线的实测：每一境净跳 ×31.4~33.6，而 L 每境只 ×3.3 —— **均匀陡峭**＝前段走过场、化神起变数学墙。` +
+      `现在"填满本境界"由 exp_requirement 单点决定，普通跨境收在 ×3~4（贴着 V0 每境 ×1.72 与净耗时 ×3.5 的自然比例），` +
+      `只在元婴→化神保留一道约 ×25 的**设计墙**：铁律(2) 要求连 12 倍极限 build 也修不满化神，这条墙必须存在且可感知（结构锁：普通跨境 ≤8×、此境 ≥20×）。`);
+    const worst4 = Math.min(...tables.P1.filter((v) => ri(v.realm) <= ri('元婴')).map(
+      (x) => x.L * (1 - (3 * B.BREAKTHROUGH_LIFE_COST.max + 2 * B.INJURY_LIFE_COST.defeat)) - x.cumT));
+    out.push(`- (4) 连败3+重伤2 不致死：**${worst4 >= 0 ? '成立' : '不成立'}** — 最坏 ${pc1(3 * B.BREAKTHROUGH_LIFE_COST.max + 2 * B.INJURY_LIFE_COST.defeat)} cap，` +
+      `前四境最紧的一处还剩 ${big(Math.round(worst4))} 年富余`);
     out.push('');
-    out.push('## 两处数据事实');
+    out.push('## 通道状态（轮54 更新）');
     out.push('');
-    out.push('- `realm.exp_requirement`（突破的修为闸门）在**每个境界都被等级曲线的钉值盖过**：圆满时 exp 被钉在 `calculateExpForLevel(max_level)`，'
-      + `炼气 ${big(tables.P1[0].pinExp)} vs 闸门 ${big(tables.P1[0].gateExp)}；渡劫 ${big(tables.P1[8].pinExp)} vs ${big(tables.P1[8].gateExp)} ⇒ 这道闸门形同虚设。`);
-    out.push('- 乘区 2 里 `cultivation_speed` 全档无人提供（模型读不到 ⇒ 恒 1.0），当前功法实际只按"品阶 × 层数"加成。');
+    out.push(`- **\`realms.exp_requirement\` 已成为唯一真源**：境界内每次升级的需求由它按 \`EXP_SHAPE_RATIO=${require('../src/config/balance').EXP_SHAPE_RATIO}\` 摊分，`
+      + `十境最大偏差 ${(maxDrift * 100).toFixed(3)}%（\`G3 经验真源\` 套有 ±1% 锁）。`);
+    out.push('  轮53 记录的"圆满钉值恒盖过闸门 ⇒ 闸门形同虚设"与轮54 中途发现的"只改语义会让同一份 exp 被升级与闸门各收一次'
+      + '（⇒ 永远冲不了突破）"是同一个数被两处消费的两面；现在两处消费同一个数、突破不再重复索要，病根消除。');
+    out.push('- 突破的真实瓶颈 = **等级封顶 + 突破概率 + 寿元 + 契机**（`realm.js` 的 `canBreakthrough` 不再额外索要整境 exp，`quests.js` 的私有升级循环已删）。');
+    out.push('- 仍未修（已登记上线必修）：乘区 2 的 `cultivation_speed` 全档无人提供（模型读不到 ⇒ 恒 1.0，功法实际只按"品阶 × 层数"加成）；'
+      + '任务/副本/签到/采集的 exp 奖励量级仍按旧曲线写（50~1000），相对新需求 5.2e6 已近乎零头，需重标或明确其为零头。');
     fs.writeFileSync(path.resolve(repArg === -1 ? '数值追赶校验.md' : process.argv[repArg + 1]), out.join('\n'), 'utf8');
     console.log('\n  报告已写出：' + process.argv[repArg + 1]);
   }

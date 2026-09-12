@@ -200,6 +200,17 @@ module.exports.CULTIVATION_MODEL = CULTIVATION_MODEL;
 const REALM_LEVEL_CAP = { enforce: true, pinExpAtFull: true };
 module.exports.REALM_LEVEL_CAP = REALM_LEVEL_CAP;
 
+// ===== E9 曲线调平（轮54）：境界内经验的摊分形状 =====
+/**
+ * `realms.exp_requirement` 从此是**唯一真源**：一个境界的总需求按等比 `EXP_SHAPE_RATIO`
+ * 摊到境界内的每次升级上（10 级境界 = 9 次升级），于是"填满本境界"恰好等于 exp_requirement。
+ * 此前等级需求是纯 `100×1.5^L`，与 exp_requirement 各说各话：E9 实测**每境耗时 ×33 而寿元只 ×3.3**
+ * （前四境毫无寿元压力、化神起变指数墙），且圆满时被钉住的 exp 永远大于 exp_requirement ⇒ 那道闸门形同虚设。
+ * 新底数由 `node scripts/sim-balance.js --solve` 反解得到（让余量比落进 §2.2 的目标带）。
+ */
+const EXP_SHAPE_RATIO = 1.35;   // 境界内"越高越难"的手感；总需求仍由 exp_requirement 锁定，改这个数不影响 cumT
+module.exports.EXP_SHAPE_RATIO = EXP_SHAPE_RATIO;
+
 // ===== E3/T0-3 战斗数值曲线基准 =====
 // 玩家面板按境界乘性增长（原本纯线性，与怪物模板的指数式数值倒挂：渡劫段 0% 胜率）。
 // 1.25^8 ≈ 5.0 倍（渡劫），配合攻击额外 1.15 次幂，用来追平手工堆高的怪物数值。

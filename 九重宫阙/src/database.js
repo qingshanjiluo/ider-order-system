@@ -32,16 +32,16 @@ function initDatabase() {
 
   if (!Array.isArray(db.realms) || db.realms.length === 0) {   // 空库自愈：不能假设 store 白名单已覆盖本集合
     db.realms = [
-      { id: 1, name: '炼气', min_level: 1, max_level: 10, stages: '前期,中期,后期', exp_requirement: 100 },
-      { id: 2, name: '筑基', min_level: 11, max_level: 20, stages: '前期,中期,后期', exp_requirement: 500 },
-      { id: 3, name: '金丹', min_level: 21, max_level: 30, stages: '前期,中期,后期', exp_requirement: 2000 },
-      { id: 4, name: '元婴', min_level: 31, max_level: 40, stages: '前期,中期,后期,半步', exp_requirement: 8000 },
-      { id: 5, name: '化神', min_level: 41, max_level: 50, stages: '前期,中期,后期,半步', exp_requirement: 30000 },
-      { id: 6, name: '炼虚', min_level: 51, max_level: 60, stages: '前期,中期,后期,半步', exp_requirement: 100000 },
-      { id: 7, name: '合体', min_level: 61, max_level: 70, stages: '前期,中期,后期,半步', exp_requirement: 500000 },
-      { id: 8, name: '大乘', min_level: 71, max_level: 80, stages: '前期,中期,后期,半步', exp_requirement: 2000000 },
-      { id: 9, name: '渡劫', min_level: 81, max_level: 90, stages: '前期,中期,后期,半步', exp_requirement: 10000000 },
-      { id: 10, name: '飞升', min_level: 91, max_level: 100, stages: '前期,中期,后期,半步', exp_requirement: 50000000 }
+      { id: 1, name: '炼气', min_level: 1, max_level: 10, stages: '前期,中期,后期', exp_requirement: 5200000 },
+      { id: 2, name: '筑基', min_level: 11, max_level: 20, stages: '前期,中期,后期', exp_requirement: 31000000 },
+      { id: 3, name: '金丹', min_level: 21, max_level: 30, stages: '前期,中期,后期', exp_requirement: 220000000 },
+      { id: 4, name: '元婴', min_level: 31, max_level: 40, stages: '前期,中期,后期,半步', exp_requirement: 1400000000 },
+      { id: 5, name: '化神', min_level: 41, max_level: 50, stages: '前期,中期,后期,半步', exp_requirement: 60000000000 },
+      { id: 6, name: '炼虚', min_level: 51, max_level: 60, stages: '前期,中期,后期,半步', exp_requirement: 390000000000 },
+      { id: 7, name: '合体', min_level: 61, max_level: 70, stages: '前期,中期,后期,半步', exp_requirement: 2500000000000 },
+      { id: 8, name: '大乘', min_level: 71, max_level: 80, stages: '前期,中期,后期,半步', exp_requirement: 16000000000000 },
+      { id: 9, name: '渡劫', min_level: 81, max_level: 90, stages: '前期,中期,后期,半步', exp_requirement: 100000000000000 },
+      { id: 10, name: '飞升', min_level: 91, max_level: 100, stages: '前期,中期,后期,半步', exp_requirement: 650000000000000 }
     ];
   }
 

@@ -2,16 +2,16 @@ const { loadDatabase, saveDatabase } = require('../database');
 const gameTime = require('./gameTime');
 
 const REALMS = [
-  { name: '炼气', min_level: 1, max_level: 10, stages: ['前期', '中期', '后期'], exp_requirement: 100 },
-  { name: '筑基', min_level: 11, max_level: 20, stages: ['前期', '中期', '后期'], exp_requirement: 500 },
-  { name: '金丹', min_level: 21, max_level: 30, stages: ['前期', '中期', '后期'], exp_requirement: 2000 },
-  { name: '元婴', min_level: 31, max_level: 40, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 8000 },
-  { name: '化神', min_level: 41, max_level: 50, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 30000 },
-  { name: '炼虚', min_level: 51, max_level: 60, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 100000 },
-  { name: '合体', min_level: 61, max_level: 70, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 500000 },
-  { name: '大乘', min_level: 71, max_level: 80, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 2000000 },
-  { name: '渡劫', min_level: 81, max_level: 90, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 10000000 },
-  { name: '飞升', min_level: 91, max_level: 100, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 50000000 }
+  { name: '炼气', min_level: 1, max_level: 10, stages: ['前期', '中期', '后期'], exp_requirement: 5200000 },
+  { name: '筑基', min_level: 11, max_level: 20, stages: ['前期', '中期', '后期'], exp_requirement: 31000000 },
+  { name: '金丹', min_level: 21, max_level: 30, stages: ['前期', '中期', '后期'], exp_requirement: 220000000 },
+  { name: '元婴', min_level: 31, max_level: 40, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 1400000000 },
+  { name: '化神', min_level: 41, max_level: 50, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 60000000000 },
+  { name: '炼虚', min_level: 51, max_level: 60, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 390000000000 },
+  { name: '合体', min_level: 61, max_level: 70, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 2500000000000 },
+  { name: '大乘', min_level: 71, max_level: 80, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 16000000000000 },
+  { name: '渡劫', min_level: 81, max_level: 90, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 100000000000000 },
+  { name: '飞升', min_level: 91, max_level: 100, stages: ['前期', '中期', '后期', '半步'], exp_requirement: 650000000000000 }
 ];
 
 class RealmService {
@@ -47,6 +47,18 @@ class RealmService {
     return index < REALMS.length - 1 ? REALMS[index + 1] : null;
   }
 
+  /**
+   * 突破门槛判定（E9 曲线调平 · 轮54 语义收敛）。
+   *
+   * `realms.exp_requirement` 的**唯一含义 = 填满本境界所需修为**，它由
+   * `characterService.calculateExpForLevel(level, realm)` 按等比摊到境界内每次升级上，
+   * 因此"升满到 max_level"这件事本身就已经付过这份 exp 了。
+   * 早先这里还额外要求 `exp >= exp_requirement`，是**对同一份修为重复计价**：
+   * 圆满时 exp 又被 pinExpAtFull 钉在"下一级成本"（小于整境总量）⇒ 该条件永远不成立（会把游戏卡死）；
+   * 而在旧曲线（100×1.5^L）下钉值又恒大于它 ⇒ 该条件形同虚设（E9 实测：炼气钉值 3844 vs 门槛 100）。
+   * 两头都不对，故删除重复计价，真瓶颈保持为：**等级封顶 + 突破概率 + 寿元 + 契机**（铁律"速度只填满境界、
+   * 不得绕过突破瓶颈"仍成立——填满境界恰恰就是唯一被速度作用的部分）。由 `sim-balance` 的行为探针锁定。
+   */
   canBreakthrough(character) {
     const realm = REALMS.find(r => r.name === character.realm);
     if (!realm) return false;
@@ -55,10 +67,10 @@ class RealmService {
     const stageIndex = (character.realm_stage || 1) - 1;
 
     if (stageIndex < realm.stages.length - 1) {
-      return (character.level || 1) >= realm.max_level && (character.exp || 0) >= realm.exp_requirement;
+      return (character.level || 1) >= realm.max_level;
     } else {
       const nextRealm = this.getNextRealm(character.realm);
-      return nextRealm && (character.level || 1) >= realm.max_level && (character.exp || 0) >= realm.exp_requirement;
+      return !!nextRealm && (character.level || 1) >= realm.max_level;
     }
   }
 

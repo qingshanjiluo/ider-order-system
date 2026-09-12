@@ -167,7 +167,9 @@ function passAway(character, db) {
   character.realm_stage = 1;
   character.level = 1;
   character.exp = 0;
-  character.exp_to_next = 100;
+  // 出厂 exp_to_next 必须来自经验曲线真源，不能再硬编码（轮54 之前这里是 100，与新曲线 1.3e5 量级分叉）
+  character.exp_to_next = require('./exp-curve').needForLevel(
+    (db.realms || []).find((r) => r.name === '炼气'), 1) || 100;
   character.max_hp = 100;
   character.max_mp = 50;
   character.hp = 100;

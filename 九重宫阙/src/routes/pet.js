@@ -223,7 +223,9 @@ router.post('/capture', auth, (req, res) => {
     const capture = require('../services/pet-capture');
     const chance = capture.captureChance(character.level, map);
     const expConsolation = Math.floor(3 + (map.min_level || 1) * 0.5);
-    character.exp = (character.exp || 0) + expConsolation;
+    // 轮54：直接写 character.exp 会让修为池"已增长但永不结算"（exp_to_next/等级都不动），
+    // 必须走唯一入口 addExp —— 它负责升级、境界封顶、圆满钉值、寿元成长与属性重算。
+    if (expConsolation > 0) require('../services/character').addExp(character.id, expConsolation);
 
     if (Math.random() > chance) {
       saveDatabase(db);

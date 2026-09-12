@@ -41,7 +41,8 @@
     "accept:check": "node scripts/gen-acceptance.js --check",
     "hygiene": "node scripts/run-hygiene.js",
     "content:ensure": "node scripts/ensure-content.js",
-    "drill:docker": "node scripts/drill-docker.js"
+    "drill:docker": "node scripts/drill-docker.js",
+    "review:gen": "node scripts/gen-review-sheet.js"
   },
   "engines": {
     "node": ">=20.11"

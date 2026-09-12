@@ -150,9 +150,15 @@ function httpJson(method, url, body, token, timeoutMs = 20000) {
   const sameUser = !!(ch.json && ch2.json && Number(ch.json.id) === Number(ch2.json.id));
   rec('恢复后同一账号能登录并取回**同一个**角色', login.status === 200 && !!tok2 && ch2.status === 200 && sameUser,
     `login HTTP ${login.status} 角色 ${ch.json && ch.json.id}→${ch2.json && ch2.json.id} 一致=${sameUser}`);
+  // 轮61：原先这一步断言"容器内主库与备份逐字节同源"，是我想错了方向 —— 还原之后又发生过登录，
+  // 应用会写 last_login 与年龄结算，主库自然与备份不同。真正要判的是"恢复出来的库结构完整可用"，
+  // 那已由上一步（同账号登录并取回同一个角色 id）证明；这里只补一道 integrity_check。
+  const integ = sh('docker', ['exec', CONTAINER, 'node', '-e',
+    "const {DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('/app/data/game.db',{readOnly:true});console.log('IC ' + d.prepare('PRAGMA integrity_check').get().integrity_check);d.close()"], { timeout: 60000 });
   const md5In = sh('docker', ['exec', CONTAINER, 'node', '-e',
     "const c=require('crypto'),f=require('fs');console.log(c.createHash('md5').update(f.readFileSync('/app/data/game.db')).digest('hex').toUpperCase())"], { timeout: 60000 }).out.trim();
-  rec('容器内主库与备份逐字节同源', !!snapMd5 && md5In.toUpperCase() === snapMd5, md5In);
+  rec('恢复后的主库结构完整（integrity_check ok）', /\bIC ok\b/.test(integ.out),
+    (integ.out || integ.err || '').trim() + '；备份 MD5 ' + snapMd5 + '，还原后经登录写入主库为 ' + md5In + '（两者不同属正常）');
 
   // 8) 现场清理（默认清；--keep 时留着人看）
   if (!KEEP) {

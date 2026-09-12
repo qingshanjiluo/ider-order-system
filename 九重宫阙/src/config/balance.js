@@ -135,3 +135,26 @@ function lootQuality(level) {
 module.exports.LOOT_PITY = LOOT_PITY;
 module.exports.LOOT_QUALITY_BY_LEVEL = LOOT_QUALITY_BY_LEVEL;
 module.exports.lootQuality = lootQuality;
+
+// ===== E3 · 减伤公式（修原线性减法 max(1, atk*2 − def*0.8)：def≥2.5atk 时伤害恒为 1，高防近乎无敌）=====
+const MITIGATION = {
+  baseK: 120,        // 护甲常数：def = baseK 时减伤 50%（同级基准）
+  perLevelK: 18,     // 随防守方等级放大 K，避免高等级把减伤堆满
+  maxMitigation: 0.75, // **永不免疫**：最多减 75%，杜绝"打不动"的死局
+  floorDamage: 1
+};
+/** 减伤比例 0..maxMitigation */
+function mitigationRatio(defense, level) {
+  const d = Math.max(0, Number(defense) || 0);
+  const lv = Math.max(1, Number(level) || 1);
+  const K = MITIGATION.baseK + MITIGATION.perLevelK * lv;
+  return Math.min(MITIGATION.maxMitigation, d / (d + K));
+}
+/** 减伤后的伤害：恒 ≥ floorDamage，且随 def 单调递减、随攻击线性缩放 */
+function mitigatedDamage(rawDamage, defense, level) {
+  const raw = Math.max(0, Number(rawDamage) || 0);
+  return Math.max(MITIGATION.floorDamage, Math.floor(raw * (1 - mitigationRatio(defense, level))));
+}
+module.exports.MITIGATION = MITIGATION;
+module.exports.mitigationRatio = mitigationRatio;
+module.exports.mitigatedDamage = mitigatedDamage;

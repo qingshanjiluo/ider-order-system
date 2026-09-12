@@ -2,9 +2,10 @@ const elements = require('../elements');
 
 class DamageCalculator {
   calculateBaseDamage(attacker, defender) {
-    const baseDamage = attacker.attack * 2;
-    const defenseReduction = defender.defense * 0.8;
-    return Math.max(1, Math.floor(baseDamage - defenseReduction));
+    // 比值减伤（原为线性减法：def ≥ 2.5×atk 时伤害被夹到 1，高防流派近乎无敌）
+    const B = require('../../config/balance');
+    const baseDamage = (attacker.attack || 0) * 2;
+    return B.mitigatedDamage(baseDamage, (defender && defender.defense) || 0, (defender && defender.level) || 1);
   }
 
   calculateCriticalDamage(damage, critRate) {

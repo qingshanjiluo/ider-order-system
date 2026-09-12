@@ -751,5 +751,37 @@ t('E3 槽位与 ladder 同源：每个境界序号都得 2..8 且单调封顶', 
   assert.strictEqual(balance.skillSlotCap(n + 5), 8, '超出 ladder 仍应封顶 8 槽');
 });
 
+console.log('== 十五期：E3 比值减伤（修线性减法致高防近乎无敌）==');
+t('减伤数学：def=0 不减免、随 def 单调递减、永不免疫', () => {
+  assert.strictEqual(balance.mitigatedDamage(100, 0, 1), 100);
+  const a = balance.mitigatedDamage(1000, 500, 30), b = balance.mitigatedDamage(1000, 5000, 30);
+  assert.ok(a > b, '护甲增高却未减伤');
+  assert.ok(balance.mitigationRatio(1e9, 1) <= balance.MITIGATION.maxMitigation + 1e-9, '减伤超过上限 = 可免疫');
+  assert.strictEqual(balance.mitigatedDamage(1000, 1e9, 1), 250, '极端护甲应停在 25% 伤害，而不是夹成 1');
+});
+t('原缺陷不复现：def ≫ attack 时伤害不再恒为 1', () => {
+  const legacy = Math.max(1, Math.floor(50 * 2 - 1000 * 0.8));      // 旧公式：100 − 800 → 夹到 1
+  const fixed = balance.mitigatedDamage(50 * 2, 1000, 50);
+  assert.strictEqual(legacy, 1, '旧公式基准值变了（对照失效）');
+  assert.ok(fixed > 1, '仍被夹成 1，说明没换成比值减伤');
+  assert.ok(fixed >= 50 * 2 * 0.2, `伤害过弱：${fixed}`);
+});
+t('等级缩放：同级护甲越厚 K 越大，避免高等级把减伤堆满', () => {
+  const low = balance.mitigatedDamage(1000, 800, 5);
+  const high = balance.mitigatedDamage(1000, 800, 90);
+  assert.ok(high > low, `高等级防守方反而更硬：${high} <= ${low}`);
+  assert.strictEqual(balance.mitigatedDamage(0, 500, 10), balance.MITIGATION.floorDamage, '0 攻应落到保底 1');
+});
+t('攻击线性：伤害随攻击力近似线性放大（旧公式会因减法而失真）', () => {
+  const d1 = balance.mitigatedDamage(1000, 1200, 40);
+  const d2 = balance.mitigatedDamage(2000, 1200, 40);
+  assert.ok(d2 > d1 * 1.9 && d2 <= d1 * 2 + 2, `非线性：${d1} → ${d2}`);
+});
+t('damage.js 已接比值减伤且不残留线性相减', () => {
+  const src = require('fs').readFileSync('src/services/battle/damage.js', 'utf8');
+  assert.ok(/B\.mitigatedDamage\(/.test(src), '未接入 balance.mitigatedDamage');
+  assert.ok(!/defenseReduction/.test(src), '旧的线性相减实现仍残留');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

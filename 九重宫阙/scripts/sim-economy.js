@@ -284,7 +284,8 @@ const STRICT = process.argv.includes('--strict');
       '', `### 仍未接线的延寿通道（棘轮基线 3 条，接一条删一条）`, '');
     for (const w of unwired) md.push(`- ${w}`);
     if (!unwired.length) md.push('- （无）—— LIFE_GAIN 点名的通道已全部接线，可把 C4 基线降到 0');
-    fs.writeFileSync(path.resolve(out), md.join('\n'), 'utf8');
+        md.push(`\n\n## DSH-HEADLINE（机器读，勿手改）\n\n\`\`\`json\n` + JSON.stringify({ kind:'economy', passed: pass, failed: fail, shelves: shelves.length, printers: printers.length, uncoveredAll: allUncovered.length, uncoveredOnShelf: shelfUncovered.length, deadKeys: deadKeys.length, freeRows: freeRows.length, freeUnbounded: freeUnbounded.length, faucetOverCap: faucet.length }, null, 1) + `\n\`\`\`\n`);
+fs.writeFileSync(path.resolve(out), md.join('\n'), 'utf8');
     console.log('\n  报告已写出：' + out);
   }
 

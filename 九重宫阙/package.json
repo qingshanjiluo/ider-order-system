@@ -37,6 +37,8 @@
     "verify:rebuild": "node scripts/rebuild-check.js",
     "verify:drift": "node scripts/drift-probe.js",
     "verify:refs": "node scripts/ref-integrity.js",
+    "accept:gen": "node scripts/gen-acceptance.js",
+    "accept:check": "node scripts/gen-acceptance.js --check",
     "hygiene": "node scripts/run-hygiene.js",
     "content:ensure": "node scripts/ensure-content.js"
   },

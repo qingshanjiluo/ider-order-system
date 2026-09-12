@@ -372,12 +372,38 @@ class CombatService {
     const vipBonus = charService.getVipBonus(charData?.vip_level || 0);
     const spiritStone = Math.floor(baseSpiritStone * vipBonus.spiritStoneBonus);
 
+    const B = require('../../config/balance');
     const drops = [];
-    if (Math.random() < 0.3) {
+    if (Math.random() < B.LOOT_PITY.stoneChance) {
       drops.push({ type: '灵石', quantity: spiritStone });
     }
-    if (Math.random() < 0.1) {
-      drops.push({ type: '装备', quality: '凡器' });
+
+    // E3：装备掉落此前只返回描述对象，**全仓无人消费 rewards.items → 玩家永远拿不到**（机制空转）。
+    // 现在真正入包，并按敌方等级决定品质，连续空手到达保底则必出。
+    const dry = charData ? (charData.loot_dry_streak || 0) : 0;
+    const rolled = Math.random() < B.LOOT_PITY.equipChance;
+    const pity = dry >= B.LOOT_PITY.dryStreakToGuarantee;
+    if (rolled || pity) {
+      const quality = (B.LOOT_QUALITY_BY_LEVEL.find(q => level >= q.min) || B.LOOT_QUALITY_BY_LEVEL[B.LOOT_QUALITY_BY_LEVEL.length - 1]).quality;
+      let granted = null;
+      try {
+        const itemService = require('../item');
+        const eq = itemService.generateEquipment((charData && charData.realm) || '炼气', quality);
+        if (eq && db) {
+          const itemId = require('../../database').getNextId('items');
+          db.items.push(Object.assign({ id: itemId }, eq));
+          db.inventory.push({ character_id: attacker.id, item_id: itemId, quantity: 1 });
+          granted = { type: '装备', quality, name: eq.name || null, itemId };
+        }
+      } catch (e) { /* 生成失败：不计入掉落，按空手累计保底 */ }
+      if (granted) {
+        drops.push(granted);
+        if (charData) charData.loot_dry_streak = 0;
+      } else if (charData) {
+        charData.loot_dry_streak = dry + 1;
+      }
+    } else if (charData) {
+      charData.loot_dry_streak = dry + 1;
     }
 
     return { exp, spiritStone, items: drops, vipExpBonus: vipBonus.expBonus, vipStoneBonus: vipBonus.spiritStoneBonus };

@@ -115,3 +115,23 @@ function skillSlotCap(realmIndex) {
 module.exports.SLOT_BASE = SLOT_BASE;
 module.exports.SLOT_MAX = SLOT_MAX;
 module.exports.skillSlotCap = skillSlotCap;
+
+// ===== E3 · 掉落与保底（此前 combat.js 写死 30%/10% 且装备固定"凡器"，且 rewards.items 无人消费）=====
+const LOOT_PITY = { stoneChance: 0.3, equipChance: 0.1, dryStreakToGuarantee: 5 };
+// 按**敌方等级**决定品质档；品质词必须落在装备自有阶梯 QUALITY_ORDER 内
+// （注意：装备用 凡器/法器/灵器/法宝/…，与丹药的 凡品/良品/上品/极品 是两套词表，不可混用）
+const LOOT_QUALITY_BY_LEVEL = [
+  { min: 75, quality: '法宝' },
+  { min: 45, quality: '灵器' },
+  { min: 15, quality: '法器' },
+  { min: 0, quality: '凡器' }
+];
+/** 敌方等级 → 装备品质档 */
+function lootQuality(level) {
+  const lv = Number.isFinite(level) && level > 0 ? level : 0;
+  const hit = LOOT_QUALITY_BY_LEVEL.find((q) => lv >= q.min);
+  return hit ? hit.quality : LOOT_QUALITY_BY_LEVEL[LOOT_QUALITY_BY_LEVEL.length - 1].quality;
+}
+module.exports.LOOT_PITY = LOOT_PITY;
+module.exports.LOOT_QUALITY_BY_LEVEL = LOOT_QUALITY_BY_LEVEL;
+module.exports.lootQuality = lootQuality;

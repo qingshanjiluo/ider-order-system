@@ -52,7 +52,7 @@ const BREAKTHROUGH_BASE = {
   炼虚: 42, 合体: 35, 大乘: 28, 渡劫: 20, 飞升: 12
 };
 const BREAKTHROUGH_MODS = {
-  perInnerDemon: -5, perFail: -3, heavenShieldFrom: 3, heavenShieldEach: 6, // 连败≥3 后每次 +6%（保底）
+  perInnerDemon: -5, perFail: -3, heavenShieldFrom: 3, heavenShieldEach: 10, // 连败≥3 后每次 +10%（R11 调参：原 6 打不断心魔螺旋）
   pill: 15, formation: 8, veinPerLevel: 2, artPerfect: 10, epiphany: 20, daoDamage: -10
 };
 const BREAKTHROUGH_FAIL = { expFallbackRatio: 0.10, daoDamageDays: 3 };     // 不降境界，回落 10% 修为 + 道基受损

@@ -217,27 +217,39 @@ async function loadTabContent(tab) {
 async function loadCharacterTab() {
   const content = document.getElementById('tab-content');
   try {
-    const char = await api.getCharacter();
+    const raw = await api.getCharacter();
     const stats = await api.getStats();
+    // 轮51 修真 bug：/api/character 直接把 characters 行的列名吐出来（**max_hp / max_mp / exp_to_next 是蛇形**），
+    // 而本文件通篇按驼峰读 —— char.maxHp 恒 undefined，于是"生命 0/0、灵气 0/0"（`|| 0` 把 undefined 盖住了，
+    // 连 undefined 泄漏检测都不报，只有对着真接口取一次数才发现）。这里做单点归一，不给后端加第二套字段。
+    const pick = (...vals) => { for (const v of vals) { if (v !== undefined && v !== null) return v; } return undefined; };
+    const char = Object.assign({}, raw, {
+      hp: pick(raw.hp, 0),
+      maxHp: pick(raw.max_hp, raw.maxHp, 0),
+      mp: pick(raw.mp, 0),
+      maxMp: pick(raw.max_mp, raw.maxMp, 0),
+      exp: pick(raw.exp, 0),
+      expToNext: pick(raw.exp_to_next, raw.expToNext, 100)
+    });
 
     content.innerHTML = `
       <div class="char-panel">
         <div class="char-panel-header">
-          <div class="char-panel-title">${char.name}</div>
+          <div class="char-panel-title">${escText(char.name)}</div>
           <span class="combat-power">战力 ${ui.formatNumber(stats.combatPower || 0)}</span>
         </div>
 
         <div class="bar-group">
-          <div class="bar-label"><span>生命</span><span id="hp-text">${char.hp || 0}/${char.maxHp || 0}</span></div>
-          <div class="bar-track"><div class="bar-fill hp-fill" id="hp-bar" style="width:${((char.hp || 0) / (char.maxHp || 1)) * 100}%"></div></div>
+          <div class="bar-label"><span>生命</span><span id="hp-text">${char.hp}/${char.maxHp}</span></div>
+          <div class="bar-track"><div class="bar-fill hp-fill" id="hp-bar" style="width:${(char.hp / Math.max(1, char.maxHp)) * 100}%"></div></div>
         </div>
         <div class="bar-group">
-          <div class="bar-label"><span>灵气</span><span id="mp-text">${char.mp || 0}/${char.maxMp || 0}</span></div>
-          <div class="bar-track"><div class="bar-fill mp-fill" id="mp-bar" style="width:${((char.mp || 0) / (char.maxMp || 1)) * 100}%"></div></div>
+          <div class="bar-label"><span>灵气</span><span id="mp-text">${char.mp}/${char.maxMp}</span></div>
+          <div class="bar-track"><div class="bar-fill mp-fill" id="mp-bar" style="width:${(char.mp / Math.max(1, char.maxMp)) * 100}%"></div></div>
         </div>
         <div class="bar-group">
-          <div class="bar-label"><span>修为</span><span id="exp-text">${char.exp || 0}/${char.expToNext || 100}</span></div>
-          <div class="bar-track"><div class="bar-fill exp-fill" id="exp-bar" style="width:${((char.exp || 0) / (char.expToNext || 100)) * 100}%"></div></div>
+          <div class="bar-label"><span>修为</span><span id="exp-text">${char.exp}/${char.expToNext}</span></div>
+          <div class="bar-track"><div class="bar-fill exp-fill" id="exp-bar" style="width:${(char.exp / Math.max(1, char.expToNext)) * 100}%"></div></div>
         </div>
         <div class="bar-group">
           <div class="bar-label">
@@ -469,7 +481,7 @@ async function loadBattleTab() {
           <div style="text-align:center;">
             <div style="font-size:16px;font-weight:600;margin-bottom:4px;">${character.name}</div>
             <div style="font-size:12px;color:var(--text2);">${character.realm} Lv.${character.level}</div>
-            <div style="font-size:12px;color:var(--green);">HP: ${character.hp || character.maxHp}/${character.maxHp}</div>
+            <div style="font-size:12px;color:var(--green);">HP: ${character.hp || character.max_hp}/${character.max_hp || 0}</div>
           </div>
           <div style="font-size:28px;color:var(--red);font-family:'Ma Shan Zheng',cursive;">VS</div>
           <div style="text-align:center;">
@@ -2432,7 +2444,7 @@ async function loadGatheringTab() {
             <div class="shop-item" style="padding:12px;margin-bottom:8px;">
               <div class="shop-item-info" style="flex:1;">
                 <div class="shop-item-name">${m.name}</div>
-                <div class="shop-item-desc">等级：${m.min_level}-${m.max_level}</div>
+                <div class="shop-item-desc">等级：${m.minLevel != null ? m.minLevel : (m.min_level != null ? m.min_level : '?')}-${m.maxLevel != null ? m.maxLevel : (m.max_level != null ? m.max_level : '?')}</div>
                 <div class="shop-item-desc" style="font-size:11px;">资源：${m.resources?.join(', ') || '未知'}</div>
               </div>
               <div style="display:flex;gap:6px;">
@@ -2588,7 +2600,7 @@ async function loadPillsTab() {
             <div class="shop-item" style="padding:8px;margin-bottom:4px;">
               <div class="shop-item-info">
                 <div class="shop-item-name" style="font-size:12px;">${p.name}</div>
-                <div class="shop-item-desc" style="font-size:11px;">${p.subtype} | ${p.quality} | ${p.realm}</div>
+                <div class="shop-item-desc" style="font-size:11px;">${p.quality || '—'} | ${p.description || ''}</div>
                 <div class="shop-item-desc" style="font-size:10px;">${p.description}</div>
               </div>
             </div>
@@ -3648,15 +3660,28 @@ async function handleAdminBroadcast() {
 }
 
 // ========== Init Hooks ==========
+// P3（轮51）：设置页大按钮写的是 onclick="handleLogout()"，而这个函数**从来没有被定义过**
+// —— 登出逻辑散在 init 的 token 失效分支和顶栏 #logout-btn 的闭包里各写了一遍。
+// 无浏览器渲染冒烟一跑就抓到：那个按钮点了必抛 ReferenceError。现在收口成一处真实现。
+function handleLogout() {
+  localStorage.removeItem('token');
+  ui.showView('login-view');
+  ui.showToast('已退出登录');
+}
+
 async function loadGameEnhanced() {
   const token = localStorage.getItem('token');
   if (token) {
     try {
       await loadGame();
       setTimeout(() => {
-        checkAnnouncements();
-        checkAds();
-        refreshQuestTracker();
+        // 轮51：这三处是 fire-and-forget，以前没有 catch —— 会话失效（角色被转世、token 过期）时
+        // 每次进游戏都会留下一条未捕获的 Promise 拒绝（浏览器喷控制台，node 直接把进程打死；
+        // S3 无浏览器冒烟就是这么暴露它的）。后台补弹类调用失败静默即可。
+        const quiet = (p) => Promise.resolve(p).catch(() => { /* 公告/广告/任务追踪：非关键路径 */ });
+        quiet(checkAnnouncements());
+        quiet(checkAds());
+        quiet(refreshQuestTracker());
       }, 1000);
     } catch (e) {
       localStorage.removeItem('token');

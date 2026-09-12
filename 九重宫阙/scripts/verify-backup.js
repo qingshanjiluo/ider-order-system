@@ -20,6 +20,7 @@ const file = process.argv[2] || (() => {
 
 const CRITICAL = ['col_characters', 'col_users', 'col_items', 'col_inventory', 'meta'];
 // 口径说明：本脚本刻意跳过 sqlite_* 内部表，故 rows 比 backup.js 少 19（sqlite_sequence 的行数），非数据缺失。
+if (!fs.existsSync(file)) { console.error(`[verify-backup] ❌ 快照不存在：${file}（拒绝让 node:sqlite 就地建空库再误报缺表）`); process.exit(2); }
 const failures = [];
 const check = new DatabaseSync(file, { readOnly: true });
 let rows = 0;

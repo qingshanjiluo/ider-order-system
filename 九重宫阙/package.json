@@ -10,6 +10,8 @@
     "test": "node scripts/run-all-tests.js",
     "test:content": "node scripts/test-content.js",
     "backup": "node scripts/backup.js",
+    "backup:verify": "node scripts/verify-backup.js",
+    "restore": "node scripts/restore.js",
     "audit": "node scripts/audit-data.js"
   },
   "engines": { "node": ">=20.11" },

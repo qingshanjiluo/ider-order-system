@@ -15,10 +15,25 @@ const fs = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
+// 可被 DSH_DATA_DIR 覆盖：轮41 的"空库重建链"锁必须在临时目录里跑完整 seed，
+// 不能拿正式存档做破坏性实验（写死路径 = 这条路径永远测不到，所以它坏了三轮都没人发现）。
+const DATA_DIR = process.env.DSH_DATA_DIR || path.join(__dirname, '..', '..', 'data');
 const DB_FILE = path.join(DATA_DIR, 'game.db');
 const LEGACY_JSON = path.join(DATA_DIR, 'game.json');
 const SCHEMA_FILE = path.join(__dirname, 'schema.sql');
+
+/**
+ * 文档集合白名单（对应当前库里 22 张 col_*，由 `git` 跟踪的 game.db 枚举得来）。
+ * 空库启动时这些键必须是**空数组而不是 undefined** —— 否则 initDatabase 与 33 个路由
+ * 里的 `db.realms.length` / `db.items.push` 类写法会直接 TypeError（轮41 实测正是如此）。
+ * 新系统落文档集合时要在此登记，否则只有写过一次才存在，等于把崩溃留给下个进程。
+ */
+const DOC_COLLECTIONS = [
+  'achievements', 'blueprints', 'character_buffs', 'characters', 'checkin', 'dungeons',
+  'equipments', 'forge_recipes', 'gongfa', 'guild_members', 'guilds', 'inventory',
+  'items', 'maps', 'monsters', 'pets', 'player_skills', 'realms', 'recipes',
+  'shop', 'skills', 'users'
+];
 
 let sqlite = null;
 let mirror = null;
@@ -68,6 +83,14 @@ function boot() {
     } catch (_) { /* 跳过损坏 meta */ }
   }
   if (!Array.isArray(mirror.id_counters)) mirror.id_counters = {};
+
+  // 空库自愈：白名单里的集合一律补成数组（已存在的不动），让 db.X 在任何环境下都不是 undefined
+  for (const name of DOC_COLLECTIONS) {
+    if (!Array.isArray(mirror[name])) {
+      mirror[name] = [];
+      if (!persisted.has(name)) persisted.set(name, '[]');
+    }
+  }
 
   // 一次性迁移：库为空且存在 legacy JSON
   if (tables.length === 0 && fs.existsSync(LEGACY_JSON)) {

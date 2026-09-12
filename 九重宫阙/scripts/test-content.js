@@ -1775,6 +1775,64 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
   assert.ok(/FILES/.test(src) && /unlinkSync/.test(src), 'gate.js 未对跑前不存在的 sidecar 做删除（凭空出现的文件会残留）');
   assert.ok(!/if \(process\.exitCode !== 3\)/.test(src), '旧的还原判定分支还在（会被子进程退出码覆盖）');
 });;
+  console.log('== 廿七期：空库重建链与内容对账（轮41）==');
+  t('store 必须让 22 个文档集合在空库上自愈为数组（曾经 db.realms undefined 直接 TypeError）', () => {
+    const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'db', 'store.js'), 'utf8');
+    const m = src.match(/const DOC_COLLECTIONS = \[([\s\S]*?)\];/);
+    assert.ok(m, 'store.js 里没有 DOC_COLLECTIONS 白名单（空库自愈失去依据）');
+    const names = (m[1].match(/'[a-z_]+'/g) || []).map(x => x.slice(1, -1));
+    assert.ok(names.length >= 22, '白名单只列了 ' + names.length + ' 个集合，少于在用存档的 22 张 col_*');
+    for (const k of ['realms', 'monsters', 'items', 'shop', 'player_skills']) {
+      assert.ok(names.includes(k), '白名单缺关键集合 ' + k);
+    }
+    assert.ok(/for \(const name of DOC_COLLECTIONS\)/.test(src), 'boot() 里的自愈循环缺失，空库仍会拿到 undefined');
+    assert.ok(/persisted\.set\(name, '\[\]'\)/.test(src), '自愈出的空集合没登记进 persisted（会被反复判脏并写盘）');
+    assert.ok(/process\.env\.DSH_DATA_DIR/.test(src), 'DATA_DIR 不可覆盖：空库重建路径无法在不碰正式存档的前提下测试（这正是它坏了三轮没人发现的原因）');
+  });
+  t('initDatabase 不得假设白名单已覆盖本集合（三处 undefined 防护必须在）', () => {
+    const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'database.js'), 'utf8');
+    for (const k of ['realms', 'maps', 'items']) {
+      assert.ok(new RegExp('!Array\\.isArray\\(db\\.' + k + '\\)').test(src), 'initDatabase 里 db.' + k + ' 仍可能 undefined');
+    }
+  });
+  t('内容导出文件必须存在，且其计数与在用存档逐集合一致', () => {
+    const p = path21.join(__dirname, '..', 'src', 'data', 'content-export.json');
+    assert.ok(fs21.existsSync(p), '缺少 src/data/content-export.json：存档里的定义没有可 diff 的文本副本');
+    const payload = JSON.parse(fs21.readFileSync(p, 'utf8'));
+    const defs = ['realms','maps','items','monsters','dungeons','blueprints','recipes','forge_recipes','shop','skills','gongfa','pets','achievements'];
+    for (const k of defs) assert.ok(Array.isArray(payload[k]), '导出缺集合 ' + k);
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    const live = {};
+    try {
+      for (const k of defs) {
+        try { live[k] = db.prepare('SELECT COUNT(*) AS c FROM col_' + k).get().c; } catch (e) { live[k] = -1; }
+      }
+    } finally { db.close(); }
+    for (const k of defs) {
+      assert.strictEqual(payload[k].length, live[k], '导出与存档的 ' + k + ' 行数不同（' + payload[k].length + ' vs ' + live[k] + '），需重跑 npm run content:export');
+    }
+  });
+  t('content-sync 的 export 模式绝不写库，且不得用数组 replacer', () => {
+    const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'scripts', 'content-sync.js'), 'utf8');
+    const a = src.indexOf(String.fromCharCode(109,111,100,101) + " === 'export'");
+    const b = src.indexOf(String.fromCharCode(109,111,100,101) + " === 'import'");
+    assert.ok(a >= 0 && b > a, 'export / import 分支结构被改动，锁无法定位');
+    assert.ok(src.slice(a, b).indexOf('saveDatabase(') < 0, 'export 分支里出现了 saveDatabase 调用：导出会变成二次真源');
+    assert.ok(src.indexOf('JSON.stringify(payload,') < 0, 'JSON.stringify 用了数组 replacer：它会在每一层生效，把行对象字段滤光（静默丢数据）');
+  });
+  t('空库重建检查必须通过，且必须仍把定义漂移如实报出来（不许用变绿的锁掩盖漂移）', () => {
+    if (process.env.DSH_SKIP_REBUILD_CHECK === '1') { console.log('  [跳过] DSH_SKIP_REBUILD_CHECK=1'); return; }
+    const pkg = require(path21.join(__dirname, '..', 'package.json'));
+    assert.ok(pkg.scripts['verify:rebuild'], '未挂 npm run verify:rebuild');
+    assert.ok(pkg.scripts['seed:content'] && pkg.scripts['content:export'], '未挂 seed:content / content:export');
+    const root = path21.join(__dirname, '..');
+    const r = require('child_process').spawnSync(process.execPath, [path21.join(root, 'scripts', 'rebuild-check.js')], { cwd: root, encoding: 'utf8' });
+    const out = (r.stdout || '') + (r.stderr || '');
+    assert.strictEqual(r.status, 0, '空库重建不合格：' + out.split(String.fromCharCode(10)).slice(-8).join(' / '));
+    assert.ok(/定义与存档漂移/.test(out), '漂移清单不见了 —— 要么真消除了（那应把本锁改成断言无漂移），要么判据被悄悄放宽');
+    assert.ok(/硬编码路径扫描 = 未见/.test(out) && /正向探针（库落在临时目录而非正式目录）= true/.test(out), '重建检查的隔离性判据没过（可能把 seed 跑到了正式存档上；原"比较正式存档字节"的判据在套件内必然误报，已换成扫描+探针两条硬判据）');
+  });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

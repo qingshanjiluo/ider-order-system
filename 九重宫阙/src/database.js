@@ -30,7 +30,7 @@ function closeDatabase() {
 function initDatabase() {
   const db = loadDatabase();
 
-  if (db.realms.length === 0) {
+  if (!Array.isArray(db.realms) || db.realms.length === 0) {   // 空库自愈：不能假设 store 白名单已覆盖本集合
     db.realms = [
       { id: 1, name: '炼气', min_level: 1, max_level: 10, stages: '前期,中期,后期', exp_requirement: 100 },
       { id: 2, name: '筑基', min_level: 11, max_level: 20, stages: '前期,中期,后期', exp_requirement: 500 },
@@ -45,7 +45,7 @@ function initDatabase() {
     ];
   }
 
-  if (db.maps.length === 0) {
+  if (!Array.isArray(db.maps) || db.maps.length === 0) {   // 空库自愈：不能假设 store 白名单已覆盖本集合
     db.maps = [
       { id: 1, name: '青云山麓', min_level: 1, max_level: 15, difficulty: 1, drop_rate: 1.0, description: '适合新手修炼的山麓地带' },
       { id: 2, name: '妖兽森林', min_level: 15, max_level: 30, difficulty: 2, drop_rate: 1.2, description: '妖兽出没的危险森林' },
@@ -56,7 +56,7 @@ function initDatabase() {
     ];
   }
 
-  if (db.items.length === 0) {
+  if (!Array.isArray(db.items) || db.items.length === 0) {   // 空库自愈：不能假设 store 白名单已覆盖本集合
     db.items = [
       { id: 1, name: '铁剑', type: '装备', quality: '凡器', realm: '炼气', stats: '{"attack":5}', description: '普通的铁剑', subtype: 'weapon' },
       { id: 2, name: '青云剑', type: '装备', quality: '法器', realm: '筑基', stats: '{"attack":20}', description: '青云宗制式长剑', subtype: 'weapon' },

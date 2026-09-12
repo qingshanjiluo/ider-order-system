@@ -20,7 +20,10 @@
     "backup:verify": "node scripts/verify-backup.js",
     "restore": "node scripts/restore.js",
     "audit": "node scripts/audit-data.js",
-    "sim:tribulation": "node scripts/sim-tribulation.js"
+    "sim:tribulation": "node scripts/sim-tribulation.js",
+    "content:export": "node src/scripts/content-sync.js export",
+    "seed:content": "node src/scripts/content-sync.js import",
+    "verify:rebuild": "node scripts/rebuild-check.js"
   },
   "engines": {
     "node": ">=20.11"

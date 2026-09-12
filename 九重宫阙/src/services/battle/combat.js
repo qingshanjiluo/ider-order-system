@@ -65,18 +65,50 @@ class CombatService {
   }
 
   executeRound(attacker, defender, role, skillIndex = null) {
+    const skillState = require('./skillState');
+    const before = [];
+
+    // 自己行动前结算：冷却递减 + 自身持续伤害（放在这里就不必改主循环）
+    const tick = skillState.tick(attacker);
+    if (tick.tickDamage > 0) {
+      attacker.hp = Math.max(0, (Number(attacker.hp) || 0) - tick.tickDamage);
+      before.push(...tick.lines);
+    }
+    if ((Number(attacker.hp) || 0) <= 0) {
+      return {
+        damage: 0, statusDamage: tick.tickDamage, skillUsed: null, unimplementedEffect: null,
+        log: (before.length ? before.join('；') : `${attacker.name} 死于持续伤害`)
+      };
+    }
+
     const skills = attacker.skills || [];
     let skill = null;
+    let skipped = null;
+    let attempted = null;
     if (skillIndex !== null && skillIndex >= 0 && skillIndex < skills.length) {
-      skill = skills[skillIndex];
-    } else if (skills.length > 0) {
-      skill = skills[Math.floor(Math.random() * skills.length)];
+      attempted = skills[skillIndex];
+      const check = skillState.canUse(attempted, attacker);
+      if (check.ok) skill = attempted; else skipped = check;
+    } else {
+      // 未指定技能：只从**可用**技里取第一个（旧实现是纯随机，会随机到 MP 不足/冷却中的招）
+      for (const s of skills) { if (skillState.canUse(s, attacker).ok) { skill = s; break; } }
+    }
+    if (skipped) {
+      // 关键修正：玩家指定的招不可用时退回普通攻击，绝不静默替换成另一招
+      before.push(skipped.reason === 'mp'
+        ? `${attacker.name} 灵力不足（【${attempted.name}】需 ${skipped.need}，实有 ${skipped.have}），改为普通攻击`
+        : `【${attempted.name}】尚在冷却（还需 ${skipped.remaining} 回合），${attacker.name} 改为普通攻击`);
     }
 
     const result = damageCalculator.calculateFinalDamage(attacker, defender, skill);
+    if (skill) skillState.spend(skill, attacker);   // 扣 MP + 置冷却
 
-    let log = '';
-    if (role === 'attacker') {
+    let log;
+    if (skill) {
+      log = role === 'attacker'
+        ? `${attacker.name} 施展【${skill.name}】命中 ${defender.name}，造成 ${result.damage} 点伤害`
+        : `${attacker.name} 以【${skill.name}】回敬 ${defender.name}，造成 ${result.damage} 点伤害`;
+    } else if (role === 'attacker') {
       log = `${attacker.name} 攻击 ${defender.name}，造成 ${result.damage} 点伤害`;
     } else {
       log = `${attacker.name} 反击 ${defender.name}，造成 ${result.damage} 点伤害`;
@@ -91,9 +123,26 @@ class CombatService {
       log += '（效果不佳）';
     }
 
+    const after = [];
+    const eff = skillState.applyEffect(skill, attacker, defender, result.damage);
+    if (eff.selfHeal > 0) {
+      const cap = Number(attacker.maxHp) || (Number(attacker.hp) || 0) + eff.selfHeal;
+      attacker.hp = Math.min(cap, (Number(attacker.hp) || 0) + eff.selfHeal);
+      after.push(...eff.lines);
+    }
+    if (eff.appliedDot && defender) {
+      if (!Array.isArray(defender.statusEffects)) defender.statusEffects = [];
+      defender.statusEffects.push(eff.appliedDot);
+      after.push(...eff.lines);
+    }
+
     return {
       damage: result.damage,
-      log
+      statusDamage: tick.tickDamage,
+      skillUsed: skill ? skill.name : null,
+      mpLeft: Number(attacker.mp) || 0,
+      unimplementedEffect: eff.unimplemented || null,
+      log: before.concat([log], after).join('；')
     };
   }
 
@@ -270,7 +319,14 @@ class CombatService {
           name: item.name,
           multiplier: stats.skill_damage || 1.0,
           level: gf.level || 1,
-          element: stats.element
+          element: stats.element,
+          // T0-3：功法表这些字段大多缺失，缺省按 0 消耗/0 冷却（等价旧行为），但不再"拿不到字段"
+          manaCost: Number(stats.mana_cost) || 0,
+          cooldown: Number(stats.cooldown) || 0,
+          effectType: stats.effect_type || null,
+          effectValue: stats.effect_value,
+          key: `gongfa:${gf.item_id}`,
+          source: 'gongfa'
         });
       }
     }
@@ -288,7 +344,14 @@ class CombatService {
         level: ps.level || 1,
         element: def.element,
         slot: ps.equipped_slot,
-        keyRounds: def.key_rounds || null
+        keyRounds: def.key_rounds || null,
+        // T0-3：214 条技能定义全部带这四个字段，此前在这里被整段丢弃 → 战斗无从消费
+        manaCost: Number(def.mana_cost) || 0,
+        cooldown: Number(def.cooldown) || 0,
+        effectType: def.effect_type || null,
+        effectValue: def.effect_value,
+        key: def.id,
+        source: 'player_skill'
       });
     }
     return skills;

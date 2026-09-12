@@ -1,4 +1,4 @@
-﻿/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
+/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
 const assert = require('assert');
 const skillService = require('../src/services/skill');
 const itemService = require('../src/services/item');
@@ -1134,6 +1134,134 @@ t('幽灵常数清扫：CULTIVATION_MODEL 每个键都必须被消费', () => {
   const svcSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'cultivation.js'), 'utf8');
   for (const k of Object.keys(CM)) {
     assert.ok(modelSrc.includes(`CM.${k}`) || svcSrc.includes(`.${k}`), `CULTIVATION_MODEL.${k} 无人消费（幽灵配置）`);
+  }
+});
+
+console.log('== 二十期：E3/T0-3 战斗技能状态机（MP/冷却/效果）==');
+const skillState = require('../src/services/battle/skillState');
+const combatSvc = require('../src/services/battle/combat');
+const SKDEFS = require('../src/services/skill').SKILLS_DATA || [];
+
+const mkEnt = (over) => Object.assign({
+  name: '测试修士', hp: 1000, maxHp: 1000, mp: 100, attack: 200, defense: 50,
+  speed: 10, element: 'fire', skills: [], cooldowns: {}, statusEffects: []
+}, over || {});
+const fireball = { name: '烈焰决', key: 'sk_fire', multiplier: 1.8, manaCost: 60, cooldown: 2, effectType: 'dot', effectValue: 0.3 };
+
+t('技能定义三字段确实齐全（消费的前提，缺了这锁就该红）', () => {
+  assert.ok(SKDEFS.length >= 200, `技能定义仅 ${SKDEFS.length} 条`);
+  for (const f of ['mana_cost', 'cooldown', 'effect_type', 'damage_mult']) {
+    const have = SKDEFS.filter(s => s[f] != null).length;
+    assert.strictEqual(have, SKDEFS.length, `${f} 只有 ${have}/${SKDEFS.length} 有值`);
+  }
+  const implemented = SKDEFS.filter(s => skillState.isImplemented(s.effect_type)).length;
+  assert.ok(implemented / SKDEFS.length >= 0.6,
+    `已实现效果类型占比 ${(implemented * 100 / SKDEFS.length).toFixed(1)}% < 60%，本轮消费范围过窄`);
+});
+t('canUse：缺字段按零消耗零冷却，MP 不足与冷却中分别可辨', () => {
+  assert.strictEqual(skillState.canUse(null, mkEnt()).ok, true, '无技能（普攻）必须可用');
+  assert.strictEqual(skillState.canUse({ name: 'x' }, mkEnt()).ok, true);
+  const poor = skillState.canUse(fireball, mkEnt({ mp: 10 }));
+  assert.strictEqual(poor.ok, false);
+  assert.strictEqual(poor.reason, 'mp');
+  assert.strictEqual(poor.need, 60);
+  assert.strictEqual(poor.have, 10);
+  const cooling = skillState.canUse(fireball, mkEnt({ cooldowns: { 'sk_fire': 3 } }));
+  assert.strictEqual(cooling.ok, false);
+  assert.strictEqual(cooling.reason, 'cooldown');
+  assert.strictEqual(cooling.remaining, 3);
+});
+t('spend：真的扣 MP 并置冷却；MP 不会被打成负数', () => {
+  const e = mkEnt({ mp: 100 });
+  skillState.spend(fireball, e);
+  assert.strictEqual(e.mp, 40);
+  assert.strictEqual(e.cooldowns.sk_fire, 2);
+  const broke = mkEnt({ mp: 5 });
+  skillState.spend({ name: '重击', key: 'k', manaCost: 999, cooldown: 0 }, broke);
+  assert.strictEqual(broke.mp, 0, 'MP 出现负数');
+});
+t('tick：冷却按自身行动次数递减并清零；dot 逐回合侵蚀且到期移除', () => {
+  const e = mkEnt({ cooldowns: { sk_fire: 2 }, statusEffects: [{ type: 'dot', source: '灼烧', perRound: 20, roundsLeft: 2 }] });
+  const t1 = skillState.tick(e);
+  assert.strictEqual(t1.tickDamage, 20);
+  assert.strictEqual(e.cooldowns.sk_fire, 1);
+  assert.strictEqual(e.statusEffects.length, 1);
+  const t2 = skillState.tick(e);
+  assert.strictEqual(t2.tickDamage, 20);
+  assert.strictEqual(e.statusEffects.length, 0, 'dot 到期未移除');
+  assert.strictEqual(e.cooldowns.sk_fire, undefined, '冷却未清零（会永久封住技能）');
+});
+t('applyEffect：damage 无副作用；dot/heal/lifesteal 按口径产生数值', () => {
+  const a = mkEnt(), d = mkEnt({ name: '树精' });
+  const plain = skillState.applyEffect({ name: 'x', effectType: 'damage' }, a, d, 100);
+  assert.deepStrictEqual([plain.selfHeal, plain.appliedDot, plain.unimplemented], [0, null, null]);
+  const dotRes = skillState.applyEffect(fireball, a, d, 300);
+  assert.ok(dotRes.appliedDot, 'dot 未生成持续伤害');
+  assert.strictEqual(dotRes.appliedDot.roundsLeft, 3);
+  assert.ok(dotRes.appliedDot.perRound >= 1);
+  const heal = skillState.applyEffect({ name: '疗', key: 'h', effectType: 'heal', effectValue: 0.3 }, a, d, 0);
+  assert.strictEqual(heal.selfHeal, 300, 'heal 应按施法者生命上限比例');
+  const ls = skillState.applyEffect({ name: '噬', key: 'l', effectType: 'lifesteal', effectValue: 0.5 }, a, d, 200);
+  assert.strictEqual(ls.selfHeal, 100, 'lifesteal 应按实际伤害比例');
+});
+t('未实现效果**不伪造数值**，只登记待实现（1v1 无额外目标）', () => {
+  for (const tt of ['aoe', 'buff', 'debuff', 'stun', 'shield', 'taunt', 'craft_amp']) {
+    const r = skillState.applyEffect({ name: 'x', key: tt, effectType: tt, effectValue: 9 }, mkEnt(), mkEnt(), 100);
+    assert.strictEqual(r.unimplemented, tt, `${tt} 应登记为未实现`);
+    assert.strictEqual(r.selfHeal, 0);
+    assert.strictEqual(r.appliedDot, null);
+    assert.deepStrictEqual(r.lines, [], `${tt} 未实现却产生了日志`);
+  }
+});
+t('行为验证：MP 真的被消耗，第二次释放被冷却挡住并退回普攻', () => {
+  // 口径：executeRound 只返回伤害，扣 hp 是主循环的事；dot 则在实体自己行动时直接结算。
+  // 这里故意用低耗灵技能（20），否则第一次放完 MP 就不够了，挡路的会是"灵力不足"而不是"冷却"。
+  const sk = { name: '烈焰决', key: 'sk_fire', multiplier: 1.8, manaCost: 20, cooldown: 2, effectType: 'dot', effectValue: 0.3 };
+  const atk = mkEnt({ mp: 100, skills: [sk] });
+  const def = mkEnt({ name: '树精', hp: 5000, maxHp: 5000 });
+  const r1 = combatSvc.executeRound(atk, def, 'attacker', 0);
+  assert.strictEqual(r1.skillUsed, '烈焰决', `首次应放出技能，实为 ${r1.skillUsed}`);
+  assert.strictEqual(atk.mp, 80, `executeRound 未正确扣 MP：${atk.mp}`);
+  assert.ok(r1.damage > 0, '技能未产生伤害');
+  const r2 = combatSvc.executeRound(atk, def, 'attacker', 0);
+  assert.strictEqual(r2.skillUsed, null, '冷却中的技能仍被释放');
+  assert.strictEqual(atk.mp, 80, '退回普攻却仍扣了 MP');
+  assert.ok(/冷却/.test(r2.log), `日志未说明改普攻原因：${r2.log}`);
+  assert.ok(r2.damage > 0, '退回普攻后仍应造成普通伤害');
+  assert.ok(r2.damage < r1.damage, '普攻伤害不该高于技能（multiplier 未参与）');
+});
+t('行为验证：dot 真的在受害者自己行动时结算掉血', () => {
+  const atk = mkEnt({ mp: 999, skills: [fireball] });
+  const def = mkEnt({ name: '树精', hp: 9000, maxHp: 9000 });
+  combatSvc.executeRound(atk, def, 'attacker', 0);
+  assert.ok(Array.isArray(def.statusEffects) && def.statusEffects.length === 1, 'dot 未挂到目标');
+  const before = def.hp;
+  const r = combatSvc.executeRound(def, atk, 'defender', null);
+  assert.ok(r.statusDamage > 0, 'dot 未结算');
+  assert.strictEqual(before - def.hp, r.statusDamage, 'dot 伤害未落到 hp');
+});
+t('行为验证：指定技 MP 不足时退回普攻，**绝不静默换成另一招**', () => {
+  const atk = mkEnt({
+    mp: 5,
+    skills: [{ name: '贵技', key: 'a', multiplier: 3, manaCost: 500, cooldown: 0, effectType: 'damage' },
+             { name: '便技', key: 'b', multiplier: 1.2, manaCost: 0, cooldown: 0, effectType: 'damage' }]
+  });
+  const def = mkEnt({ name: '木桩', hp: 99999, maxHp: 99999 });
+  const r = combatSvc.executeRound(atk, def, 'attacker', 0);
+  assert.strictEqual(r.skillUsed, null, '指定技不可用却被替换成别的技能（旧 bug）');
+  assert.ok(/灵力不足/.test(r.log), `日志未说明原因：${r.log}`);
+  assert.strictEqual(atk.mp, 5, '普攻却消耗了 MP');
+});
+t('旧缺陷永久封住：主循环不再随机选技、字段不再被丢弃', () => {
+  const fs = require('fs'); const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'battle', 'combat.js'), 'utf8');
+  assert.ok(!/Math\.random\(\)\s*\*\s*skills\.length/.test(src), '仍在随机选技能（会随机到不可用的招）');
+  for (const f of ['manaCost', 'cooldown', 'effectType', 'effectValue']) {
+    const n = (src.match(new RegExp(`\\b${f}\\s*:`, 'g')) || []).length;
+    assert.ok(n >= 2, `${f} 只在 ${n} 处透传（功法/玩家技能两条来源都要传）`);
+  }
+  for (const call of ['skillState.tick(', 'skillState.canUse(', 'skillState.spend(', 'skillState.applyEffect(']) {
+    assert.ok(src.includes(call), `executeRound 未消费 ${call}`);
   }
 });
 

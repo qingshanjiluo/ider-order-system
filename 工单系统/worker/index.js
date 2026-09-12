@@ -1361,10 +1361,12 @@ async function handleRoute(method, path, request, env, url) {
   }
 
   // ── API: GitHub Actions ─────────────────────────
+  // 只下发「购买邀请积分」工单（历史写法 代练/代打/托管），
+  // 其它已下线的工单类型不得被扫描器获取。
   if (path === '/api/gh/approved-orders' && method === 'GET') {
     if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
     const orders = await env.DB.prepare(
-      "SELECT o.*, u.username as user_name FROM orders o JOIN users u ON o.user_id = u.id WHERE o.status = 'approved' ORDER BY o.id ASC"
+      "SELECT o.*, u.username as user_name FROM orders o JOIN users u ON o.user_id = u.id WHERE o.status = 'approved' AND (o.order_type IS NULL OR o.order_type = '' OR o.order_type IN ('代练','代打','托管')) ORDER BY o.id ASC"
     ).all();
     return json({ ok: true, orders: orders.results });
   }

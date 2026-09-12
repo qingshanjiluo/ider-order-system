@@ -14,6 +14,8 @@
     "fix:maps": "node src/scripts/fix-maps.js",
     "seed:rebalance": "node scripts/rebalance-monsters.js --apply",
     "sim:battle": "node scripts/sim-battle.js",
+    "sim:balance": "node scripts/sim-balance.js --report 数值追赶校验.md",
+    "sim:balance:strict": "node scripts/sim-balance.js --report 数值追赶校验.md --strict",
     "test": "node scripts/gate.js",
     "test:content": "node scripts/test-content.js",
     "probe:server": "node scripts/probe-server.js",

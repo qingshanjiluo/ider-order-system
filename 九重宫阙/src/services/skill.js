@@ -115,6 +115,19 @@ const SKILLS_DATA = [
   { id: 'tianji_sense', name: '天机感应', element: 'none', type: 'passive', slot: 'sub', quality: '天阶', rarity: 'epic', mana_cost: 0, cooldown: 0, damage_mult: 0, effect: '采集时稀有材料出现率提升25%', effect_type: 'gather_amp', effect_value: 0.25, source: 'hidden', learn_cost: 6000, upgrade_cost: 2000, max_level: 1, required_realm: '金丹期', prerequisites: [], is_hidden: true, hidden_condition: '单日采集触发十次天机' }
 ];
 
+// ============ 内容富集三期：模板扩充至 200+（数据驱动，完整性由 test-content.js 断言） ============
+SKILLS_DATA.push(...require('../data/skill-expansion').buildSkills());
+
+// 基础手调 10 技能（新手起手套件，数值逐个手调：低耗/稳定/覆盖七系与辅助）
+const BASE_SKILL_IDS = new Set([
+  'fire_strike', 'water_arrow', 'magma_flow', 'flame_shield', 'healing_rain',
+  'tidal_wave', 'stone_skin', 'wind_walk', 'guild_blessing', 'qi_shield_art'
+]);
+for (const s of SKILLS_DATA) {
+  if (BASE_SKILL_IDS.has(s.id)) { s.base = true; s.learn_cost = Math.min(s.learn_cost || 40, 40); }
+  s.realm_level = Math.max(0, ['炼气期', '筑基期', '金丹期', '元婴期', '化神期', '炼虚期', '合体期', '大乘期', '渡劫期'].indexOf(s.required_realm));
+}
+
 function getSkillDef(skillId) {
   return SKILLS_DATA.find(s => s.id === skillId) || null;
 }

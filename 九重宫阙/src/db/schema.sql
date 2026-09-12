@@ -133,3 +133,19 @@ CREATE TABLE IF NOT EXISTS ai_generations (
   created_at TEXT,
   reviewed_at TEXT
 );
+
+-- 宗门藏书阁（内容富集三期：宗门功法 + 弟子上传的功法/丹方/器方/符方/技能书）
+CREATE TABLE IF NOT EXISTS sect_library (
+  id INTEGER PRIMARY KEY,
+  sect_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,                 -- 功法/丹方/器方/符方/技能书
+  name TEXT NOT NULL,
+  quality TEXT,
+  realm TEXT,                         -- 适用境界（功法）
+  upgradeable INTEGER DEFAULT 1,      -- 功法是否可升级
+  source TEXT,                        -- sect_base/upload
+  contributor TEXT,                   -- 上传弟子
+  contribution INTEGER DEFAULT 0,     -- 上传所得贡献
+  stats TEXT,                         -- JSON
+  created_at TEXT
+);

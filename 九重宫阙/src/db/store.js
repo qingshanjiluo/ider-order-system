@@ -169,7 +169,7 @@ function isDirty() {
 const REL_TABLES = new Set([
   'sects', 'sect_members', 'sect_buildings', 'sect_posts', 'guild_build_queue',
   'lifespan_events', 'market_listings', 'market_orders', 'market_rates',
-  'ai_keys', 'ai_generations'
+  'ai_keys', 'ai_generations', 'sect_library'
 ]);
 
 const okCol = (k) => /^[a-z_][a-z0-9_]*$/.test(k);

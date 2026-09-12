@@ -156,5 +156,89 @@ t('锻造品质封顶逻辑：tier3 主材产物 ≤ 法宝', () => {
   assert.strictEqual(Q[qualityIdx], '法宝', `tier3 封顶应为法宝，实际 ${Q[qualityIdx]}`);
 });
 
+console.log('== 三期：功法库/技能200+/境界分级/藏书阁 ==');
+const { GONGFA_LIBRARY, SECT_FOCUS_ELEMENT } = require('../src/data/gongfa-library');
+const sectLibrary = require('../src/services/sect-library');
+t(`功法库 ≥ 80（实际 ${GONGFA_LIBRARY.length}）`, () => {
+  assert.ok(GONGFA_LIBRARY.length >= 80, `仅 ${GONGFA_LIBRARY.length}`);
+});
+t('每个宗门至少 4 门功法', () => {
+  for (const key of Object.keys(SECT_FOCUS_ELEMENT)) {
+    const n = GONGFA_LIBRARY.filter(g => g.sect_key === key).length;
+    assert.ok(n >= 4, `${key} 仅 ${n} 门`);
+  }
+});
+t('功法可升级/不可升级混合（各 ≥10）', () => {
+  const up = GONGFA_LIBRARY.filter(g => g.upgradeable).length;
+  const fixed = GONGFA_LIBRARY.length - up;
+  assert.ok(up >= 10 && fixed >= 10, `可升级 ${up} / 不可 ${fixed}`);
+});
+t('功法境界适用分级完整（realm_level 0-8）', () => {
+  for (const g of GONGFA_LIBRARY) {
+    assert.ok(typeof g.realm_level === 'number' && g.realm_level >= 0 && g.realm_level <= 8, `${g.name} realm_level 非法`);
+  }
+});
+t('功法 id 唯一 + 元素规范', () => {
+  const ids = GONGFA_LIBRARY.map(g => g.id);
+  assert.strictEqual(new Set(ids).size, ids.length);
+  const bad = GONGFA_LIBRARY.filter(g => !['metal','wood','water','fire','earth','light','dark','none'].includes(g.element));
+  assert.deepStrictEqual(bad.map(g => g.id), []);
+});
+t(`技能总量 ≥ 200（实际 ${DATA.length}）`, () => {
+  assert.ok(DATA.length >= 200, `仅 ${DATA.length}`);
+});
+t('基础手调 10 技能打标且低耗', () => {
+  const base = DATA.filter(s => s.base);
+  assert.strictEqual(base.length, 10, `base=${base.length}`);
+  for (const s of base) assert.ok((s.learn_cost || 0) <= 40, `${s.id} learn_cost=${s.learn_cost}`);
+});
+t('全部技能 realm_level 分级（适用范围等级）', () => {
+  const bad = DATA.filter(s => typeof s.realm_level !== 'number');
+  assert.deepStrictEqual(bad.slice(0, 3).map(s => s.id), []);
+});
+t('扩充技能前置链完整（同系上阶链）', () => {
+  const ids = new Set(DATA.map(s => s.id));
+  const expanded = DATA.filter(s => s.expanded);
+  assert.ok(expanded.length >= 122, `扩充仅 ${expanded.length}`);
+  for (const s of expanded) for (const p of (s.prerequisites || [])) assert.ok(ids.has(p), `${s.id}→${p} 悬空`);
+});
+t('藏书阁：上传→贡献→学习 闭环（纯服务层）', () => {
+  const fakeDb = { items: [], inventory: [], player_skills: [], id_counters: {}, dirty: false };
+  const store = require('../src/db/store');
+  // 防御性清理上次运行残留（真实镜像库）
+  for (const m of store.queryRel('sect_members', { character_id: -771 })) store.deleteRel('sect_members', { id: m.id });
+  for (const e of store.queryRel('sect_library', { contributor: '测试弟子' })) store.deleteRel('sect_library', { id: e.id });
+  // 真实宗门（飞羽门）+ 临时弟子成员
+  const feiyu = store.queryRel('sects', { key: 'feiyu' })[0];
+  assert.ok(feiyu, '飞羽门不存在');
+  const memberId = store.insertRel('sect_members', { sect_id: feiyu.id, character_id: -771, rank: '外门弟子', contribution: 0, joined_at: new Date().toISOString() });
+  const char = { id: -771, name: '测试弟子', learned_blueprints: [] };
+  const gongfaItem = { id: store.getNextId('items'), name: 'TEST秘传剑典', type: '功法', quality: '玄阶', stats: '{}' };
+  fakeDb.items.push(gongfaItem);
+  fakeDb.inventory.push({ id: store.getNextId('inventory'), character_id: -771, item_id: gongfaItem.id, quantity: 1 });
+  // 上传（同名 TEST秘传剑典 若上次残留会导致去重——防御清理已保证唯一）
+  const invId = fakeDb.inventory[fakeDb.inventory.length - 1].id;
+  const up = sectLibrary.upload(fakeDb, char, invId);
+  assert.ok(up.ok, `上传失败: ${up.error}`);
+  assert.ok(up.contribution >= 20);
+  // 基础功法入库（幂等：首次新增 ≥4，二次零新增；总量恒 ≥4）
+  const added1 = sectLibrary.ensureSectBase(fakeDb, feiyu.id, 'feiyu');
+  const added2 = sectLibrary.ensureSectBase(fakeDb, feiyu.id, 'feiyu');
+  assert.strictEqual(added2, 0, '基础功法二次入库应零新增');
+  const baseCount = sectLibrary.entriesOf(feiyu.id).filter(e => e.source === 'sect_base').length;
+  assert.ok(baseCount >= 4, `宗门基础功法仅 ${baseCount}`);
+  // 同名上传被拒
+  fakeDb.inventory.push({ id: store.getNextId('inventory'), character_id: -771, item_id: gongfaItem.id, quantity: 1 });
+  const dup = sectLibrary.upload(fakeDb, char, fakeDb.inventory[fakeDb.inventory.length - 1].id);
+  assert.strictEqual(dup.ok, false, '同名应去重');
+  // 学习（贡献足够：20 ≥ 黄阶20）
+  const learn = sectLibrary.learn(fakeDb, char, '青锋引灵诀');
+  assert.ok(learn.ok, `学习失败: ${learn.error}`);
+  assert.ok(fakeDb.inventory.find(i => i.character_id === -771 && i.item_id !== gongfaItem.id), '功法未入包');
+  // 清理：成员行 + 测试上传的藏书阁行（保留 sect_base 基础功法）
+  store.deleteRel('sect_members', { id: memberId });
+  for (const e of store.queryRel('sect_library', { contributor: '测试弟子' })) store.deleteRel('sect_library', { id: e.id });
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

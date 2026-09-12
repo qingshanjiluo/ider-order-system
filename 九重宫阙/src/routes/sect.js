@@ -1,8 +1,57 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { loadDatabase } = require('../database');
+const { loadDatabase, saveDatabase } = require('../database');
 const sectService = require('../services/sect');
+const sectLibrary = require('../services/sect-library');
+const store = require('../db/store');
+
+// ---------- 藏书阁（内容富集三期） ----------
+router.get('/library', auth, (req, res) => {
+  try {
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const membership = store.queryRel('sect_members', { character_id: character.id })[0];
+    if (!membership) return res.status(400).json({ error: '未加入宗门' });
+    sectLibrary.ensureSectBase(db, membership.sect_id, (store.queryRel('sects', { id: membership.sect_id })[0] || {}).key);
+    saveDatabase(db);
+    const entries = sectLibrary.entriesOf(membership.sect_id).map(e => ({ ...e, stats: undefined }));
+    res.json({ entries, myContribution: membership.contribution || 0 });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/library/upload', auth, (req, res) => {
+  try {
+    const { itemId } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const r = sectLibrary.upload(db, character, itemId);
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    saveDatabase(db);
+    res.json(r);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/library/learn', auth, (req, res) => {
+  try {
+    const { name } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const r = sectLibrary.learn(db, character, name);
+    if (!r.ok) return res.status(400).json({ error: r.error });
+    saveDatabase(db);
+    res.json(r);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 router.get('/list', auth, (req, res) => {
   try {

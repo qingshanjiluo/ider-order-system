@@ -602,11 +602,12 @@ t('枯竭四级与突破 base 表完整', () => {
 console.log('== 十一期：突破判定概率（定稿模型，取代满足即成功）==');
 const realmService = require('../src/services/realm');
 t('境界 base 单调递减且钳制在 [5,95]', () => {
-  const c = (realm, extra) => realmService.breakthroughProbability(Object.assign({ realm, breakthrough_failures: 0, inner_demon: 0 }, extra || {})).chance;
+  const c = (realm, char, opts) => realmService.breakthroughProbability(
+    Object.assign({ realm, breakthrough_failures: 0, inner_demon: 0 }, char || {}), opts || {}).chance;
   assert.strictEqual(c('炼气'), 90);
   assert.ok(c('炼气') > c('金丹') && c('金丹') > c('渡劫'), '高境界必须更难');
   assert.strictEqual(c('渡劫', { inner_demon: 40 }), 5, '心魔再重也必须留 5% 一线生机');
-  assert.strictEqual(c('炼气', { pill: 1, formation: 1, artPerfect: 1, epiphany: 1 }), 95, '契机再多也封顶 95');
+  assert.strictEqual(c('炼气', null, { pill: 1, formation: 1, artPerfect: 1, epiphany: 1 }), 95, '契机再多也封顶 95');
 });
 t('心魔与连败施压，连败≥3 触发天道庇护', () => {
   const p = realmService.breakthroughProbability({ realm: '金丹', inner_demon: 3, breakthrough_failures: 4 }).parts;

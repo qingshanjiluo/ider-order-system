@@ -817,7 +817,8 @@ t('回合计数不再差一（rounds: round 而非 round - 1）', () => {
   assert.ok(!/rounds: round - 1/.test(src), '残留差一实现');
   assert.ok(/let round = 0;/.test(src) && /while \(attacker\.hp > 0 && defender\.hp > 0\) \{\s*\n\s*round\+\+/.test(src),
     '回合数应在每轮开始时自增');
-  assert.ok(/if \(round >= 50\)/.test(src), '超时上限判定未随新计数方式调整');
+  // 重构后超时上限走 cap（默认 maxRounds:50），语义不变；这里锁等价形式而非旧字面量
+  assert.ok(/maxRounds: 50/.test(src) && /round >= cap/.test(src), '超时上限判定未随新计数方式调整（应锁 cap 口径）');
 });
 
 console.log('== 十七期：E3 怪物模板真正入战（修 id 被当 mapId）==');
@@ -1632,7 +1633,7 @@ t('sim-tribulation 是应劫赢面的正式量尺：只读 + 双指标 + 挂 npm
   const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'sim-tribulation.js'), 'utf8');
   assert.ok(!/saveDatabase\s*\(/.test(src), 'sim-tribulation 会写库');
   assert.ok(/pickTribulationMonster/.test(src), '未复用线上选人函数（另造一套就失去意义）');
-  assert.ok(/decideInitiative/.test(src) && /executeRound/.test(src), '未复用真实回合数学');
+  assert.ok(/combat\.runBattleLoop/.test(src), '未复用 runBattleLoop（手抄回合循环就是三套数学漂移的开始）');
   assert.ok(/池内可战胜比例|池可战胜比例/.test(src), '丢了防抽卡的第二指标');
   assert.ok(/process\.exitCode = allOk \? 0 : 2/.test(src), '退出码语义缺失');
   const pkg25 = require(path21.join(__dirname, '..', 'package.json'));
@@ -1644,6 +1645,59 @@ t('已知偏差登记：章程 R3 写 5%cap，实现是 10%cap（须走章程补
   ];
   const reg = DOC_CODE_DIVERGENCES.find(d => d.item === 'R3 应劫续命比例');
   assert.strictEqual(require('../src/config/balance').TRIBULATION.renewRatio, 0.1, `代码值变了但偏差登记未更新（登记：${reg.code}）`);
+});
+console.log('== 廿六期：回合数学单一来源 + 应劫未收敛状态的登记锁 ==');
+t('runBattleLoop 是唯一的回合循环：线上与两个 sim 共用，禁止再手抄主循环', () => {
+  const cs = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'services', 'battle', 'combat.js'), 'utf8');
+  const loops = (cs.match(/while \(attacker\.hp > 0 && defender\.hp > 0\)/g) || []).length;
+  assert.strictEqual(loops, 1, `combat.js 里有 ${loops} 处主循环，应只剩 runBattleLoop 一处`);
+  assert.ok(/this\.runBattleLoop\(attacker, defender,/.test(cs), 'startBattle 已不再走 runBattleLoop（会被悄悄改回内联循环）');
+  for (const sim of ['sim-battle.js', 'sim-tribulation.js']) {
+    const s = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', sim), 'utf8');
+    assert.ok(/combat\.runBattleLoop/.test(s), `${sim} 没复用 runBattleLoop`);
+    assert.ok(!/while \((a|attacker)\.hp > 0/.test(s), `${sim} 又手抄了一遍回合循环`);
+  }
+});
+t('扛劫(survive)口径必须由 TRIBULATION.mode 显式开关，默认 kill（未配平的机制不得上线）', () => {
+  const bal26 = require('../src/config/balance');
+  assert.strictEqual(bal26.TRIBULATION.mode, 'kill', 'survive 尚未收敛，默认必须是 kill 口径');
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'routes', 'tribulation.js'), 'utf8');
+  assert.ok(/B\.TRIBULATION && B\.TRIBULATION\.mode/.test(src), '路由未按 mode 分支');
+  assert.ok(/winMode: 'survive'/.test(src), 'survive 分支被删掉了（机制要留着继续配平，不是删了了事）');
+  assert.ok(/surviveRounds: needRounds\.rounds, strikeMul: needRounds\.mul/.test(src), 'survive 分支未带自校准参数');
+});
+t('已知未解决：kill 口径下合体以上应劫近乎必败（把坏消息锁住，防止被误当已通过）', () => {
+  const db26 = require('../src/database').loadDatabase();
+  const combat26 = require('../src/services/battle/combat');
+  const cs26 = require('../src/services/character');
+  const tri26 = require('../src/routes/tribulation');
+  const base26 = db26.characters[0];
+  const run = (realm) => {
+    const row = db26.realms.find(x => x.name === realm);
+    const lv = Number(row.max_level);
+    const picked = tri26.pickTribulationMonster(db26, Object.assign({}, base26, { realm, level: lv }));
+    const st = JSON.parse(picked.tpl.stats || '{}');
+    const a = {
+      name: 'p', level: lv, realm, maxHp: cs26.calculateHpMax(lv, realm), mp: 9999,
+      hp: cs26.calculateHpMax(lv, realm), attack: cs26.calculateAttack(lv, realm),
+      defense: cs26.calculateDefense(lv, realm), speed: cs26.calculateSpeed(lv, realm),
+      element: 'none', crit_rate: 0.08, cooldowns: {}, statusEffects: []
+    };
+    const d = {
+      name: picked.tpl.name, level: lv, maxHp: Number(st.hp), hp: Number(st.hp),
+      attack: Number(st.attack) || 0, defense: Number(st.defense) || 0,
+      speed: Number(st.speed) || 0, element: 'none', crit_rate: 0, cooldowns: {}, statusEffects: []
+    };
+    let w = 0;
+    for (let i = 0; i < 30; i++) {
+      const x = Object.assign({}, a); const y = Object.assign({}, d);
+      if (combat26.runBattleLoop(x, y, {}).winner === 'attacker') w++;
+    }
+    return w / 30;
+  };
+  const t1 = run('化神'), t3 = run('合体'), t5 = run('渡劫');
+  console.log(`  [登记] kill 口径应劫胜率：化神 ${(t1 * 100).toFixed(0)}% / 合体 ${(t3 * 100).toFixed(0)}% / 渡劫 ${(t5 * 100).toFixed(0)}%（待 survive 口径配平）`);
+  assert.ok(t3 <= 0.35 || t5 <= 0.35, '合体以上应劫已不再近乎必败 —— 若已配平，请把本锁连同登记一起改掉并同步章程 R3');
 });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }

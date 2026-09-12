@@ -2,7 +2,79 @@ const damageCalculator = require('./damage');
 const { loadDatabase, saveDatabase } = require('../../database');
 
 class CombatService {
-  async startBattle(attackerId, defenderId, attackerType = 'character', defenderType = 'monster', skillIndex = null) {
+  /**
+   * 纯回合循环（**不碰 DB**）：startBattle 与只读 sim 共用这一份战斗数学。
+   * 此前 sim-battle / sim-tribulation 各自抄了一遍主循环，等于三套回合数学会各自漂移。
+   *
+   * opts.winMode:
+   *   'kill'（默认，行为与历史完全一致）：打到一方倒下或 50 回合超时；
+   *   'survive'（T0-1 扛劫判定）：应劫者撑满 surviveRounds 回合即胜 —— 天劫不必被"杀死"。
+   *     同时 strikeVariance=[lo,hi] 会给**应劫者承受的每下伤害**乘以均匀波动系数，
+   *     因为本游戏单场战斗近乎确定（随机源只有暴击与克制），不引入波动就没有"胜率"可言。
+   */
+  runBattleLoop(attacker, defender, opts) {
+    const o = Object.assign({ winMode: 'kill', surviveRounds: 0, strikeVariance: null, strikeMul: 1, maxRounds: 50, skillIndex: null }, opts || {});
+    const survive = o.winMode === 'survive';
+    const cap = survive ? Math.max(1, o.surviveRounds | 0) : o.maxRounds;
+    const battleLog = [];
+    let round = 0;
+    let useSkillIndex = o.skillIndex;
+
+    // E3：先手由速度决定（此前攻方无条件先手，speed 是空转属性）；
+    // 攻方的技能索引只在攻方行动那一下生效，不因先手归属而丢失。
+    while (attacker.hp > 0 && defender.hp > 0) {
+      round++;
+      const roll = (survive && Array.isArray(o.strikeVariance) && o.strikeVariance.length === 2)
+        ? (Number(o.strikeVariance[0]) + Math.random() * (Number(o.strikeVariance[1]) - Number(o.strikeVariance[0])))
+        : 1;
+      const attackerFirst = this.decideInitiative(attacker, defender);
+      const first = attackerFirst ? attacker : defender;
+      const second = attackerFirst ? defender : attacker;
+
+      const r1 = this.executeRound(first, second, attackerFirst ? 'attacker' : 'defender',
+        attackerFirst ? useSkillIndex : null);
+      battleLog.push(r1.log);
+      // 天罚波动只作用在应劫者（攻方）承受的伤上：攻方后手时 r1 打中的就是攻方
+      second.hp -= Math.round(r1.damage * (attackerFirst ? 1 : roll));
+      if (attackerFirst) useSkillIndex = null;
+      if (second.hp <= 0) {
+        if (survive) {
+          // 天劫之身不可灭：应劫的判据是"顶住几道雷"，不是"杀死天"
+          second.hp = 1;
+          battleLog.push(`${second.name} 之身乃天劫所化，不可消灭。`);
+        } else {
+          battleLog.push(`${second.name} 被击败！`);
+          break;
+        }
+      }
+
+      const r2 = this.executeRound(second, first, attackerFirst ? 'defender' : 'attacker', useSkillIndex);
+      battleLog.push(r2.log);
+      first.hp -= Math.round(r2.damage * (attackerFirst ? roll : 1));
+      useSkillIndex = null;
+      if (first.hp <= 0) {
+        battleLog.push(`${first.name} 被击败！`);
+        break;
+      }
+
+      if (survive && round >= cap) {
+        battleLog.push(`第 ${round} 重劫雷尽数落下，${attacker.name} 硬扛了过去。`);
+        break;
+      }
+      if (!survive && round >= cap) {
+        battleLog.push('战斗超时，平局！');
+        break;
+      }
+    }
+
+    const timedOut = attacker.hp > 0 && defender.hp > 0;
+    return {
+      battleLog, round, timedOut,
+      winner: attacker.hp > 0 ? 'attacker' : (defender.hp > 0 ? 'defender' : 'draw')
+    };
+  }
+
+  async startBattle(attackerId, defenderId, attackerType = 'character', defenderType = 'monster', skillIndex = null, opts = null) {
     const db = loadDatabase();
     const attacker = this.getEntity(attackerId, attackerType, db);
     const defender = this.getEntity(defenderId, defenderType, db);
@@ -11,44 +83,10 @@ class CombatService {
       return { success: false, error: '战斗单位不存在' };
     }
 
-    const battleLog = [];
-    let round = 0;
-    let useSkillIndex = skillIndex;
-
-    // E3：先手由速度决定（此前攻方无条件先手，speed 是空转属性）；
-    // 攻方的技能索引只在攻方行动那一下生效，不因先手归属而丢失。
-    while (attacker.hp > 0 && defender.hp > 0) {
-      round++;
-      const attackerFirst = this.decideInitiative(attacker, defender);
-      const first = attackerFirst ? attacker : defender;
-      const second = attackerFirst ? defender : attacker;
-
-      const r1 = this.executeRound(first, second, attackerFirst ? 'attacker' : 'defender',
-        attackerFirst ? useSkillIndex : null);
-      battleLog.push(r1.log);
-      second.hp -= r1.damage;
-      if (attackerFirst) useSkillIndex = null;
-      if (second.hp <= 0) {
-        battleLog.push(`${second.name} 被击败！`);
-        break;
-      }
-
-      const r2 = this.executeRound(second, first, attackerFirst ? 'defender' : 'attacker', useSkillIndex);
-      battleLog.push(r2.log);
-      first.hp -= r2.damage;
-      useSkillIndex = null;
-      if (first.hp <= 0) {
-        battleLog.push(`${first.name} 被击败！`);
-        break;
-      }
-
-      if (round >= 50) {
-        battleLog.push('战斗超时，平局！');
-        break;
-      }
-    }
-
-    const winner = attacker.hp > 0 ? 'attacker' : (defender.hp > 0 ? 'defender' : 'draw');
+    const loop = this.runBattleLoop(attacker, defender, Object.assign({ skillIndex }, opts || {}));
+    const battleLog = loop.battleLog;
+    const round = loop.round;
+    const winner = loop.winner;
     const rewards = this.calculateRewards(winner, attacker, defender, db);
 
     return {

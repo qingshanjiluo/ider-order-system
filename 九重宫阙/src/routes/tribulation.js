@@ -9,12 +9,50 @@
  * 风格照抄 src/routes/economy.js（auth 逐路由挂、getChar、{error} 形状、saveDatabase(loadDatabase())）。
  */
 const express = require('express');
+const dmgCalc = require('../services/battle/damage');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase } = require('../database');
 const gameTime = require('../services/gameTime');
 const combatService = require('../services/battle/combat');
 const B = require('../config/balance');
+
+/**
+ * 扛劫判定需要顶住的回合数（T0-1，路线 c）：
+ * 用**真实伤害函数**算出"这只劫敌每回合打玩家多少"，得到玩家理论可扛回合，再乘 surviveFraction。
+ * 这样它随双方面板自动缩放：以后无论怎么重排怪物数值或调玩家曲线，劫的难度都保持在设计位上，
+ * 不需要重新配平（旧做法是"挑一只更强的怪"，在确定性强对抗里等于把胜负写死）。
+ */
+/**
+ * 应劫形态 = 劫重（整数、按境界递增）+ 天罚伤害倍率（**连续**、按双方面板自校准）。
+ *
+ * 为什么必须有连续旋钮：劫重是整数，只调它会让胜率变成台阶函数
+ * （实测 surviveFraction 扫描：合体在 1.0 给 18%、0.9 给 93%、1.1 给 15%），配不平。
+ * 现在期望伤害总和 = endurance × 玩家生命上限（N 道雷，每道期望 hp/N × endurance），endurance=1.0 即五五开，
+ * 且与境界无关（渡劫和化神用同一个数），以后重排怪物表也不需要重新配平。
+ */
+function tribulationShape(player, mob) {
+  const T = B.TRIBULATION || {};
+  const list = T.eligibleRealms || [];
+  const pos = list.indexOf(player && player.realm);
+  const rounds = Math.max(2, (Number(B.TRIBULATION && B.TRIBULATION.surviveRoundsBase) || 3) + (pos >= 0 ? pos : 0));
+  if (!player || !mob || !(Number(player.hp) > 0)) return { rounds, mul: 1, theoretical: null };
+  const perRound = dmgCalc.calculateFinalDamage(
+    { name: mob.name, level: mob.level, attack: mob.attack, defense: 0, hp: mob.hp, element: mob.element || 'none', crit_rate: mob.crit_rate || 0 },
+    player, null).damage;
+  if (!(perRound > 0)) return { rounds, mul: 1, theoretical: null };
+  const theoretical = Number(player.hp) / perRound;
+  const end = Number(B.TRIBULATION && B.TRIBULATION.endurance);
+  // 每道劫雷的期望伤害 = endurance × 玩家生命 / N  → 期望总伤 = endurance × 生命，endurance=1 即五五开，
+  // 且与境界、与劫敌自身面板都无关（劫敌只是天罚的载体），所以这是一个**可用**的连续旋钮。
+  const mul = Math.max(0.05, Math.min(20, (Number.isFinite(end) ? end : 1) * Number(player.hp) / rounds / perRound));
+  return { rounds, mul, theoretical };
+}
+
+/** 兼容旧名：只要劫重 */
+function surviveRoundsFor(player, mob) {
+  return tribulationShape(player, mob).rounds;
+}
 
 /** 天劫强度：目标等级 = 自身等级 + 固定小台阶，并被本境界等级上限夹住。
  *  旧口径 lv + (境界序号+1)×3 会让渡劫 +27 级，等于跨一整个境界去打飞升 Boss
@@ -168,7 +206,14 @@ router.post('/endure', auth, async (req, res) => {
     const raw = req.body && req.body.skillIndex;
     const skillIndex = Number.isInteger(raw) ? raw : null;
 
-    const battle = await combatService.startBattle(character.id, picked.tpl.id, 'character', 'monster', skillIndex);
+// T0-1 路线 c：应劫不是"杀死天劫"，而是"顶住 N 重劫雷"（N 由双方面板自校准）
+    const pEnt = combatService.getEntity(character.id, 'character', db);
+    const mEnt = combatService.getEntity(picked.tpl.id, 'monster', db);
+      const needRounds = tribulationShape(Object.assign({}, pEnt, { realm: character.realm }), mEnt);
+    const battle = await combatService.startBattle(character.id, picked.tpl.id,
+      'character', 'monster', skillIndex, ((B.TRIBULATION && B.TRIBULATION.mode) || 'kill') === 'survive'
+  ? { winMode: 'survive', surviveRounds: needRounds.rounds, strikeMul: needRounds.mul, strikeVariance: B.TRIBULATION.strikeVariance }
+  : null);
     if (!battle) {
       return res.status(500).json({ success: false, error: '战斗未能开始' });
     }
@@ -212,4 +257,6 @@ router.post('/endure', auth, async (req, res) => {
 module.exports = router;
 // 供测试与后续复用（同 loginGuard/tierLimit 的挂载方式，不影响 express 挂载）
 module.exports.pickTribulationMonster = pickTribulationMonster;
+module.exports.surviveRoundsFor = surviveRoundsFor;
+module.exports.tribulationShape = tribulationShape;
 module.exports.tribulationTargetLevel = tribulationTargetLevel;

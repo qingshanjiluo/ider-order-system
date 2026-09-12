@@ -161,11 +161,18 @@ module.exports.mitigatedDamage = mitigatedDamage;
 
 // ===== E5 / T0-1 大限劫（寿元耗尽不再静默坐化，先应劫）=====
 const TRIBULATION = {
+  // 应劫胜负口径：'kill' = 杀死劫敌（线上现状，实测合体以上近乎必败）；'survive' = 顶住 N 重劫雷。
+  // survive 两轮校准均未收敛（劫重是整数→台阶函数；改连续倍率后又被先手随机性主导），
+  // 因此**默认不启用**，只保留机制与量尺，配平留作独立一项（见开发日志轮40）。
+  mode: 'kill',
   // 化神及以上才有"劫"；以下境界寿元耗尽仍按凡人坐化（决议 D5 + 章程 E5）
   eligibleRealms: ['化神', '炼虚', '合体', '大乘', '渡劫'],
   windowYears: 3,      // 应劫窗口（游戏年）：窗口内不判死，逾期视为未曾出手
   renewRatio: 0.10,    // 度劫成功续命 = 当时寿元上限 × 10%（比例制，禁绝对年数）
-  bossLevelStep: 2,   // 劫敌等级 = 自身 + 台阶，且被本境界 max_level 夹住（旧值 perRealm:3 会让渡劫 +27 级，实测应劫胜率 0.0%）
+  bossLevelStep: 2,   // 劫敌等级 = 自身 + 台阶，且被本境界 max_level 夹住（旧 perRealm:3 会让渡劫 +27 级）
+  strikeVariance: [0.6, 1.4],  // 天罚每下伤害的均匀波动（sd 越大，胜率对 endurance 越平滑）
+  surviveRoundsBase: 3,        // 扛劫：化神 3 重起，每高一档 +1 重（劫重递增，题材要求）
+  endurance: 1.0,              // 连续校准旋钮：期望总和 = endurance × 玩家寿元上限 → 1.0 约等于五五开
   // 注：不设 maxAttemptsPerWindow —— 应劫败即转世，一个窗口内不可能有第二次出手，
   //     留着就是无人消费的幽灵配置（不变量 3）。
 };

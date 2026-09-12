@@ -94,23 +94,8 @@ function monstersFor(realm) {
 function fight(player, mob) {
   const a = Object.assign({}, player, { hp: player.maxHp, cooldowns: {}, statusEffects: [] });
   const d = Object.assign({}, mob, { hp: mob.maxHp, cooldowns: {}, statusEffects: [] });
-  let round = 0;
-  while (a.hp > 0 && d.hp > 0) {
-    round++;
-    const attackerFirst = combat.decideInitiative(a, d);
-    const first = attackerFirst ? a : d;
-    const second = attackerFirst ? d : a;
-    const r1 = combat.executeRound(first, second, attackerFirst ? 'attacker' : 'defender', null);
-    second.hp -= r1.damage;
-    if (second.hp <= 0) break;
-    const r2 = combat.executeRound(second, first, attackerFirst ? 'defender' : 'attacker', null);
-    first.hp -= r2.damage;
-    if (first.hp <= 0) break;
-    if (round >= 50) break;
-  }
-  const timeout = a.hp > 0 && d.hp > 0;
-  const win = a.hp > 0;   // 与主循环同一判定：攻方存活即胜（含磨不死怪的超时）
-  return { win, timeout, rounds: round };
+  const r = combat.runBattleLoop(a, d, {});   // 与线上 startBattle 同一份回合数学
+  return { win: r.winner === 'attacker', timeout: r.timedOut, rounds: r.round };
 }
 
 console.log('E3 四等级段胜率模拟（只读，不写库）');

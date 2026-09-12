@@ -599,5 +599,38 @@ t('枯竭四级与突破 base 表完整', () => {
   assert.strictEqual(balance.SPEED_CAP_TOTAL, 12);
 });
 
+console.log('== 十一期：突破判定概率（定稿模型，取代满足即成功）==');
+const realmService = require('../src/services/realm');
+t('境界 base 单调递减且钳制在 [5,95]', () => {
+  const c = (realm, extra) => realmService.breakthroughProbability(Object.assign({ realm, breakthrough_failures: 0, inner_demon: 0 }, extra || {})).chance;
+  assert.strictEqual(c('炼气'), 90);
+  assert.ok(c('炼气') > c('金丹') && c('金丹') > c('渡劫'), '高境界必须更难');
+  assert.strictEqual(c('渡劫', { inner_demon: 40 }), 5, '心魔再重也必须留 5% 一线生机');
+  assert.strictEqual(c('炼气', { pill: 1, formation: 1, artPerfect: 1, epiphany: 1 }), 95, '契机再多也封顶 95');
+});
+t('心魔与连败施压，连败≥3 触发天道庇护', () => {
+  const p = realmService.breakthroughProbability({ realm: '金丹', inner_demon: 3, breakthrough_failures: 4 }).parts;
+  assert.strictEqual(p.base, 70);
+  assert.strictEqual(p.innerDemon, -15, '每层心魔 −5');
+  assert.strictEqual(p.failures, -12, '每次连败 −3');
+  assert.ok(p.heavenShield >= 12, `天道庇护应随超期连败递增，实得 ${p.heavenShield}`);
+});
+t('未知境界不参与判定（凡人无突破）', () => {
+  assert.strictEqual(realmService.breakthroughProbability({ realm: '凡人' }).chance, 0);
+  assert.strictEqual(realmService.breakthroughProbability({ realm: '凡人' }).parts, null);
+});
+t('闸门未过与判定失败分流（修掉点一下就涨连败）', () => {
+  assert.strictEqual(realmService.breakthrough(999999).phase, 'missing', '角色不存在应为 missing');
+  const src = require('fs').readFileSync('src/services/realm.js', 'utf8');
+  assert.ok(/return \{ success: false, phase: 'gate'/.test(src), 'gate 分支必须直接 return，不得置失败标记');
+});
+t('失败结算走比例折寿并回落 10% 修为（源码锁定）', () => {
+  const src = require('fs').readFileSync('src/services/realm.js', 'utf8');
+  assert.ok(/_pending_breakthrough_failure/.test(src), '缺少幂等失败标记');
+  assert.ok(/BREAKTHROUGH_LIFE_COST/.test(src) && /yearsOfRatio/.test(src), '未使用比例制折寿');
+  assert.ok(/expFallbackRatio/.test(src), '未使用修为回落比例');
+  assert.ok(!/breakthrough_failures <= 3/.test(src), '旧的阶梯清零逻辑应已移除');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

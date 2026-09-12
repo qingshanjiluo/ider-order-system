@@ -26,7 +26,7 @@ class RealmService {
     const realmIndex = REALMS.findIndex(r => r.name === character.realm);
     const stageIndex = realm.stages.indexOf(this.getStageName(character.realm_stage || 1));
     const progress = ((character.exp || 0) / (realm.exp_requirement || 1)) * 100;
-    const breakthroughChance = Math.max(10, 100 - (character.breakthrough_failures || 0) * 10);
+    const breakthroughChance = this.breakthroughProbability(character).chance;
 
     return {
       name: `${realm.name}${this.getStageName(character.realm_stage || 1)}`,
@@ -67,14 +67,56 @@ class RealmService {
     return stages[stageIndex - 1] || '前期';
   }
 
-  breakthrough(characterId) {
+  /**
+   * 突破判定概率（定稿模型，取代"满足即 100% 成功"的空心玩法）
+   * P = clamp(base[境界] − 5×心魔 − 3×连败 + 契机 + 天道庇护, 5, 95)
+   * opts: { pill, formation, veinLevel, artPerfect, epiphany, daoDamage }
+   */
+  breakthroughProbability(character, opts = {}) {
+    const B = require('../config/balance');
+    const realm = REALMS.find(r => r.name === character.realm);
+    if (!realm) return { chance: 0, parts: null };
+    const M = B.BREAKTHROUGH_MODS;
+    const failures = character.breakthrough_failures || 0;
+    const demons = character.inner_demon || 0;
+
+    const parts = {
+      base: B.BREAKTHROUGH_BASE[realm.name] != null ? B.BREAKTHROUGH_BASE[realm.name] : 80,
+      innerDemon: M.perInnerDemon * demons,
+      failures: M.perFail * failures,
+      heavenShield: failures >= M.heavenShieldFrom ? M.heavenShieldEach * (failures - M.heavenShieldFrom + 1) : 0,
+      pill: opts.pill ? M.pill : 0,
+      formation: opts.formation ? M.formation : 0,
+      vein: opts.veinLevel ? M.veinPerLevel * opts.veinLevel : 0,
+      artPerfect: opts.artPerfect ? M.artPerfect : 0,
+      epiphany: opts.epiphany ? M.epiphany : 0,
+      daoDamage: opts.daoDamage ? M.daoDamage : 0
+    };
+    const total = Object.values(parts).reduce((s, v) => s + v, 0);
+    return { chance: Math.max(5, Math.min(95, Math.round(total))), parts };
+  }
+
+  /**
+   * 突破结算。phase 区分"闸门未过（不罚）"与"判定失败（罚）"，
+   * 修掉旧版把"条件不满足"也计入连败的问题。
+   */
+  breakthrough(characterId, opts = {}) {
     const db = loadDatabase();
     const character = db.characters.find(c => c.id === characterId);
-    if (!character) return { success: false, error: '角色不存在' };
+    if (!character) return { success: false, phase: 'missing', error: '角色不存在' };
 
     if (!this.canBreakthrough(character)) {
-      return { success: false, error: '不满足突破条件' };
+      return { success: false, phase: 'gate', error: '不满足突破条件' };
     }
+
+    const { chance, parts } = this.breakthroughProbability(character, opts);
+    const roll = Math.floor((opts.rng || Math.random)() * 100);
+    if (roll >= chance) {
+      character._pending_breakthrough_failure = true;   // 仅此标记允许后续折寿结算
+      saveDatabase(db);
+      return { success: false, phase: 'roll', error: '突破失败，道基受损', chance, roll, parts };
+    }
+    character._pending_breakthrough_failure = false;
 
     const realm = REALMS.find(r => r.name === character.realm);
     const stageIndex = (character.realm_stage || 1) - 1;
@@ -107,29 +149,41 @@ class RealmService {
     character.breakthrough_failures = 0;
     saveDatabase(db);
 
-    return { success: true, character };
+    return { success: true, character, chance, roll, parts };
   }
 
+  /**
+   * 失败结算（R1 比例折寿 / R6 不降境界 / 心魔 +1 / 修为回落 10%）。
+   * 只处理带 _pending_breakthrough_failure 标记的判定失败：闸门未过一律不罚。
+   */
   handleBreakthroughFailure(characterId) {
+    const B = require('../config/balance');
     const db = loadDatabase();
     const character = db.characters.find(c => c.id === characterId);
     if (!character) return null;
+    if (!character._pending_breakthrough_failure) return character;
+    character._pending_breakthrough_failure = false;
 
-    if (!character.breakthrough_failures) {
-      character.breakthrough_failures = 0;
-    }
-    character.breakthrough_failures++;
+    const failures = (character.breakthrough_failures || 0) + 1;
+    character.breakthrough_failures = failures;
+    character.inner_demon = (character.inner_demon || 0) + 1;
 
-    if (character.breakthrough_failures <= 3) {
-      character.exp = 0;
-    } else if (character.breakthrough_failures <= 5) {
-      character.exp = Math.floor((character.exp || 0) * 0.5);
-    } else if (character.breakthrough_failures <= 7) {
-      character.exp = Math.floor((character.exp || 0) * 0.7);
-    } else {
-      character.exp = Math.floor((character.exp || 0) * 0.5);
-    }
+    const cap = gameTime.effectiveLifespan(character) || 0;
+    const C = B.BREAKTHROUGH_LIFE_COST;
+    const ratio = Math.min(C.max, C.base + C.perFail * (failures - 1));
+    const lost = B.yearsOfRatio(cap, ratio);
+    gameTime.subtractLifespan(character, lost);
 
+    const before = character.exp || 0;
+    character.exp = Math.floor(before * (1 - B.BREAKTHROUGH_FAIL.expFallbackRatio));
+
+    gameTime.logEvent(
+      character,
+      'breakthrough_fail',
+      '突破失败',
+      `第 ${failures} 次失败：折寿 ${lost} 年（上限 ${cap} 的 ${(ratio * 100).toFixed(1)}%）、` +
+      `修为回落 ${before - character.exp}，心魔 ${character.inner_demon} 层`
+    );
     saveDatabase(db);
     return character;
   }

@@ -98,26 +98,6 @@ router.get('/skills', auth, (req, res) => {
   }
 });
 
-router.post('/skills/learn', auth, (req, res) => {
-  try {
-    const { skillId } = req.body;
-    const db = loadDatabase();
-    const character = db.characters.find(c => c.user_id === req.userId);
-    if (!character) {
-      return res.status(404).json({ error: '角色不存在' });
-    }
-
-    const gongfa = db.gongfa.find(g => g.id === skillId && g.character_id === character.id);
-    if (!gongfa) {
-      return res.status(400).json({ error: '功法不存在' });
-    }
-
-    res.json({ success: true, message: '功法已领悟', gongfa });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 router.post('/skills/upgrade', auth, (req, res) => {
   try {
     const { gongfaId } = req.body;

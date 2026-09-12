@@ -2398,7 +2398,9 @@ t('应用入口 server.js 必须自己站得住（轮48 教训：入口曾因重
 t('端点覆盖率测量可复现，且"幽灵调用"必须为零', () => {
   const { measure } = require('../scripts/endpoint-coverage.js');
   const r = measure();
-  assert.ok(r.totals.be >= 276, `后端端点总数只剩 ${r.totals.be}（基线 276），路由可能被删或 router 未被展开`);
+  // 基线 276→275：轮59 有意删除 src/routes/battle.js 的 /skills/learn —— 它只 res.json({success:true,'功法已领悟'}) 却从不写库，
+  // 是个会对玩家谎称成功的空转端点（学功法的真路径是 /gongfa/equip，由 G1 套件端到端锁住）。删除是刻意的，故显式降基线而不是把锁改松。
+  assert.ok(r.totals.be >= 275, `后端端点总数只剩 ${r.totals.be}（基线 275，轮59 删空转端点 /skills/learn），路由可能被删或 router 未被展开`);
   assert.strictEqual(r.totals.skippedLayers, 0, '有 router 层没被展开，覆盖率口径不可信');
   // 前端调了后端没有的路径 = 玩家一点就 404/500，这是最要命的一类，绝不允许出现
   assert.deepStrictEqual(r.ghost.map((g) => g.call), [], `前端存在幽灵调用（后端无此端点）：${r.ghost.map((g) => `${g.call}@${g.in}`).join(', ')}`);

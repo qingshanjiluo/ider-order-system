@@ -141,6 +141,36 @@ G('数值复跑四张表贴进本清单',
   `R11 ${RB.ok ? '通过' : '判红'}（sim-breakthrough 3000 世；其内部硬断言含"渡劫寿尽率 <5%"，退出码即结论，不再靠解析它的措辞）　战斗 ${SB.ok ? '通过' : '判红'}（sim-battle 四段胜率带；退出码即结论）`);
 G('前端覆盖率清单人工核对 20 条', false, COV ? `机器侧已有：后端 ${COV.total} 端点 / 可点 ${COV.clickable} / 幽灵 ${COV.ghost}；人工 20 条未做` : '覆盖率报告未取到');
 
+// ---- 探针：清单里的"缺口"必须是可复核的判定，不是手写散文（轮59 血泪：E3/E4 的缺口列就是手抄烂掉的）----
+const COMBAT_SRC = exists('src/services/battle/combat.js') ? rd('src/services/battle/combat.js') : '';
+const SKILLSTATE_SRC = exists('src/services/battle/skillState.js') ? rd('src/services/battle/skillState.js') : '';
+const E3_MP_WIRED = /skillState\.canUse/.test(COMBAT_SRC) && /skillState\.spend/.test(COMBAT_SRC) && /skillState\.applyEffect/.test(COMBAT_SRC) && /skillState\.tick/.test(COMBAT_SRC) &&
+  /(mana|mp)\b/i.test(SKILLSTATE_SRC) && /cooldown/i.test(SKILLSTATE_SRC);
+const E3_FALLBACK_OK = /改为普通攻击/.test(COMBAT_SRC);
+const GONGFA_WRITE = grepAny(['src/services/battle/skill.js', 'src/routes/gongfa.js'], /gongfa\.push/);
+const LEARN_STUB_PRESENT = grepAny(['src/routes/battle.js'], /skills\/learn/);
+/** 技能定义：一部分是 skill.js 里的字面量，另两批是 buildSkills() 程序化生成 —— 只数 `{ id:` 会漏掉绝大部分（轮59 实测：字面量 92 条，生成批数千倍于此）。 */
+let SKILL_DEFS_ERR = null;
+const SKILL_DEFS = (() => {
+  let n = 0;
+  if (exists('src/services/skill.js')) {
+    const body = rd('src/services/skill.js').replace(/^\s*\/\/.*$/gm, '');
+    n += (body.match(/\{\s*id:\s*'[A-Za-z0-9_]+'/g) || []).length;
+  }
+  for (const f of ['src/data/skill-expansion.js', 'src/data/skill-highrealm.js']) {
+    if (!exists(f)) { SKILL_DEFS_ERR = '缺 ' + f; continue; }
+    try {
+      const mod = require(path.join(ROOT, f));
+      if (typeof mod.buildSkills === 'function') n += (mod.buildSkills() || []).length;
+      else if (Array.isArray(mod)) n += mod.length;
+      else SKILL_DEFS_ERR = f + ' 既无 buildSkills 也非数组';
+    } catch (e) { SKILL_DEFS_ERR = f + ': ' + e.message; }
+  }
+  return n;
+})();
+console.log('  技能定义（字面量 + buildSkills 实测）= ' + SKILL_DEFS + (SKILL_DEFS_ERR ? '　⚠ ' + SKILL_DEFS_ERR : ''));
+
+
 // ============================ E1→E10 状态推导 ============================
 const rows = [];
 const R = (id, name, level, evidence, gaps) => rows.push({ id, name, level, evidence, gaps });
@@ -152,20 +182,28 @@ R('E1', '写安全', LOK.done,
 R('E2', '安全加固', LOK.most,
   `攻击模拟 11 条在门禁内；坏 token 五种全 401、爆破 423、注入不绕认证、XSS 道号净化、越权 admin 被拒、超大 body/畸形 JSON 回 JSON 不回堆栈；trust proxy 改显式开关`,
   grepAny(['package.json'], '"helmet"') ? 'helmet 已在依赖（CSP 仍待复核）' : '未做：helmet/CSP 未引入（现只有自备头）；schema 级入参校验未做（现只有 sanitize）；DSH_TRUST_PROXY=1 无真实反代验证；登录锁定为进程内状态');
-R('E3', '战斗接线', LOK.most,
-  `槽位 min(2+境界,8) 且满槽拒、比值减伤 def/(def+K)、掉落真入包 + 5 次保底按敌级分档、先手按 speed、怪物模板入战（修 id 被当 mapId）；sim-battle ${SB.passed != null ? SB.passed + ' 条' : ''} 在门禁内`,
-  grepAny(['src/services/battle.js', 'src/services/battle-engine.js', 'src/routes/battle.js'], /mana_cost|manaCost/) && grepAny(['src/services/battle.js', 'src/services/battle-engine.js', 'src/routes/battle.js'], /cooldown/)
-    ? '技能 MP/冷却已有消费路径（本轮 grep 判定），player_skills 实例 ' + DB.playerSkills + ' 行 vs 定义 ' + DB.skillsDef + ' 条仍待接'
-    : '技能 MP/冷却/effect_type 未被战斗结算消费（grep 判不到消费点）；player_skills 实例 ' + DB.playerSkills + ' 行 vs 定义 ' + DB.skillsDef + ' 条 ⇒ 加得越多空转越多；怪物 drops 透传未消费');
+R('E3', '战斗接线', (E3_MP_WIRED && !LEARN_STUB_PRESENT) ? LOK.done : LOK.most,
+  `槽位 min(2+境界,8) 且满槽拒、比值减伤 def/(def+K)、掉落真入包 + 5 次保底按敌级分档、先手按 speed、怪物模板入战；` +
+  (E3_MP_WIRED
+    ? `**技能消耗已接线**（探针：combat.js 调 skillState.canUse/spend/applyEffect/tick，skillState 内含 mana 与 cooldown）—— 指定招不可用时${E3_FALLBACK_OK ? '退回普通攻击且不静默替换' : '退回逻辑未证实'}`
+    : 'MP/冷却/effect_type 仍无消费点（探针判不到 skillState 调用）'),
+  (E3_MP_WIRED
+    ? `代码侧技能定义 ${SKILL_DEFS} 条 vs player_skills 实例 ${DB.playerSkills} 行 —— 学习路径可达（G1 端到端锁"学一门低阶技 ⇒ 多一行且扣灵石"），行数少是玩家少不是没接线；探针只证"有消费点"，不证"每种 effect_type 都实现"，逐条覆盖度未核`
+    : '把 skillState 接进战斗结算（探针不过即为核心缺口）') +
+  `；空转端点 /skills/learn ${LEARN_STUB_PRESENT ? '**仍在（回 success:true 却不写库，本轮判红）**' : '已删（轮59）'}`);
 R('E4', '修炼结算', LOK.done,
-  `九乘区模型 ${grepAny(['src/services/cultivation.js'], /cultivation-model/) ? '已接入生产路径' : '未接入'}（services/cultivation.js 引 cultivation-model，computeCultivation 给总乘区）；闭关/环境/灵植/资质/燃寿各区有 pending 上报；曲线真源 = realms.exp_requirement，十境最大偏差 ${BAL ? BAL.maxDriftPercent + '%' : '未取到'}`,
-  '突破立涨 ΔL 未在面板显示；db.gongfa 实例 ' + DB.gongfaRows + ' 行 ⇒ 功法乘区对线上玩家实际仍为 1.0（可达性缺口，非空通道）');
+  `九乘区模型已接入生产路径（services/cultivation.js 引 cultivation-model，ctx.gongfas 由 db.gongfa 映射并把 stats.cultivation_speed 换算成 cultivationSpeed）；曲线真源 = realms.exp_requirement，十境最大偏差 ${BAL ? BAL.maxDriftPercent + '%' : '未取到'}；闭关/环境/灵植/资质各区有 pending 上报`,
+  (GONGFA_WRITE
+    ? `db.gongfa 当前 ${DB.gongfaRows} 行属"尚无角色装备"，**不是可达性缺口**（写库路径存在：battle/skill.js 的 gongfa.push，且 G1 套件端到端锁住"买功法→装备→实例行出现→槽位上限生效"）；`
+    : '**无任何代码写 db.gongfa ⇒ 功法乘区对玩家不可达（真缺口）**；') +
+  `突破立涨 ΔL 未在面板显示；mods 阵法/灵脉乘区取值未实测`);
 R('E5', '大限劫/延寿/丹毒/燃寿', LOK.done,
   `大限劫：age≥cap 不再静默死亡，改 pending 窗口 + Boss 应劫（第 9 套 E5 路由 6+ 条锁）；延寿：三件灵植买得到/用得动/看得见三段硬锁（第 20 套），经济侧 35% 闸唯一写入器；契机丹全链路实测金丹 70→85`,
   `延寿通道尚有 3 条挂账（延寿丹四档 items 里带 longevity_ratio 的 = ${DB.pillsWithLongevity} 件／宗门赏赐无兑换口／长生功无年度消费）；丹毒四档与燃寿端点按 R5/R6 决策未列入上线阻塞`);
 R('E6', '数据深化', LOK.done,
-  `行数实测（存档副本）：材料 ${DB.materials}（目标 86）· 地图 ${DB.maps}（32）· 图纸 ${DB.blueprints}（40）· 副本 ${DB.dungeons}（50）· 技能定义 ${DB.skillsDef}（320）· 功法定义 ${DB.gongfaDef}（130）· items 总 ${DB.items}；台账往返 verify:rebuild 🟢`,
-  `技能定义 ${DB.skillsDef} vs 目标 320 的差额与 67 条 legacy skills 同源（P1 已按差口补足并锁行数下限）；items 重名 23 组 / maps 妖兽森林 ×2 未清`);
+  `行数实测（存档副本只读）：材料 ${DB.materials}（目标 86）· 地图 ${DB.maps}（32）· 图纸 ${DB.blueprints}（40）· 副本 ${DB.dungeons}（50）· items 总 ${DB.items}· 功法类 items ${DB.gongfaDef}（目标 130）；` +
+  `技能定义在代码侧共 ${SKILL_DEFS} 条（db.skills 集合 0 行是设计如此 —— 轮59 之前清单写的"技能定义 0（320）"就是读错源造出的自相矛盾）；台账往返 verify:rebuild 🟢`,
+  `SKILL_DEFS 与章程目标 320 的差额本轮只报实测、不下结论；其余挂账（items 重名、legacy skills 条数）以《开发日志》为准，本轮未复核就不复述`);
 R('E7', '交付物', LOK.most,
   'Dockerfile + compose（name 显式，config -q 通过）、PM2 fork/instances=1、备份→校验→破坏性恢复演练（删表→0 行→还原）、CI（测试+audit+容器冒烟轮询 health）',
   '本机无 docker 守护进程 ⇒ 容器内恢复与真 up 仍只有 CI 侧证据（P5 第 3/4 项判红）');

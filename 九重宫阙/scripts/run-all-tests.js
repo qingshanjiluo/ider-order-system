@@ -37,6 +37,8 @@ const SUITES = [
   //   轮58 起带 --report：门禁顺手把两张表重出，验收清单才有资格引用它们的数字
   ['E9 追赶校验', 'scripts/sim-balance.js', ['--report', '数值追赶校验.md']],
   ['E9 经济守恒', 'scripts/sim-economy.js', ['--report', '经济守恒表.md']],
+  // 轮59：覆盖率报告也被验收清单引用 ⇒ 同样必须在门禁里重出（否则删一个端点，清单就拿着旧数说谎）
+  ['S4 API 覆盖率', 'scripts/endpoint-coverage.js', ['--report', '前端可见性与覆盖率测量.md']],
   // P5（轮58）：验收清单不许是手抄文档，必须由实测重出并与 git 里的版本一致
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];

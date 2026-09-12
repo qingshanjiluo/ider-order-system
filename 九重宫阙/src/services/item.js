@@ -138,19 +138,41 @@ class ItemService {
     if (qualityIndex < 0) return null;
 
     const stage = STAGES[Math.floor(Math.random() * STAGES.length)];
+    // 元素亲和：七系随机（修炼功法偏五行，战斗功法七系皆可）
+    const elements = ['metal', 'wood', 'water', 'fire', 'earth', 'light', 'dark'];
+    const element = elements[Math.floor(Math.random() * elements.length)];
+    const ELEMENT_ZH = { metal: '金', wood: '木', water: '水', fire: '火', earth: '土', light: '光明', dark: '黑暗' };
+
+    // 命名词库：Prefix + Core + 类别尾字（替代呆板的"境界+品质+品阶+类型功法"）
+    const GONGFA_PREFIX = ['太虚', '玄冥', '天罡', '紫霄', '太乙', '混元', '大衍', '无量', '周天', '九转', '焚天', '镇岳', '御灵', '归墟', '渡厄'];
+    const GONGFA_CORE = { 修炼: ['炼髓', '凝元', '养神', '淬体', '朝元', '抱朴'], 战斗: ['诀', '斩', '印', '罡', '术', '典'] };
+    const prefix = GONGFA_PREFIX[Math.floor(Math.random() * GONGFA_PREFIX.length)];
+    const core = GONGFA_CORE[type === '修炼' ? '修炼' : '战斗'][Math.floor(Math.random() * 6)];
+    const name = `${ELEMENT_ZH[element]}系·${prefix}${core}`;
+
     const stats = {
-      cultivation_speed: 1 + (qualityIndex * 0.1 + STAGES.indexOf(stage) * 0.025),
-      skill_damage: 1 + (qualityIndex * 0.15 + STAGES.indexOf(stage) * 0.0375)
+      cultivation_speed: Number((1 + (qualityIndex * 0.1 + STAGES.indexOf(stage) * 0.025)).toFixed(3)),
+      skill_damage: Number((1 + (qualityIndex * 0.15 + STAGES.indexOf(stage) * 0.0375)).toFixed(3)),
+      element,
+      element_boost: Number((qualityIndex * 0.06 + STAGES.indexOf(stage) * 0.015).toFixed(3)),
+      skill_slots: type === '战斗' && qualityIndex >= 3 && Math.random() < 0.25 ? 1 : 0,
+      comprehension_req: qualityIndex + 1
     };
 
+    const FLAVOR = {
+      修炼: [`行气如龙，周天自转，修炼时${ELEMENT_ZH[element]}灵气加倍亲和`, `以${ELEMENT_ZH[element]}入道，经脉如江河奔涌`, `古修遗篇，字字玄妙，习之事半功倍`],
+      战斗: [`运功如雷，一击而天下惊`, `${ELEMENT_ZH[element]}之力凝于指掌，伤敌于无形`, `战阵之上，此法一出，群邪辟易`]
+    };
+    const flavor = FLAVOR[type === '修炼' ? '修炼' : '战斗'][Math.floor(Math.random() * 3)];
+
     return {
-      name: `${realm}${quality}${stage}${type === '修炼' ? '修炼功法' : '战斗功法'}`,
+      name,
       type: '功法',
       quality,
       realm,
       stage,
       stats: JSON.stringify(stats),
-      description: `${realm}境界的${quality}${stage}${type}功法`
+      description: `${realm}境界的${quality}${stage}${type}功法（${ELEMENT_ZH[element]}系亲和）——${flavor}`
     };
   }
 
@@ -162,21 +184,40 @@ class ItemService {
     const baseMultiplier = 1 + qualityIndex * 0.3;
     const stageMultiplier = 1 + STAGES.indexOf(stage) * 0.25;
 
+    // 物种化：随机灵兽 + 元素 + 天赋特性（替代呆板的"境界+品质+品阶灵宠"）
+    const SPECIES = [
+      { name: '火翎狐', element: 'fire', trait: '灵火灼烧：攻击附带灼烧' },
+      { name: '玄水龟', element: 'water', trait: '玄甲：大幅提升防御' },
+      { name: '青木鹿', element: 'wood', trait: '回春：每回合为全队回复生命' },
+      { name: '金羽鹰', element: 'metal', trait: '锐目：提升主人命中与暴击' },
+      { name: '厚土熊', element: 'earth', trait: '撼地：受击时震慑反击' },
+      { name: '白泽', element: 'light', trait: '通晓万物：提升主人修炼效率' },
+      { name: '幽冥猫', element: 'dark', trait: '影遁：提升主人闪避' },
+      { name: '雷罡豹', element: 'metal', trait: '雷驰：大幅提升速度' },
+      { name: '冰晶蝶', element: 'water', trait: '凝霜：攻击概率冻结' },
+      { name: '墨鳞蛟', element: 'dark', trait: '蛟威：威压降敌攻' }
+    ];
+    const sp = SPECIES[Math.floor(Math.random() * SPECIES.length)];
+    const name = `${sp.name}（${realm}${quality}${stage}）`;
+
     const stats = {
       hp: Math.floor(50 * baseMultiplier * stageMultiplier),
       attack: Math.floor(5 * baseMultiplier * stageMultiplier),
       defense: Math.floor(3 * baseMultiplier * stageMultiplier),
-      speed: Math.floor(2 * baseMultiplier * stageMultiplier)
+      speed: Math.floor(2 * baseMultiplier * stageMultiplier),
+      element: sp.element,
+      trait: sp.trait,
+      species: sp.name
     };
 
     return {
-      name: `${realm}${quality}${stage}灵宠`,
+      name,
       type: '灵宠',
       quality,
       realm,
       stage,
       stats: JSON.stringify(stats),
-      description: `${realm}境界的${quality}${stage}灵宠`
+      description: `${sp.name}——${sp.trait}（${realm}境界的${quality}${stage}灵兽，${sp.element}系）`
     };
   }
 

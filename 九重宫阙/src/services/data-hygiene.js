@@ -60,4 +60,33 @@ function normalizeRealms(db) {
   return fixed;
 }
 
-module.exports = { LEGAL_QUALITIES, QUALITY_MAP, normalizeQualities, normalizeRealms };
+/**
+ * 跨阶梯品质词归一（轮44 · P1 规划硬要求②："品质词必须落在该品类自己的阶梯内"）。
+ * normalizeQualities 只拦"完全非法"的品质词，拦不住"合法但用错了品类"：
+ * 实测存档 77 件材料里有 12 件挂着装备梯的词（古宝×5 / 灵宝×3 / 仙器×4），丹药也有（破境丹=古宝）。
+ * 只处理"物品系"类型（装备/灵宠/功法各有自己的阶梯，一律不碰）；原值留 stats.legacy_quality。幂等。
+ */
+const ITEM_LADDER = ['凡品', '灵品', '宝品', '仙品', '道品'];
+const ITEM_LADDER_TYPES = new Set(['材料', '丹药', '符箓', '阵法', '消耗品', '道具', '礼包', '凭证', '特殊灵石', '功法书']);
+const OTHER_LADDER_TO_ITEM = {
+  凡器: '凡品', 法器: '凡品', 灵器: '灵品', 法宝: '宝品', 古宝: '宝品', 灵宝: '仙品', 道器: '道品', 仙器: '道品',
+  黄阶: '凡品', 玄阶: '灵品', 地阶: '宝品', 天阶: '仙品', 圣阶: '道品', 仙阶: '道品',
+  凡兽: '凡品', 灵兽: '灵品', 玄兽: '宝品', 地兽: '仙品', 天兽: '道品', 圣兽: '道品'
+};
+
+function normalizeItemQualities(db) {
+  let fixed = 0;
+  for (const item of db.items || []) {
+    if (!ITEM_LADDER_TYPES.has(item.type)) continue;
+    if (!item.quality || ITEM_LADDER.indexOf(item.quality) >= 0) continue;
+    let st = {};
+    try { st = JSON.parse(item.stats || '{}'); } catch { st = {}; }
+    st.legacy_quality = item.quality;
+    item.stats = JSON.stringify(st);
+    item.quality = OTHER_LADDER_TO_ITEM[item.quality] || ITEM_LADDER[0];
+    fixed++;
+  }
+  return fixed;
+}
+
+module.exports = { LEGAL_QUALITIES, QUALITY_MAP, ITEM_LADDER, ITEM_LADDER_TYPES, normalizeQualities, normalizeRealms, normalizeItemQualities };

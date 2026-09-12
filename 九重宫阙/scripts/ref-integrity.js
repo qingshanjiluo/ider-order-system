@@ -17,15 +17,23 @@ const { DatabaseSync } = require('node:sqlite');
 const ROOT = path.join(__dirname, '..');
 const DB = path.join(ROOT, 'data', 'game.db');
 
+// 列表字段的容错读取：真数组直接返回；"[..]"/"{..}" 串按 JSON 解；其它标量按空处理。
+// 实测存档形状（轮44 统计）：maps.gather_nodes 与 maps.monsters 20/20 都是真数组，
+// monsters.drops 86/86 都是 JSON 串 —— 逗号串分支只是对"字符串化列表"的容错，不是存档现状。
+// （轮44 我一度把逗号串当成存档事实，起因是自己拿 JSON.parse 去解一个已经是数组的字段，
+//  JS 先把数组 toString 成 "a,b,c" 才报的错。修的是我的读法，不是数据的形状。）
 function asArray(v) {
   if (Array.isArray(v)) return v;
-  if (typeof v === 'string' && v.trim().startsWith('[')) {
-    try { return JSON.parse(v); } catch (e) { return []; }
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (s.startsWith('[') || s.startsWith('{')) {
+      try { return JSON.parse(s); } catch (e) { return []; }
+    }
+    if (!s) return [];
+    return s.split(',').map((x) => x.trim()).filter(Boolean);
   }
-  if (typeof v === 'string' && v.trim().startsWith('{')) {
-    try { return JSON.parse(v); } catch (e) { return {}; }
-  }
-  return v === undefined || v === null ? [] : v;
+  if (v && typeof v === 'object') return v;
+  return v === undefined || v === null ? [] : [];
 }
 
 const db = new DatabaseSync(DB, { readOnly: true });
@@ -175,6 +183,41 @@ try {
   }
   add('items.realm -> realms.name', itemRealmBad);
 
+  // ===== 获取路径闭合（轮44 · P1/T1-1：定义存在但玩家永远拿不到 = 死内容） =====
+  // 来源 = 采集点 / 怪物掉落 / 坊市货架 / 副本奖励 / 丹方产出 / 锻造产出；
+  // 消耗 = 丹方与锻造的 materials、图纸的 materials。被消耗却没有来源，就是学得了却永远炼不成的死链。
+  const parseArr = asArray;   // 与顶层同一套形状判别，避免两处各写一遍而行为不一致
+  const nameOfId = new Map(items.map((o) => [Number(o.id), String(o.name)]));
+  const srcSets = {
+    采集: new Set(), 掉落: new Set(), 坊市: new Set(), 副本奖励: new Set(), 丹方产出: new Set(), 锻造产出: new Set()
+  };
+  for (const mp of (data.maps || [])) for (const n of parseArr(mp.gather_nodes)) srcSets.采集.add(String(n));
+  for (const m of monsters) for (const d of parseArr(m.drops)) { const n = nameOfId.get(Number(d && d.item_id !== undefined ? d.item_id : d)); if (n) srcSets.掉落.add(n); }
+  for (const s of (data.shop || [])) { const n = nameOfId.get(Number(s.item_id)); if (n) srcSets.坊市.add(n); }
+  for (const d of (data.dungeons || [])) { const rw = parseArr(d.rewards); if (rw && Array.isArray(rw.items)) for (const i of rw.items) { const n = nameOfId.get(Number(i)); if (n) srcSets.副本奖励.add(n); } }
+  for (const r of (data.recipes || [])) { const n = nameOfId.get(Number(r.result)); if (n) srcSets.丹方产出.add(n); }
+  for (const r of (data.forge_recipes || [])) { const n = nameOfId.get(Number(r.result)); if (n) srcSets.锻造产出.add(n); }
+
+  const consumedNames = new Set();
+  for (const r of [...(data.recipes || []), ...(data.forge_recipes || [])]) {
+    for (const mid of parseArr(r.materials)) {
+      const n = (mid && typeof mid === 'object') ? (mid.name ? String(mid.name) : nameOfId.get(Number(mid.item_id))) : nameOfId.get(Number(mid));
+      if (n) consumedNames.add(n);
+    }
+  }
+  for (const b of (data.blueprints || [])) for (const m of parseArr(b.materials)) if (m && m.name) consumedNames.add(String(m.name));
+
+  const noSource = [];
+  for (const it of items) {
+    if (it.type !== '材料') continue;
+    const nm = String(it.name);
+    const from = Object.keys(srcSets).filter((k) => srcSets[k].has(nm));
+    if (!from.length) noSource.push(`材料 ${nm}(#${it.id}) 无任何获取路径${consumedNames.has(nm) ? '，且被配方/图纸消耗 = 死链' : ''}`);
+  }
+  add('每个材料至少一条获取路径', noSource);
+
+  const srcCount = Object.keys(srcSets).reduce((a, k) => a + srcSets[k].size, 0);
+
   let total = 0;
   const asJson = process.argv.includes('--json');
   const report = [];
@@ -189,6 +232,7 @@ try {
   }
   if (asJson) console.log(JSON.stringify({ total, edges: edges.map(e => ({ label: e.label, n: e.dangling.length, sample: e.dangling.slice(0, 20) })) }, null, 2));
   console.log(`\n技能 key 采集自: ${codeSkillSources.join(', ')}｜可识别 ${skillKeys.size} 个`);
+  console.log(`来源路径索引规模（去重名计数之和）= ${srcCount}：${Object.keys(srcSets).map((k) => k + '=' + srcSets[k].size).join(' ')}｜消耗方名字 ${consumedNames.size} 个`);
   console.log(`集合行数: items=${items.length} monsters=${monsters.length} maps=${(data.maps || []).length} dungeons=${(data.dungeons || []).length} recipes=${(data.recipes || []).length} forge=${(data.forge_recipes || []).length} blueprints=${(data.blueprints || []).length} player_skills=${(data.player_skills || []).length}`);
   if (total) {
     console.log(`\n🔴 内容引用完整性不合格：共 ${total} 条悬空引用`);

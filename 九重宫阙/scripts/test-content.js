@@ -1907,6 +1907,108 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     assert.strictEqual(hyg.normalizeRealms(noRealms), 0, '境界表为空时不许改写存档（宁可不修也不用猜的集合污染数据）');
     assert.strictEqual(noRealms.items[0].realm, '未知');
   });
+  console.log('== 卅期：P1 补定义（材料 86 / 图纸 40）与获取路径闭合（轮44）==');
+  t('P1 数量下限：材料 ≥86、图纸 ≥40（规划 T1-2 差口口径）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let mats = 0, bp = 0;
+    try {
+      mats = dbf.prepare('SELECT data FROM col_items').all().map(x => JSON.parse(x.data)).filter(i => i.type === '材料').length;
+      bp = dbf.prepare('SELECT data FROM col_blueprints').all().length;
+    } finally { dbf.close(); }
+    assert.ok(mats >= 86, '材料定义 ' + mats + ' 件，未达 P1 目标 86（规划表：77 -> 86）');
+    assert.ok(bp >= 40, '图纸定义 ' + bp + ' 张，未达 P1 目标 40（规划表：21 -> 40）');
+  });
+  t('物品系类型的品质词必须落在"物品梯"（轮44 前 77 件材料有 12 件挂着装备梯词）', () => {
+    const hyg = require(path21.join(__dirname, '..', 'src', 'services', 'data-hygiene.js'));
+    assert.ok(Array.isArray(hyg.ITEM_LADDER) && hyg.ITEM_LADDER.length === 5, 'ITEM_LADDER 应为 5 级物品梯');
+    assert.ok(hyg.ITEM_LADDER_TYPES.has('材料') && hyg.ITEM_LADDER_TYPES.has('丹药'), '材料/丹药必须受物品梯约束');
+    assert.ok(!hyg.ITEM_LADDER_TYPES.has('装备') && !hyg.ITEM_LADDER_TYPES.has('灵宠'), '装备/灵宠有自己的阶梯，卫生不得越权改写');
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let items = [];
+    try { items = dbf.prepare('SELECT data FROM col_items').all().map(x => JSON.parse(x.data)); } finally { dbf.close(); }
+    const bad = items.filter(i => hyg.ITEM_LADDER_TYPES.has(i.type) && i.quality && hyg.ITEM_LADDER.indexOf(i.quality) < 0);
+    assert.deepStrictEqual(bad.map(i => i.name + '(' + i.type + ')=' + i.quality), [], '存在跨阶梯品质词（规划 T1-2 要求②）');
+    const fake = { items: [{ id: 1, name: '怪东西', type: '材料', quality: '古宝', stats: '{}' }, { id: 2, name: '正常', type: '材料', quality: '宝品', stats: '{}' }, { id: 3, name: '剑', type: '装备', quality: '古宝', stats: '{}' }] };
+    assert.strictEqual(hyg.normalizeItemQualities(fake), 1, '只应改物品系类型的越梯词');
+    assert.strictEqual(fake.items[0].quality, '宝品', '古宝 应映射到物品梯同档 宝品');
+    assert.ok(/legacy_quality/.test(fake.items[0].stats), '原值须留 legacy_quality 便于追溯');
+    assert.strictEqual(fake.items[2].quality, '古宝', '装备类型的古宝不许被改');
+    assert.strictEqual(hyg.normalizeItemQualities(fake), 0, '二次运行必须 0 修复（幂等）');
+  });
+  t('图纸必须齐 rarity、无重名，且材料名全部可解析（幽灵引用零容忍）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let bp = [], items = [];
+    try {
+      bp = dbf.prepare('SELECT data FROM col_blueprints').all().map(x => JSON.parse(x.data));
+      items = dbf.prepare('SELECT data FROM col_items').all().map(x => JSON.parse(x.data));
+    } finally { dbf.close(); }
+    assert.deepStrictEqual(bp.filter(b => !b.rarity).map(b => b.name), [], '有图纸缺 rarity（轮44 前 40 张里 11 张缺）');
+    const names = bp.map(b => String(b.name));
+    assert.strictEqual(new Set(names).size, names.length, '图纸存在重名（幂等 seed 以 name 为键，重名会让 seed 静默跳过）');
+    const itemNames = new Set(items.map(i => String(i.name)));
+    const ghost = [];
+    for (const b of bp) {
+      const ms = Array.isArray(b.materials) ? b.materials : [];
+      for (const m of ms) if (!m || !m.name || !itemNames.has(String(m.name))) ghost.push(b.name + ' -> ' + JSON.stringify(m));
+    }
+    assert.deepStrictEqual(ghost, [], '图纸引用了不存在的材料名');
+  });
+  t('采集配置的地图名必须真实存在（轮44 抓到 7 条指向另一代地图名而长期静默零命中）', () => {
+    const mats = require(path21.join(__dirname, '..', 'src', 'services', 'materials.js'));
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let mapNames = [], itemNames = [];
+    try {
+      mapNames = new Set(dbf.prepare('SELECT data FROM col_maps').all().map(x => JSON.parse(x.data).name).map(String));
+      itemNames = new Set(dbf.prepare('SELECT data FROM col_items').all().map(x => JSON.parse(x.data).name).map(String));
+    } finally { dbf.close(); }
+    const badMap = [];
+    for (const [mat, list] of Object.entries(mats.MAP_GATHER_ADDITIONS)) {
+      for (const mn of list) if (!mapNames.has(String(mn))) badMap.push(mat + ' -> ' + mn);
+    }
+    assert.deepStrictEqual(badMap, [], 'MAP_GATHER_ADDITIONS 指向了存档里不存在的地图名（写错名字不会报错，只会让材料永远采不到）');
+    const badItem = Object.keys(mats.MAP_GATHER_ADDITIONS).filter(n => !itemNames.has(String(n)));
+    assert.deepStrictEqual(badItem, [], '采集配置里的材料在 items 里不存在（ensureMapNodes 会写入不可采集的幽灵节点名）');
+    const catKeys = Object.keys(mats.MATERIAL_CATALOG);
+    assert.strictEqual(new Set(catKeys).size, catKeys.length, 'MATERIAL_CATALOG 存在重复 key');
+    const bpNames = mats.BLUEPRINT_CATALOG.map(b => b.name);
+    assert.strictEqual(new Set(bpNames).size, bpNames.length, 'BLUEPRINT_CATALOG 存在重名条目');
+    for (const b of mats.BLUEPRINT_CATALOG) {
+      for (const m of b.materials || []) {
+        assert.ok(m.name && m.quantity > 0, '图纸耗材必须给 name 与正数量: ' + b.name);
+      }
+    }
+  });
+  t('items 重名组棘轮：不得高于 23（历史债，专项去重前只防新增）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let items = [];
+    try { items = dbf.prepare('SELECT data FROM col_items').all().map(x => JSON.parse(x.data)); } finally { dbf.close(); }
+    const cnt = new Map();
+    for (const i of items) cnt.set(String(i.name), (cnt.get(String(i.name)) || 0) + 1);
+    const groups = [...cnt].filter(([, n]) => n > 1);
+    assert.ok(groups.length <= 23, '重名组从 23 涨到 ' + groups.length + '：新增定义必须换名或复用既有 id（规划 T1-2 要求①）');
+  });
+  t('npm run content:ensure 在位且幂等收敛（二次 changed 必须为 0）', () => {
+    const pkg = require(path21.join(__dirname, '..', 'package.json'));
+    assert.ok(pkg.scripts['content:ensure'], '未挂 npm run content:ensure（P1 补定义需要与 boot 同一道工序的显式入口）');
+    const root = path21.join(__dirname, '..');
+    const r = require('child_process').spawnSync(process.execPath, [path21.join(root, 'scripts', 'ensure-content.js')], { cwd: root, encoding: 'utf8' });
+    const out = (r.stdout || '') + (r.stderr || '');
+    assert.strictEqual(r.status, 0, '内容回填不收敛或出错：' + out.split(String.fromCharCode(10)).slice(-6).join(' / '));
+    assert.ok(/二次运行 changed = 0/.test(out), '没有看到"二次运行 changed = 0"的收敛证据');
+  });
+  t('审计必须保留"获取路径闭合"这条边（不许靠删边把门禁变绿）', () => {
+    const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'ref-integrity.js'), 'utf8');
+    assert.ok(/每个材料至少一条获取路径/.test(src), '引用完整性审计里的获取路径边不见了');
+    assert.ok(/被配方\/图纸消耗 = 死链/.test(src), '死链（无来源却被消耗）标注不见了');
+    for (const k of ['采集', '掉落', '坊市', '副本奖励', '丹方产出', '锻造产出']) {
+      assert.ok(src.includes(k + ':'), '来源路径少了 ' + k + ' 一种口径');
+    }
+  });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

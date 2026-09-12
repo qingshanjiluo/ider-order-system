@@ -64,23 +64,63 @@ const MATERIAL_CATALOG = {
   '五色土':   { tier: 3, role: 'aux',  element: 'earth' },
   '星陨砂':   { tier: 4, role: 'main', element: 'metal' },
   '混沌土':   { tier: 5, role: 'aux',  element: 'none' },
-  '朱砂':     { tier: 3, role: 'aux',  element: 'fire' }
+  '朱砂':     { tier: 3, role: 'aux',  element: 'fire' },
+  // ---- P1 T1-2：材料 77 -> 86（差口 +9，五级各有补充；名称经全库查重，不与任何定义重名）----
+  '赤铜矿':   { tier: 1, role: 'main', element: 'metal' },
+  '云母片':   { tier: 1, role: 'aux',  element: 'earth' },
+  '碧灵藤':   { tier: 2, role: 'aux',  element: 'wood' },
+  '寒铁矿':   { tier: 2, role: 'main', element: 'metal' },
+  '紫晶砂':   { tier: 3, role: 'main', element: 'metal' },
+  '炎阳花':   { tier: 3, role: 'aux',  element: 'fire' },
+  '太乙神泥': { tier: 4, role: 'main', element: 'earth' },
+  '九幽寒髓': { tier: 4, role: 'main', element: 'water' },
+  '涅槃火精': { tier: 5, role: 'main', element: 'fire' },
+  // ---- P1 修死链：这 7 种老材料本就在 items 里、也被丹方/锻造消耗，却从未进目录（无 tier、
+  //      图纸与采集解析不了）。补进目录后 ensureMaterialGrades 会给存量行回填分级。----
+  '玄铁':     { tier: 2, role: 'main', element: 'metal' },
+  '寒铁':     { tier: 2, role: 'main', element: 'water' },
+  '火铜':     { tier: 2, role: 'main', element: 'fire' },
+  '紫金矿':   { tier: 3, role: 'main', element: 'metal' },
+  '紫金':     { tier: 3, role: 'main', element: 'metal' },
+  '雷银':     { tier: 3, role: 'main', element: 'metal' },
+  '冰晶石':   { tier: 3, role: 'aux',  element: 'water' }
 };
 
-// 新材料入图（采集可玩性）：材料 → 适合地图名（幂等追加 gather_nodes）
+// 新材料入图（采集可性）：材料 -> 地图名（幂等追加 gather_nodes）
+// 轮44 修 bug：原先 7 条指向 翠竹林/青云山/寒冰谷/混沌海/雷霆峰 —— 那是种子链另一代地图的名字，
+// 实机存档里根本没有这些地图，ensureMapNodes 静默零命中，材料白配。现全部改为按元素对位到真实地图。
 const MAP_GATHER_ADDITIONS = {
-  '龙须草':   ['翠竹林', '妖兽森林'],
-  '紫猴花':   ['翠竹林', '青云山'],
+  '龙须草':   ['妖兽森林', '神兽平原'],
+  '紫猴花':   ['妖兽森林', '天界花园'],
   '玉髓芝':   ['神兽平原', '天界花园'],
-  '万年寒潭水': ['寒冰谷', '冰火两重天'],
-  '地髓乳':   ['混沌海', '时空裂缝'],
+  '万年寒潭水': ['冰雪原', '冰火两重天'],
+  '地髓乳':   ['混沌深渊', '时空裂缝'],
   '赤焰髓':   ['火焰山', '龙巢'],
   '离火精':   ['龙巢', '冰火两重天'],
-  '太阴玄冰': ['寒冰谷', '幽冥地府'],
+  '太阴玄冰': ['冰雪原', '幽冥地府'],
   '五色土':   ['沙漠遗迹', '神兽平原'],
-  '星陨砂':   ['沙漠遗迹', '雷霆峰'],
-  '混沌土':   ['混沌海', '魔道深渊'],
-  '朱砂':     ['沙漠遗迹', '幽冥地府']
+  '星陨砂':   ['沙漠遗迹', '雷劫谷'],
+  '混沌土':   ['混沌深渊', '魔道深渊'],
+  '朱砂':     ['沙漠遗迹', '幽冥地府'],
+  // ---- P1 新增材料的采集点 ----
+  '赤铜矿':   ['青云山麓', '妖兽森林'],
+  '云母片':   ['青云山麓', '五行圣地'],
+  '碧灵藤':   ['妖兽森林', '天界花园'],
+  '寒铁矿':   ['冰雪原', '沙漠遗迹'],
+  '紫晶砂':   ['雷劫谷', '深渊裂隙'],
+  '炎阳花':   ['火焰山', '龙巢'],
+  '太乙神泥': ['五行圣地', '远古战场'],
+  '九幽寒髓': ['幽冥地府', '冰雪原'],
+  '涅槃火精': ['火焰山', '仙界入口'],
+  // ---- P1 修死链：这 8 种材料被丹方/锻造消耗，此前却没有任何获取路径 ----
+  '玄铁':     ['青云山麓', '沙漠遗迹'],
+  '紫金':     ['神兽平原', '龙巢'],
+  '寒铁':     ['冰雪原', '深渊裂隙'],
+  '火铜':     ['火焰山', '冰火两重天'],
+  '雷银':     ['雷劫谷', '时空裂缝'],
+  '冰晶石':   ['冰雪原', '仙界入口'],
+  '紫金矿':   ['龙巢', '远古战场'],
+  '九转灵芝': ['神兽平原', '仙界秘境']
 };
 
 function ensureMapNodes(db) {
@@ -187,7 +227,15 @@ const SHOP_CATALOG = [
   { name: '驱邪符', type: '符箓', quality: '宝品', price: 1500, stats: {}, desc: '百邪不侵：全属性提升5%（120分钟）' },
   // ---- 内容富集六期：灵兽捕捉/养成 ----
   { name: '驯兽符', type: '符箓', quality: '灵品', price: 1200, stats: {}, desc: '野外捕捉灵兽之用（各大地图遇兽投符）' },
-  { name: '灵兽粮', type: '消耗品', quality: '凡品', price: 80,  stats: {}, desc: '喂养灵宠，提升其经验与等级' }
+  { name: '灵兽粮', type: '消耗品', quality: '凡品', price: 80,  stats: {}, desc: '喂养灵宠，提升其经验与等级' },
+  // ---- P1 修死链：六种"锭"与丹炉灰是锻造/图纸耗材，此前既无采集也无产出路径，只能在坊市买成品 ----
+  { name: '凡铁锭', type: '材料', quality: '凡品', price: 60,    stats: { tier: 1, role: 'main', element: 'metal', smelted: true }, desc: '粗铁矿冶炼而成的凡铁锭（锻造主材）' },
+  { name: '精钢锭', type: '材料', quality: '凡品', price: 150,   stats: { tier: 2, role: 'main', element: 'metal', smelted: true }, desc: '精铁矿冶炼而成的钢锭（锻造主材）' },
+  { name: '玄铁锭', type: '材料', quality: '灵品', price: 400,   stats: { tier: 2, role: 'main', element: 'metal', smelted: true }, desc: '玄铁提炼的锭料，飞剑剑坯（锻造主材）' },
+  { name: '紫金锭', type: '材料', quality: '宝品', price: 1200,  stats: { tier: 3, role: 'main', element: 'metal', smelted: true }, desc: '紫金提炼的锭料，雷霆飞剑剑坯（锻造主材）' },
+  { name: '星辰锭', type: '材料', quality: '仙品', price: 4000,  stats: { tier: 4, role: 'main', element: 'metal', smelted: true }, desc: '星辰矿炼出的仙料锭，可入高阶器方（原品质词误用装备梯"古宝"，已归物品梯）' },
+  { name: '混沌锭', type: '材料', quality: '道品', price: 12000, stats: { tier: 5, role: 'main', element: 'none', smelted: true }, desc: '混沌矿炼出的道料锭，混沌甲阵核心（原品质词误用装备梯"灵宝"，已归物品梯）' },
+  { name: '丹炉灰', type: '材料', quality: '凡品', price: 25,    stats: { tier: 1, role: 'aux', element: 'fire' }, desc: '废弃丹炉余灰，含残余药力，可入杂方（坊市贱卖）' }
 ];
 
 // ---------- 器方/符方图纸库（按名称引用分级材料，学习消耗材料） ----------
@@ -203,19 +251,54 @@ const BLUEPRINT_CATALOG = [
   { name: '烈火符方', type: 'talisman', quality: '灵品', materials: [{ name: '赤焰髓', quantity: 2 }, { name: '灵草', quantity: 3 }], desc: '画烈火符之方' },
   { name: '寒冰符方', type: 'talisman', quality: '灵品', materials: [{ name: '太阴玄冰', quantity: 2 }, { name: '灵草', quantity: 3 }], desc: '画寒冰符之方' },
   { name: '护身符方', type: 'talisman', quality: '灵品', materials: [{ name: '五色土', quantity: 3 }, { name: '清心草', quantity: 3 }], desc: '画护身符之方' },
-  { name: '驱邪符方', type: 'talisman', quality: '宝品', materials: [{ name: '朱砂', quantity: 3 }, { name: '紫猴花', quantity: 3 }], desc: '画驱邪符之方' }
+  { name: '驱邪符方', type: 'talisman', quality: '宝品', materials: [{ name: '朱砂', quantity: 3 }, { name: '紫猴花', quantity: 3 }], desc: '画驱邪符之方' },
+  // ---- P1 T1-2：图纸 21 -> 40（差口 +19）。每条都消耗本轮新材料或此前无来源的锭料，
+  //      这样"补定义"同时把来源链闭上（否则又是造出来没人用的死内容）。rarity 一律给全。----
+  { name: '赤铜剑图纸', type: 'weapon', quality: '凡品', rarity: 'common', materials: [{ name: '赤铜矿', quantity: 6 }, { name: '木材', quantity: 3 }], desc: '赤铜锻剑，入门利器' },
+  { name: '寒铁刀图纸', type: 'weapon', quality: '灵品', rarity: 'uncommon', materials: [{ name: '寒铁矿', quantity: 6 }, { name: '寒铁', quantity: 4 }], desc: '寒铁凝刀，斩物带霜' },
+  { name: '紫晶匕首图纸', type: 'weapon', quality: '宝品', rarity: 'rare', materials: [{ name: '紫晶砂', quantity: 5 }, { name: '玄铁', quantity: 3 }], desc: '紫晶淬刃，短小锋锐' },
+  { name: '涅槃弓图纸', type: 'weapon', quality: '仙品', rarity: 'epic', materials: [{ name: '涅槃火精', quantity: 4 }, { name: '仙晶矿', quantity: 4 }], desc: '涅槃之火凝弓，一箭重生' },
+  { name: '星辰长枪图纸', type: 'weapon', quality: '道品', rarity: 'legendary', materials: [{ name: '星辰锭', quantity: 4 }, { name: '太乙神泥', quantity: 3 }], desc: '星辰为镝，长枪贯日' },
+  { name: '云母盾图纸', type: 'armor', quality: '凡品', rarity: 'common', materials: [{ name: '云母片', quantity: 6 }, { name: '碎石', quantity: 4 }], desc: '云母叠盾，廉价却实用' },
+  { name: '碧灵藤甲图纸', type: 'armor', quality: '灵品', rarity: 'uncommon', materials: [{ name: '碧灵藤', quantity: 6 }, { name: '木材', quantity: 4 }], desc: '藤甲轻韧，缠身不滞' },
+  { name: '太乙神袍图纸', type: 'armor', quality: '仙品', rarity: 'epic', materials: [{ name: '太乙神泥', quantity: 5 }, { name: '九幽寒髓', quantity: 3 }], desc: '太乙织袍，寒暑不侵' },
+  { name: '混沌锭甲图纸', type: 'armor', quality: '道品', rarity: 'legendary', materials: [{ name: '混沌锭', quantity: 4 }, { name: '混沌矿', quantity: 4 }], desc: '混沌重甲，万法难破' },
+  { name: '赤焰符方', type: 'talisman', quality: '灵品', rarity: 'uncommon', materials: [{ name: '赤铜矿', quantity: 3 }, { name: '朱砂', quantity: 3 }], desc: '画赤焰符之方' },
+  { name: '紫霄符方', type: 'talisman', quality: '宝品', rarity: 'rare', materials: [{ name: '紫晶砂', quantity: 3 }, { name: '朱砂', quantity: 4 }], desc: '画紫霄雷符之方' },
+  { name: '寒潭符方', type: 'talisman', quality: '灵品', rarity: 'uncommon', materials: [{ name: '九幽寒髓', quantity: 2 }, { name: '灵草', quantity: 3 }], desc: '画寒潭符之方' },
+  { name: '涅槃符方', type: 'talisman', quality: '仙品', rarity: 'epic', materials: [{ name: '涅槃火精', quantity: 3 }, { name: '炎阳花', quantity: 3 }], desc: '画涅槃符之方，可解一次死劫' },
+  { name: '赤铜锁阵图纸', type: 'formation', quality: '灵品', rarity: 'uncommon', materials: [{ name: '赤铜矿', quantity: 8 }, { name: '五色土', quantity: 4 }], desc: '赤铜布阵，锁敌身形' },
+  { name: '紫晶聚灵阵图纸', type: 'formation', quality: '宝品', rarity: 'rare', materials: [{ name: '紫晶砂', quantity: 6 }, { name: '聚灵草', quantity: 6 }], desc: '紫晶聚灵，阵内修炼加成' },
+  { name: '太乙困仙阵图纸', type: 'formation', quality: '仙品', rarity: 'epic', materials: [{ name: '太乙神泥', quantity: 6 }, { name: '星陨砂', quantity: 5 }], desc: '太乙轮转，困仙三炷香' },
+  { name: '混沌诛仙剑阵图纸', type: 'formation', quality: '道品', rarity: 'legendary', materials: [{ name: '混沌锭', quantity: 5 }, { name: '混沌结晶', quantity: 5 }], desc: '四剑归一，诛仙剑阵残图' },
+  { name: '炎阳续命丹方', type: 'pill', quality: '宝品', rarity: 'rare', materials: [{ name: '炎阳花', quantity: 4 }, { name: '九转灵芝', quantity: 2 }], desc: '续命丹方，燃阳固本' },
+  { name: '丹炉筑基丹方', type: 'pill', quality: '凡品', rarity: 'common', materials: [{ name: '丹炉灰', quantity: 3 }, { name: '灵草', quantity: 5 }], desc: '以废炉灰引药性，廉价的筑基辅助丹' }
 ];
+
+// 品质 -> 稀有度（物品系阶梯）。图纸此前有 11 行 rarity 缺失，前端图鉴按 rarity 分组会落到 undefined 桶。
+const RARITY_BY_QUALITY = { 凡品: 'common', 灵品: 'uncommon', 宝品: 'rare', 仙品: 'epic', 道品: 'legendary' };
 
 function ensureBlueprints(db) {
   let added = 0;
+  let healed = 0;
   if (!db.blueprints) db.blueprints = [];
   for (const def of BLUEPRINT_CATALOG) {
     if (db.blueprints.find(b => b.name === def.name)) continue;
     const id = db.blueprints.length ? Math.max(...db.blueprints.map(b => Number(b.id) || 0)) + 1 : 1;
-    db.blueprints.push({ id, name: def.name, type: def.type, quality: def.quality, materials: def.materials, desc: def.desc });
+    db.blueprints.push({
+      id, name: def.name, type: def.type, quality: def.quality,
+      rarity: def.rarity || RARITY_BY_QUALITY[def.quality] || 'common',
+      materials: def.materials, desc: def.desc
+    });
     added++;
   }
-  return added;
+  // 轮44：存档里 11 行历史图纸没有 rarity，前端图鉴按 rarity 分组会全落进 undefined 桶 —— 按品质补齐
+  for (const b of db.blueprints) {
+    if (b.rarity) continue;
+    b.rarity = RARITY_BY_QUALITY[b.quality] || 'common';
+    healed++;
+  }
+  return added + healed;
 }
 
 function ensureShopStock(db) {
@@ -302,7 +385,7 @@ function ensureAll(db) {
   try {
     const hyg = require('./data-hygiene');
     // 轮43：卫生检查同时归一 quality 与 realm（realm 曾被词条炼器写成 '未知'，污染 items 定义）
-    hy = hyg.normalizeQualities(db) + hyg.normalizeRealms(db);
+    hy = hyg.normalizeQualities(db) + hyg.normalizeRealms(db) + hyg.normalizeItemQualities(db);
   } catch { /* 卫生检查异常不阻断 */ }
   let m = 0;
   try { m = require('../data/monster-library').ensureMonsters(db); } catch { /* 怪物库异常不阻断 boot */ }

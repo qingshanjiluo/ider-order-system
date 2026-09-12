@@ -1265,5 +1265,92 @@ t('旧缺陷永久封住：主循环不再随机选技、字段不再被丢弃',
   }
 });
 
+console.log('== 廿一期：T1-1 零实例表可达性契约（审计固化成门禁）==');
+const fs21 = require('fs');
+const path21 = require('path');
+const read21 = (...p) => fs21.readFileSync(path21.join(__dirname, '..', ...p), 'utf8');
+const walk21 = (dir, out = []) => {
+  for (const f of fs21.readdirSync(path21.join(__dirname, '..', dir), { withFileTypes: true })) {
+    const rel = path21.join(dir, f.name);
+    if (f.isDirectory()) walk21(rel, out); else if (/\.js$/.test(f.name)) out.push(rel);
+  }
+  return out;
+};
+
+t('幽灵入口锁：src/scripts 下每个脚本都必须被 package.json 引用', () => {
+  const pkg = JSON.parse(read21('package.json'));
+  const referenced = new Set(Object.values(pkg.scripts || []).join(' '));
+  const dir = path21.join(__dirname, '..', 'src', 'scripts');
+  const ghosts = fs21.readdirSync(dir).filter(f => /\.js$/.test(f))
+    .filter(f => !Object.values(pkg.scripts || {}).some(s => s.includes(`src/scripts/${f}`) || s.includes(`src\\scripts\\${f}`)));
+  assert.deepStrictEqual(ghosts, [], `无人可调用的播种/修复脚本（写了却不接）：${ghosts.join(',')}；已引用集合规模=${referenced.size}`);
+});
+t('挂载锁：三张零实例表与天劫的路由前缀都必须在 server 上', () => {
+  const src = read21('server.js');
+  for (const p of ['/api/gongfa', '/api/pet', '/api/achievement', '/api/skill', '/api/tribulation']) {
+    assert.ok(src.includes(`'${p}'`), `${p} 未挂载`);
+  }
+});
+t('成就契约：每个 requirement.type 都有实现，每个实现都被引用', () => {
+  const src = read21('src', 'routes', 'achievement.js');
+  const defs = [...new Set([...src.matchAll(/type:\s*'([^']+)'/g)].map(m => m[1]))];
+  const cases = [...new Set([...src.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]))];
+  assert.ok(defs.length >= 18, `成就条件种类只剩 ${defs.length}，疑似定义被删`);
+  const orphan = defs.filter(t => !cases.includes(t));
+  assert.deepStrictEqual(orphan, [], `有条件定义却无进度实现（这些成就永不可达成）：${orphan.join(',')}`);
+  const idle = cases.filter(t => !defs.includes(t));
+  assert.deepStrictEqual(idle, [], `有实现但无成就引用（空转分支）：${idle.join(',')}`);
+});
+t('成就读取的数据源集合必须存在，缺的只能是我登记过的那一个', () => {
+  const KNOWN_MISSING = ['friends'];   // 好友系统未建（P2），friends 类成就进度恒 0 —— 已知缺口，不许扩散
+  const db21 = require('../src/database').loadDatabase();
+  const files = ['achievement.js', 'pet.js', 'gongfa.js'];
+  const missing = new Set();
+  for (const f of files) {
+    const src = read21('src', 'routes', f);
+    for (const m of src.matchAll(/db\.([a-zA-Z_]+)/g)) {
+      const name = m[1];
+      if (!Array.isArray(db21[name]) && !KNOWN_MISSING.includes(name) && name !== 'achievements') missing.add(`${f}:${name}`);
+      if (!Array.isArray(db21[name]) && KNOWN_MISSING.includes(name)) {
+        // 已知缺口必须仍被 || [] 之类保护，否则是活崩溃而不是零进度
+        const idx = src.indexOf(`db.${name}`);
+        assert.ok(/\|\|\s*\[\s*\]/.test(src.slice(idx, idx + 80)), `已知缺口集合 db.${name} 未做空值保护（会 500）`);
+      }
+    }
+  }
+  assert.deepStrictEqual([...missing], [], `出现新的"读了但不存在"集合：${[...missing].join(', ')}`);
+});
+t('零实例表的唯一写入点必须还在（防重构悄悄删掉）', () => {
+  assert.ok(/db\.gongfa\.push\(/.test(read21('src', 'routes', 'gongfa.js')), 'gongfa 路由不再写入 db.gongfa');
+  assert.ok(/db\.pets\.push\(/.test(read21('src', 'routes', 'pet.js')), 'pet 路由不再写入 db.pets');
+});
+t('生成入口必须有资源门槛（实测：16 灵石撞 300 灵石门槛 → 400）', () => {
+  const pet = read21('src', 'routes', 'pet.js');
+  const gf = read21('src', 'routes', 'gongfa.js');
+  assert.ok(/灵石不足/.test(pet), 'pet/generate 无灵石校验');
+  assert.ok(/灵石不足|cost/.test(gf), 'gongfa/generate 无资源校验');
+});
+t('前后端路径对账：前端引用的子路径必须真在路由上（我猜错过 /learn，前端可能也错）', () => {
+  const routers = {
+    gongfa: read21('src', 'routes', 'gongfa.js'),
+    pet: read21('src', 'routes', 'pet.js'),
+    achievement: read21('src', 'routes', 'achievement.js'),
+    tribulation: read21('src', 'routes', 'tribulation.js')
+  };
+  const defined = {};
+  for (const [name, src] of Object.entries(routers)) {
+    defined[name] = new Set([...src.matchAll(/router\.(?:get|post|put|delete)\(\s*'([^']+)'/g)]
+      .map(m => m[1].replace(/^\//, '')).filter(Boolean));
+  }
+  const fe = walk21('public').map(f => read21(f)).join('\n');
+  const ghosts = [];
+  for (const m of fe.matchAll(/\/(?:api\/)?(gongfa|pet|achievement|tribulation)\/([a-zA-Z_][a-zA-Z0-9_-]*)/g)) {
+    const [, prefix, sub] = m;
+    if (!defined[prefix].has(sub)) ghosts.push(`/${prefix}/${sub}`);
+  }
+  assert.deepStrictEqual([...new Set(ghosts)], [], `前端调用了后端不存在的端点：${[...new Set(ghosts)].join(', ')}`);
+  assert.ok(defined.tribulation.has('status') && defined.tribulation.has('endure'), '天劫端点契约变了');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

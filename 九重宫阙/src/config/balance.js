@@ -170,3 +170,25 @@ const TRIBULATION = {
   //     留着就是无人消费的幽灵配置（不变量 3）。
 };
 module.exports.TRIBULATION = TRIBULATION;
+
+// ===== E4/T0-2 修炼九乘区接线参数 =====
+const CULTIVATION_MODEL = {
+  // 基础速率：true=按境界取 CULTIVATION_V0（炼气 10/秒，渡劫 840/秒）；
+  // false=回退旧口径（固定 10/秒 × (1 + 境界序号×0.1)）。保留开关是为了能被一眼回滚。
+  useV0BaseRate: true,
+  legacyBaseRate: 10,
+  legacyRealmPerIndex: 0.1,
+  gongfaLevelBonus: 0.02,       // 功法每层 +2%（原硬编码在 cultivation.js）
+  mapDensityPerDifficulty: 0.05,// 地图难度每档灵气 +5%（原硬编码）
+  veinDensityPerLevel: 0.05,    // 洞府地脉每级灵气 +5%（原硬编码）
+  aptitudePerPoint: 0.01,       // 资质每 1 点 +1%（相对基准值）
+  aptitudeBaseline: 10,
+  aptitudeStats: ['talent', 'comprehension', 'dao_affinity'],
+  minZone: 0.2,                 // 单区下限：伤势/丹毒再重也不清零（避免"修炼无意义"死局）
+  maxZone: 4.0                  // 单区上限：功法堆到飞起也有界
+};
+module.exports.CULTIVATION_MODEL = CULTIVATION_MODEL;
+
+// ===== T0-2 铁律：境界等级上限（经验不得越过本境界 max_level）=====
+const REALM_LEVEL_CAP = { enforce: true, pinExpAtFull: true };
+module.exports.REALM_LEVEL_CAP = REALM_LEVEL_CAP;

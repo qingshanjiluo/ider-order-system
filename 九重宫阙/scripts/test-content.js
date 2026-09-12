@@ -1,4 +1,4 @@
-/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
+﻿/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
 const assert = require('assert');
 const skillService = require('../src/services/skill');
 const itemService = require('../src/services/item');
@@ -58,9 +58,9 @@ t('生产联动被动存在（锻造/炼丹/采集）', () => {
     assert.ok(DATA.find(s => s.id === id), `缺 ${id}`);
   }
 });
-t('元素克制关系对 apex 技能成立（光克暗等）', () => {
+t('元素ke制关系对 apex 技能成立（光ke暗等）', () => {
   const rel = elements.relation('light', 'dark');
-  assert.ok(rel === 'overrides', `light→dark 应为克制，实际 ${rel}`);
+  assert.ok(rel === 'overrides', `light→dark 应为ke制，实际 ${rel}`);
   assert.strictEqual(elements.relation('metal', 'wood'), 'overrides');
   assert.strictEqual(elements.relation('wood', 'fire'), 'generates');
 });
@@ -1019,6 +1019,122 @@ t('判定点唯一：passAway 只有一处调用方；大限劫已落地（反�
   assert.deepStrictEqual(offenders, [], `寿元字段被 gameTime 之外的文件直接改写：${offenders.join(',')}`);
   const hits = files.reduce((n, f) => n + ((fs.readFileSync(f, 'utf8').match(/大限劫/g) || []).length), 0);
   assert.ok(hits > 0, '大限劫关键字仍为 0 命中（实现回退）');
+});
+
+console.log('== 十九期：E4/T0-2 修炼九乘区模型 ==');
+const cm = require('../src/services/cultivation-model');
+const CM = bal.CULTIVATION_MODEL;
+const baseCtx = (over) => Object.assign({
+  realm: '炼气', level: 1, stats: { talent: 10, comprehension: 10, dao_affinity: 10 },
+  spiritRoots: [{ type: 'fire', purity: 50 }], gongfas: [], mapDifficulty: 1, veinLevel: 0,
+  seclusion: 'none', pillMultiplier: 1, injuryMultiplier: 1, sectMultiplier: 1
+}, over || {});
+
+t('九区齐全且顺序稳定（前端与模拟都要按这个口径显示）', () => {
+  const r = cm.computeCultivation(baseCtx());
+  const keys = cm.ZONES.map(z => z.key);
+  assert.deepStrictEqual(Object.keys(r.parts), keys, `乘区键不匹配：${Object.keys(r.parts).join(',')}`);
+  assert.ok(keys.length >= 9, `乘区数=${keys.length}，不足九区`);
+  assert.ok(Array.isArray(r.pending), 'pending 必须是数组（未接线机制要显式登记）');
+  assert.strictEqual(r.cap, bal.SPEED_CAP_TOTAL);
+});
+t('基础速率取自 CULTIVATION_V0（炼气 10 → 渡劫 840），未覆盖境界回退旧基准', () => {
+  assert.strictEqual(cm.computeCultivation(baseCtx({ realm: '炼气' })).baseRate, bal.CULTIVATION_V0['炼气']);
+  assert.strictEqual(cm.computeCultivation(baseCtx({ realm: '渡劫' })).baseRate, bal.CULTIVATION_V0['渡劫']);
+  assert.strictEqual(cm.computeCultivation(baseCtx({ realm: '飞升' })).baseRate, CM.legacyBaseRate, 'V0 未覆盖飞升却未回退');
+  assert.strictEqual(cm.computeCultivation(baseCtx({ realm: undefined })).baseRate, CM.legacyBaseRate);
+  assert.ok(!CM.useV0BaseRate || bal.CULTIVATION_V0['渡劫'] / bal.CULTIVATION_V0['炼气'] > 8, 'V0 阶梯被压平');
+});
+t('功法品阶终于参与修炼速度（玄阶>黄阶），层数加成走 balance 系数', () => {
+  const low = cm.computeCultivation(baseCtx({ gongfas: [{ quality: '黄阶', level: 1 }] }));
+  const high = cm.computeCultivation(baseCtx({ gongfas: [{ quality: '玄阶', level: 1 }] }));
+  assert.ok(high.parts.gongfa > low.parts.gongfa, '品阶未参与（QUALITY_SPEED 仍是幽灵常数）');
+  const lv10 = cm.computeCultivation(baseCtx({ gongfas: [{ quality: '黄阶', level: 10 }] }));
+  assert.ok(Math.abs(lv10.parts.gongfa / low.parts.gongfa - (1 + 9 * CM.gongfaLevelBonus)) < 1e-9, '层数加成口径不对');
+  assert.strictEqual(cm.computeCultivation(baseCtx({ gongfas: [{ quality: '不存在的品阶', level: 1 }] })).parts.gongfa,
+    cm.computeCultivation(baseCtx()).parts.gongfa, '未知品阶不应给隐藏加成');
+});
+t('资质根骨：三项相对基准的偏差计入，缺字段记入 pending 而非乱给', () => {
+  const good = cm.computeCultivation(baseCtx({ stats: { talent: 20, comprehension: 20, dao_affinity: 20 } }));
+  assert.ok(Math.abs(good.parts.aptitude - 1.3) < 1e-9, `资质口径不对：期望 1+30×0.01=1.3，实得 ${good.parts.aptitude}`);
+  const bad = cm.computeCultivation(baseCtx({ stats: {} }));
+  assert.strictEqual(bad.parts.aptitude, 1.0);
+  assert.ok(bad.pending.some(p => p.startsWith('aptitude')), '缺资质字段未登记 pending');
+});
+t('灵气浓度受 ENV_CAP 封顶；难度与地脉都算数', () => {
+  const d1 = cm.computeCultivation(baseCtx({ mapDifficulty: 1 }));
+  const d5 = cm.computeCultivation(baseCtx({ mapDifficulty: 5 }));
+  assert.ok(d5.parts.density > d1.parts.density, '地图难度未参与浓度');
+  const huge = cm.densityOf({ mapDifficulty: 999, veinLevel: 999 });
+  assert.ok(huge.value <= bal.ENV_CAP + 1e-9 && huge.capped, `浓度未封顶：${huge.value}`);
+});
+t('属性契合按五行关系分档，功法缺 element 时登记数据缺口', () => {
+  const same = cm.affinityOf('fire', 'fire');
+  const gen = cm.affinityOf('wood', 'fire');
+  const ke = cm.affinityOf('water', 'fire');
+  assert.strictEqual(same, bal.AFFINITY.same);
+  assert.ok(same > gen && gen > bal.AFFINITY.neutral, '相生相生关系排序不对');
+  assert.ok(ke < bal.AFFINITY.neutral, '水ke火却给了不低于中性的契合');
+  const r = cm.computeCultivation(baseCtx({ gongfas: [{ quality: '黄阶', level: 1 }] }));
+  assert.ok(r.pending.some(p => p.startsWith('affinity')), '功法缺 element 必须登记，不能用 1.0 假装生效');
+});
+t('闭关五档递增且档位决定封锁行为；未知档一律按不入关', () => {
+  const speeds = bal.SECLUSION.map(s => cm.seclusionOf(s.key).tier.speed);
+  for (let i = 1; i < speeds.length; i++) assert.ok(speeds[i] > speeds[i - 1], '闭关档位未递增');
+  assert.strictEqual(cm.seclusionOf('ruding').tier.blocks.includes('market'), true);
+  const un = cm.computeCultivation(baseCtx({ seclusion: '胡说八道关' }));
+  assert.strictEqual(un.parts.seclusion, 1.0, '未知闭关档给了加成');
+  assert.ok(un.pending.some(p => p.startsWith('seclusion')));
+});
+t('总乘区受 SPEED_CAP_TOTAL 封顶，且封顶标志可信', () => {
+  const crazy = baseCtx({
+    gongfas: [{ quality: '仙阶', level: 500, cultivationSpeed: 9 }, { quality: '仙阶', level: 500 }],
+    stats: { talent: 999, comprehension: 999, dao_affinity: 999 },
+    mapDifficulty: 999, veinLevel: 999, seclusion: 'ruding', pillMultiplier: 99, sectMultiplier: 99
+  });
+  const r = cm.computeCultivation(crazy);
+  assert.ok(r.rawSpeed > bal.SPEED_CAP_TOTAL, `极端输入下 rawSpeed 仍=${r.rawSpeed}，封顶形同虚设`);
+  assert.strictEqual(r.speed, bal.SPEED_CAP_TOTAL);
+  assert.strictEqual(r.capped, true);
+  assert.strictEqual(cm.expPerSecond(crazy).rate, Math.floor(r.baseRate * bal.SPEED_CAP_TOTAL));
+});
+t('单区上下限：丹毒/伤势再重也不清零，功法再堆也有界', () => {
+  const r = cm.computeCultivation(baseCtx({ injuryMultiplier: 0.0001, pillMultiplier: 9999 }));
+  assert.strictEqual(r.parts.injury, CM.minZone);
+  assert.strictEqual(r.parts.pill, CM.maxZone);
+  assert.strictEqual(cm.clampZone('abc'), CM.minZone, '非数值入参未降级');
+});
+t('未接线机制必须显式 pending（丹毒/洞府当前恒 1.0 不可假装生效）', () => {
+  const r = cm.computeCultivation(baseCtx());
+  assert.ok(r.pending.some(p => p.startsWith('toxin')), '丹毒未落地却静默按 1.0');
+  assert.ok(r.pending.some(p => p.startsWith('cave')), '洞府系数未落地却静默按 1.0');
+  assert.strictEqual(r.parts.toxin, 1.0);
+});
+t('模型是纯函数：同输入两次全等，且不改动传入的 ctx', () => {
+  const ctx = baseCtx({ gongfas: [{ quality: '地阶', level: 5, element: 'fire' }] });
+  const frozen = JSON.parse(JSON.stringify(ctx));
+  const a = cm.computeCultivation(ctx);
+  const b = cm.computeCultivation(ctx);
+  assert.deepStrictEqual(a, b);
+  assert.deepStrictEqual(ctx, frozen, '模型改写了入参（副作用）');
+});
+t('铁律闸门源码锁：经验入口必须带境界 max_level 闸门', () => {
+  const fs = require('fs');
+  const src = fs.readFileSync(require('path').join(__dirname, '..', 'src', 'services', 'character.js'), 'utf8');
+  assert.ok(src.includes('REALM_LEVEL_CAP'), 'addExp 未引用 REALM_LEVEL_CAP');
+  assert.ok(/while\s*\(\s*\(\s*!capLevel\s*\|\|\s*\(character\.level\s*\|\|\s*1\)\s*<\s*capLevel\s*\)/.test(src),
+    '升级 while 循环缺少境界等级闸门（铁律被绕过）');
+  assert.ok(src.includes('pinExpAtFull') && src.includes('bottleneck'), '到顶未钉住修为/未回报瓶颈状态');
+  const b = fs.readFileSync(require('path').join(__dirname, '..', 'src', 'config', 'balance.js'), 'utf8');
+  assert.ok(/REALM_LEVEL_CAP\s*=\s*{[^}]*enforce:\s*true/.test(b), '闸门默认被关闭');
+});
+t('幽灵常数清扫：CULTIVATION_MODEL 每个键都必须被消费', () => {
+  const fs = require('fs'); const path = require('path');
+  const modelSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'cultivation-model.js'), 'utf8');
+  const svcSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'cultivation.js'), 'utf8');
+  for (const k of Object.keys(CM)) {
+    assert.ok(modelSrc.includes(`CM.${k}`) || svcSrc.includes(`.${k}`), `CULTIVATION_MODEL.${k} 无人消费（幽灵配置）`);
+  }
 });
 
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);

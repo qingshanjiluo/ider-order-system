@@ -41,8 +41,16 @@ class CharacterService {
 
     character.exp = (character.exp || 0) + finalAmount;
     let leveledUp = false;
+    let bottleneck = false;
 
-    while (character.exp >= (character.exp_to_next || 100)) {
+    // T0-2 铁律：任何经验来源（战斗/副本/挂机/丹药/签到）都不得把角色推出本境界 max_level。
+    // 到顶即钉住，越境界必须走 realm.breakthrough —— 承担折寿与失败风险。
+    // 此前这里只有 while(exp>=need) level++ 且无上限，刷经验可直接连升境界等级、绕开突破判定。
+    const RLC = require('../config/balance').REALM_LEVEL_CAP;
+    const realmRow = (db.realms || []).find(r => r.name === character.realm);
+    const capLevel = RLC.enforce && realmRow ? (Number(realmRow.max_level) || 0) : 0;
+
+    while ((!capLevel || (character.level || 1) < capLevel) && character.exp >= (character.exp_to_next || 100)) {
       character.exp -= (character.exp_to_next || 100);
       character.level = (character.level || 1) + 1;
       character.exp_to_next = this.calculateExpForLevel(character.level);
@@ -59,8 +67,16 @@ class CharacterService {
       leveledUp = true;
     }
 
+    // 已到本境界天花板：修为钉在下一级需求处（前端可显示"圆满·待突破"），多余经验不累积
+    if (capLevel && (character.level || 1) >= capLevel) {
+      bottleneck = true;
+      if (RLC.pinExpAtFull) {
+        character.exp = Math.min(character.exp, character.exp_to_next || character.exp);
+      }
+    }
+
     saveDatabase(db);
-    return { character, leveledUp, expGained: finalAmount, vipExpBonus: vipBonus.expBonus };
+    return { character, leveledUp, expGained: finalAmount, vipExpBonus: vipBonus.expBonus, bottleneck, realmCapLevel: capLevel || null };
   }
 
   calculateExpForLevel(level) {

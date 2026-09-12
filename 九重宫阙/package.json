@@ -9,6 +9,7 @@
     "init-db": "node src/scripts/init-db.js",
     "test": "node scripts/run-all-tests.js",
     "test:content": "node scripts/test-content.js",
+    "backup": "node scripts/backup.js",
     "audit": "node scripts/audit-data.js"
   },
   "engines": { "node": ">=20.11" },

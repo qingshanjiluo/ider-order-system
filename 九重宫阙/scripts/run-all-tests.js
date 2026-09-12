@@ -23,8 +23,9 @@ const SUITES = [
   // P4 章程硬指标（轮52）：E1 的 HTTP 级并发守恒 + E2 的攻击模拟
   ['E1 HTTP 并发守恒', 'scripts/concurrency-test.js'],
   ['E2 攻击模拟', 'scripts/attack-sim.js'],
-  // P4 数值验证（轮53）：追赶校验 cumT vs L（同时是曲线方向锁）
-  ['E9 追赶校验', 'scripts/sim-balance.js']
+  // P4 数值验证（轮53）：追赶校验 cumT vs L（同时是曲线方向锁）+ 经济守恒与 30 世收支
+  ['E9 追赶校验', 'scripts/sim-balance.js'],
+  ['E9 经济守恒', 'scripts/sim-economy.js']
 ];
 
 let failed = 0;

@@ -16,6 +16,8 @@
     "sim:battle": "node scripts/sim-battle.js",
     "sim:balance": "node scripts/sim-balance.js --report 数值追赶校验.md",
     "sim:balance:strict": "node scripts/sim-balance.js --report 数值追赶校验.md --strict",
+    "sim:economy": "node scripts/sim-economy.js --report 经济守恒表.md",
+    "sim:economy:strict": "node scripts/sim-economy.js --report 经济守恒表.md --strict",
     "test": "node scripts/gate.js",
     "test:content": "node scripts/test-content.js",
     "probe:server": "node scripts/probe-server.js",

@@ -79,6 +79,10 @@ function learn(db, character, name) {
     const itemId = getNextId('items');
     db.items.push({
       id: itemId, name: entry.name, type: '功法', quality: entry.quality,
+      // 轮46：带上传承境界（此前漏带，学来的功法 items.realm 恒缺，cultivation.js 的境界适配判定落空）。
+      // 功法库的 realm 带"期"后缀（炼气期…渡劫期），而 db.realms 的名字不带（炼气…渡劫），
+      // 所以在此就地剥掉后缀，不留给卫生工序去擦 —— items.realm 边要求直接合法。
+      realm: String(entry.realm || '').replace(/期$/, '') || null,
       stats: entry.stats || '{}', description: `宗门藏书阁典籍（${entry.realm || ''}适用，${entry.upgradeable ? '可升级' : '不可升级'}）`
     });
     db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: itemId, quantity: 1 });
@@ -105,4 +109,99 @@ function learn(db, character, name) {
   return { ok: true, learned: entry.name, kind: entry.kind, cost, remainingContribution: member.contribution };
 }
 
-module.exports = { entriesOf, ensureSectBase, upload, learn, UPLOAD_KINDS, CONTRIB_BY_QUALITY, LEARN_COST };
+/**
+ * 功法/灵宠"具名货架"（轮46 · 落实 T1-1 硬约束 2「补定义之前先解决可达性」）
+ *
+ * 轮46 实测的两处真缺口：
+ *  ① `ensureSectBase` 被导出却**没有任何调用点**（findstr 全仓只有定义与 module.exports 两处），
+ *    存档 `sect_library` 里 kind='功法' 只有 4 行（全是玩家上传的）⇒ 18 个宗门的功法架全是空的，
+ *    82 门宗门功法无人可学；
+ *  ② 非宗门典籍（传承/副本/机遇）从未物化成物品，而 `POST /gongfa/equip` 只认背包里一件 type='功法'
+ *    的物品 ⇒ 扩展口径后审计显示「功法 3/69、灵宠 1/13、功法书 0/5 有获取路径」。
+ * 本工序一次把三件事补齐（幂等，名称为键）：给现存每个宗门铺基础功法架、把非宗门典籍物化成
+ * items 并挂坊市、给早期种子里既无货架又不在架上的 功法/灵宠 物品补货架。
+ * 价格阶梯有意做重（圣阶 4.5 万、仙阶 15 万灵石），是长期灵石沉淀口；同时 economy.js 的"机缘"
+ * 仍会从 type='功法' 物品池随机赠予，非付费路线没有被堵死。
+ */
+// 新号起始 100 灵石（routes/auth.js:55），故黄阶定价 100 —— 让"第一门具名功法"开局就买得起，
+// 这是对 T1-1 硬约束 2（补定义之前先解决买不起）的正面回答，而不是把门槛挪到玩家摸不到的地方。
+const GONGFA_PRICE = { 黄阶: 100, 玄阶: 800, 地阶: 3000, 天阶: 12000, 圣阶: 45000, 仙阶: 150000 };
+const PET_PRICE = { 凡兽: 150, 灵兽: 500, 玄兽: 1500, 地兽: 5000, 天兽: 15000, 圣兽: 45000, 仙兽: 150000 };
+
+function ensureGongfaShelves(db) {
+  if (!db.items) db.items = [];
+  if (!db.shop) db.shop = [];
+  let changed = 0;
+  const addShopRow = (item, price, note) => {
+    const row = db.shop.find((s) => Number(s.item_id) === Number(item.id));
+    if (row) {
+      // 货架价格一律以阶梯为准：改过阶梯后已上架的行也要跟着改，否则玩家看到的还是旧价，
+      // 而"黄阶 100 = 新号买得起"这条口径就成了纸面承诺。
+      if (Number(row.price) !== Number(price)) { row.price = Number(price); row.description = note; return 1; }
+      return 0;
+    }
+    db.shop.push({
+      id: getNextId('shop'), item_id: item.id, price, stock: 999,
+      description: note
+    });
+    return 1;
+  };
+
+  // ① 现存宗门的功法架（此前无人调用，等于货架空白）
+  let sectRows = [];
+  try { sectRows = store.queryRel('sects', {}); } catch (e) { sectRows = []; }
+  for (const s of sectRows) {
+    if (!s || !s.key) continue;
+    changed += ensureSectBase(db, Number(s.id), String(s.key));
+  }
+
+  // 宗门功法架上的名字（learn() 会按名物化成 type='功法' 物品，故这些不再挂坊市，避免双渠道）
+  const shelfNames = new Set();
+  for (const s of sectRows) {
+    if (!s || s.id == null) continue;
+    try { for (const e of entriesOf(Number(s.id))) if (e.kind === '功法') shelfNames.add(String(e.name)); } catch (e) { /* 忽略单宗异常 */ }
+  }
+
+  // ② 非宗门典籍：物化成 items + 坊市具名货架
+  for (const g of GONGFA_LIBRARY.filter((x) => !x.sect_key)) {
+    let item = db.items.find((i) => String(i.name) === String(g.name));
+    if (!item) {
+      const id = getNextId('items');
+      db.items.push({
+        id, name: g.name, type: '功法', quality: g.quality,
+        realm: String(g.realm || '').replace(/期$/, '') || null,   // 剥掉"期"后缀，直接对齐 db.realms 的名字
+        stats: JSON.stringify(g.stats),
+        description: `${g.desc}（${g.source}所得，坊市典籍铺有售）`
+      });
+      item = db.items.find((i) => Number(i.id) === Number(id));
+      changed++;
+    }
+    changed += addShopRow(item, GONGFA_PRICE[item.quality] || 800, `坊市典籍铺·${item.quality}功法（装备后入功法槽，卸下回背包）`);
+  }
+
+  // ③ 治愈：功法书的引用改挂"按名"这一层 —— items.id 在不同库里不稳定（全新档上 gongfa_id=14
+  //    会撞上材料行），所以只要 gongfa_id 目前确实指向一条功法，就把它的名字也写进 stats，
+  //    让 /study 与 ref-integrity 都有一条不依赖 id 的解析路径。
+  for (const item of db.items) {
+    if (item.type !== '功法书') continue;
+    let st = {};
+    try { st = JSON.parse(item.stats || '{}'); } catch (e) { st = {}; }
+    if (st.gongfa) continue;
+    const tg = db.items.find((o) => Number(o.id) === Number(st.gongfa_id) && o.type === '功法');
+    if (!tg) continue;
+    st.gongfa = String(tg.name);
+    item.stats = JSON.stringify(st);
+    changed++;
+  }
+
+  // ④ 治愈早期种子：既不在宗门架上、坊市也无货架的 功法/灵宠 物品
+  for (const item of db.items) {
+    if (item.type !== '功法' && item.type !== '灵宠') continue;
+    if (item.type === '功法' && shelfNames.has(String(item.name))) continue;
+    const ladder = item.type === '功法' ? GONGFA_PRICE : PET_PRICE;
+    changed += addShopRow(item, ladder[item.quality] || 800, `坊市${item.type === '功法' ? '典籍铺' : '灵兽铺'}·${item.quality || '无品阶'}`);
+  }
+  return changed;
+}
+
+module.exports = { entriesOf, ensureSectBase, ensureGongfaShelves, upload, learn, UPLOAD_KINDS, CONTRIB_BY_QUALITY, LEARN_COST, GONGFA_PRICE, PET_PRICE };

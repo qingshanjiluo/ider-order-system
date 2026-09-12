@@ -221,4 +221,64 @@ router.post('/upgrade', auth, (req, res) => {
   }
 });
 
+/**
+ * 研读功法书（轮46 补上的缺失闭环）
+ * 设计口径早就写在《方案规划/01-核心系统/功法系统.md》里："功法书 —— 直接获得完整功法"，
+ * expand-data 也给了 stats.gongfa_id 指向具体功法物品（14~18），但全仓没有任何一处消费 功法书，
+ * 于是 5 条功法书成了"买不到、也用不掉"的死定义。这里把使用路径接上：
+ *   背包里的 功法书 --研读--> 消耗它 --发放--> gongfa_id 指向的 功法 物品（同一本书不重复给）
+ * 校验一律拒绝而不是兜底伪造：书不存在 / 类型不对 / gongfa_id 缺失或指向非功法物品 / 已掌握，都直接报错。
+ */
+router.post('/study', auth, (req, res) => {
+  try {
+    const { itemId } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) {
+      return res.status(404).json({ error: '角色不存在' });
+    }
+    const invIdx = db.inventory.findIndex(i => i.character_id === character.id && i.item_id === Number(itemId));
+    if (invIdx === -1) {
+      return res.status(400).json({ error: '背包中没有该物品' });
+    }
+    const book = db.items.find(i => i.id === db.inventory[invIdx].item_id);
+    if (!book || book.type !== '功法书') {
+      return res.status(400).json({ error: '该物品不是功法书' });
+    }
+    let st = {};
+    try { st = JSON.parse(book.stats || '{}'); } catch (e) { st = {}; }
+    // 目标功法解析次序（轮46 的 G1 套件逼出来的口径）：先按 gongfa_id，但**只有它确实指向一条
+    // type='功法' 的物品才算数**；否则退回 stats.gongfa 的名字。
+    // 原因：items.id 在不同库里不稳定 —— 全新档上 gongfa_id=14 会撞上"雷电结晶"这类材料，
+    // 只认 id 就会把材料当功法发出去（或反过来让研读必然失败）。名字才是可信的键。
+    const gid = Number(st.gongfa_id);
+    const byId = (Number.isFinite(gid) && gid > 0) ? db.items.find(i => Number(i.id) === gid && i.type === '功法') : undefined;
+    const byName = st.gongfa ? db.items.find(i => String(i.name) === String(st.gongfa) && i.type === '功法') : undefined;
+    const target = byId || byName;
+    if (!target) {
+      const wrong = (Number.isFinite(gid) && gid > 0) ? db.items.find(i => Number(i.id) === gid) : undefined;
+      return res.status(400).json({
+        error: wrong
+          ? `功法书指向的 #${gid} 是「${wrong.name}」(${wrong.type})，不是功法，且按名也未找到「${st.gongfa || '无名'}」`
+          : `功法书指向的功法不存在（gongfa_id=${st.gongfa_id == null ? '缺' : st.gongfa_id} gongfa=${st.gongfa || '缺'}）`
+      });
+    }
+    const targetId = Number(target.id);
+    const owned = db.inventory.some(i => i.character_id === character.id && i.item_id === targetId);
+    const equipped = (db.gongfa || []).some(g => g.character_id === character.id && g.item_id === targetId);
+    if (owned || equipped) {
+      return res.status(400).json({ error: '已修习过该功法，此书无从再参悟', gongfa: target.name });
+    }
+
+    db.inventory[invIdx].quantity = (db.inventory[invIdx].quantity || 1) - 1;
+    if (db.inventory[invIdx].quantity <= 0) db.inventory.splice(invIdx, 1);
+    db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: targetId, quantity: 1 });
+
+    saveDatabase(db);
+    res.json({ success: true, learned: target.name, itemId: targetId, quality: target.quality, realm: target.realm });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

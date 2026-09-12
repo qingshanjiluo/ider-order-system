@@ -14,7 +14,8 @@ const SUITES = [
   ['E1 auth 角色互斥', 'scripts/test-auth-lock.js'],
   ['E2 分层限流', 'scripts/test-tier-limit.js'],
   ['E3 战斗掉落', 'scripts/test-loot.js'],
-  ['E5 大限劫路由', 'scripts/test-tribulation.js']
+  ['E5 大限劫路由', 'scripts/test-tribulation.js'],
+  ['G1 功法获取链', 'scripts/test-gongfa-e2e.js']
 ];
 
 let failed = 0;

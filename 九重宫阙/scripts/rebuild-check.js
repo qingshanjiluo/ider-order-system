@@ -44,7 +44,11 @@ const CHAIN = [
   // 与台账冲突（轮42 实测 22/86 行不同）。定义内容的最后一锤是 content:import。
   // 真要走"重新校准"这条路，就在正式存档上跑 seed:rebalance、复测 E3 胜率、再 content:export 重出台账。
   ['seed:rebalance', 'scripts/rebalance-monsters.js', '--apply'],
-  ['content:import', 'src/scripts/content-sync.js', 'import']
+  ['content:import', 'src/scripts/content-sync.js', 'import'],
+  // 轮46：台账落地后再跑一次与 boot 相同的内容保障工序 —— 否则重建出的档案要等第一次启动
+  // 才会把功法/灵宠上架、把 18 宗的宗门功法架铺出来（宗门架是内存关系表，不在台账口径内）。
+  // 这道工序本身幂等（改了就会破坏上一条跨进程收敛锁），所以它不会改写刚落地的台账定义。
+  ['content:ensure', 'scripts/ensure-content.js']
 ];
 // 定义类集合：内容必须与台账（存档）逐项精确一致，差异即失败（轮42 升级）
 const DEFINITIONS = ['realms', 'maps', 'items', 'monsters', 'dungeons', 'blueprints',

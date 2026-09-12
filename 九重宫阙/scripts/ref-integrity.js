@@ -43,6 +43,11 @@ try {
     .all().map(r => r.name.slice(4));
   const data = {};
   for (const c of cols) data[c] = db.prepare(`SELECT data FROM col_${c}`).all().map(r => JSON.parse(r.data));
+  // 轮46：宗门功法架是"运行时按名物化"的来源（sect-library.learn() 才造出 items），
+  // 只看静态引用会把它当成不存在 —— 这正是上一版审计把 72 门宗门功法误判为死内容的盲点。
+  // 因此直读 sect_library 关系表；空架 = 玩家无处可学（轮46 实测：全库只有 4 行，全是玩家上传的）。
+  let shelfRows = [];
+  try { shelfRows = db.prepare('SELECT name, kind FROM sect_library').all(); } catch (e) { shelfRows = []; }
   db.close();
 
   const items = data.items || [];
@@ -183,14 +188,39 @@ try {
   }
   add('items.realm -> realms.name', itemRealmBad);
 
+  // 轮46：功法书.stats.gongfa_id 必须指向一条真实存在的 功法 物品 —— 这是"研读得功法"闭环的另一半，
+  // 此前既无人校验该引用、也没有任何代码消费 功法书，5 本书连同它的引用一起处于无人认领状态。
+  const bookBad = [];
+  let bookTotal = 0;
+  for (const it of items) {
+    if (it.type !== '功法书') continue;
+    bookTotal++;
+    let st = {};
+    try { st = JSON.parse(it.stats || '{}'); } catch (e) { bookBad.push(`功法书 ${it.name}(#${it.id}) stats 非法 JSON`); continue; }
+    const gid = Number(st.gongfa_id);
+    const byName = st.gongfa ? String(st.gongfa) : null;
+    if ((!Number.isFinite(gid) || gid <= 0) && !byName) { bookBad.push(`功法书 ${it.name}(#${it.id}) 既无 gongfa_id 也无 gongfa 名字`); continue; }
+    let t = (Number.isFinite(gid) && gid > 0) ? items.find((o) => Number(o.id) === gid && o.type === '功法') : undefined;
+    // 与 routes/gongfa.js 的 /study 同口径：id 只有在确实指向功法时才可信，否则按名解析
+    // （items.id 在不同库里不稳定，全新档上 gongfa_id=14 会撞成材料）。
+    if (!t && byName) t = items.find((o) => String(o.name) === byName && o.type === '功法');
+    if (!t) bookBad.push(`功法书 ${it.name}(#${it.id}) 解析不到功法（gongfa_id=${st.gongfa_id == null ? '缺' : st.gongfa_id}${byName ? ' gongfa=' + byName : ''}）`);
+  }
+  add(`功法书.gongfa_id -> items(type=功法)［${bookTotal} 本］`, bookBad);
+
   // ===== 获取路径闭合（轮44 · P1/T1-1：定义存在但玩家永远拿不到 = 死内容） =====
   // 来源 = 采集点 / 怪物掉落 / 坊市货架 / 副本奖励 / 丹方产出 / 锻造产出；
   // 消耗 = 丹方与锻造的 materials、图纸的 materials。被消耗却没有来源，就是学得了却永远炼不成的死链。
   const parseArr = asArray;   // 与顶层同一套形状判别，避免两处各写一遍而行为不一致
   const nameOfId = new Map(items.map((o) => [Number(o.id), String(o.name)]));
   const srcSets = {
-    采集: new Set(), 掉落: new Set(), 坊市: new Set(), 副本奖励: new Set(), 丹方产出: new Set(), 锻造产出: new Set()
+    采集: new Set(), 掉落: new Set(), 坊市: new Set(), 副本奖励: new Set(), 丹方产出: new Set(), 锻造产出: new Set(),
+    宗门功法架: new Set(), 藏宝阁兑换: new Set()
   };
+  for (const e of shelfRows) if (String(e.kind) === '功法' && e.name) srcSets.宗门功法架.add(String(e.name));
+  try {
+    for (const e of (require('../src/data/sects.js').EXCHANGE_TABLE || [])) if (e && e.item) srcSets.藏宝阁兑换.add(String(e.item));
+  } catch (e) { /* 兑换表读不到则少一条来源，宁多报不漏报 */ }
   for (const mp of (data.maps || [])) for (const n of parseArr(mp.gather_nodes)) srcSets.采集.add(String(n));
   for (const m of monsters) for (const d of parseArr(m.drops)) { const n = nameOfId.get(Number(d && d.item_id !== undefined ? d.item_id : d)); if (n) srcSets.掉落.add(n); }
   for (const s of (data.shop || [])) { const n = nameOfId.get(Number(s.item_id)); if (n) srcSets.坊市.add(n); }
@@ -207,14 +237,23 @@ try {
   }
   for (const b of (data.blueprints || [])) for (const m of parseArr(b.materials)) if (m && m.name) consumedNames.add(String(m.name));
 
+  // 轮46：口径从"只看材料"扩到"实例化型物品"—— 材料（被配方消耗）、功法（POST /gongfa/equip 只认
+  // 背包里一件 type='功法' 的物品，否则 db.gongfa 永远 0 行）、灵宠（pet.js:84 同理）、
+  // 功法书（轮46 新接上的 /study 使用路径 —— 先有消费方，再要求获取路径，顺序不能反过来，
+  // 否则就是给一个没人用的类型硬造货架，把死定义刷成"看起来活着"）。拿不到 = 死内容。
+  const ACQUISITION_TYPES = new Set(['材料', '功法', '功法书', '灵宠']);
   const noSource = [];
+  const srcByType = {};
   for (const it of items) {
-    if (it.type !== '材料') continue;
+    if (!ACQUISITION_TYPES.has(it.type)) continue;
     const nm = String(it.name);
     const from = Object.keys(srcSets).filter((k) => srcSets[k].has(nm));
-    if (!from.length) noSource.push(`材料 ${nm}(#${it.id}) 无任何获取路径${consumedNames.has(nm) ? '，且被配方/图纸消耗 = 死链' : ''}`);
+    const bucket = (srcByType[it.type] = srcByType[it.type] || { total: 0, ok: 0 });
+    bucket.total++;
+    if (from.length) { bucket.ok++; continue; }
+    noSource.push(`${it.type} ${nm}(#${it.id}) 无任何获取路径${consumedNames.has(nm) ? '，且被配方/图纸消耗 = 死链' : ''}`);
   }
-  add('每个材料至少一条获取路径', noSource);
+  add('四类实例化型物品（材料/功法/功法书/灵宠）至少一条获取路径', noSource);
 
   const srcCount = Object.keys(srcSets).reduce((a, k) => a + srcSets[k].size, 0);
 
@@ -233,6 +272,8 @@ try {
   if (asJson) console.log(JSON.stringify({ total, edges: edges.map(e => ({ label: e.label, n: e.dangling.length, sample: e.dangling.slice(0, 20) })) }, null, 2));
   console.log(`\n技能 key 采集自: ${codeSkillSources.join(', ')}｜可识别 ${skillKeys.size} 个`);
   console.log(`来源路径索引规模（去重名计数之和）= ${srcCount}：${Object.keys(srcSets).map((k) => k + '=' + srcSets[k].size).join(' ')}｜消耗方名字 ${consumedNames.size} 个`);
+  // 轮46：按类型给出"实例化型物品"的获取覆盖率（功法/灵宠拿不到，对应集合就永远 0 行）
+  console.log(`实例化型物品获取覆盖：${Object.keys(srcByType).map((t) => `${t} ${srcByType[t].ok}/${srcByType[t].total}`).join('｜')}`);
   console.log(`集合行数: items=${items.length} monsters=${monsters.length} maps=${(data.maps || []).length} dungeons=${(data.dungeons || []).length} recipes=${(data.recipes || []).length} forge=${(data.forge_recipes || []).length} blueprints=${(data.blueprints || []).length} player_skills=${(data.player_skills || []).length}`);
   if (total) {
     console.log(`\n🔴 内容引用完整性不合格：共 ${total} 条悬空引用`);

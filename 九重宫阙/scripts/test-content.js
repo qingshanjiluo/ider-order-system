@@ -1992,22 +1992,34 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     const groups = [...cnt].filter(([, n]) => n > 1);
     assert.ok(groups.length <= 23, '重名组从 23 涨到 ' + groups.length + '：新增定义必须换名或复用既有 id（规划 T1-2 要求①）');
   });
-  t('npm run content:ensure 在位且幂等收敛（二次 changed 必须为 0）', () => {
+  t('npm run content:ensure 在位且**跨进程**幂等收敛（第二次的 changed 必须为 0）', () => {
     const pkg = require(path21.join(__dirname, '..', 'package.json'));
     assert.ok(pkg.scripts['content:ensure'], '未挂 npm run content:ensure（P1 补定义需要与 boot 同一道工序的显式入口）');
     const root = path21.join(__dirname, '..');
-    const r = require('child_process').spawnSync(process.execPath, [path21.join(root, 'scripts', 'ensure-content.js')], { cwd: root, encoding: 'utf8' });
-    const out = (r.stdout || '') + (r.stderr || '');
-    assert.strictEqual(r.status, 0, '内容回填不收敛或出错：' + out.split(String.fromCharCode(10)).slice(-6).join(' / '));
-    assert.ok(/二次运行 changed = 0/.test(out), '没有看到"二次运行 changed = 0"的收敛证据');
+    const runOnce = () => {
+      const r = require('child_process').spawnSync(process.execPath, [path21.join(root, 'scripts', 'ensure-content.js')], { cwd: root, encoding: 'utf8' });
+      const out = (r.stdout || '') + (r.stderr || '');
+      assert.strictEqual(r.status, 0, '内容回填不收敛或出错：' + out.split(String.fromCharCode(10)).slice(-6).join(' / '));
+      assert.ok(/二次运行 changed = 0/.test(out), '没有看到"二次运行 changed = 0"的收敛证据');
+      const m = out.match(/ensureAll changed = (\d+)/);
+      return { n: m ? Number(m[1]) : -1, out };
+    };
+    const first = runOnce();
+    const second = runOnce();
+    // 轮46：只测"同进程二次=0"是不够的 —— 丹方扩展表 resolve 的是 alchemy 模块内存表，
+    // 每个新进程都会重新 resolve 一次，曾经让 changed 恒虚报 4、boot 白落一次盘。
+    // 跨进程必须也收敛，否则"幂等"只是同一进程内的自我安慰。
+    assert.strictEqual(second.n, 0, `跨进程不收敛：第一次 changed=${first.n}，第二次仍 changed=${second.n}（说明有工序每次都改数据却存不住）\n      ${second.out.split(String.fromCharCode(10)).slice(0, 3).join(' / ')}`);
   });
   t('审计必须保留"获取路径闭合"这条边（不许靠删边把门禁变绿）', () => {
     const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'ref-integrity.js'), 'utf8');
-    assert.ok(/每个材料至少一条获取路径/.test(src), '引用完整性审计里的获取路径边不见了');
+    // 轮46：这条边已从"只看材料"扩到四类实例化型物品（材料/功法/功法书/灵宠），断言随之收紧
+    assert.ok(/实例化型物品（材料\/功法\/功法书\/灵宠）至少一条获取路径/.test(src), '引用完整性审计里的获取路径边不见了或口径被退回');
     assert.ok(/被配方\/图纸消耗 = 死链/.test(src), '死链（无来源却被消耗）标注不见了');
-    for (const k of ['采集', '掉落', '坊市', '副本奖励', '丹方产出', '锻造产出']) {
+    for (const k of ['采集', '掉落', '坊市', '副本奖励', '丹方产出', '锻造产出', '宗门功法架', '藏宝阁兑换']) {
       assert.ok(src.includes(k + ':'), '来源路径少了 ' + k + ' 一种口径');
     }
+    assert.ok(/功法书\.gongfa_id -> items\(type=功法\)/.test(src), '功法书 gongfa_id 的引用边不见了（研读闭环又没人校验了）');
   });
   console.log('== 册一期：P1 地图 32 / 副本 50 与"不得引入生成式软怪"（轮45）==');
   t('P1 数量下限：地图 ≥32、副本 ≥50（规划 T1-2 差口口径）', () => {
@@ -2131,6 +2143,103 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
       }
     }
     assert.ok(viol.length <= 2, '倒挂对从 2 涨到 ' + viol.length + '：新增地图必须给出高于所有更低段地图的挂机收益（P4 sim-economy 之前先不制造新的）\n      ' + viol.join('\n      '));
+  });
+  console.log('== 册二期：P1 功法 130 与"具名货架"可达性（轮46）==');
+  t('功法库 ≥130，且每条定义字段/词表/唯一性合法（P1 差口 82->130）', () => {
+    const gl = require(path21.join(__dirname, '..', 'src', 'data', 'gongfa-library.js'));
+    const lib = gl.GONGFA_LIBRARY;
+    assert.ok(lib.length >= 130, `功法库仅 ${lib.length} 门，未达 P1 目标 130`);
+    const nm = lib.map(g => String(g.name));
+    assert.strictEqual(new Set(nm).size, nm.length, '功法库有重名（幂等入库以 name 为键，重名会互相吞掉）');
+    const ids = lib.map(g => String(g.id));
+    assert.strictEqual(new Set(ids).size, ids.length, '功法库有重复 id');
+    const ladder = new Set(['黄阶', '玄阶', '地阶', '天阶', '圣阶', '仙阶']);
+    const el = new Set(['metal', 'wood', 'water', 'fire', 'earth', 'light', 'dark', 'none']);
+    for (const g of lib) {
+      assert.ok(ladder.has(String(g.quality)), `${g.name} 品阶 "${g.quality}" 不在功法梯`);
+      assert.ok(gl.REALM_LEVELS.includes(String(g.realm)), `${g.name} 适用境界 "${g.realm}" 不在 REALM_LEVELS`);
+      assert.ok(el.has(String(g.element)), `${g.name} 元素 "${g.element}" 非法`);
+      assert.ok(['修炼', '战斗'].includes(String(g.type)), `${g.name} type 须为 修炼/战斗`);
+      assert.ok(typeof g.upgradeable === 'boolean', `${g.name} upgradeable 须为布尔`);
+      assert.ok(Number.isInteger(g.realm_level) && g.realm_level >= 0, `${g.name} realm_level 非法`);
+    }
+    const up = lib.filter(g => g.upgradeable).length;
+    assert.ok(up >= 1 && up <= lib.length - 1, '可升级/不可升级必须混合');
+  });
+  t('宗门功法架必须真的被铺上（ensureSectBase 不得再是"导出无人调用"的幽灵函数）', () => {
+    const mat = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'services', 'materials.js'), 'utf8');
+    const sl = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'services', 'sect-library.js'), 'utf8');
+    assert.ok(/function ensureGongfaShelves/.test(sl), 'sect-library 里 ensureGongfaShelves 本体不见了');
+    assert.ok(/ensureSectBase\(db,\s*Number\(s\.id\)/.test(sl), 'ensureGongfaShelves 不再调用 ensureSectBase —— 宗门功法架又会变回空架');
+    assert.ok(/require\('\.\/sect-library'\)\.ensureGongfaShelves/.test(mat), 'materials.ensureAll 不再挂功法货架工序（boot 与 content:ensure 都会失效）');
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let sects = [], shelf = [];
+    try {
+      sects = dbf.prepare('SELECT id, key FROM sects').all();
+      shelf = dbf.prepare("SELECT sect_id, name FROM sect_library WHERE kind = '功法'").all();
+    } finally { dbf.close(); }
+    assert.ok(sects.length >= 18, `宗门只有 ${sects.length} 个，本锁失去依据`);
+    const per = {};
+    for (const r of shelf) per[Number(r.sect_id)] = (per[Number(r.sect_id)] || 0) + 1;
+    const bare = sects.filter(s => (per[Number(s.id)] || 0) < 4);
+    assert.deepStrictEqual(bare.map(s => `${s.key}=${per[Number(s.id)] || 0}`), [], `这些宗门的功法架不足 4 门：${bare.map(s => s.key).join(' ')}`);
+    assert.ok(shelf.length >= 72, `宗门功法架共 ${shelf.length} 行，应 ≥72（18 宗 × 4 门）`);
+  });
+  t('存档里每条 功法/灵宠/功法书 物品都必须有具名获取路径（坊市货架或宗门架）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let items = [], shop = [], shelf = new Set();
+    try {
+      items = dbf.prepare('SELECT data FROM col_items').all().map(r => JSON.parse(r.data));
+      shop = dbf.prepare('SELECT data FROM col_shop').all().map(r => JSON.parse(r.data));
+      try { shelf = new Set(dbf.prepare("SELECT name FROM sect_library WHERE kind = '功法'").all().map(r => String(r.name))); } catch (e) { shelf = new Set(); }
+    } finally { dbf.close(); }
+    const shopIds = new Set(shop.map(s => Number(s.item_id)));
+    const byId = new Map(items.map(i => [Number(i.id), i]));
+    const dead = [];
+    for (const it of items) {
+      if (!['功法', '灵宠', '功法书'].includes(it.type)) continue;
+      if (shopIds.has(Number(it.id))) continue;
+      if (it.type === '功法' && shelf.has(String(it.name))) continue;
+      dead.push(`${it.type} ${it.name}(#${it.id})`);
+    }
+    assert.deepStrictEqual(dead, [], `无具名获取路径的实例化型物品：${dead.slice(0, 8).join('、')}${dead.length > 8 ? ' …' : ''}（这类物品拿不到，gongfa/pets 集合就永远 0 行）`);
+    const books = items.filter(i => i.type === '功法书');
+    assert.ok(books.length >= 5, `功法书只剩 ${books.length} 本`);
+    for (const b of books) {
+      let st = {};
+      try { st = JSON.parse(b.stats || '{}'); } catch (e) { st = {}; }
+      const tg = byId.get(Number(st.gongfa_id));
+      assert.ok(tg && tg.type === '功法', `功法书 ${b.name} 的 gongfa_id 没指向真实功法（研读闭环断在半路）`);
+      assert.ok(shopIds.has(Number(b.id)), `功法书 ${b.name} 无坊市货架，玩家永远拿不到`);
+    }
+  });
+  t('功法书研读入口 /study 契约在位且拒绝伪造', () => {
+    const r = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'routes', 'gongfa.js'), 'utf8');
+    const body = r.slice(r.indexOf("'/study'"));
+    assert.ok(/router\.post\('\/study'/.test(r), 'POST /api/gongfa/study 不见了（功法书的消费方被删）');
+    for (const kw of ['不是功法书', '已修习过该功法', '指向的功法不存在', '，不是功法']) {
+      assert.ok(body.includes(kw), `/study 少了"${kw}"这条拒绝分支，会退化成兜底伪造`);
+    }
+    // 类型校验现在做进两条解析谓词里（id 与 name 都必须命中 type='功法' 才算数），
+    // 所以断言"两条都有类型过滤"，而不是去找那个已被更严格写法取代的独立 if。
+    assert.ok((body.match(/type === '功法'/g) || []).length >= 2, '/study 的 id 与按名两条解析路径必须各自过滤 type，否则会把材料当功法发出去（G1 套件实测过这个撞号）');
+    assert.ok(!/generateGongfa/.test(body), '/study 不得改用随机生成糊弄玩家');
+  });
+  t('学来的功法物品必须带合法 realm（learn 与货架两处都剥掉"期"后缀）', () => {
+    const sl = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'services', 'sect-library.js'), 'utf8');
+    assert.strictEqual((sl.match(/replace\(\/期\$\/, ''\)/g) || []).length, 2, 'learn() 与 ensureGongfaShelves() 各应剥一次"期"后缀');
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let items = [], realms = [];
+    try {
+      items = dbf.prepare('SELECT data FROM col_items').all().map(r => JSON.parse(r.data));
+      realms = dbf.prepare('SELECT data FROM col_realms').all().map(r => String(JSON.parse(r.data).name));
+    } finally { dbf.close(); }
+    const legal = new Set(realms);
+    const bad = items.filter(i => i.type === '功法' && i.realm && !legal.has(String(i.realm)));
+    assert.deepStrictEqual(bad.map(i => `${i.name}:${i.realm}`), [], '功法物品带着非法 realm（items.realm 边会红，境界适配判定落空）');
   });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }

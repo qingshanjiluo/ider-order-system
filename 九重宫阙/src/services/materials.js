@@ -235,7 +235,15 @@ const SHOP_CATALOG = [
   { name: '紫金锭', type: '材料', quality: '宝品', price: 1200,  stats: { tier: 3, role: 'main', element: 'metal', smelted: true }, desc: '紫金提炼的锭料，雷霆飞剑剑坯（锻造主材）' },
   { name: '星辰锭', type: '材料', quality: '仙品', price: 4000,  stats: { tier: 4, role: 'main', element: 'metal', smelted: true }, desc: '星辰矿炼出的仙料锭，可入高阶器方（原品质词误用装备梯"古宝"，已归物品梯）' },
   { name: '混沌锭', type: '材料', quality: '道品', price: 12000, stats: { tier: 5, role: 'main', element: 'none', smelted: true }, desc: '混沌矿炼出的道料锭，混沌甲阵核心（原品质词误用装备梯"灵宝"，已归物品梯）' },
-  { name: '丹炉灰', type: '材料', quality: '凡品', price: 25,    stats: { tier: 1, role: 'aux', element: 'fire' }, desc: '废弃丹炉余灰，含残余药力，可入杂方（坊市贱卖）' }
+  { name: '丹炉灰', type: '材料', quality: '凡品', price: 25,    stats: { tier: 1, role: 'aux', element: 'fire' }, desc: '废弃丹炉余灰，含残余药力，可入杂方（坊市贱卖）' },
+  // ---- 轮46：功法书（研读后可直接获得对应功法，见 routes/gongfa.js 的 /study）----
+  // 这 5 条自 expand-data 起就存在且带 stats.gongfa_id，却既无获取路径、又无人消费，是彻底的死定义；
+  // 本轮同时补上"使用"与"上架"两端。gongfa_id 指向 items 里的 功法 行（14~18），由 ref-integrity 新增边校验。
+  { name: '五行入门', type: '功法书', quality: '凡品', price: 400, stats: { gongfa_id: 14, gongfa: '基础剑诀', sell_price: 50 }, desc: '五行功法入门，研读后得「基础剑诀」' },
+  { name: '烈火剑经', type: '功法书', quality: '凡品', price: 500, stats: { gongfa_id: 15, gongfa: '烈火剑法', sell_price: 60 }, desc: '火属性剑法秘籍，研读后得「烈火剑法」' },
+  { name: '寒冰真解', type: '功法书', quality: '灵品', price: 1200, stats: { gongfa_id: 16, gongfa: '寒冰真诀', sell_price: 150 }, desc: '冰属性功法秘籍，研读后得「寒冰真诀」' },
+  { name: '雷霆秘典上册', type: '功法书', quality: '灵品', price: 1500, stats: { gongfa_id: 17, gongfa: '雷霆秘典', sell_price: 180 }, desc: '雷属性功法秘籍，研读后得「雷霆秘典」' },
+  { name: '天罡剑诀全本', type: '功法书', quality: '宝品', price: 4000, stats: { gongfa_id: 18, gongfa: '天罡剑诀', sell_price: 400 }, desc: '高级剑法秘籍，研读后得「天罡剑诀」' }
 ];
 
 // ---------- 器方/符方图纸库（按名称引用分级材料，学习消耗材料） ----------
@@ -383,6 +391,11 @@ function ensureAll(db) {
   const e = ensureBlueprints(db);
   const f = ensureEquipmentItems(db);
   const g = ensurePills(db);
+  // 轮46：功法/灵宠"具名货架"（T1-1 硬约束 2 的实际修复）—— ensureSectBase 此前"导出却无人调用"，
+  // 宗门功法架 4 行全是玩家上传的；同时非宗门典籍从未物化成物品，导致 功法 3/69 有获取路径、db.gongfa 恒 0。
+  // 放在卫生检查之前，让新物化的行也过一次归一。
+  let gs = 0;
+  try { gs = require('./sect-library').ensureGongfaShelves(db); } catch { /* 货架工序异常不阻断 boot */ }
   let du = 0;
   try { du = require('../data/dungeon-library').ensureDungeons(db); } catch { /* 副本库异常不阻断 */ }
   let hy = 0;
@@ -395,7 +408,11 @@ function ensureAll(db) {
   try { m = require('../data/monster-library').ensureMonsters(db); } catch { /* 怪物库异常不阻断 boot */ }
   let d = 0;
   try { const alchemy = require('../routes/alchemy'); if (alchemy.__ensureRecipes) { d = alchemy.__ensureRecipes(db) || 0; } } catch { /* alchemy 未就绪则跳过 */ }
-  return { materialItems: a0, materialGrades: a, shopEntries: b, maps: mp, mapNodes: c, blueprints: e, equipment: f, pills: g, dungeons: du, hygiene: hy, monsters: m, recipes: d, changed: a0 + a + b + mp + c + e + f + g + du + hy + m + d };
+  // 轮46：丹方扩展表 resolve 的是 alchemy 模块**内存里的** PILL_RECIPES，不写进存档，
+  // 所以它不能计入 changed —— 否则每个新进程都虚报 changed=4，server.js 白落一次盘，
+  // 而 content:ensure 的"二次 changed=0"幂等契约也就失去意义（跨进程根本不可能收敛）。
+  // 仍保留 recipes 字段供观测，只是不参与 changed。
+  return { materialItems: a0, materialGrades: a, shopEntries: b, maps: mp, mapNodes: c, blueprints: e, equipment: f, pills: g, gongfaShelves: gs, dungeons: du, hygiene: hy, monsters: m, recipes: d, changed: a0 + a + b + mp + c + e + f + g + gs + du + hy + m };
 }
 
 module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, BLUEPRINT_CATALOG, gradeOf, ensureAll, ensureMaterialGrades, ensureMaterialItems, ensureShopStock, ensureBlueprints, ensureEquipmentItems };

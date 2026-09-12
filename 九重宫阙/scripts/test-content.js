@@ -1601,8 +1601,9 @@ t('门禁洁净性：npm test 必须走 gate.js 外壳（store 有 20s autosave�
   const pkg24 = require(path21.join(__dirname, '..', 'package.json'));
   assert.strictEqual(pkg24.scripts.test, 'node scripts/gate.js', 'test 未走外壳：跑一次门禁就污染正式存档');
   const g = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'gate.js'), 'utf8');
-  assert.ok(/readFileSync\(DB\)/.test(g) && /writeFileSync\(DB, snapshot\)/.test(g), 'gate 没有快照/还原');
-  assert.ok(/Buffer\.compare\(back, snapshot\)/.test(g), 'gate 没校验还原结果（还原失败也会绿）');
+  // 锁语义而非变量名：gate.js 曾被改写成 FILES/snap/before 的循环形式，按标识符 grep 会误报
+  assert.ok(/readFileSync\(/.test(g) && /writeFileSync\(/.test(g), 'gate 没有快照/还原（需读入字节再写回）');
+  assert.ok(/Buffer\.compare\(/.test(g) && /exitCode = dirty \? 3|exitCode = 3/.test(g), 'gate 没校验还原结果（还原失败也必须让门禁变红）');
   assert.ok(/r\.status/.test(g), 'gate 未透传子进程退出码（门禁会假绿）');
 });
 console.log('== 廿五期：T0-1 应劫 Boss 选取（不出本境界、不抽池尾）==');
@@ -1757,6 +1758,23 @@ t('测量确定性锁：TTK 中位怪跑两遍必须逐位相同（本轮靠它�
   const p1 = measure(), p2 = measure();
   assert.strictEqual(p1, p2, '同一份数据的 TTK 测量两遍不一致 —— 伤害路径里混进了未声明的随机源');
 });
+t('内容真源 game.db 必须被 git 跟踪（轮40 恢复演练证明 .js 重建链不可用）', () => {
+  let out = '';
+  try {
+    out = require('child_process').execFileSync('git', ['ls-files', '--', '九重宫阙/data/game.db'],
+      { cwd: path21.join(__dirname, '..', '..'), encoding: 'utf8' }).trim();
+  } catch (e) {
+    console.log('  [跳过] git 不可用，无法校验跟踪状态：' + e.message.split(String.fromCharCode(10))[0]);
+    return;
+  }
+  assert.ok(out.length > 0, 'data/game.db 未被跟踪 —— 它是唯一含全部数值的存档，且 seed 链在全新克隆里跑不通（src/database.js:33 db.realms undefined），丢库等于丢掉 P0/P1 全部成果');
+});
+t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下脏 WAL，入库即缺数据）', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'gate.js'), 'utf8');
+  assert.ok(/game\.db-wal/.test(src) && /game\.db-shm/.test(src), 'gate.js 只管 game.db，测试留下的 WAL 会污染存档与备份');
+  assert.ok(/FILES/.test(src) && /unlinkSync/.test(src), 'gate.js 未对跑前不存在的 sidecar 做删除（凭空出现的文件会残留）');
+  assert.ok(!/if \(process\.exitCode !== 3\)/.test(src), '旧的还原判定分支还在（会被子进程退出码覆盖）');
+});;
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

@@ -158,6 +158,7 @@ function useSpecialStone(character, stoneName) {
       if (pick) {
         db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: pick.id, quantity: 1 });
         result.effect = `大机缘：功法「${pick.name}」`;
+        require('./gameTime').logEvent(character, 'fortune', `造化灵石·传承`, `于造化灵石中得功法传承「${pick.name}」`);
       } else result.effect = '机缘落空';
     }
   }

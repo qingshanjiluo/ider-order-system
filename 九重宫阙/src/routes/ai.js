@@ -136,6 +136,8 @@ router.post('/epiphany', auth, async (req, res) => {
       });
       db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: itemId, quantity: 1 });
       r.content.itemId = itemId;
+      // 阶段9：顿悟写入编年史
+      require('../services/gameTime').logEvent(character, 'epiphany', `顿悟创法·${r.content.name}`, r.content.desc);
     }
     saveDatabase(db);
     res.json(r);

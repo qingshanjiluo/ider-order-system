@@ -661,6 +661,17 @@ const api = {
     return this.request('POST', '/quests/complete', { questId });
   },
 
+  // 阶段9：剧情记年
+  async getChronicle() {
+    return this.request('GET', '/chronicle');
+  },
+  async getBiography() {
+    return this.request('GET', '/chronicle/biography');
+  },
+  async enhanceBiography() {
+    return this.request('POST', '/chronicle/biography/enhance', {});
+  },
+
   // Announcements
   async getAnnouncements() {
     return this.request('GET', '/announcements');

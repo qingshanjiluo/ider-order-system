@@ -181,6 +181,7 @@ async function loadTabContent(tab) {
       case 'talismans': await loadTalismansTab(); break;
       case 'formations': await loadFormationsTab(); break;
       case 'quests': await loadQuestsTab(); break;
+      case 'chronicle': await loadChronicleTab(); break;
       case 'forge': await loadForgeTab(); break;
       case 'alchemist': await loadAlchemistTab(); break;
       case 'gathering': await loadGatheringTab(); break;
@@ -2799,6 +2800,73 @@ function playBattleVictoryEffect() {
   if (battleArea) {
     battleArea.classList.add('vip-battle-victory');
     setTimeout(() => battleArea.classList.remove('vip-battle-victory'), 3000);
+  }
+}
+
+// 阶段9：剧情记年页——开局传记 + 按游戏年编年史 + AI 润色
+async function loadChronicleTab() {
+  const content = document.getElementById('tab-content');
+  content.innerHTML = `
+    <div class="char-panel">
+      <div class="char-panel-header">
+        <div class="char-panel-title">剧情记年</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <button class="btn small active" onclick="loadChronicleSub('biography', this)">开局传记</button>
+        <button class="btn small" onclick="loadChronicleSub('events', this)">编年史</button>
+      </div>
+      <div id="chronicle-sub"></div>
+    </div>`;
+  await loadChronicleSub('biography', document.querySelector('#tab-content .btn.small'));
+}
+
+async function loadChronicleSub(sub, btn) {
+  if (btn) {
+    document.querySelectorAll('#tab-content .char-panel .btn.small').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const box = document.getElementById('chronicle-sub');
+  box.innerHTML = '<div style="color:var(--text2);font-size:12px;">加载中…</div>';
+  try {
+    if (sub === 'biography') {
+      const bio = await api.getBiography();
+      const paras = [...(bio.paragraphs || []), ...(bio.aiParagraphs || [])];
+      box.innerHTML = `
+        <div style="padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${bio.origin} ${bio.constitution ? `<span style="color:#c9a227;font-size:11px;">【${bio.constitution}】</span>` : ''}</div>
+          ${paras.map(p => `<p style="font-size:12px;line-height:1.8;color:var(--text);margin:0 0 8px;">${p}</p>`).join('')}
+          <button class="btn small" onclick="enhanceBiography(this)">AI 润色传记</button>
+          <span id="bio-enhance-msg" style="font-size:11px;color:var(--text2);margin-left:6px;"></span>
+        </div>`;
+    } else {
+      const data = await api.getChronicle();
+      box.innerHTML = `
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">当前 ${data.character.reincarnationCount} 世 · 现龄 ${data.currentAge} 岁</div>
+        <div style="border-left:2px solid var(--border);padding-left:12px;">
+          ${(data.events || []).map(e => `
+            <div style="margin-bottom:10px;">
+              <div style="font-size:11px;color:var(--text2);">${e.age} 岁 · ${e.typeTitle}</div>
+              <div style="font-size:12px;font-weight:600;">${e.title || ''}</div>
+              <div style="font-size:12px;color:var(--text);line-height:1.6;">${e.content || ''}</div>
+            </div>`).join('') || '<div style="font-size:12px;color:var(--text2);">尚无记年事件</div>'}
+        </div>`;
+    }
+  } catch (e) {
+    box.innerHTML = `<div style="color:#e74c3c;font-size:12px;">${e.message}</div>`;
+  }
+}
+
+async function enhanceBiography(btn) {
+  const msg = document.getElementById('bio-enhance-msg');
+  btn.disabled = true;
+  try {
+    const r = await api.enhanceBiography();
+    msg.textContent = r.message || '已提交';
+    if (r.status === 'approved') await loadChronicleSub('biography', document.querySelector('#tab-content .btn.small.active'));
+  } catch (e) {
+    msg.textContent = e.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 

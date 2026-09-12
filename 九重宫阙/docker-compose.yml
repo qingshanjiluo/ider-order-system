@@ -1,3 +1,6 @@
+# 显式项目名：中文目录会让 compose 派生出空项目名（project name must not be empty）
+name: jiuchong-gongque
+
 services:
   web:
     build: .

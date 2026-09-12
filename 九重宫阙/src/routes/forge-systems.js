@@ -15,6 +15,10 @@ const {
   STYLE_MARKS,
   generateEquipmentName,
 } = require('../data/forge-systems');
+// 轮43：词条炼器原先把 realm 硬编码成 '未知'，且不校验 quality ——
+// 结果 items 里混进 realm:"未知" 的脏定义（引用完整性审计抓到 3 件）。
+// 品质与境界一律取自装备库的真源，价格表补齐整条品质梯（原先 法宝 不在表内，前端标 2000 实收 100）。
+const { QUALITY_LADDER, REALM_BY_QUALITY } = require('../data/equipment-library');
 
 router.get('/refine-info', auth, (req, res) => {
   try {
@@ -310,8 +314,15 @@ router.post('/generate-named', auth, (req, res) => {
       return res.status(404).json({ error: '角色不存在' });
     }
 
-    const qualityMap = { 凡器: 0, 法器: 100, 灵器: 500, 仙器: 2000, 神器: 5000 };
-    const cost = qualityMap[quality] || 100;
+    // 品质必须是装备梯上的合法值（前端只提供 凡器/法器/灵器/法宝，全部在梯上）；
+    // 非法品质直接 400，不再静默造出 realm:"未知" 的脏物品。
+    const qIdx = QUALITY_LADDER.indexOf(quality);
+    if (qIdx < 0) {
+      return res.status(400).json({ error: `品质非法: ${quality}`, allowed: QUALITY_LADDER });
+    }
+    // 整条装备品质梯都有价，且与前端标价一致（旧表漏了 法宝/古宝/灵宝/道器，选 法宝 标 2000 实收 100）
+    const qualityMap = { 凡器: 100, 法器: 300, 灵器: 800, 法宝: 2000, 古宝: 5000, 灵宝: 12000, 道器: 30000, 仙器: 80000 };
+    const cost = qualityMap[quality];
     if ((character.spirit_stone || 0) < cost) {
       return res.status(400).json({ error: '灵石不足', required: cost });
     }
@@ -348,7 +359,7 @@ router.post('/generate-named', auth, (req, res) => {
       name,
       type: '装备',
       quality,
-      realm: '未知',
+      realm: REALM_BY_QUALITY[qIdx],
       stats: JSON.stringify(statsMap),
       description: `由锻造坊精心打造的${name}`,
       subtype: slot,

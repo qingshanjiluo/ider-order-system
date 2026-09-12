@@ -299,7 +299,11 @@ function ensureAll(db) {
   let du = 0;
   try { du = require('../data/dungeon-library').ensureDungeons(db); } catch { /* 副本库异常不阻断 */ }
   let hy = 0;
-  try { hy = require('./data-hygiene').normalizeQualities(db); } catch { /* 卫生检查异常不阻断 */ }
+  try {
+    const hyg = require('./data-hygiene');
+    // 轮43：卫生检查同时归一 quality 与 realm（realm 曾被词条炼器写成 '未知'，污染 items 定义）
+    hy = hyg.normalizeQualities(db) + hyg.normalizeRealms(db);
+  } catch { /* 卫生检查异常不阻断 */ }
   let m = 0;
   try { m = require('../data/monster-library').ensureMonsters(db); } catch { /* 怪物库异常不阻断 boot */ }
   let d = 0;

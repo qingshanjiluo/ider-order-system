@@ -24,7 +24,9 @@
     "content:export": "node src/scripts/content-sync.js export",
     "seed:content": "node src/scripts/content-sync.js import",
     "verify:rebuild": "node scripts/rebuild-check.js",
-    "verify:drift": "node scripts/drift-probe.js"
+    "verify:drift": "node scripts/drift-probe.js",
+    "verify:refs": "node scripts/ref-integrity.js",
+    "hygiene": "node scripts/run-hygiene.js"
   },
   "engines": {
     "node": ">=20.11"

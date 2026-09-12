@@ -1850,6 +1850,63 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     assert.ok(/nChg\+\+/.test(cs) && /db\[name\]\[i\] = row/.test(cs), 'content-sync import 必须仍是按 id 覆盖式对齐（只补缺无法收敛 seed 与台账的差异）');
     assert.ok(/补入 ' \+ added \+ ' 行，覆盖 /.test(cs), 'import 必须同时报告补入行数与覆盖行数（幂等判据要求两者都为 0）');
   });
+  console.log('== 廿八期：内容引用完整性（轮43）==');
+  t('引用完整性审计必须 0 悬空（掉落/地图/采集/配方/图纸/副本奖励/技能/境界九条边全闭合）', () => {
+    if (process.env.DSH_SKIP_REF_CHECK === '1') { console.log('  [跳过] DSH_SKIP_REF_CHECK=1'); return; }
+    const pkg = require(path21.join(__dirname, '..', 'package.json'));
+    assert.ok(pkg.scripts['verify:refs'], '未挂 npm run verify:refs');
+    assert.ok(pkg.scripts['hygiene'], '未挂 npm run hygiene（内容卫生需要显式入口，不能只在 boot 里跑）');
+    const root = path21.join(__dirname, '..');
+    const r = require('child_process').spawnSync(process.execPath, [path21.join(root, 'scripts', 'ref-integrity.js')], { cwd: root, encoding: 'utf8' });
+    const out = (r.stdout || '') + (r.stderr || '');
+    assert.strictEqual(r.status, 0, '引用完整性不合格：' + out.split(String.fromCharCode(10)).slice(-10).join(' / '));
+    assert.ok(/全部引用边闭合/.test(out), '审计没有给出"闭合"结论');
+    assert.ok(/可识别 (\d+) 个/.test(out), '技能真源没有从代码里取到（说明 require 深走失败，player_skills 边形同虚设）');
+    const n = Number((out.match(/可识别 (\d+) 个/) || [])[1] || 0);
+    assert.ok(n >= 200, '代码技能表只认出 ' + n + ' 个 id，少于 P1 基线 214 —— 采集面失效会让 skill_id 边假绿');
+  });
+  t('存档里不得存在 realm 悬空的物品（直接判数据，不只依赖审计脚本）', () => {
+    const { DatabaseSync } = require('node:sqlite');
+    const dbf = new DatabaseSync(path21.join(__dirname, '..', 'data', 'game.db'), { readOnly: true });
+    let realms = [], items = [];
+    try {
+      realms = dbf.prepare('SELECT data FROM col_realms').all().map(x => String(JSON.parse(x.data).name));
+      items = dbf.prepare('SELECT data FROM col_items').all().map(x => JSON.parse(x.data));
+    } finally { dbf.close(); }
+    const legal = new Set(realms);
+    assert.ok(legal.size >= 10, '境界表读不到（' + realms.length + ' 行），本锁失去依据');
+    const bad = items.filter(o => o.realm && !legal.has(String(o.realm)));
+    assert.deepStrictEqual(bad.map(o => o.name + '#' + o.id + '=' + o.realm), [], 'items 里存在 realm 悬空的定义（轮43 曾查出 3 件 realm:"未知"）');
+  });
+  t('词条炼器不得再硬编码 realm，且必须校验品质（污染源头的闸）', () => {
+    const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'routes', 'forge-systems.js'), 'utf8');
+    assert.ok(!/realm:\s*'未知'/.test(src), "forge-systems 又出现 realm:'未知' 硬编码");
+    assert.ok(/QUALITY_LADDER\.indexOf\(quality\)/.test(src), '品质未校验：非法值会再次造出脏物品定义');
+    assert.ok(/REALM_BY_QUALITY\[qIdx\]/.test(src), 'realm 必须由装备库的品质梯推出，不许写死');
+    assert.ok(/法宝: 2000/.test(src), '价格表缺 法宝 档：前端标 2000 而后端按默认收 100（轮43 修的账目不一致）');
+  });
+  t('normalizeRealms 必须幂等，且境界表缺失时一个字段都不许改', () => {
+    const hyg = require(path21.join(__dirname, '..', 'src', 'services', 'data-hygiene.js'));
+    assert.strictEqual(typeof hyg.normalizeRealms, 'function', 'data-hygiene 不再导出 normalizeRealms');
+    const mk = () => ({
+      realms: [{ id: 1, name: '炼气' }, { id: 3, name: '筑基' }],
+      items: [
+        { id: 1, name: '好剑', realm: '炼气', quality: '凡器', stats: '{}' },
+        { id: 2, name: '脏剑', realm: '未知', quality: '灵器', stats: '{}' },
+        { id: 3, name: '无境界物品' }
+      ]
+    });
+    const db1 = mk();
+    assert.strictEqual(hyg.normalizeRealms(db1), 1, '应只修 1 条 realm 悬空行');
+    assert.strictEqual(db1.items[1].realm, '筑基', 'realm 应按品质梯推出（灵器 -> 筑基）');
+    assert.ok(/legacy_realm/.test(db1.items[1].stats), '原始值必须留在 stats.legacy_realm 以便追溯');
+    assert.strictEqual(db1.items[0].realm, '炼气', '合法 realm 不许动');
+    assert.strictEqual(db1.items[2].realm, undefined, 'realm 缺失不该被凭空补上');
+    assert.strictEqual(hyg.normalizeRealms(db1), 0, '二次运行必须 0 修复（幂等）');
+    const noRealms = { realms: [], items: [{ id: 9, name: '脏', realm: '未知', quality: '法器', stats: '{}' }] };
+    assert.strictEqual(hyg.normalizeRealms(noRealms), 0, '境界表为空时不许改写存档（宁可不修也不用猜的集合污染数据）');
+    assert.strictEqual(noRealms.items[0].realm, '未知');
+  });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

@@ -428,5 +428,75 @@ t('ensureAll 幂等：真实库二次执行零变更', () => {
   assert.strictEqual(r2.changed, 0, `二次变更 ${r2.changed} 项`);
 });
 
+console.log('== 八期：丹药图鉴 + 副本扩充 + 数据卫生 ==');
+const pillLib = require('../src/data/pill-library');
+const dungeonLib = require('../src/data/dungeon-library');
+const hygiene = require('../src/services/data-hygiene');
+t(`丹药图鉴 ≥ 23（实际 ${pillLib.PILLS.length}）且五品阶齐备`, () => {
+  assert.ok(pillLib.PILLS.length >= 23, `仅 ${pillLib.PILLS.length}`);
+  for (const q of ['凡品', '灵品', '宝品', '仙品', '道品']) {
+    assert.ok(pillLib.PILLS.some(p => p.quality === q), `缺 ${q} 丹药`);
+  }
+});
+t('丹药品质递增 → 效果递增（同类别）', () => {
+  const boosts = ['凡品', '灵品', '宝品', '仙品', '道品'].map(q => {
+    const p = pillLib.PILLS.find(x => x.quality === q && x.buff.type === 'attack');
+    return p ? p.buff.value : null;
+  }).filter(Boolean);
+  for (let i = 1; i < boosts.length; i++) assert.ok(boosts[i] > boosts[i - 1], '增益未随品阶递增');
+});
+t('每种丹药均有 buff 定义（可使用）', () => {
+  for (const p of pillLib.PILLS) {
+    assert.ok(pillLib.PILL_BUFFS[p.name], `${p.name} 缺 buff`);
+    assert.ok(['exp', 'attack', 'defense', 'speed', 'all'].includes(p.buff.type), `${p.name} buff 类型非法`);
+    assert.ok(p.buff.duration > 0 && p.buff.value > 1, `${p.name} 数值异常`);
+  }
+  // 走真实使用管线
+  const r = buffService.applyGuildShopBuff(-999, '大道丹');
+  assert.ok(r.success, '道品丹药使用失败');
+});
+t('丹药入库且低阶上架坊市', () => {
+  const fakeDb = { items: [], shop: [], maps: [], blueprints: [], dungeons: [], id_counters: {} };
+  const r = materials.ensureAll(fakeDb);
+  assert.ok(r.pills >= pillLib.PILLS.length, `入库 ${r.pills}`);
+  for (const name of ['养气丹', '通脉丹', '玄元丹', '太清丹', '道韵丹']) {
+    assert.ok(fakeDb.items.find(i => i.name === name && i.type === '丹药'), `${name} 未入库`);
+  }
+  const shopNames = fakeDb.shop.map(s => fakeDb.items.find(i => i.id === s.item_id)).filter(Boolean).map(i => i.name);
+  assert.ok(shopNames.includes('养气丹') && shopNames.includes('通脉丹'), '低阶丹药未上架');
+  assert.ok(!shopNames.includes('道韵丹'), '道品丹药不应直接出售');
+});
+t(`副本图鉴 ≥ 32（当前含新增 ${dungeonLib.DUNGEONS.length} 个）`, () => {
+  assert.ok(dungeonLib.DUNGEONS.length >= 17, `仅 ${dungeonLib.DUNGEONS.length}`);
+  const types = new Set(dungeonLib.DUNGEONS.map(d => d.type));
+  assert.ok(types.size >= 4, `副本类型仅 ${[...types].join('/')}`);
+});
+t('副本奖励随难度阶梯递增', () => {
+  const sorted = [...dungeonLib.DUNGEONS].sort((a, b) => a.difficulty - b.difficulty);
+  const r1 = dungeonLib.rewardsFor(sorted[0]);
+  const r2 = dungeonLib.rewardsFor(sorted[sorted.length - 1]);
+  assert.ok(r2.exp > r1.exp && r2.spiritStone > r1.spiritStone, '奖励未递增');
+});
+t('副本播种幂等（二次零新增）', () => {
+  const fakeDb = { dungeons: [] };
+  assert.strictEqual(dungeonLib.ensureDungeons(fakeDb), dungeonLib.DUNGEONS.length);
+  assert.strictEqual(dungeonLib.ensureDungeons(fakeDb), 0);
+});
+t('数据卫生：非法品阶归一且保留原始值', () => {
+  const fakeDb = {
+    items: [
+      { id: 1, name: '太极图', type: '装备', quality: '混沌至宝', stats: '{}' },
+      { id: 2, name: '怪剑', type: '装备', quality: '??', stats: '{}' },
+      { id: 3, name: '正常剑', type: '装备', quality: '法器', stats: '{}' }
+    ]
+  };
+  assert.strictEqual(hygiene.normalizeQualities(fakeDb), 2, '应修 2 条');
+  assert.strictEqual(fakeDb.items[0].quality, '道器');
+  assert.strictEqual(fakeDb.items[1].quality, '法器');
+  assert.strictEqual(JSON.parse(fakeDb.items[0].stats).legacy_quality, '混沌至宝', '未保留原值');
+  assert.strictEqual(hygiene.normalizeQualities(fakeDb), 0, '二次应零修复');
+  for (const it of fakeDb.items) assert.ok(hygiene.LEGAL_QUALITIES.has(it.quality), '仍有非法品阶');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

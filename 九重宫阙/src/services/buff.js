@@ -56,7 +56,10 @@ class BuffService {
   }
 
   applyGuildShopBuff(characterId, itemName) {
+    const { PILL_BUFFS } = require('../data/pill-library');
     const buffDefinitions = {
+      // 丹药图鉴（单一数据源：data/pill-library.js）
+      ...PILL_BUFFS,
       '培元丹': { type: 'exp', value: 1.5, duration: 3600000 },
       '聚灵丹': { type: 'attack', value: 1.2, duration: 3600000 },
       '铁壁丹': { type: 'defense', value: 1.2, duration: 3600000 },

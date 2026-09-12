@@ -262,6 +262,31 @@ function ensureEquipmentItems(db) {
   return changed;
 }
 
+/** 丹药图鉴入库（内容富集八期）：五品阶 23 种，凡品/灵品上架坊市 */
+function ensurePills(db) {
+  const { PILLS, PILL_SHOP_QUALITIES } = require('../data/pill-library');
+  if (!db.items) db.items = [];
+  if (!db.shop) db.shop = [];
+  let changed = 0;
+  for (const def of PILLS) {
+    let item = db.items.find(i => i.name === def.name && i.type === '丹药');
+    if (!item) {
+      const id = getNextId('items');
+      db.items.push({
+        id, name: def.name, type: '丹药', quality: def.quality,
+        stats: JSON.stringify({ category: def.category, buff: def.buff }), description: def.desc
+      });
+      item = db.items.find(i => i.id === id);
+      changed++;
+    }
+    if (PILL_SHOP_QUALITIES.includes(def.quality) && !db.shop.find(s => s.item_id === item.id)) {
+      db.shop.push({ id: getNextId('shop'), item_id: item.id, price: def.price, stock: 999, description: def.desc });
+      changed++;
+    }
+  }
+  return changed;
+}
+
 function ensureAll(db) {
   const a0 = ensureMaterialItems(db);
   const a = ensureMaterialGrades(db);
@@ -269,11 +294,16 @@ function ensureAll(db) {
   const c = ensureMapNodes(db);
   const e = ensureBlueprints(db);
   const f = ensureEquipmentItems(db);
+  const g = ensurePills(db);
+  let du = 0;
+  try { du = require('../data/dungeon-library').ensureDungeons(db); } catch { /* 副本库异常不阻断 */ }
+  let hy = 0;
+  try { hy = require('./data-hygiene').normalizeQualities(db); } catch { /* 卫生检查异常不阻断 */ }
   let m = 0;
   try { m = require('../data/monster-library').ensureMonsters(db); } catch { /* 怪物库异常不阻断 boot */ }
   let d = 0;
   try { const alchemy = require('../routes/alchemy'); if (alchemy.__ensureRecipes) { d = alchemy.__ensureRecipes(db) || 0; } } catch { /* alchemy 未就绪则跳过 */ }
-  return { materialItems: a0, materialGrades: a, shopEntries: b, mapNodes: c, blueprints: e, equipment: f, monsters: m, recipes: d, changed: a0 + a + b + c + e + f + m + d };
+  return { materialItems: a0, materialGrades: a, shopEntries: b, mapNodes: c, blueprints: e, equipment: f, pills: g, dungeons: du, hygiene: hy, monsters: m, recipes: d, changed: a0 + a + b + c + e + f + g + du + hy + m + d };
 }
 
 module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, BLUEPRINT_CATALOG, gradeOf, ensureAll, ensureMaterialGrades, ensureMaterialItems, ensureShopStock, ensureBlueprints, ensureEquipmentItems };

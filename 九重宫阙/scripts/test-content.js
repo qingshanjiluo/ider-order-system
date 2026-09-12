@@ -551,5 +551,53 @@ t('探索/通关记录已接线到对应路由', () => {
   assert.ok(s.includes("app.use('/api/achievement'"), '成就路由未挂载');
 });
 
+console.log('== 十期：D5 寿元定稿（A 案）+ 比例制数值单点 ==');
+const balance = require('../src/config/balance');
+const gameTime = require('../src/services/gameTime');
+const REALM_ORDER = ['凡人', '炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫'];
+t('balance 与 gameTime 寿元曲线全等（A 案锁死，禁漂移）', () => {
+  assert.deepStrictEqual(balance.LIFESPAN_YEARS, gameTime.LIFESPAN_BY_REALM);
+  assert.strictEqual(balance.LIFESPAN_CAP, gameTime.LIFESPAN_CAP);
+  assert.strictEqual(balance.LIFESPAN_YEARS['渡劫'], 1000000, 'A 案：渡劫=100万为顶');
+  assert.strictEqual(balance.LIFESPAN_YEARS['飞升'], null, '飞升须为超脱(null)');
+});
+t('cap 随境界严格单调递增（突破即续命的数学表达）', () => {
+  for (let i = 1; i < REALM_ORDER.length; i++) {
+    const prev = balance.lifespanOf(REALM_ORDER[i - 1]);
+    const cur = balance.lifespanOf(REALM_ORDER[i]);
+    assert.ok(cur > prev, `${REALM_ORDER[i]}(${cur}) 未大于 ${REALM_ORDER[i - 1]}(${prev})`);
+  }
+  assert.strictEqual(balance.lifespanOf('化神'), 20000);
+  assert.strictEqual(balance.lifespanOf('合体'), 100000);
+  assert.strictEqual(balance.lifespanOf('未知境'), 100, '未知境界应回落凡人数值');
+});
+t('每级 +1% 续命通道存在且随境界放大', () => {
+  assert.strictEqual(balance.LEVEL_LIFESPAN_GAIN, 0.01);
+  const src = require('fs').readFileSync('src/services/character.js', 'utf8');
+  assert.ok(/getLifespanBase/.test(src) && /lifespan_bonus_years/.test(src), '升级续命钩子丢失');
+  const perLevelLianqi = balance.lifespanOf('炼气') * balance.LEVEL_LIFESPAN_GAIN;
+  const perLevelDujie = balance.lifespanOf('渡劫') * balance.LEVEL_LIFESPAN_GAIN;
+  assert.strictEqual(perLevelLianqi, 2);
+  assert.strictEqual(perLevelDujie, 10000, '高境界每级收益应同步放大');
+});
+t('折寿/延寿一律比例制（大数量级下仍有效）', () => {
+  assert.ok(balance.INJURY_LIFE_COST.defeat === 0.02 && balance.INJURY_LIFE_COST.nearDeath === 0.01);
+  assert.strictEqual(balance.yearsOfRatio(1000000, 0.01), 10000, '渡劫期 1% 必须等于一万年起跳');
+  assert.strictEqual(balance.yearsOfRatio(100, 0.0001), 1, '小 cap 至少扣 1 年（不得归零）');
+  for (const r of Object.values(balance.LIFE_BURN_TIERS)) assert.ok(r.costRatio > 0 && r.speedMult > 1);
+  assert.ok(balance.LONGEVITY_BONUS_CAP_RATIO > 0 && balance.LONGEVITY_BONUS_CAP_RATIO < 1, '延寿封顶比例非法');
+});
+t('枯竭四级与突破 base 表完整', () => {
+  assert.strictEqual(balance.depletionTier(200, 150).key, 'safe');
+  assert.strictEqual(balance.depletionTier(200, 55).key, 'warn');
+  assert.strictEqual(balance.depletionTier(200, 25).key, 'danger');
+  assert.strictEqual(balance.depletionTier(200, 8).key, 'dying');
+  assert.strictEqual(balance.depletionTier(200, 8).speedMult, 0.7);
+  assert.strictEqual(balance.depletionTier(null, 0).key, 'safe', '飞升超脱不参与枯竭');
+  for (const r of REALM_ORDER.slice(1)) assert.ok(Number.isFinite(balance.BREAKTHROUGH_BASE[r]), `缺 ${r} 突破基准`);
+  assert.ok(balance.BREAKTHROUGH_BASE['炼气'] > balance.BREAKTHROUGH_BASE['渡劫'], '高境界应更难');
+  assert.strictEqual(balance.SPEED_CAP_TOTAL, 12);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

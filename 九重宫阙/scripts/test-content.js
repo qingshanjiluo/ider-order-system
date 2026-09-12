@@ -811,5 +811,63 @@ t('回合计数不再差一（rounds: round 而非 round - 1）', () => {
   assert.ok(/if \(round >= 50\)/.test(src), '超时上限判定未随新计数方式调整');
 });
 
+console.log('== 十七期：E3 怪物模板真正入战（修 id 被当 mapId）==');
+t('buildMonsterFromTemplate：等级落在 level_range、属性走 stats(JSON 串)约定、必有 speed', () => {
+  const cm = require('../src/services/battle/combat');
+  const svc = typeof cm === 'function' ? new cm() : cm;
+  assert.strictEqual(typeof svc.buildMonsterFromTemplate, 'function', '模板实例化方法未挂上');
+  const m = svc.buildMonsterFromTemplate({
+    id: 7, name: '测试兽', level_range: [10, 12], element: 'fire',
+    stats: '{"attack":100,"defense":40,"hp":500}', drops: [{ item_id: 1 }]
+  });
+  assert.ok(m.level >= 10 && m.level <= 12, `等级越界：${m.level}`);
+  assert.strictEqual(m.name, '测试兽');
+  assert.ok(m.attack >= 100 && m.defense >= 40 && m.hp >= 500, `stats 未被解析：${m.attack}/${m.defense}/${m.hp}`);
+  assert.strictEqual(m.maxHp, m.hp, 'maxHp 应与 hp 一致，否则血条显示错乱');
+  assert.ok(m.speed >= 1, `模板缺 speed 时必须推导，实得 ${m.speed}`);
+  assert.ok(Array.isArray(m.drops) && m.drops.length === 1, 'drops 未透传（86 行模板的掉落字段应可被后续接线使用）');
+});
+t('坏数据不崩：stats 非 JSON、level_range 缺失/倒置都能降级', () => {
+  const cm = require('../src/services/battle/combat');
+  const svc = typeof cm === 'function' ? new cm() : cm;
+  const a = svc.buildMonsterFromTemplate({ id: 1, name: 'A', stats: 'not-json' });
+  assert.ok(a.hp > 0 && a.speed >= 1);
+  const b = svc.buildMonsterFromTemplate({ id: 2, name: 'B', level_range: [9, 3], stats: null });
+  assert.ok(b.level >= 3 && b.level <= 9, `倒置区间未兜底：${b.level}`);
+  const c = svc.buildMonsterFromTemplate({ id: 3, name: 'C' });
+  assert.ok(c.level >= 1 && c.hp > 0 && Number.isFinite(c.attack));
+});
+t('getEntity 先查怪物模板：高 id（超出地图数）不再返回 null', () => {
+  const cm = require('../src/services/battle/combat');
+  const svc = typeof cm === 'function' ? new cm() : cm;
+  const db = require('../src/database').loadDatabase();
+  const mapCount = (db.maps || []).length;
+  const high = (db.monsters || []).filter(m => m.id > mapCount).sort((a, b) => a.id - b.id)[0];
+  assert.ok(high, `找不到 id > 地图数(${mapCount}) 的怪物模板，无法验证该回归`);
+  const m = svc.getEntity(high.id, 'monster', db);
+  assert.ok(m, `怪物模板 id=${high.id} 仍取不到（旧实现把它当 mapId → null）`);
+  assert.strictEqual(m.name, high.name, `取到的不是该模板（拿到 ${m.name}）`);
+  assert.strictEqual(m.templateId, high.id);
+});
+t('彻底不存在的 id 仍安全降级为 null（不抛错）', () => {
+  const cm = require('../src/services/battle/combat');
+  const svc = typeof cm === 'function' ? new cm() : cm;
+  const db = require('../src/database').loadDatabase();
+  assert.strictEqual(svc.getEntity(999999, 'monster', db), null);
+});
+t('全部 86 行模板都能实例化且有 speed（PVE 先手自此有数据源）', () => {
+  const cm = require('../src/services/battle/combat');
+  const svc = typeof cm === 'function' ? new cm() : cm;
+  const db = require('../src/database').loadDatabase();
+  const ms = db.monsters || [];
+  assert.ok(ms.length >= 86, `怪物模板行数退化为 ${ms.length}`);
+  let bad = 0;
+  for (const t of ms) {
+    const m = svc.buildMonsterFromTemplate(t);
+    if (!m || !(m.speed >= 1) || !(m.hp > 0) || !m.name) bad++;
+  }
+  assert.strictEqual(bad, 0, `${bad} 行模板无法实例化`);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

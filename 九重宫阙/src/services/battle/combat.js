@@ -213,9 +213,48 @@ class CombatService {
         injuryHeavy: injuryDebuff.heavy
       };
     } else if (type === 'monster' || type === 'custom') {
+      // E3：先按怪物模板取。此前 id 被直接当成 mapId 传给 generateMonster，
+      // 导致 db.monsters 的 86 行模板在战斗中从未使用，且 id > 地图数时整只怪为 null。
+      const tpl = (db.monsters || []).find(x => x.id === id);
+      if (tpl) return this.buildMonsterFromTemplate(tpl);
       return this.generateMonster(id, db);
     }
     return null;
+  }
+
+  /**
+   * 由怪物模板实例化战斗单位。
+   * 等级在 level_range 内随机；stats 按本仓约定是 JSON 字符串（角色侧同样 JSON.parse）；
+   * 模板普遍缺 speed → 按等级推导，使先手判定在 PVE 真正生效（此前恒归攻方）。
+   */
+  buildMonsterFromTemplate(tpl) {
+    const range = Array.isArray(tpl.level_range) ? tpl.level_range : [1, 3];
+    const lo = Math.max(1, Number(range[0]) || 1);
+    const hi = Math.max(lo, Number(range[1]) || lo);
+    const level = lo + Math.floor(Math.random() * (hi - lo + 1));
+
+    let s = tpl.stats;
+    if (typeof s === 'string') { try { s = JSON.parse(s || '{}'); } catch (e) { s = {}; } }
+    s = s && typeof s === 'object' ? s : {};
+
+    const scale = 1 + (level - 1) * 0.12;
+    const hp = Math.floor((Number(s.hp) || 60) * scale);
+    const derivedSpeed = Math.floor(Number(s.speed) || (5 + level * 0.4));
+    return {
+      id: `monster_${tpl.id}_${Date.now()}`,
+      templateId: tpl.id,
+      name: tpl.name,
+      level,
+      hp,
+      maxHp: hp,
+      attack: Math.floor((Number(s.attack) || 8) * scale),
+      defense: Math.floor((Number(s.defense) || 5) * scale),
+      speed: Math.max(1, derivedSpeed),
+      crit_rate: s.crit_rate != null ? Number(s.crit_rate) : 0.03,
+      element: this.normalizeElement(tpl.element || s.element),
+      skills: [],
+      drops: tpl.drops || []
+    };
   }
 
   getCharacterSkills(characterId, db) {

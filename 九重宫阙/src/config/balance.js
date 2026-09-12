@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 数值单点（AD-5 落地 · 首批：寿元与突破）
  * 依据：方案规划v2/02-对比分析/04-决议记录与实施影响.md §D1/§D5（2026-09-11 裁决）
  *      + 2025-01-16 A 案确认（渡劫 = 100 万年为顶，与 gameTime.js 现行曲线一致）
@@ -192,3 +192,13 @@ module.exports.CULTIVATION_MODEL = CULTIVATION_MODEL;
 // ===== T0-2 铁律：境界等级上限（经验不得越过本境界 max_level）=====
 const REALM_LEVEL_CAP = { enforce: true, pinExpAtFull: true };
 module.exports.REALM_LEVEL_CAP = REALM_LEVEL_CAP;
+
+// ===== E3/T0-3 战斗数值曲线基准 =====
+// 玩家面板按境界乘性增长（原本纯线性，与怪物模板的指数式数值倒挂：渡劫段 0% 胜率）。
+// 1.25^8 ≈ 5.0 倍（渡劫），配合攻击额外 1.15 次幂，用来追平手工堆高的怪物数值。
+const REALM_STAT_GROWTH = 1.25;
+module.exports.REALM_STAT_GROWTH = REALM_STAT_GROWTH;
+
+// 攻击相对生命/防御的独立成长偏置（E3 调参用；1 = 与面板同速）
+const ATTACK_GROWTH_BIAS = 1.15;
+module.exports.ATTACK_GROWTH_BIAS = ATTACK_GROWTH_BIAS;

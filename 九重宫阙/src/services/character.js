@@ -83,29 +83,43 @@ class CharacterService {
     return Math.floor(100 * Math.pow(1.5, level - 1));
   }
 
+  /**
+   * E3/T0-3 数值曲线修复：玩家面板原本是**纯线性**（100+level*10+境界序号*50），
+   * 而 db.monsters 模板是手工指数堆高（同级怪 hp 从 70 涨到 35000、攻 16 涨到 1000）。
+   * 实测后果：渡劫段"怪 0.7 回合打死我、我要 85.8 回合才杀掉怪"→ sim-battle 段4 胜率 0.0%。
+   * 现给每条曲线加一个境界乘性因子（系数在 balance.REALM_STAT_GROWTH，可复算可调）。
+   * 速度只按 √ 增长：先手差距保留一点压迫感，但不让后期永远后手。
+   */
+  realmStatFactor(realm) {
+    const B = require('../config/balance');
+    const g = Number(B.REALM_STAT_GROWTH) || 1;
+    return Math.pow(g, this.getRealmBonus(realm));
+  }
+
   calculateHpMax(level, realm) {
-    const realmBonus = this.getRealmBonus(realm);
-    return Math.floor(100 + level * 10 + realmBonus * 50);
+    return Math.floor((100 + level * 10) * this.realmStatFactor(realm));
   }
 
   calculateMpMax(level, realm) {
-    const realmBonus = this.getRealmBonus(realm);
-    return Math.floor(50 + level * 5 + realmBonus * 30);
+    return Math.floor((50 + level * 5) * this.realmStatFactor(realm));
   }
 
   calculateAttack(level, realm) {
-    const realmBonus = this.getRealmBonus(realm);
-    return Math.floor(10 + level * 2 + realmBonus * 15);
+    const B = require('../config/balance');
+    const g = Number(B.REALM_STAT_GROWTH) || 1;
+    const bias = Number(B.ATTACK_GROWTH_BIAS) || 1;
+    // 攻击可独立加权：否则高境界会变成"能挨不能打"的磨盘
+    return Math.floor((10 + level * 2) * Math.pow(g, this.getRealmBonus(realm) * bias));
   }
 
   calculateDefense(level, realm) {
-    const realmBonus = this.getRealmBonus(realm);
-    return Math.floor(5 + level * 1 + realmBonus * 10);
+    return Math.floor((5 + level * 1) * this.realmStatFactor(realm));
   }
 
   calculateSpeed(level, realm) {
-    const realmBonus = this.getRealmBonus(realm);
-    return Math.floor(5 + Math.floor(level / 5) + realmBonus * 5);
+    const B = require('../config/balance');
+    const g = Number(B.REALM_STAT_GROWTH) || 1;
+    return Math.floor((5 + Math.floor(level / 5)) * Math.pow(g, this.getRealmBonus(realm) * 0.5));
   }
 
   getRealmBonus(realm) {

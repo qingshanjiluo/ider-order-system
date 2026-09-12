@@ -1352,5 +1352,66 @@ t('前后端路径对账：前端引用的子路径必须真在路由上（我�
   assert.ok(defined.tribulation.has('status') && defined.tribulation.has('endure'), '天劫端点契约变了');
 });
 
+console.log('== 廿二期：E3/T0-3 战斗数值曲线（倒挂已修，四段尚未全绿）==');
+const dmgCalc = require('../src/services/battle/damage');
+const charSvc = require('../src/services/character');
+
+t('玩家面板不再是纯线性：随境界严格递增，且后期是超线性', () => {
+  const realms = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫'];
+  for (const fn of ['calculateHpMax', 'calculateAttack', 'calculateDefense']) {
+    let prev = -1;
+    for (const r of realms) {
+      const v = charSvc[fn](30, r);
+      assert.ok(v > prev, `${fn} 在 ${r} 未随境界增长（${prev} → ${v}）`);
+      prev = v;
+    }
+    const low = charSvc[fn](30, '炼气'), high = charSvc[fn](30, '渡劫');
+    assert.ok(high / low > 3, `${fn} 境界跨度只有 ${(high / low).toFixed(2)} 倍，追不上怪物模板的指数式数值`);
+  }
+});
+t('倒挂回归锁：最高等级段怪物不再"一回合秒我、我 85 回合打不死"', () => {
+  const db22 = require('../src/database').loadDatabase();
+  // 只与"本境界同级"的最强模板比。全表最高的 仙界至尊 属飞升（95~100 级），
+  // 拿飞升 Boss 判渡劫曲线是否倒挂属于基准错，会得出假结论。
+  const rr = (db22.realms || []).find(x => x.name === '渡劫') || { min_level: 81, max_level: 90 };
+  let top = null;
+  for (const t2 of db22.monsters || []) {
+    let rng = t2.level_range;
+    if (typeof rng === 'string') { try { rng = JSON.parse(rng); } catch (e) { rng = null; } }
+    if (!Array.isArray(rng)) continue;
+    const mid = (Number(rng[0]) + Number(rng[1])) / 2;
+    if (mid < Number(rr.min_level) || mid > Number(rr.max_level)) continue;
+    let st = {}; try { st = JSON.parse(t2.stats || '{}'); } catch (e) { continue; }
+    if (!Number.isFinite(Number(st.hp))) continue;
+    if (!top || Number(st.hp) > Number(top.st.hp)) top = { name: t2.name, st, mid };
+  }
+  assert.ok(top, '渡劫境界内找不到可比较的怪物模板（境界等级区间口径变了？）');
+  const lv = Math.floor((Number(rr.min_level) + Number(rr.max_level)) / 2), realm = '渡劫';
+  const P = { name: 'p', level: lv, realm, hp: charSvc.calculateHpMax(lv, realm), maxHp: charSvc.calculateHpMax(lv, realm), mp: 999, attack: charSvc.calculateAttack(lv, realm), defense: charSvc.calculateDefense(lv, realm), speed: charSvc.calculateSpeed(lv, realm), element: 'none', crit_rate: 0 };
+  const M = { name: top.name, level: Math.round(top.mid), hp: Number(top.st.hp), maxHp: Number(top.st.hp), mp: 0, attack: Number(top.st.attack) || 0, defense: Number(top.st.defense) || 0, speed: Number(top.st.speed) || 0, element: 'none', crit_rate: 0 };
+  const pDeal = dmgCalc.calculateFinalDamage(P, M, null).damage;
+  const mDeal = dmgCalc.calculateFinalDamage(M, P, null).damage;
+  const myRounds = pDeal > 0 ? M.maxHp / pDeal : Infinity;
+  const theirRounds = mDeal > 0 ? P.maxHp / mDeal : Infinity;
+  assert.ok(myRounds <= 25, `玩家杀同级最强怪要 ${myRounds.toFixed(1)} 回合（修复前 85.8），曲线又退化了`);
+  assert.ok(theirRounds >= 2, `同级最强怪 ${theirRounds.toFixed(1)} 回合就打死玩家（修复前 0.7）`);
+});
+t('sim-battle 是 E3 正式验收脚本，且**只读**不污染真库', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'sim-battle.js'), 'utf8');
+  for (const w of ['0.75', '0.60', '0.45', '0.30']) {
+    assert.ok(src.includes(w) || src.includes(w.replace('0.60', '0.6')), `四段窗口少了 ${w}（章程 E3 原文口径）`);
+  }
+  assert.ok(!/saveDatabase\s*\(/.test(src), 'sim-battle 出现写库调用（会对真库跑危险）');
+  assert.ok(/process\.exitCode\s*=\s*allOk\s*\?\s*0\s*:\s*2/.test(src), '退出码语义丢失（CI 无法判定）');
+  assert.ok(!/四段共若干场/.test(src), '输出里仍有占位假文字');
+});
+t('新常数必须被消费（不留幽灵配置）', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'services', 'character.js'), 'utf8');
+  assert.ok(src.includes('B.REALM_STAT_GROWTH'), 'REALM_STAT_GROWTH 无人消费');
+  assert.ok(src.includes('B.ATTACK_GROWTH_BIAS'), 'ATTACK_GROWTH_BIAS 无人消费');
+  assert.ok(bal.REALM_STAT_GROWTH > 1 && bal.REALM_STAT_GROWTH < 1.5,
+    `境界增长率 ${bal.REALM_STAT_GROWTH} 超出已扫参区间（1.20~1.35），需重跑 sim-battle 定档`);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

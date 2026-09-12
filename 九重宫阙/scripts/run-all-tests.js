@@ -11,7 +11,8 @@ const SUITES = [
   ['阶段3 回归', 'scripts/test-phase3.js'],
   ['阶段6 回归', 'scripts/test-phase6.js'],
   ['E1 互斥锁', 'scripts/test-lock.js'],
-  ['E1 auth 角色互斥', 'scripts/test-auth-lock.js']
+  ['E1 auth 角色互斥', 'scripts/test-auth-lock.js'],
+  ['E2 分层限流', 'scripts/test-tier-limit.js']
 ];
 
 let failed = 0;

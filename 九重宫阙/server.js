@@ -46,7 +46,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(sanitizeMiddleware); // Sanitize all inputs
-app.use(rateLimit); // Apply rate limiting globally
+app.use(rateLimit); // Apply rate limiting globally（天花板）
+app.use(require('./src/middleware/tierLimit')); // E2：按端点代价分层收紧（健康探针豁免）
 
 // E2 安全加固：反向代理下取真实 IP（限流依赖）+ 生产环境密钥断言
 app.set('trust proxy', 1);

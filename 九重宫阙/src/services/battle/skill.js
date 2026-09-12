@@ -81,12 +81,17 @@ class SkillService {
       return { success: false, error: '已经学习了该功法' };
     }
 
+    const slot = this.getNextSlot(characterId);
+    if (slot === null) {
+      return { success: false, error: '技能槽位已满，无法再挂载' };
+    }
+
     const gongfaId = getNextId('gongfa');
     this.db.gongfa.push({
       id: gongfaId,
       character_id: characterId,
       type: '战斗',
-      slot: this.getNextSlot(characterId),
+      slot,
       item_id: skillId,
       level: 1,
       exp: 0
@@ -96,15 +101,24 @@ class SkillService {
     return { success: true, gongfaId };
   }
 
+  /**
+   * 取第一个空槽；**满槽返回 null**（旧实现 return 1，会让两件功法静默撞同一槽）。
+   * 槽位上限由境界决定：min(2 + 境界序号, 8)。
+   */
   getNextSlot(characterId) {
-    const gongfas = this.db.gongfa.filter(
-      g => g.character_id === characterId && g.type === '战斗'
-    );
-    const usedSlots = gongfas.map(g => g.slot);
-    for (let i = 1; i <= 2; i++) {
+    const B = require('../../config/balance');
+    const ch = (this.db.characters || []).find((c) => c.id === characterId);
+    const realms = this.db.realms || [];
+    const realmIndex = ch ? realms.findIndex((r) => r.name === ch.realm) : -1;
+    const cap = B.skillSlotCap(realmIndex);
+
+    const usedSlots = this.db.gongfa
+      .filter(g => g.character_id === characterId && g.type === '战斗')
+      .map(g => g.slot);
+    for (let i = 1; i <= cap; i++) {
       if (!usedSlots.includes(i)) return i;
     }
-    return 1;
+    return null;
   }
 
   upgradeSkill(gongfaId) {

@@ -103,3 +103,15 @@ module.exports = {
   CULTIVATION_V0, SPEED_CAP_TOTAL, SECLUSION, QUALITY_SPEED, AFFINITY, ENV_CAP,
   lifespanOf, yearsOfRatio, depletionTier
 };
+
+// ===== E3 · 技能槽位（修 D2：原 getNextSlot 硬编码 1..2，满槽还 return 1 造成静默撞槽）=====
+const SLOT_BASE = 2;   // 炼气起步 2 槽
+const SLOT_MAX = 8;    // 封顶 8 槽
+/** 槽位上限 = min(2 + 境界序号, 8)；realmIndex 0-based（炼气=0 → 2 槽，渡劫=8 → 8 槽） */
+function skillSlotCap(realmIndex) {
+  const i = Number.isFinite(realmIndex) && realmIndex >= 0 ? realmIndex : 0;
+  return Math.min(SLOT_BASE + i, SLOT_MAX);
+}
+module.exports.SLOT_BASE = SLOT_BASE;
+module.exports.SLOT_MAX = SLOT_MAX;
+module.exports.skillSlotCap = skillSlotCap;

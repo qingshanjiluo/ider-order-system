@@ -678,5 +678,33 @@ t('R11 锁：天道庇护 10%/次，足以打断失败螺旋', () => {
   assert.ok(p.base + p.innerDemon + p.failures + p.heavenShield > noShield, '庇护必须真的抬升概率');
 });
 
+console.log('== 十三期：E3 技能槽位（修 D2 撞槽）==');
+t('skillSlotCap 随境界单调、封顶 8、非法入参降级为 2 槽', () => {
+  assert.strictEqual(typeof balance.skillSlotCap, 'function');
+  const seq = [0, 1, 2, 3, 4, 5, 6, 7, 8, 20].map(balance.skillSlotCap);
+  assert.deepStrictEqual(seq, [2, 3, 4, 5, 6, 7, 8, 8, 8, 8], `实际 ${seq.join(',')}`);
+  for (let i = 1; i < seq.length; i++) assert.ok(seq[i] >= seq[i - 1], '槽位上限不得回退');
+  assert.strictEqual(balance.skillSlotCap(-1), balance.SLOT_BASE, '未知境界应给最小槽位而非 0');
+  assert.strictEqual(balance.skillSlotCap(undefined), balance.SLOT_BASE);
+  assert.strictEqual(balance.skillSlotCap(NaN), balance.SLOT_BASE);
+  assert.strictEqual(balance.SLOT_BASE, 2);
+  assert.strictEqual(balance.SLOT_MAX, 8);
+});
+t('getNextSlot 源码锁：上限走境界、满槽 return null（不得静默撞槽）', () => {
+  const src = require('fs').readFileSync('src/services/battle/skill.js', 'utf8');
+  assert.ok(/B\.skillSlotCap\(realmIndex\)/.test(src), '槽位上限未接入 balance.skillSlotCap');
+  assert.ok(/for \(let i = 1; i <= cap; i\+\+\)/.test(src), '仍按硬编码 1..2 扫描槽位');
+  const gi = src.indexOf('getNextSlot(characterId)');
+  assert.ok(/return null;/.test(src.slice(gi, gi + 1200)), '满槽未 return null —— 旧实现 return 1 会让两件功法共用同槽');
+  assert.ok(!/for \(let i = 1; i <= 2; i\+\+\)/.test(src), '硬编码 2 槽残留');
+});
+t('挂载点先判满槽再造物（失败不得留下半件功法）', () => {
+  const src = require('fs').readFileSync('src/services/battle/skill.js', 'utf8');
+  const slotAt = src.indexOf('const slot = this.getNextSlot(characterId);');
+  const pushAt = src.indexOf('this.db.gongfa.push');
+  assert.ok(slotAt > 0 && pushAt > slotAt, '必须取到空槽后才写入功法');
+  assert.ok(/技能槽位已满/.test(src.slice(slotAt, pushAt)), '满槽未给出可读错误');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

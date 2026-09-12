@@ -52,7 +52,14 @@ const STRICT = process.argv.includes('--strict');
   const qpMatch = src.match(/QUALITY_PRICE\s*=\s*(\{[^}]*\})/);
   assert.ok(qpMatch, '找不到 QUALITY_PRICE 常量表');
   const QP = new Function(`return (${qpMatch[1]});`)();          // 表里键已带引号，直接求值即可（不再做键加引号的多余加工）
-  const getSellPrice = new Function('QUALITY_PRICE', `${m[0]}; return getSellPrice;`)(QP);
+  // 轮56：系数被抽成独立常量（为了让锁能复用），"从源码抠函数"这种用法必须把**新的依赖一起注入**，
+  // 否则这里会以 ReferenceError 崩掉；再加一发冒烟调用，确保抠出来的函数真能跑出数而不是 NaN。
+  const tmMatch = src.match(/TYPE_SELL_MULTIPLIER\s*=\s*(\{[^}]*\})/);
+  assert.ok(tmMatch, '找不到 TYPE_SELL_MULTIPLIER（类型系数搬家了，本脚本需同步）');
+  const TM = new Function(`return (${tmMatch[1]});`)();
+  const getSellPrice = new Function('QUALITY_PRICE', 'TYPE_SELL_MULTIPLIER', `${m[0]}; return getSellPrice;`)(QP, TM);
+  assert.ok(Number.isFinite(getSellPrice({ quality: '凡品', type: '材料' })) && getSellPrice({ quality: '凡品', type: '材料' }) >= 1,
+    '从 shop.js 抽出来的 getSellPrice 跑不出合法数 ⇒ 它依赖了没注入的东西（这条断言专防"抽函数"漂移）');
 
   // ================= A. 印钞机守恒 =================
   const printers = [];
@@ -72,20 +79,68 @@ const STRICT = process.argv.includes('--strict');
       `最严重：${printers.slice(0, 5).map((p) => `${p.name}(买${p.buy}/卖${p.sell})`).join('、')}`);
   });
 
-  // A2：卖价词表覆盖率（丹药/材料用的品质词根本不在 QUALITY_PRICE 里 ⇒ 回收价全落到 floor(10×0.3)=3）
-  const pillRows = db.items.filter((i) => ['丹药', '材料'].includes(i.type));
-  const uncovered = pillRows.filter((i) => !(i.quality in QP));
+  // A2（轮56 由"基线锁 142"升级为**全量硬锁**）：只要一件道具在货架上卖，它的品质词就必须在表里，
+  // 否则回收价落到 `||10` 兜底 —— 凡品杂草与道品仙草同价，等于这一整档道具没有定价。
+  const onShelfItems = [...new Set(shelves.map((s) => Number(s.item_id)).map((id) => itemById.get(id)).filter(Boolean))];
+  const allUncovered = db.items.filter((i) => !(i.quality in QP));
+  const shelfUncovered = onShelfItems.filter((i) => !(i.quality in QP));
   const byQuality = {};
-  for (const i of uncovered) byQuality[i.quality] = (byQuality[i.quality] || 0) + 1;
-  const sellOf = (i) => getSellPrice(i);
-  const sample = pillRows.slice(0, 3).map((i) => `${i.name}(${i.quality})→${sellOf(i)}`).join('、');
-  console.log(`\n  ℹ 丹药/材料共 ${pillRows.length} 件，其品质词不在 QUALITY_PRICE 里的 = ${uncovered.length} 件` +
-    `（${Object.entries(byQuality).map(([k, v]) => `${k}×${v}`).join('、') || '全覆盖'}）；样例卖价：${sample}`);
-  await t('A2 卖价词表覆盖：QUALITY_PRICE 必须覆盖在售品类（基线锁，未覆盖不得增加）', () => {
-    const BASELINE = 142;   // 轮53 实测：丹药+材料共 142 件，品质词是 凡品34/灵品35/宝品39/仙品17/道品17 —— QUALITY_PRICE 一套都没有。
-                            // 这是"词表错配"的登记数字，不是合格线；补进表后必须同步下调（补表要与 A 锁一起复验，避免补出印钞机）。
-    assert.ok(uncovered.length <= BASELINE,
-      `品质词未被 QUALITY_PRICE 覆盖的丹药/材料 ${uncovered.length} 件 > 基线 ${BASELINE}：这些道具回收价一律走 ||10 兜底（=3 灵石），定价失去意义`);
+  for (const i of allUncovered) byQuality[i.quality] = (byQuality[i.quality] || 0) + 1;
+  const sample = ['凡品', '灵品', '宝品', '仙品', '道品'].map((q) => `${q}→${getSellPrice({ quality: q, type: '材料' })}`).join('、');
+  console.log(`\n  ℹ 品质词覆盖：全部 ${db.items.length} 件里未覆盖 ${allUncovered.length} 件（${Object.entries(byQuality).map(([k, v]) => `${k}×${v}`).join('、') || '全覆盖'}）；在售且未覆盖 ${shelfUncovered.length} 件`);
+  console.log(`  ℹ 新阶梯回收价（材料，无类型系数）：${sample}`);
+  await t('A2 品质词全覆盖（硬锁）：在售道具的品质词必须在 QUALITY_PRICE 里，且未覆盖件数不得回升', () => {
+    assert.deepStrictEqual(shelfUncovered.map((i) => `${i.name}(${i.quality})`), [],
+      `有 ${shelfUncovered.length} 件**在售**道具的品质词不在词表里，回收价走兜底 3 灵石：${shelfUncovered.slice(0, 6).map((i) => `${i.name}(${i.quality})`).join('、')}`);
+    const BASELINE = 0;      // 轮56 补表后实测 0（此前 238 件 / 占 38%）；任何回升都说明又加了没定价的品质词
+    assert.ok(allUncovered.length <= BASELINE,
+      `未覆盖品质词的道具涨到 ${allUncovered.length} 件（基线 ${BASELINE}）：${Object.entries(byQuality).map(([k, v]) => `${k}×${v}`).join('、')}`);
+  });
+
+  // A3：词表里不许有"死键"——实测 0 件道具用这个品质（此前的 消耗品/材料/道具 是把品类当品质的分类错误）
+  const PLACEHOLDER_TIERS = { '混沌至宝': '器级阶梯顶档，等 P1 后续补到该档装备再启用（与 圣阶/仙阶 对称保留）' };
+  const qualityCount = db.items.reduce((a, i) => (a[i.quality] = (a[i.quality] || 0) + 1, a), {});
+  const deadKeys = Object.keys(QP).filter((k) => !qualityCount[k] && !PLACEHOLDER_TIERS[k]);
+  const orphanQualities = Object.keys(qualityCount).filter((q) => !(q in QP));
+  console.log(`  ℹ 词表 ${Object.keys(QP).length} 键：死键 ${deadKeys.length} 个${deadKeys.length ? '（' + deadKeys.join('、') + '）' : ''}；占位档 ${Object.keys(PLACEHOLDER_TIERS).length} 个；未定罪的品质词 ${orphanQualities.length} 个${orphanQualities.length ? '（' + orphanQualities.join('、') + '）' : ''}`);
+  await t('A3 词表不得有死键，也不得漏掉已在用的品质词', () => {
+    assert.deepStrictEqual(deadKeys, [], `QUALITY_PRICE 里有 ${deadKeys.length} 个键没有任何道具使用（${deadKeys.join('、')}）：要么删掉，要么写进 PLACEHOLDER_TIERS 并说明为什么还没有道具`);
+    assert.deepStrictEqual(orphanQualities, [], `这些品质词在道具里在用却不在词表：${orphanQualities.join('、')}`);
+  });
+
+  // A4：`price<=0` 的货架行被 A 锁有意排除（白送的东西无所谓"买了就卖"），
+  //     但**白送 + 可回收**同样是铸币：0 价、库存 999、回收 3 ⇒ 点 999 次白赚。这条把排除项变成显式不变量。
+  const freeRows = (db.shop || []).filter((s) => Number(s.price) <= 0);
+  const freeUnbounded = freeRows.filter((s) => {
+    const it = itemById.get(Number(s.item_id));
+    return !it || Number(s.stock) > 5 || getSellPrice(it) > 5;
+  });
+  console.log(`  ℹ 0 价货架 ${freeRows.length} 条（A 锁不计入），其中库存无界或回收价偏高的 ${freeUnbounded.length} 条`);
+  await t('A4 白送行必须"有界"：0 价货架的库存 ≤5 且回收价 ≤5（否则白拿+回收＝铸币）', () => {
+    assert.deepStrictEqual(freeUnbounded.map((s) => `货架${s.id}/库存${s.stock}`), [],
+      `0 价货架可以无限领或回收价过高：${freeUnbounded.map((s) => `货架${s.id}(库存${s.stock})`).join('、')} —— A 锁按 price>0 排除了这些行，必须在这里补上界`);
+  });
+
+  // A5（轮56 新增，本轮真正的风险）：采集节点能白拿**仙品/道品**材料（实测 30/28 个节点），
+  // 对这类无取得成本的道具，回收价就是纯铸币，而 A 锁只看货架、抓不到"采集→卖出"。
+  // 于是给一条速率锁：**单张地图一次采集的最高回收价 ≤ 该图一年挂机收入的 5%**；
+  // 想抬高高品质材料的回收价，必须先给采集加冷却/日限（已登记 P5 前的结构性缺口）。
+  const YEAR_SECONDS = 8640;                     // 与 sim-balance 同口径：1 游戏年 = 8640 真实秒
+  const faucet = [];
+  for (const mp of db.maps || []) {
+    const nodes = mp.gather_nodes || [];
+    if (!nodes.length) continue;
+    const income = Number(mp.spirit_stone_per_second || 0) * YEAR_SECONDS;
+    if (!(income > 0)) continue;                  // 没有挂机收入锚点的地图另计（下面单独打印）
+    const best = nodes.map((n) => db.items.find((i) => i.name === n)).filter(Boolean)
+      .reduce((mx, i) => Math.max(mx, getSellPrice(i)), 0);
+    if (best / income > 0.05) faucet.push({ map: mp.name, best, income: Math.round(income), pct: (best / income * 100).toFixed(2) });
+  }
+  const noAnchorMaps = (db.maps || []).filter((m) => (m.gather_nodes || []).length && !(Number(m.spirit_stone_per_second || 0) > 0));
+  console.log(`  ℹ 采集水龙头：${(db.maps || []).filter((m) => (m.gather_nodes || []).length).length} 张图有采集点，` +
+    `超 5% 锚点的 ${faucet.length} 张${faucet.length ? '（' + faucet.slice(0, 4).map((f) => `${f.map}: 回收${f.best}/年入${f.income}=${f.pct}%`).join('、') + '）' : ''}；无收入锚点的 ${noAnchorMaps.length} 张${noAnchorMaps.length ? '（' + noAnchorMaps.map((m) => m.name).join('、') + '）' : ''}`);
+  await t('A5 采集回收速率锁：一次采集最高回收价 ≤ 该图一年挂机收入的 5%', () => {
+    assert.deepStrictEqual(faucet, [], `采集→卖出可成水龙头：${faucet.map((f) => `${f.map}(${f.pct}%)`).join('、')} ⇒ 先降品质表或先给采集加冷却/日限`);
   });
 
   // ================= B. 30 世净收支 =================
@@ -209,9 +264,9 @@ const STRICT = process.argv.includes('--strict');
     for (const p of printers) md.push(`| ${p.row} | ${p.name} | ${p.buy} | ${p.sell} | ${p.net == null ? '—' : p.net} | ${p.kind} |`);
     md.push('', '**判定**：`getSellPrice()` 只按 `QUALITY_PRICE[item.quality] || 10` 折算（×0.3），既不读 `items.price` 也不读 `shop.price`。',
       `当前 ${shelves.length} 条货架里"卖价 ≥ 买价"= ${printers.length} 条（A 锁为硬锁 0）—— 一旦出现就是无限灵石源，故必须常驻门禁。`,
-      `但**词表错配**更值得修：QUALITY_PRICE 只有 装备(凡器…)/功法(黄阶…)/灵宠(凡兽…) 三套品质词，` +
-      `丹药与材料用的 凡品/良品/上品/极品/宝品/灵品 **一个都不在表里** ⇒ 这 ${uncovered.length} 件道具回收价一律 ` +
-      `\`floor(10×0.3)=3\` 灵石（A2 基线锁 142，补表时须与 A 锁一起复验，避免补完反而出印钞机）。`,
+      `**词表错配已修（轮56）**：此前 238 件（占 38%）道具的品质词不在表里 ⇒ 回收价一律 floor(10×0.3)=3，凡品杂草与道品仙草同价。现在丹药/材料这一套"品"字辈按**温和阶梯**入表：凡品3 / 灵品12 / 宝品48 / 仙品192 / 道品750。`,
+      `为什么不按 器/阶 那套量级给（道品=道器 100000 ⇒ 卖 3 万）：实测 32 张地图的采集节点里有 **28 个道品、30 个仙品**，采集是"点一下白拿"、无取得成本 ⇒ 对这类道具回收价就是纯铸币，而 A 锁只看货架、抓不到"采集→卖出"这条路；旧表把它们错打成 3 灵石，**实际是靠这个 bug 侥幸堵住了水龙头**。`,
+      `⇒ 本轮改为"低档阶梯 + A5 速率锁"：单张地图一次采集的最高回收价必须 ≤ 该图一年挂机收入的 5%。` + ((() => { const Y = 8640; let mx = 0, name = "—"; for (const mp of db.maps || []) { const nd = mp.gather_nodes || []; const inc = Number(mp.spirit_stone_per_second || 0) * Y; if (!nd.length || !(inc > 0)) continue; const best = nd.map((n) => db.items.find((i) => i.name === n)).filter((Boolean)).reduce((m, i) => Math.max(m, getSellPrice(i)), 0); if (best / inc > mx) { mx = best / inc; name = mp.name; } } return `（当前最紧的一张图：${name} ${(mx * 100).toFixed(2)}%，上限 5%）`; })()),
       '', '## B 30 世净收支', '', '| 境界 | 主地图 | 灵/秒 | 年入 | 一世耗时(年) | 一世收入 | 期望出手 | 破境丹支出 |',
       '|---|---|---:|---:|---:|---:|---:|---:|');
     for (const x of rows) md.push(`| ${x.realm} | ${x.map} | ${x.ss} | ${Math.round(x.yearIncome)} | ${x.years < 100 ? x.years.toFixed(2) : Math.round(x.years)} | ${Math.round(x.income)} | ${x.attempts.toFixed(2)} | ${x.cost} |`);

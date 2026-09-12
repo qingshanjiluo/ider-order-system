@@ -3,22 +3,42 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
 
+/**
+ * 回收（卖入钱庄）品质基准价。`getSellPrice()` 取 `本值 × 类型系数 × 0.3`。
+ *
+ * 轮56 补齐丹药/材料/符箓/消耗品/礼包这一套"品"字辈品质词（此前全不在表里 ⇒ 238 件、占全部道具 38%
+ * 一律落到 `|| 10` 兜底，回收价统统 3 灵石 —— 凡品杂草与道品仙草同价，定价失去意义）。
+ *
+ * **为什么不按 器/阶 那套量级给（凡品=凡器 10、道品=道器 100000）**：
+ * 实测 32 张地图的 `gather_nodes` 里含 **28 个道品、30 个仙品节点**（仙灵草/混沌土/离火精…），
+ * 采集是"点一下白拿"、没有取得成本 ⇒ 对这类道具而言回收价就是纯铸币，档位拉到器级 = 造印钞机，
+ * 而 A 锁只看货架，抓不到这种"采集→卖出"的水龙头。旧表把它们错打成 3 灵石，反倒是**靠 bug 侥幸堵住**了。
+ * ⇒ 这一套按"温和阶梯"给（每档 ×4，覆盖 3~750 灵石，仍严格单调），
+ *   并配一条 **A5 采集回收速率锁**：单张地图一次采集的最高回收价 ≤ 该图一年挂机收入的 5%，
+ *   超了就得先降表或先给采集加冷却/日限（结构性缺口已记入开发日志，P5 前处理）。
+ *
+ * 表里原有三个**类型词**（消耗品/材料/道具）已删：实测 items 里 0 件道具的 `quality` 等于它们，
+ * 是"把品类当品质"的分类错误；`A3 死键锁` 从此不许再有这种键（除显式登记的占位档）。
+ */
 const QUALITY_PRICE = {
   '凡器': 10, '法器': 50, '灵器': 200, '法宝': 1000, '古宝': 5000,
   '灵宝': 25000, '道器': 100000, '仙器': 500000, '混沌至宝': 2000000,
   '黄阶': 50, '玄阶': 200, '地阶': 1000, '天阶': 5000, '圣阶': 25000, '仙阶': 100000,
   '凡兽': 10, '灵兽': 50, '玄兽': 200, '地兽': 1000, '天兽': 5000, '圣兽': 25000, '仙兽': 100000,
-  '消耗品': 5, '材料': 3, '道具': 20
+  // 丹药/材料/符箓/消耗品/礼包这一套（采集白拿 ⇒ 刻意压在器级阶梯的 1/40 以下，见上方说明与 A5 锁）
+  '凡品': 10, '灵品': 40, '宝品': 160, '仙品': 640, '道品': 2500
 };
+
+/** 回收价的类型系数（`getSellPrice` 与 `sim-economy` 共用同一份，不得各抄一遍）。 */
+const TYPE_SELL_MULTIPLIER = { '装备': 1.5, '功法': 1.2, '灵宠': 2 };
 
 function getSellPrice(item) {
   if (!item) return 1;
-  const qualityPrice = QUALITY_PRICE[item.quality] || 10;
-  let basePrice = qualityPrice;
-  if (item.type === '装备') basePrice = Math.floor(qualityPrice * 1.5);
-  else if (item.type === '功法') basePrice = Math.floor(qualityPrice * 1.2);
-  else if (item.type === '灵宠') basePrice = Math.floor(qualityPrice * 2);
-  return Math.max(1, Math.floor(basePrice * 0.3));
+  const qualityPrice = QUALITY_PRICE[item.quality];
+  // 品质词不在表里 = 定价数据出错（A2 已把"在售品必须有词"转成硬锁）；仍保留兜底以免 500
+  const basePrice = Number.isFinite(qualityPrice) ? qualityPrice : 10;
+  const mult = TYPE_SELL_MULTIPLIER[item.type] || 1;
+  return Math.max(1, Math.floor(basePrice * mult * 0.3));
 }
 
 router.get('/items', auth, (req, res) => {

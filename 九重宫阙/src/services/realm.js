@@ -74,12 +74,27 @@ class RealmService {
   resolveBreakthroughMods(character) {
     return {
       daoDamage: (character.injury || 0) >= 60,
-      pill: !!character.breakthrough_pill_ready,
+      pill: this._findPillRow(character.id) != null,
       formation: (character.cave_formation_level || 0) > 0,
       veinLevel: character.cave_vein_level || 0,
       artPerfect: !!character.art_perfect,
       epiphany: !!character.epiphany_ready
     };
+  }
+
+  /** 背包里的契机丹（按名匹配 items → inventory 行）；无则 null */
+  _findPillRow(characterId) {
+    if (characterId == null) return null;
+    try {
+      const B = require('../config/balance');
+      const db = loadDatabase();
+      const names = new Set(B.BREAKTHROUGH_PILL_NAMES || []);
+      if (!names.size) return null;
+      const itemIds = new Set((db.items || []).filter(i => names.has(i.name)).map(i => i.id));
+      if (!itemIds.size) return null;
+      return (db.inventory || []).find(r => r.character_id === characterId
+        && itemIds.has(r.item_id) && (r.quantity || 0) > 0) || null;
+    } catch (e) { return null; }
   }
 
   /**
@@ -127,6 +142,15 @@ class RealmService {
 
     const { chance, parts } = this.breakthroughProbability(character, opts);
     const roll = Math.floor((opts.rng || Math.random)() * 100);
+    // 契机丹一次性：本次判定无论成败都扣一枚（防"随身永驻 +15%"）
+    const pillRow = this._findPillRow(character.id);
+    if (pillRow) {
+      pillRow.quantity = (pillRow.quantity || 1) - 1;
+      if (pillRow.quantity <= 0) {
+        const ix = (db.inventory || []).indexOf(pillRow);
+        if (ix >= 0) db.inventory.splice(ix, 1);
+      }
+    }
     if (roll >= chance) {
       character._pending_breakthrough_failure = true;   // 仅此标记允许后续折寿结算
       saveDatabase(db);

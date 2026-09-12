@@ -17,6 +17,8 @@ const PILLS = [
   { name: '破军丹', quality: '灵品', category: '增益', buff: { type: 'attack', value: 1.2, duration: 3600000 }, price: 450, desc: '破军之势，攻击+20%（60分钟）' },
   { name: '静心丹', quality: '灵品', category: '特殊', buff: { type: 'all', value: 1.05, duration: 3600000 }, price: 500, desc: '静心凝神，全属性+5%（60分钟）' },
   // ---- 宝品 ----
+  // 契机丹：唯一真正影响突破概率的丹药（其余「突破」类只加修炼速度）
+  { name: '破境丹', quality: '宝品', category: '突破', buff: { type: 'exp', value: 1.15, duration: 1800000 }, price: 5000, desc: '冲关护命之药：持有则下次突破成功率 +15%，每次判定消耗一枚（一次性）' },
   { name: '玄元丹', quality: '宝品', category: '突破', buff: { type: 'exp', value: 1.35, duration: 7200000 }, price: 2000, desc: '玄元灌体，修炼效率+35%（120分钟）' },
   { name: '金刚丹', quality: '宝品', category: '恢复', buff: { type: 'defense', value: 1.3, duration: 7200000 }, price: 2000, desc: '金刚不坏，防御+30%（120分钟）' },
   { name: '焚天丹', quality: '宝品', category: '增益', buff: { type: 'attack', value: 1.4, duration: 3600000 }, price: 2200, desc: '焚天战意，攻击+40%（60分钟）' },

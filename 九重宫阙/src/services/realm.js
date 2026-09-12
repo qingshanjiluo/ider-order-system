@@ -68,6 +68,21 @@ class RealmService {
   }
 
   /**
+   * 从角色身上解析突破契机（只读**已验证存在**的字段；未落地的通道由 E5 置位，不臆造效果）
+   * injury 为现成字段：中伤(≥60)以上强冲 → P−10；其余为契约字段，当前恒 false/0。
+   */
+  resolveBreakthroughMods(character) {
+    return {
+      daoDamage: (character.injury || 0) >= 60,
+      pill: !!character.breakthrough_pill_ready,
+      formation: (character.cave_formation_level || 0) > 0,
+      veinLevel: character.cave_vein_level || 0,
+      artPerfect: !!character.art_perfect,
+      epiphany: !!character.epiphany_ready
+    };
+  }
+
+  /**
    * 突破判定概率（定稿模型，取代"满足即 100% 成功"的空心玩法）
    * P = clamp(base[境界] − 5×心魔 − 3×连败 + 契机 + 天道庇护, 5, 95)
    * opts: { pill, formation, veinLevel, artPerfect, epiphany, daoDamage }
@@ -76,6 +91,7 @@ class RealmService {
     const B = require('../config/balance');
     const realm = REALMS.find(r => r.name === character.realm);
     if (!realm) return { chance: 0, parts: null };
+    opts = Object.assign(this.resolveBreakthroughMods(character), opts);
     const M = B.BREAKTHROUGH_MODS;
     const failures = character.breakthrough_failures || 0;
     const demons = character.inner_demon || 0;

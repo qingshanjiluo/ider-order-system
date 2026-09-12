@@ -63,7 +63,8 @@ router.get('/can-breakthrough', auth, (req, res) => {
       return res.status(404).json({ error: '角色不存在' });
     }
     const canBreak = realmService.canBreakthrough(character);
-    res.json({ canBreakthrough: canBreak });
+    const prob = realmService.breakthroughProbability(character);
+    res.json({ canBreakthrough: canBreak, chance: canBreak ? prob.chance : 0, parts: prob.parts });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

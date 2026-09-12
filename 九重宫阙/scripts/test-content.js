@@ -633,5 +633,21 @@ t('失败结算走比例折寿并回落 10% 修为（源码锁定）', () => {
   assert.ok(!/breakthrough_failures <= 3/.test(src), '旧的阶梯清零逻辑应已移除');
 });
 
+t('契机自动解析：带伤冲关降概率，未落地通道不臆造加成', () => {
+  const healthy = realmService.breakthroughProbability({ realm: '金丹', injury: 0 });
+  const hurt = realmService.breakthroughProbability({ realm: '金丹', injury: 60 });
+  assert.strictEqual(healthy.parts.daoDamage, 0, '无伤不得白送道基受损惩罚');
+  assert.strictEqual(hurt.parts.daoDamage, -10, '中伤以上冲关应 P−10');
+  assert.strictEqual(healthy.chance - hurt.chance, 10, '展示概率必须真的下降');
+  const mods = realmService.resolveBreakthroughMods({ realm: '金丹' });
+  assert.deepStrictEqual(mods, { daoDamage: false, pill: false, formation: false, veinLevel: 0, artPerfect: false, epiphany: false }, '缺失字段必须回落为无加成（防幽灵契机）');
+  assert.strictEqual(realmService.breakthroughProbability({ realm: '金丹', cave_vein_level: 5 }).parts.vein, 10, '灵脉 lv×2');
+});
+t('显式 opts 覆盖自动解析（调用方可指定破境丹等）', () => {
+  const p = realmService.breakthroughProbability({ realm: '炼气', injury: 90 }, { daoDamage: false, pill: true });
+  assert.strictEqual(p.parts.daoDamage, 0);
+  assert.strictEqual(p.parts.pill, 15);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

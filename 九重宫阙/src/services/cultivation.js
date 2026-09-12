@@ -1,4 +1,4 @@
-const { loadDatabase, saveDatabase } = require('../database');
+﻿const { loadDatabase, saveDatabase } = require('../database');
 const characterService = require('./character');
 const injuryService = require('./injury');
 const model = require('./cultivation-model');
@@ -79,7 +79,7 @@ class CultivationService {
   }
 
   getRealmIndex(realm) {
-    return ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升'].indexOf(realm);
+    return (B.REALM_ORDER || []).indexOf(realm);
   }
 
   cultivate(characterId, durationSeconds) {

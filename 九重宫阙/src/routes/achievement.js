@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const characterService = require('../services/character');
@@ -154,7 +154,7 @@ function getProgress(character, requirement) {
   const db = loadDatabase();
   switch (requirement.type) {
     case 'realm':
-      const realms = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升'];
+      const realms = require('../config/balance').REALM_ORDER;   // 境界顺序单一真源
       const currentRealmIndex = realms.indexOf(character.realm);
       const targetRealmIndex = realms.indexOf(requirement.value);
       return Math.min(1, (currentRealmIndex + 1) / (targetRealmIndex + 1));

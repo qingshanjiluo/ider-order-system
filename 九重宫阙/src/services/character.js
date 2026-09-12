@@ -1,4 +1,4 @@
-const { loadDatabase, saveDatabase } = require('../database');
+﻿const { loadDatabase, saveDatabase } = require('../database');
 const gameTime = require('./gameTime');
 
 const VIP_LEVELS = [
@@ -123,7 +123,7 @@ class CharacterService {
   }
 
   getRealmBonus(realm) {
-    const realmIndex = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升'].indexOf(realm);
+    const realmIndex = (require('../config/balance').REALM_ORDER || []).indexOf(realm);
     return realmIndex >= 0 ? realmIndex : 0;
   }
 }

@@ -202,3 +202,9 @@ module.exports.REALM_STAT_GROWTH = REALM_STAT_GROWTH;
 // 攻击相对生命/防御的独立成长偏置（E3 调参用；1 = 与面板同速）
 const ATTACK_GROWTH_BIAS = 1.15;
 module.exports.ATTACK_GROWTH_BIAS = ATTACK_GROWTH_BIAS;
+
+// （E3 槽位唯一实现是本文件上方的 skillSlotCap(realmIndex)；轮37 曾在尾部误加同名重复定义把序号 API 盖掉，已删）
+
+// ===== 境界顺序（此前 3 处各自硬编码同一份数组：cultivation.js / character.js / achievement.js）=====
+const REALM_ORDER = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升'];
+module.exports.REALM_ORDER = REALM_ORDER;

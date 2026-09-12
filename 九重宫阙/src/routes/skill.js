@@ -1,4 +1,5 @@
-const express = require('express');
+﻿const express = require('express');
+const B = require('../config/balance');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const skillService = require('../services/skill');
@@ -26,7 +27,7 @@ router.get('/list', auth, (req, res) => {
         gongfaBonus += stats.skill_slots || 0;
       }
     }
-    const maxSlots = Math.min(10, baseSlots + levelBonus + talentBonus + gongfaBonus);
+    const maxSlots = B.skillSlotCap((B.REALM_ORDER || []).indexOf(character.realm));   // E3 章程口径：min(2+境界序号, 8)，等级/天赋/功法不再参与
     const equippedCount = skills.filter(s => s.equipped).length;
     const cdPenalty = equippedCount > 5 ? Math.pow(2, equippedCount - 5) : 1;
 
@@ -163,7 +164,7 @@ router.post('/equip', auth, (req, res) => {
         gongfaBonus += stats.skill_slots || 0;
       }
     }
-    const maxSlots = Math.min(10, baseSlots + levelBonus + talentBonus + gongfaBonus);
+    const maxSlots = B.skillSlotCap((B.REALM_ORDER || []).indexOf(character.realm));   // E3 章程口径：min(2+境界序号, 8)，等级/天赋/功法不再参与
     const equippedCount = skills.filter(s => s.equipped).length;
     if (equippedCount >= maxSlots) {
       return res.status(400).json({ error: `技能槽已满（${maxSlots}个）`, maxSlots, equippedCount });

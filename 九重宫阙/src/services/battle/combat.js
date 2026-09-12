@@ -308,29 +308,11 @@ class CombatService {
 
   getCharacterSkills(characterId, db) {
     if (!db) db = loadDatabase();
+    // E3/T0-3：技能池唯一真源 = player_skills（章程 E3 原文）。
+    // 功法不再是主动技来源：它通过 skill_damage（getEntity 的被动乘区）与修炼速度
+    // （cultivation-model）继续生效，避免同一角色存在两套互不知情的主动技池。
+    // 旧数据兼容：gongfa 表当前 0 行，删除该分支不改变任何现存战斗。
     const skills = [];
-    // 功法战斗技能（旧体系保留）
-    const gongfas = (db.gongfa || []).filter(g => g.character_id === characterId && g.type === '战斗');
-    for (const gf of gongfas) {
-      const item = (db.items || []).find(i => i.id === gf.item_id);
-      if (item) {
-        const stats = JSON.parse(item.stats || '{}');
-        skills.push({
-          name: item.name,
-          multiplier: stats.skill_damage || 1.0,
-          level: gf.level || 1,
-          element: stats.element,
-          // T0-3：功法表这些字段大多缺失，缺省按 0 消耗/0 冷却（等价旧行为），但不再"拿不到字段"
-          manaCost: Number(stats.mana_cost) || 0,
-          cooldown: Number(stats.cooldown) || 0,
-          effectType: stats.effect_type || null,
-          effectValue: stats.effect_value,
-          key: `gongfa:${gf.item_id}`,
-          source: 'gongfa'
-        });
-      }
-    }
-    // 阶段5：已装备玩家技能（main/sub/ultimate 槽）真实参战
     const skillService = require('../skill');
     const DATA = skillService.SKILLS_DATA || [];
     const equipped = (db.player_skills || []).filter(ps => ps.character_id === characterId && ps.equipped_slot);
@@ -354,6 +336,13 @@ class CombatService {
         source: 'player_skill'
       });
     }
+    // 技能池顺序确定化：main < sub < ultimate，保证前端/调用方的 skillIndex=0 恒等于主技
+    const SLOT_ORDER = { main: 0, sub: 1, ultimate: 2 };
+    skills.sort((a, b) => {
+      const oa = SLOT_ORDER[a.slot] != null ? SLOT_ORDER[a.slot] : 9;
+      const ob = SLOT_ORDER[b.slot] != null ? SLOT_ORDER[b.slot] : 9;
+      return (oa - ob) || String(a.key).localeCompare(String(b.key));
+    });
     return skills;
   }
 

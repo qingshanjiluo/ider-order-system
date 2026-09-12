@@ -1,4 +1,4 @@
-/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
+﻿/* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
 const assert = require('assert');
 const skillService = require('../src/services/skill');
 const itemService = require('../src/services/item');
@@ -1258,7 +1258,7 @@ t('旧缺陷永久封住：主循环不再随机选技、字段不再被丢弃',
   assert.ok(!/Math\.random\(\)\s*\*\s*skills\.length/.test(src), '仍在随机选技能（会随机到不可用的招）');
   for (const f of ['manaCost', 'cooldown', 'effectType', 'effectValue']) {
     const n = (src.match(new RegExp(`\\b${f}\\s*:`, 'g')) || []).length;
-    assert.ok(n >= 2, `${f} 只在 ${n} 处透传（功法/玩家技能两条来源都要传）`);
+    assert.ok(n >= 1, `${f} 未透传（技能池字段丢失，E3 空转复发）`);
   }
   for (const call of ['skillState.tick(', 'skillState.canUse(', 'skillState.spend(', 'skillState.applyEffect(']) {
     assert.ok(src.includes(call), `executeRound 未消费 ${call}`);
@@ -1411,6 +1411,68 @@ t('新常数必须被消费（不留幽灵配置）', () => {
   assert.ok(src.includes('B.ATTACK_GROWTH_BIAS'), 'ATTACK_GROWTH_BIAS 无人消费');
   assert.ok(bal.REALM_STAT_GROWTH > 1 && bal.REALM_STAT_GROWTH < 1.5,
     `境界增长率 ${bal.REALM_STAT_GROWTH} 超出已扫参区间（1.20~1.35），需重跑 sim-battle 定档`);
+});
+
+console.log('== 廿三期：E3/T0-3 player_skills 唯一真源 + 章程槽位 ==');
+t('技能池只认 player_skills：功法不得再作为主动技来源', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'services', 'battle', 'combat.js'), 'utf8');
+  const start = src.indexOf('getCharacterSkills(characterId, db)');
+  assert.ok(start > 0, '找不到 getCharacterSkills');
+  const body = src.slice(start, src.indexOf('\n  }\n', start));
+  assert.ok(!/db\.gongfa/.test(body), '技能池仍在读 gongfa（双真源未收敛）');
+  assert.ok(!/source:\s*'gongfa'/.test(body), '仍产出 source=gongfa 的技能条目');
+  assert.ok(/player_skills/.test(body) && /equipped_slot/.test(body), '技能池不再以装备位为准');
+  assert.ok(/SLOT_ORDER/.test(body), '技能池顺序不再确定化（skillIndex 语义会变）');
+});
+t('真实角色（只读）：池内每条都带消耗/冷却字段，且来源单一', () => {
+  const db23 = require('../src/database').loadDatabase();
+  const cs23 = require('../src/services/battle/combat');
+  const withEquipped = (db23.player_skills || []).filter(p => p.equipped_slot);
+  assert.ok(withEquipped.length >= 1, '库里一个装备技能都没有，本锁失去意义（数据被清了？）');
+  const cid = withEquipped[0].character_id;
+  const pool = cs23.getCharacterSkills(cid, db23);
+  assert.ok(pool.length >= 1 && pool.length <= withEquipped.filter(p => p.character_id === cid).length,
+    `池大小 ${pool.length} 与装备数不吻合`);
+  for (const s of pool) {
+    assert.strictEqual(s.source, 'player_skill', `混入了非真源技能 ${s.name}/${s.source}`);
+    assert.strictEqual(typeof s.manaCost, 'number');
+    assert.strictEqual(typeof s.cooldown, 'number');
+    assert.ok('effectType' in s, `${s.name} 丢了 effect_type`);
+  }
+  assert.deepStrictEqual(pool.map(s => s.slot), ['main'].concat(pool.slice(1).map(s => s.slot)).slice(0, pool.length),
+    '主技必须排在技能池第一位（前端 skillIndex=0 = 主技）');
+});
+t('槽位严格按章程 min(2+境界序号,8)，且旧公式已彻底移除', () => {
+  const b23 = require('../src/config/balance');
+  b23.REALM_ORDER.forEach((r, i) => {
+    assert.strictEqual(b23.skillSlotCap(i), Math.min(8, 2 + i), `${r} 槽位应为 ${Math.min(8, 2 + i)}`);
+  });
+  assert.strictEqual(b23.skillSlotCap(-1), b23.SLOT_BASE, '未知境界应保守给基础槽位');
+  assert.strictEqual(b23.skillSlotCap(NaN), b23.SLOT_BASE);
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'routes', 'skill.js'), 'utf8');
+  assert.ok(!/Math\.min\(10,\s*baseSlots/.test(src), '旧的 min(10, 等级/天赋/功法) 公式还在');
+  assert.ok(/B\.skillSlotCap\(\(B\.REALM_ORDER \|\| \[\]\)\.indexOf\(character\.realm\)\)/.test(src), '槽位未走单一实现源');
+  assert.ok(src.includes("require('../config/balance')"), 'routes/skill.js 未引用 balance（会 ReferenceError）');
+});
+t('境界顺序数组不得再有多份副本', () => {
+  const b23 = require('../src/config/balance');
+  assert.deepStrictEqual(b23.REALM_ORDER, ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升']);
+  const LADDER_BACKLOG = ['src/data/equipment-library.js', 'src/routes/character.js', 'src/services/battle/combat.js', 'src/services/skill.js'];   // 轮37 已知欠账：待逐处改用 REALM_ORDER，此处只防新增副本
+  const roots = ['src'];
+  const hits = [];
+  const scan = (d) => {
+    for (const f of fs21.readdirSync(d, { withFileTypes: true })) {
+      const p = path21.join(d, f.name);
+      if (f.isDirectory()) { if (f.name !== 'node_modules') scan(p); continue; }
+      if (!/\.js$/.test(f.name) || f.name === 'balance.js') continue;   // 唯一真源自身除外
+      const s = fs21.readFileSync(p, 'utf8');
+      const i = s.indexOf("'炼气', '筑基'");
+      const j = s.indexOf('"炼气", "筑基"');
+      if (i >= 0 || j >= 0) { const relp = path21.relative(path21.join(__dirname, '..'), p).split(path21.sep).join('/'); if (!LADDER_BACKLOG.includes(relp)) hits.push(relp); }
+    }
+  };
+  for (const r of roots) scan(path21.join(__dirname, '..', r));
+  assert.deepStrictEqual(hits, [], `仍有硬编码境界数组：${hits.join(', ')}（应统一用 balance.REALM_ORDER）`);
 });
 
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);

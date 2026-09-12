@@ -188,6 +188,7 @@ async function loadTabContent(tab) {
       case 'quests': await loadQuestsTab(); break;
       case 'chronicle': await loadChronicleTab(); break;
       case 'market': await loadMarketTab(); break;
+      case 'friend': await loadFriendTab(); break;        // P3（轮49）：接后端轮48 的 /api/friend
       case 'economy': await loadEconomyTab(); break;
       case 'sect': await loadSectTab(); break;
       case 'forge': await loadForgeTab(); break;
@@ -1687,20 +1688,27 @@ async function loadSkillSub(sub, btn) {
       break;
     }
     case 'hidden': {
+      // 轮49 修正一处必然失败的 UI：/api/skill/all 只返回**非隐藏**技能（隐藏技本就不该被列出来），
+      // 所以这个子页过去永远显示"暂无隐藏技能"；而它旁边那个「解锁」按钮调的是 /skill/unlock-hidden，
+      // 该端点自轮47 起固定 501（服务端不再接受客户端自报解锁条件，那等于任何登录玩家 POST 一个 truthy 值
+      // 就能白拿 7.0 倍率仙阶大招）。与其留一个点了必错的按钮，这里改成把真实规则讲清楚。
       const data = await api.getAllSkills();
       const skills = data.skills || data || [];
       const hidden = skills.filter(s => s.is_hidden);
       container.innerHTML = `
         <div style="font-size:12px;font-weight:600;margin-bottom:8px;">隐藏技能</div>
-        <p style="font-size:11px;color:var(--text2);margin-bottom:12px;">满足特殊条件后可解锁隐藏技能</p>
-        ${hidden.length === 0 ? '<p style="font-size:12px;color:var(--text2);">暂无隐藏技能</p>' : hidden.map(s => `
+        <p style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.6;">
+          隐藏技能由**服务端记录的机缘**解锁（秘境、传承、特定 BOSS 首杀等），达成后会自动出现在技能列表中，
+          无需也无法手动解锁。
+        </p>
+        ${hidden.length === 0 ? '<p style="font-size:12px;color:var(--text2);">当前没有已对你公开的隐藏技能。</p>' : hidden.map(s => `
           <div style="padding:10px;margin-bottom:6px;border:1px dashed var(--gold);border-radius:var(--radius);background:var(--bg2);">
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <div>
                 <span style="font-weight:600;color:${ELEMENT_COLORS[s.element] || '#fff'};">[${ELEMENT_NAMES[s.element] || '无'}] ${s.name}</span>
                 <span style="font-size:10px;padding:2px 6px;margin-left:6px;border-radius:3px;background:var(--gold);color:#000;">隐藏</span>
               </div>
-              <button class="btn small" onclick="handleUnlockHidden('${s.id}', '${s.hidden_condition || ''}')">解锁</button>
+              <span style="font-size:10px;color:var(--gold);">机缘未至</span>
             </div>
             <div style="font-size:11px;color:var(--text2);margin-top:4px;">${s.description}</div>
             <div style="font-size:10px;color:var(--gold);margin-top:2px;">解锁条件: ${s.hidden_condition || '未知'}</div>
@@ -1815,14 +1823,89 @@ async function handleUpgradeSkillUI(playerSkillId) {
   } catch (error) { ui.showToast(error.message); }
 }
 
-async function handleUnlockHidden(skillId, condition) {
-  ui.showConfirm('解锁隐藏技能', `条件: ${condition}\n确定要尝试解锁吗？`, async () => {
-    try {
-      await api.unlockHiddenSkill(skillId, condition);
-      ui.showToast('解锁成功');
-      loadSkillSub('hidden');
-    } catch (error) { ui.showToast(error.message); }
+// 轮49 删除 handleUnlockHidden()：隐藏技解锁不接受客户端自报条件（服务端固定 501），
+// 界面上不存在"点一下尝试解锁"这种交互；规则已并入技能心法 → 隐藏技能子页的说明文字。
+
+// ===== P3 · 好友与洞府拜访（后端 /api/friend 轮48 上线，界面此前零引用 ⇒ 本轮接线）=====
+// 道号是玩家自由输入的，必须转义后再进 innerHTML：既有面板普遍直接 ${name} 插入，
+// 那是 P3 后续要统一清掉的一处注入面（已在《前端可见性与覆盖率测量.md》登记）。
+function escText(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function friendRow(x, actions) {
+  const c = x.character || {};
+  return `<div style="padding:8px;margin-bottom:6px;border:1px solid var(--gold);border-radius:var(--radius);background:var(--bg2);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    <div><b>${escText(c.name || '未知修士')}</b>
+      <span style="font-size:10px;color:var(--text2);margin-left:6px;">${escText(c.realm || '?')}${c.realm_stage ? c.realm_stage + '期' : ''} · 亲密度 ${Number(x.intimacy) || 0}</span></div>
+    <div style="white-space:nowrap;">${actions || ''}</div>
+  </div>`;
+}
+
+async function loadFriendTab() {
+  const content = document.getElementById('tab-content');
+  if (!content) return;
+  try {
+    const data = await api.getFriends();
+    const f = data.friends || [], inc = data.incoming || [], out = data.outgoing || [];
+    const limit = data.limit || 50;
+    const empty = (txt) => `<p style="font-size:11px;color:var(--text2);">${txt}</p>`;
+    content.innerHTML = `
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">道友往来（好友 ${f.length}/${limit} · 待处理申请 ${(data.pendingLimit || 20) - out.length} 名额）</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <input id="friend-kw" class="input" placeholder="搜索其他修士道号" style="flex:1;" />
+        <button class="btn small" onclick="handleFriendSearch()">搜索</button>
+      </div>
+      <div id="friend-search"></div>
+      <div style="font-size:12px;font-weight:600;margin:10px 0 6px;">收到的申请（${inc.length}）</div>
+      ${inc.length ? inc.map((x) => friendRow(x,
+        `<button class="btn small" onclick="handleFriendRespond(${x.requestId},true)">同意</button>
+         <button class="btn small" onclick="handleFriendRespond(${x.requestId},false)">拒绝</button>`)).join('') : empty('暂无待处理申请')}
+      <div style="font-size:12px;font-weight:600;margin:10px 0 6px;">我的好友（${f.length}/${limit}）</div>
+      ${f.length ? f.map((x) => friendRow(x,
+        `<button class="btn small" onclick="handleFriendVisit(${(x.character || {}).id})">拜访</button>
+         <button class="btn small" onclick="handleFriendRemove(${(x.character || {}).id})">删除</button>`)).join('') : empty('还没有好友，用上面的搜索找一位道友')}
+      <div style="font-size:12px;font-weight:600;margin:10px 0 6px;">我发出的申请（${out.length}）</div>
+      ${out.length ? out.map((x) => friendRow(x, '<span style="font-size:10px;color:var(--gold);">等待回应</span>')).join('') : empty('暂无')}`;
+  } catch (e) {
+    content.innerHTML = `<p style="font-size:12px;color:var(--text2);">${escText(api.errInfo(e).text)}</p>`;
+  }
+}
+
+async function handleFriendSearch() {
+  const box = document.getElementById('friend-search');
+  const kw = (document.getElementById('friend-kw') || {}).value || '';
+  if (!kw.trim()) { ui.showToast('请输入道号'); return; }
+  try {
+    const r = await api.searchCharacters(kw.trim());
+    const rows = r.results || [];
+    if (box) box.innerHTML = rows.length ? rows.map((c) => `<div style="padding:6px 8px;margin-bottom:4px;border:1px dashed var(--gold);border-radius:var(--radius);display:flex;justify-content:space-between;">
+      <span>${escText(c.name)} <span style="font-size:10px;color:var(--text2);">${escText(c.realm)} · ${c.relation === 'accepted' ? '已是好友' : c.relation === 'pending' ? '申请中' : '未添加'}</span></span>
+      <button class="btn small" onclick="handleFriendRequest('${escText(c.id)}')">申请</button></div>`).join('') : '<p style="font-size:11px;color:var(--text2);">没有匹配的道友</p>';
+  } catch (e) { ui.showToast(api.errInfo(e).text); }
+}
+
+async function handleFriendRequest(target) {
+  try { const r = await api.requestFriend(target); ui.showToast(r.reused ? '已重新发出申请' : `已向 ${r.target} 发出申请`); loadTabContent('friend'); }
+  catch (e) { ui.showToast(api.errInfo(e).text); }
+}
+
+async function handleFriendRespond(requestId, accept) {
+  try { await api.respondFriend(requestId, accept); ui.showToast(accept ? '已结为道友' : '已拒绝'); loadTabContent('friend'); }
+  catch (e) { ui.showToast(api.errInfo(e).text); }
+}
+
+async function handleFriendRemove(friendId) {
+  ui.showConfirm('删除好友', '删除后亲密度归零，需重新申请。确定？', async () => {
+    try { const r = await api.removeFriend(friendId); ui.showToast(`已解除关系，失去亲密度 ${r.intimacyLost || 0}`); loadTabContent('friend'); }
+    catch (e) { ui.showToast(api.errInfo(e).text); }
   });
+}
+
+async function handleFriendVisit(hostId) {
+  try { const r = await api.visitFriendCave(hostId); ui.showToast(`拜访 ${(r.host || {}).name || ''} 洞府，亲密度 ${r.intimacy}（今日 ${r.visitsToday} 次）`); loadTabContent('friend'); }
+  catch (e) { ui.showToast(api.errInfo(e).text); }
 }
 
 async function handleSynthesize() {

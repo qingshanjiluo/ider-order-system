@@ -39,11 +39,40 @@ const api = {
         });
         clearTimeout(timeoutId);
         
-        const result = await response.json();
+        // P3（轮49）：**状态码语义必须穿过传输层**，不能退化成一行文本。
+        // 后端早就在发结构化的拒绝理由 —— 423 账号锁定（loginGuard，带 retryAfterSeconds）、
+        // 429 接口限流（tierLimit / rateLimit，带 retryAfterSeconds 与 scope）、
+        // 501 尚未实装（技能隐藏解锁）、409 状态冲突（大限劫）。
+        // 而这里以前是 `throw new Error(result.error)`：调用方拿不到 status，于是
+        // "过一会儿再来" 和 "你前置条件不够" 在界面上长得一模一样，玩家只能反复点。
+        // 另外原来无条件 `response.json()`：一旦后端返回非 JSON（反代/静态兜底）整个请求就抛解析异常。
+        let payload = null;
+        const text = await response.text();
+        try { payload = text ? JSON.parse(text) : null; } catch (e) { payload = null; }
         if (!response.ok) {
-          throw new Error(result.error || `HTTP ${response.status}`);
+          const status = response.status;
+          const err = new Error((payload && payload.error) || `HTTP ${status}`);
+          err.status = status;
+          err.payload = payload;
+          err.kind = status === 401 ? 'unauthorized'
+            : status === 403 ? 'forbidden'
+            : status === 409 ? 'conflict'
+            : status === 423 ? 'accountLocked'
+            : status === 429 ? 'rateLimited'
+            : status === 501 ? 'notImplemented'
+            : status >= 500 ? 'server' : 'client';
+          const headerRetry = Number(response.headers.get('retry-after')) || 0;
+          const ra = payload && payload.retryAfterSeconds ? Number(payload.retryAfterSeconds) : headerRetry;
+          if (ra > 0) err.retryAfterSeconds = ra;
+          if (payload && payload.scope) err.scope = payload.scope;
+          err.unauthorized = status === 401;
+          err.locked = status === 423;
+          err.tooManyRequests = status === 429;
+          err.conflict = status === 409;
+          err.notImplemented = status === 501;
+          throw err;
         }
-        return result;
+        return payload;
       } catch (error) {
         clearTimeout(timeoutId);
         // Retry on network errors (not on 4xx errors)
@@ -64,6 +93,33 @@ const api = {
     
     return promise;
   },
+
+  // P3（轮49）：把传输层错误翻译成玩家看得懂的一句话。
+  // 面板统一走它，别再各自 `e.message.slice(0, 20)` —— 那正是"423 和 429 长一个样"的第二个来源。
+  errInfo(error) {
+    const kind = (error && error.kind) || 'client';
+    const ra = error && error.retryAfterSeconds ? Math.ceil(Number(error.retryAfterSeconds)) : 0;
+    const base = (error && error.message) || '操作失败';
+    if (kind === 'rateLimited') return { kind, retryAfterSeconds: ra, text: `手太快了：${base}${ra ? `（约 ${ra} 秒后再试）` : ''}` };
+    if (kind === 'accountLocked') return { kind, retryAfterSeconds: ra, text: `账号暂时锁定：${base}` };
+    if (kind === 'unauthorized') return { kind, text: '登录已失效，请重新登录' };
+    if (kind === 'notImplemented') return { kind, text: `${base}（需要服务端记录的机缘，暂不可自助解锁）` };
+    if (kind === 'conflict') return { kind, text: `${base}（状态已变化，请刷新后重试）` };
+    if (kind === 'forbidden') return { kind, text: `此刻不可用：${base}` };
+    if (kind === 'server') return { kind, text: `服务器忙：${base}` };
+    return { kind, text: base };
+  },
+
+  // —— P2 好友与洞府拜访（后端轮48 上线，界面此前零引用 ⇒ 本轮接线）——
+  async getFriends() { return this.request('GET', '/friend/list'); },
+  async searchCharacters(name) { return this.request('GET', `/friend/search?name=${encodeURIComponent(name || '')}`); },
+  async requestFriend(target) { return this.request('POST', '/friend/request', { target }); },
+  async respondFriend(requestId, accept) { return this.request('POST', '/friend/respond', { requestId, accept: !!accept }); },
+  async removeFriend(friendId) { return this.request('POST', '/friend/remove', { friendId }); },
+  async visitFriendCave(hostId) { return this.request('POST', '/friend/visit', { hostId }); },
+
+  // —— P2 市场 7 日成交价与指导价 ——
+  async getMarketPrices(item) { return this.request('GET', item ? `/market/prices?item=${encodeURIComponent(item)}` : '/market/prices'); },
 
   // GET with automatic caching
   async get(path, options = {}) {
@@ -243,8 +299,17 @@ const api = {
     return this.request('POST', '/skill/buy', { skillId });
   },
 
-  async unlockHiddenSkill(skillId, condition) {
-    return this.request('POST', '/skill/unlock-hidden', { skillId, condition });
+  // 轮47 起服务端**不再接受客户端自报解锁条件**（那等于任何登录玩家 POST 一个 truthy 值就白拿仙阶大招），
+  // 现在固定返回 501 并说明需要服务端记录的机缘。所以这里不再发送 condition，
+  // 界面侧也只允许呈现"需机缘解锁"的说明，不许再放一个必然失败的按钮。
+  async unlockHiddenSkill(skillId) {
+    return this.request('POST', '/skill/unlock-hidden', { skillId });
+  },
+
+  // P1：功法书研读（后端轮46 就实现了 /gongfa/study，前端一直零引用 ⇒ 本轮接线）。
+  // 注意 itemId 传的是**物品定义 id**，服务端自己去背包里找并扣除。
+  async studyGongfaBook(itemId) {
+    return this.request('POST', '/gongfa/study', { itemId });
   },
 
   async getSkillElements() {

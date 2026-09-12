@@ -17,6 +17,7 @@
     "test": "node scripts/gate.js",
     "test:content": "node scripts/test-content.js",
     "probe:server": "node scripts/probe-server.js",
+    "coverage:api": "node scripts/endpoint-coverage.js --report 前端可见性与覆盖率测量.md",
     "backup": "node scripts/backup.js",
     "backup:verify": "node scripts/verify-backup.js",
     "restore": "node scripts/restore.js",

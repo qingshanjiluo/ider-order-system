@@ -2394,6 +2394,52 @@ t('应用入口 server.js 必须自己站得住（轮48 教训：入口曾因重
   }
 });
 
+// ===== 册五期：P3 · 前端可见性与状态码语义（轮49）=====
+t('端点覆盖率测量可复现，且"幽灵调用"必须为零', () => {
+  const { measure } = require('../scripts/endpoint-coverage.js');
+  const r = measure();
+  assert.ok(r.totals.be >= 276, `后端端点总数只剩 ${r.totals.be}（基线 276），路由可能被删或 router 未被展开`);
+  assert.strictEqual(r.totals.skippedLayers, 0, '有 router 层没被展开，覆盖率口径不可信');
+  // 前端调了后端没有的路径 = 玩家一点就 404/500，这是最要命的一类，绝不允许出现
+  assert.deepStrictEqual(r.ghost.map((g) => g.call), [], `前端存在幽灵调用（后端无此端点）：${r.ghost.map((g) => `${g.call}@${g.in}`).join(', ')}`);
+  // 棘轮用**绝对条数**而不是百分比：百分比会因"新增后端端点"而自动下降，那种红只会逼人删功能或放宽阈值
+  assert.ok(r.rates.clickableCount >= 166, `玩家可点端点数掉到 ${r.rates.clickableCount}（基线 166）：有面板或 api 包装被摘掉了`);
+  assert.ok(r.totals.test >= 78, `测试打过的端点数掉到 ${r.totals.test}（基线 78）：有 HTTP 断言被删`);
+  assert.ok(r.rates.fe >= 60, `名义覆盖率 ${r.rates.fe}% 低于 60%：前端 api 层大面积失联`);
+});
+t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
+  const src = read21('public', 'js', 'api.js');
+  assert.ok(!/throw new Error\(result\.error \|\| `HTTP \$\{response\.status\}`\)/.test(src),
+    'api.js 又退回"只抛 message"的写法：调用方拿不到 status，423（锁定）与 429（限流）在界面上就分不出来');
+  for (const k of ['err.status', 'err.kind', 'retryAfterSeconds', "status === 423", "status === 429", "status === 501"]) {
+    assert.ok(src.includes(k), `传输层丢了 ${k}（状态码语义链断在这一层）`);
+  }
+  assert.ok(/async errInfo|errInfo\(error\)/.test(src), 'errInfo 辅助函数不见了（面板就没有统一的语义出口）');
+  assert.ok(/await response\.text\(\)/.test(src), '响应解析又回到无条件 response.json()（后端返回非 JSON 时整条请求抛解析异常）');
+  const unlock = src.slice(src.indexOf('async unlockHiddenSkill'), src.indexOf('async unlockHiddenSkill') + 260);
+  assert.ok(!/condition/.test(unlock), 'unlockHiddenSkill 又在向服务端发 condition（轮47 已定：服务端不接受客户端自报解锁条件）');
+  const app = read21('public', 'js', 'app.js');
+  // 锁"危险调用形状"而不是裸标识符：轮47 被注释里的字面量打红过一次，轮49 又被自己留的
+  // "轮49 删除 handleUnlockHidden()"说明注释打红一次 —— 逼注释改词的锁是脆的，锁行为才对。
+  assert.ok(!/onclick="handleUnlockHidden/.test(app), 'app.js 又挂上了"尝试解锁"按钮（该端点自轮47 固定 501，不该有可点入口）');
+  assert.ok(!/api\.unlockHiddenSkill\s*\(/.test(app), 'app.js 又直接调用 unlockHiddenSkill（必然失败的交互不该存在于界面上）');
+});
+t('好友面板三处齐全（导航 + 分支 + 渲染），P2 端点从"存在"变成"点得到"', () => {
+  const html = read21('public', 'index.html');
+  const app = read21('public', 'js', 'app.js');
+  const apiSrc = read21('public', 'js', 'api.js');
+  assert.ok(/data-tab="friend"/.test(html), '侧边导航没有好友入口');
+  assert.ok((html.match(/data-tab="friend"/g) || []).length >= 2, '移动端 tab 条没有好友入口（只接桌面=一半玩家看不见）');
+  assert.ok(/case 'friend':/.test(app), 'loadTabContent 没有 friend 分支（点了不会有内容）');
+  assert.ok(/async function loadFriendTab/.test(app), 'loadFriendTab 不见了');
+  for (const w of ['getFriends', 'searchCharacters', 'requestFriend', 'respondFriend', 'removeFriend', 'visitFriendCave']) {
+    assert.ok(apiSrc.includes(`async ${w}(`), `api.js 缺好友包装 ${w}`);
+    assert.ok(app.includes(`api.${w}(`), `${w} 在界面上没被调用（写了等于没写）`);
+  }
+  assert.ok(/function escText\(/.test(app), '好友面板的道号未转义就进 innerHTML（玩家可注入 HTML）');
+  assert.ok(/api\.errInfo\(e\)\.text/.test(app), '好友面板没有走 errInfo 语义出口');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

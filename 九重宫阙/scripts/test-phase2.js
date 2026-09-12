@@ -72,10 +72,33 @@ t('有效寿元 = min(基础+加成-惩罚, 100万)', () => {
   assert.strictEqual(gameTime.effectiveLifespan({ realm: '渡劫', lifespan_bonus_years: 500000 }), 1000000);
   assert.strictEqual(gameTime.effectiveLifespan({ realm: '飞升' }), null);
 });
-t('延寿封顶边际递减', () => {
-  const c = { realm: '炼气', lifespan_bonus_years: 0 };
-  assert.strictEqual(gameTime.addLifespanBonus(c, 100), 100);
-  assert.strictEqual(gameTime.addLifespanBonus(c, 1000000), 1000000 - 300); // 300 → cap 100万
+t('延寿封顶边际递减（两道闸：相对 35% 硬闸 + 绝对 100 万顶格）', () => {
+  // 语义变更记录：本测试原只锁"绝对 100 万"，把 balance.LONGEVITY_BONUS_CAP_RATIO
+  // 那条"累计不超过境界基础寿元 35%"的硬闸留在无人消费的状态（T0-1 一并接线）。
+  // 延寿收益现走 longevity_years 桶；lifespan_bonus_years 专表境界内成长（升级），不占此闸。
+  const bal = require('../src/config/balance');
+  const low = { realm: '炼气', lifespan_bonus_years: 0 };
+  const ceiling = Math.floor(200 * bal.LONGEVITY_BONUS_CAP_RATIO); // 70
+  assert.strictEqual(gameTime.addLifespanBonus(low, 100), ceiling, '低境界一次性延寿未被 35% 闸削平');
+  assert.strictEqual(low.lifespan_bonus_years, 0, '延寿误写进境界内成长桶（两桶混淆）');
+  assert.strictEqual(gameTime.addLifespanBonus(low, 100000), 0, '闸未关死，仍可无限堆延寿');
+  assert.strictEqual(gameTime.effectiveLifespan(low), 200 + ceiling);
+
+  const mid = { realm: '大乘', lifespan_bonus_years: 0 };
+  const midCeiling = Math.floor(300000 * bal.LONGEVITY_BONUS_CAP_RATIO); // 10.5 万
+  assert.strictEqual(gameTime.addLifespanBonus(mid, midCeiling), midCeiling, '大乘延寿闸值不符');
+  assert.strictEqual(gameTime.effectiveLifespan(mid), 300000 + midCeiling);
+  assert.strictEqual(gameTime.addLifespanBonus(mid, 1), 0, '相对闸未关死');
+
+  const top = { realm: '渡劫', lifespan_bonus_years: 0 };
+  assert.strictEqual(gameTime.addLifespanBonus(top, 500000), 0, '顶格后仍可续，A 案 100 万上限被架空');
+  assert.strictEqual(gameTime.effectiveLifespan(top), 1000000, '绝对顶格未生效（两闸须同时成立）');
+});
+t('境界内成长（升级）不受延寿闸影响，且两桶相加仍受绝对顶格', () => {
+  const c = { realm: '筑基', lifespan_bonus_years: 400, longevity_years: 100 };
+  assert.strictEqual(gameTime.effectiveLifespan(c), 500 + 400 + 100, '两桶记账口径被改动');
+  const over = { realm: '凡人', lifespan_bonus_years: 2000000 };
+  assert.strictEqual(gameTime.effectiveLifespan(over), 1000000, '绝对顶格丢失');
 });
 t('扣寿永久生效', () => {
   const c = { realm: '筑基', lifespan_bonus_years: 100 };

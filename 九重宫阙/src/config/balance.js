@@ -158,3 +158,13 @@ function mitigatedDamage(rawDamage, defense, level) {
 module.exports.MITIGATION = MITIGATION;
 module.exports.mitigationRatio = mitigationRatio;
 module.exports.mitigatedDamage = mitigatedDamage;
+
+// ===== E5 / T0-1 大限劫（寿元耗尽不再静默坐化，先应劫）=====
+const TRIBULATION = {
+  // 化神及以上才有"劫"；以下境界寿元耗尽仍按凡人坐化（决议 D5 + 章程 E5）
+  eligibleRealms: ['化神', '炼虚', '合体', '大乘', '渡劫'],
+  windowYears: 3,      // 应劫窗口（游戏年）：窗口内不判死，逾期视为未曾出手
+  renewRatio: 0.10,    // 度劫成功续命 = 当时寿元上限 × 10%（比例制，禁绝对年数）
+  maxAttemptsPerWindow: 3
+};
+module.exports.TRIBULATION = TRIBULATION;

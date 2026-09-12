@@ -869,5 +869,118 @@ t('全部 86 行模板都能实例化且有 speed（PVE 先手自此有数据源
   assert.strictEqual(bad, 0, `${bad} 行模板无法实例化`);
 });
 
+console.log('== 十八期：E5/T0-1 大限劫与延寿硬闸 ==');
+// logEvent 经 store.insertRel 真写 lifespan_events：测试必须桩掉，否则每跑一次污染一次生产数据
+const storeMod = require('../src/db/store');
+storeMod.insertRel = () => 0;
+const gt = require('../src/services/gameTime');
+const bal = require('../src/config/balance');
+const mkChar = (realm, extra) => Object.assign({
+  id: 900001, name: '试劫者', realm, level: 1, age_years: 0,
+  lifespan_bonus_years: 0, longevity_years: 0, lifespan_penalty_years: 0,
+  time_settled_at: Date.now(), reincarnation_count: 0
+}, extra || {});
+const capOf = (c) => gt.effectiveLifespan(c);
+const exhaust = (c) => { c.age_years = capOf(c); return c; };
+
+t('寿元耗尽不再静默坐化：化神起开应劫窗口，窗口内不判死', () => {
+  for (const realm of bal.TRIBULATION.eligibleRealms) {
+    const c = exhaust(mkChar(realm));
+    assert.strictEqual(gt.shouldPassAway(c), false, `${realm} 耗尽即死，大限劫未生效`);
+    assert.ok(c.tribulation && c.tribulation.stage === 'pending', `${realm} 未开窗口`);
+    assert.ok(Math.abs(gt.tribulationRemaining(c) - bal.TRIBULATION.windowYears) < 1e-6, `${realm} 窗口长度不符`);
+  }
+});
+t('窗口幂等：反复结算不得刷新窗口起点（否则读档一次续期一次=无限延寿）', () => {
+  const c = exhaust(mkChar('合体'));
+  gt.shouldPassAway(c);
+  const started = c.tribulation.started_at_year;
+  for (let i = 0; i < 30; i++) { c.age_years += 0.01; assert.strictEqual(gt.shouldPassAway(c), false); }
+  assert.strictEqual(c.tribulation.started_at_year, started, '窗口起点被刷新');
+  assert.ok(gt.tribulationRemaining(c) < bal.TRIBULATION.windowYears, 'remaining 未随年龄递减');
+});
+t('逾期未应劫判死，且失败后不再重开窗口', () => {
+  const c = exhaust(mkChar('大乘'));
+  assert.strictEqual(gt.shouldPassAway(c), false);
+  c.age_years = c.tribulation.started_at_year + bal.TRIBULATION.windowYears + 1;
+  assert.strictEqual(gt.shouldPassAway(c), true, '窗口耗尽仍未判死');
+  assert.strictEqual(c.tribulation.stage, 'failed');
+  c.age_years += 100;
+  assert.strictEqual(gt.shouldPassAway(c), true, 'failed 状态被复活');
+});
+t('度劫成功按当时上限的比例续命（不变量 2：禁绝对年数）', () => {
+  const c = exhaust(mkChar('元婴')); // 元婴无劫，改用有劫境界
+  assert.strictEqual(gt.tribulationEligible(c), false, '元婴不应有劫（名单被改？）');
+  const k = exhaust(mkChar('大乘'));
+  gt.shouldPassAway(k);
+  const before = capOf(k);
+  const r = gt.resolveTribulationVictory(k);
+  assert.strictEqual(r.success, true, `续命失败：${r.error}`);
+  assert.ok(Math.abs(r.gainedYears - before * bal.TRIBULATION.renewRatio) < 1e-6, `增量非比例：${r.gainedYears}/${before}`);
+  assert.ok(Math.abs(capOf(k) - before * (1 + bal.TRIBULATION.renewRatio)) < 1e-6, '上限未如期抬升');
+  assert.strictEqual(k.tribulation.stage, 'survived');
+  assert.strictEqual(gt.resolveTribulationVictory(k).success, false, '无 pending 也能续命（可刷）');
+});
+t('续上的寿元耗尽后可再应一轮（一世多次）', () => {
+  const c = exhaust(mkChar('大乘'));
+  gt.shouldPassAway(c);
+  assert.strictEqual(gt.resolveTribulationVictory(c).success, true);
+  exhaust(c);
+  assert.strictEqual(gt.shouldPassAway(c), false, '第二次大限未开窗口');
+  assert.strictEqual(c.tribulation.stage, 'pending', 'survived 未转回 pending');
+});
+t('A 案顶格：渡劫上限即 100 万，度劫成功也续无可续（唯有飞升可脱）', () => {
+  const c = exhaust(mkChar('渡劫'));
+  gt.shouldPassAway(c);
+  const v = gt.resolveTribulationVictory(c);
+  assert.strictEqual(v.success, true);
+  assert.strictEqual(v.gainedYears, 0, `顶格却续出了 ${v.gainedYears} 年，100 万绝对上限被架空`);
+  assert.strictEqual(capOf(c), bal.LIFESPAN_CAP, `渡劫上限被改动：${capOf(c)}`);
+});
+t('延寿硬闸生效：累计延寿不超过境界基础寿元 35%，超闸边际为 0', () => {
+  const c = mkChar('金丹');
+  const base = gt.getLifespanBase(c);
+  let total = 0;
+  for (let i = 0; i < 60; i++) total += gt.addLifespanBonus(c, base * 0.02);
+  assert.ok(Math.abs(total - base * bal.LONGEVITY_BONUS_CAP_RATIO) < base * 0.011, `累计 ${total} 未钉在 35% 闸：${base * bal.LONGEVITY_BONUS_CAP_RATIO}`);
+  assert.strictEqual(gt.addLifespanBonus(c, base), 0, '闸未关死');
+  assert.ok(capOf(c) <= base * (1 + bal.LONGEVITY_BONUS_CAP_RATIO) + 1, '上限越过 35% 闸');
+});
+t('两桶分开：升级带来的境界内成长不被延寿闸吃掉（防接错桶）', () => {
+  const c = mkChar('元婴');
+  const base = gt.getLifespanBase(c);
+  c.lifespan_bonus_years = base * 0.9;
+  assert.ok(Math.abs(capOf(c) - base * 1.9) < 1e-6, `境界内成长被误封顶：${capOf(c)}`);
+  gt.addLifespanBonus(c, base * 0.1);
+  assert.ok(c.longevity_years > 0 && c.longevity_years <= base * bal.LONGEVITY_BONUS_CAP_RATIO, '延寿未进独立桶');
+});
+t('筑基及以下仍直接坐化（劫是化神以上的事）', () => {
+  const c = exhaust(mkChar('筑基'));
+  assert.strictEqual(gt.shouldPassAway(c), true, '低境界被误给了应劫窗口');
+  assert.ok(!c.tribulation || c.tribulation.stage !== 'pending');
+});
+t('飞升超脱：不判死也不应劫（寿命机制退场）', () => {
+  const c = mkChar('飞升');
+  c.age_years = 10 ** 9;
+  assert.strictEqual(gt.shouldPassAway(c), false);
+  assert.strictEqual(gt.resolveTribulationVictory(c).success, false);
+  assert.strictEqual(gt.tribulationEligible(c), false);
+});
+t('转世清空延寿与劫状态（源码锁）', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'services', 'gameTime.js'), 'utf8');
+  assert.ok(src.includes('character.longevity_years = 0;'), 'passAway 未清延寿桶');
+  assert.ok(src.includes('character.tribulation = null;'), 'passAway 未清劫状态');
+  assert.ok(!/openTribulationWindow\(\{ *\.\.\./.test(src), '对展开副本开窗口（临时对象副作用）');
+});
+t('判定点唯一：passAway 只有一处调用方；大限劫已落地（反向锁死"零实现"）', () => {
+  const fs = require('fs'); const path = require('path');
+  const files = [];
+  (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) files.push(p); } })(path.join(__dirname, '..', 'src'));
+  const callers = files.filter(f => /gameTime[^\n]*passAway\(/.test(fs.readFileSync(f, 'utf8')));
+  assert.strictEqual(callers.length, 1, `passAway 调用点应为 1，实为 ${callers.length}: ${callers.map(f => path.basename(f)).join(',')}`);
+  const hits = files.reduce((n, f) => n + ((fs.readFileSync(f, 'utf8').match(/大限劫/g) || []).length), 0);
+  assert.ok(hits > 0, '大限劫关键字仍为 0 命中（实现回退）');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

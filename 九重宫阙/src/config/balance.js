@@ -165,6 +165,8 @@ const TRIBULATION = {
   eligibleRealms: ['化神', '炼虚', '合体', '大乘', '渡劫'],
   windowYears: 3,      // 应劫窗口（游戏年）：窗口内不判死，逾期视为未曾出手
   renewRatio: 0.10,    // 度劫成功续命 = 当时寿元上限 × 10%（比例制，禁绝对年数）
-  maxAttemptsPerWindow: 3
+  bossLevelPerRealm: 3  // 天劫目标等级 = 自身等级 + (境界序号+1)×本值（确定性，不含随机）
+  // 注：不设 maxAttemptsPerWindow —— 应劫败即转世，一个窗口内不可能有第二次出手，
+  //     留着就是无人消费的幽灵配置（不变量 3）。
 };
 module.exports.TRIBULATION = TRIBULATION;

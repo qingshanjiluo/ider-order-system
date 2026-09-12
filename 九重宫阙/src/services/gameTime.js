@@ -313,3 +313,19 @@ module.exports = {
   resolveTribulationVictory,
   resolveTribulationDefeat
 };
+
+/**
+ * 境界内成长（升级）的寿元加成——全仓唯一允许写 lifespan_bonus_years 的入口。
+ * 之前由 character.js 自己 `lifespan_bonus_years += realmBase * 0.01`，既绕过 balance
+ * 又把寿元算术散落到第二个 owner（不变量 5 + 判定点唯一的实质要求）。
+ */
+function addRealmGrowth(character) {
+  if (isAscended(character)) return 0;
+  const base = getLifespanBase(character) || 0;
+  if (!base) return 0;
+  const ratio = Number(B.LEVEL_LIFESPAN_GAIN) || 0;
+  const before = effectiveLifespan(character);
+  character.lifespan_bonus_years = (character.lifespan_bonus_years || 0) + base * ratio;
+  return effectiveLifespan(character) - before;
+}
+module.exports.addRealmGrowth = addRealmGrowth;

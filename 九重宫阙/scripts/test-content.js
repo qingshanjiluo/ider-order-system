@@ -573,8 +573,13 @@ t('cap 随境界严格单调递增（突破即续命的数学表达）', () => {
 });
 t('每级 +1% 续命通道存在且随境界放大', () => {
   assert.strictEqual(balance.LEVEL_LIFESPAN_GAIN, 0.01);
-  const src = require('fs').readFileSync('src/services/character.js', 'utf8');
-  assert.ok(/getLifespanBase/.test(src) && /lifespan_bonus_years/.test(src), '升级续命钩子丢失');
+  // 锁整条链而非单文件文本：升级 → gameTime.addRealmGrowth → lifespan_bonus_years（系数取 balance）
+  const caller = require('fs').readFileSync('src/services/character.js', 'utf8');
+  const owner = require('fs').readFileSync('src/services/gameTime.js', 'utf8');
+  assert.ok(/gameTime\.addRealmGrowth\(/.test(caller), '升级不再调用唯一续命入口（钩子丢失）');
+  assert.ok(/function addRealmGrowth\s*\(/.test(owner)
+    && /character\.lifespan_bonus_years\s*=/.test(owner)
+    && /B\.LEVEL_LIFESPAN_GAIN/.test(owner), '续命通道在 gameTime 侧断链或未走 balance 系数');
   const perLevelLianqi = balance.lifespanOf('炼气') * balance.LEVEL_LIFESPAN_GAIN;
   const perLevelDujie = balance.lifespanOf('渡劫') * balance.LEVEL_LIFESPAN_GAIN;
   assert.strictEqual(perLevelLianqi, 2);
@@ -971,13 +976,47 @@ t('转世清空延寿与劫状态（源码锁）', () => {
   assert.ok(src.includes('character.longevity_years = 0;'), 'passAway 未清延寿桶');
   assert.ok(src.includes('character.tribulation = null;'), 'passAway 未清劫状态');
   assert.ok(!/openTribulationWindow\(\{ *\.\.\./.test(src), '对展开副本开窗口（临时对象副作用）');
+  // 寿元写入收回 gameTime 独占后的等价性（这条替换的是原本在跑的升级加寿路径）
+  assert.ok(src.includes('B.LEVEL_LIFESPAN_GAIN'), '境界内成长未走 balance 系数（又硬编码了？）');
+  assert.ok(require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'services', 'character.js'), 'utf8')
+    .includes('gameTime.addRealmGrowth('), '升级未改走 gameTime 唯一写入口');
+  const g = mkChar('筑基');
+  const before = capOf(g);
+  const gained = gt.addRealmGrowth(g);
+  assert.strictEqual(gained, 500 * bal.LEVEL_LIFESPAN_GAIN, `升级加寿不等价：${gained}`);
+  assert.strictEqual(capOf(g), before + gained);
+  assert.strictEqual(gt.addRealmGrowth(mkChar('飞升')), 0, '超脱者不应再加寿');
+  assert.strictEqual(gt.addRealmGrowth({ realm: '不存在的境界' }), gt.getLifespanBase({ realm: '不存在的境界' }) * bal.LEVEL_LIFESPAN_GAIN,
+    '未知境界应走凡人基准而非静默为 0');
 });
 t('判定点唯一：passAway 只有一处调用方；大限劫已落地（反向锁死"零实现"）', () => {
   const fs = require('fs'); const path = require('path');
   const files = [];
   (function walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else if (p.endsWith('.js')) files.push(p); } })(path.join(__dirname, '..', 'src'));
-  const callers = files.filter(f => /gameTime[^\n]*passAway\(/.test(fs.readFileSync(f, 'utf8')));
-  assert.strictEqual(callers.length, 1, `passAway 调用点应为 1，实为 ${callers.length}: ${callers.map(f => path.basename(f)).join(',')}`);
+  // 口径修正：不变量是"生死判定与转世出口各只有一个**函数**"，不是"只有一个调用方"。
+  // T0-1 之后合法调用方有两处：读档兜底(character.js) 与 应劫败亡(tribulation.js)，不得再有第三方。
+  const defs = files.filter(f => /function shouldPassAway\s*\(/.test(fs.readFileSync(f, 'utf8')));
+  assert.strictEqual(defs.length, 1, `判死函数定义点必须唯一，实为 ${defs.length}: ${defs.map(f => path.basename(f)).join(',')}`);
+  const exits = files.filter(f => /function passAway\s*\(/.test(fs.readFileSync(f, 'utf8')));
+  assert.strictEqual(exits.length, 1, `转世出口定义点必须唯一，实为 ${exits.length}`);
+  const callers = files.filter(f => /gameTime[^\n]*passAway\(/.test(fs.readFileSync(f, 'utf8'))).map(f => path.basename(f)).sort();
+  assert.deepStrictEqual(callers, ['character.js', 'tribulation.js'],
+    `转世调用方偏离白名单：${callers.join(',') || '无'}`);
+  // 询问判死的地方可以有多处（读档兜底、疗伤扣寿、应劫结算），但**谁都不准自己算寿元**：
+  // 除 gameTime.js 外任何文件都不得写寿元字段——这才是不变量的实质（凭记忆列白名单会被 injury.js 打脸）。
+  const judgers = files.filter(f => /gameTime[^\n]*shouldPassAway\(/.test(fs.readFileSync(f, 'utf8'))).map(f => path.basename(f)).sort();
+  assert.ok(judgers.includes('character.js') && judgers.includes('tribulation.js'),
+    `判死询问方缺失（应有读档与应劫两处）：${judgers.join(',') || '无'}`);
+  const offenders = files
+    .filter(f => path.basename(f) !== 'gameTime.js')
+    .filter(f => {
+      const src = fs.readFileSync(f, 'utf8');
+      return /character\.age_years\s*=[^=]/.test(src)
+        || /lifespan_bonus_years\s*=[^=]/.test(src)
+        || /longevity_years\s*=[^=]/.test(src)
+        || /lifespan_penalty_years\s*=[^=]/.test(src);
+    }).map(f => path.basename(f));
+  assert.deepStrictEqual(offenders, [], `寿元字段被 gameTime 之外的文件直接改写：${offenders.join(',')}`);
   const hits = files.reduce((n, f) => n + ((fs.readFileSync(f, 'utf8').match(/大限劫/g) || []).length), 0);
   assert.ok(hits > 0, '大限劫关键字仍为 0 命中（实现回退）');
 });

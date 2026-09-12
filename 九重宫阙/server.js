@@ -7,6 +7,8 @@ const { rateLimit } = require('./src/middleware/rateLimit');
 const { sanitizeMiddleware } = require('./src/middleware/validate');
 
 const authRoutes = require('./src/routes/auth');
+const tribulationRoutes = require('./src/routes/tribulation'); // E5/T0-1 大限劫
+const tribulationRoutes = require('./src/routes/tribulation'); // E5/T0-1 大限劫
 const characterRoutes = require('./src/routes/character');
 const gameRoutes = require('./src/routes/game');
 const cultivationRoutes = require('./src/routes/cultivation');
@@ -64,6 +66,7 @@ app.use('/api/health', require('./src/routes/health'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/tribulation', tribulationRoutes); // E5/T0-1 大限劫：应劫面板与出手入口
 app.use('/api/character', characterRoutes);
 app.use('/api/game', gameRoutes);
 app.use('/api/cultivation', cultivationRoutes);

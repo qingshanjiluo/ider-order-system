@@ -53,11 +53,9 @@ class CharacterService {
       character.speed = this.calculateSpeed(character.level, character.realm);
       character.hp = character.max_hp;
       character.mp = character.max_mp;
-      // v2 寿命：境界内每升 1 级 +1% 当前境界基础寿元（决议 D5）
-      const realmBase = gameTime.getLifespanBase(character);
-      if (realmBase) {
-        character.lifespan_bonus_years = (character.lifespan_bonus_years || 0) + realmBase * 0.01;
-      }
+      // v2 寿命：境界内每升 1 级 +LEVEL_LIFESPAN_GAIN 当前境界基础寿元（决议 D5）
+      // 写入收回 gameTime 独占：系数不再硬编码 0.01，寿元算术也不散落两处
+      gameTime.addRealmGrowth(character);
       leveledUp = true;
     }
 

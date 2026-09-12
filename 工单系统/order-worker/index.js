@@ -1,7 +1,7 @@
 /**
  * 艾德尔工单自动执行 Worker
  * 替代缺失的 GitHub Actions，定时扫描并执行已审核工单
- * 支持：批量注册、传人月卡、传人派出、每日试炼、副本刷取
+ * 只处理「购买邀请积分」工单（批量注册账号并开始挂机）
  * 包含防封检测、API签名、限速控制
  */
 
@@ -223,192 +223,6 @@ async function registerOneAccount(order, env, idx) {
 }
 
 // ═══════════════════════════════════════════
-// 传人月卡工单处理
-// ═══════════════════════════════════════════
-async function processMonthlyCard(order, env) {
-  const orderId = order.id;
-  const username = order.game_account_name;
-  const password = order.game_account_password;
-  if (!username || !password) {
-    console.log(`  订单#${orderId} 缺少账号信息`);
-    return false;
-  }
-
-  try {
-    const loginData = await gameApi('POST', '/auth/login', '', { username, password, machine_id: 'mc_' + Date.now() }, env, 0);
-    const token = loginData.token;
-
-    try {
-      const syncData = await gameApi('GET', '/player/sync', token, null, env, 1);
-      const player = syncData?.player;
-      if (player) {
-        await reportAccount(env, orderId, {
-          username, password, status: 'farming',
-          level: player.level || 1, exp: player.exp || 0,
-        });
-      }
-    } catch(e) {}
-
-    // 盟友日常
-    try {
-      const stateData = await gameApi('GET', '/player/state', token, null, env, 2);
-      const allianceId = stateData?.player?.alliance_id;
-      if (allianceId) {
-        try { await gameApi('POST', '/alliance/spirit_pool/bathe', token, { alliance_id: allianceId }, env, 3); } catch(e) {}
-        await sleep(1500);
-        try { await gameApi('POST', '/alliance/garden/pick', token, { alliance_id: allianceId }, env, 4); } catch(e) {}
-        await sleep(1500);
-        try { await gameApi('POST', '/alliance/enlightenment_tree/meditate', token, { alliance_id: allianceId }, env, 5); } catch(e) {}
-      }
-    } catch(e) {}
-
-    // 领取邮件
-    try { await gameApi('POST', '/mail/claim_all', token, null, env, 6); } catch(e) {}
-
-    await reportLog(env, orderId, username, 'monthly_card', '月卡日常完成');
-    console.log(`  订单#${orderId} 月卡日常完成: ${username}`);
-    return true;
-  } catch(e) {
-    console.log(`  订单#${orderId} 月卡失败: ${e.message}`);
-    return false;
-  }
-}
-
-// ═══════════════════════════════════════════
-// 传人派出工单处理
-// ═══════════════════════════════════════════
-async function processDispatch(order, env) {
-  const orderId = order.id;
-  const username = order.game_account_name;
-  const password = order.game_account_password;
-  if (!username || !password) {
-    console.log(`  订单#${orderId} 缺少账号信息`);
-    return false;
-  }
-
-  try {
-    const loginData = await gameApi('POST', '/auth/login', '', { username, password, machine_id: 'dp_' + Date.now() }, env, 0);
-    const token = loginData.token;
-
-    // 召回传人
-    try { await gameApi('POST', '/online/disciple/recall', token, null, env, 1); } catch(e) {}
-    await sleep(2000);
-
-    // 获取地图信息
-    let mapId = 1;
-    try {
-      const syncData = await gameApi('GET', '/player/sync', token, null, env, 2);
-      mapId = syncData?.player?.max_map_id || 1;
-    } catch(e) {}
-
-    // 材质轮换
-    const mats = ['草木','金属','土石','液体','皮质','玉质'];
-    const today = new Date().toISOString().slice(0, 10);
-    const matIdx = (today.split('-').reduce((a,b) => a + Number(b), 0)) % mats.length;
-    const mat = mats[matIdx];
-
-    try {
-      await gameApi('POST', '/online/disciple/send', token, {
-        map_id: mapId, material_filter: mat
-      }, env, 3);
-    } catch(e) {}
-
-    await reportLog(env, orderId, username, 'dispatch', `传人已派出到地图${mapId}采集${mat}`);
-    console.log(`  订单#${orderId} 传人派出完成: ${username} -> 地图${mapId} ${mat}`);
-    return true;
-  } catch(e) {
-    console.log(`  订单#${orderId} 传人派出失败: ${e.message}`);
-    return false;
-  }
-}
-
-// ═══════════════════════════════════════════
-// 每日试炼工单处理
-// ═══════════════════════════════════════════
-async function processDailyTrial(order, env) {
-  const orderId = order.id;
-  const username = order.game_account_name;
-  const password = order.game_account_password;
-  if (!username || !password) {
-    console.log(`  订单#${orderId} 缺少账号信息`);
-    return false;
-  }
-
-  try {
-    const loginData = await gameApi('POST', '/auth/login', '', { username, password, machine_id: 'dt_' + Date.now() }, env, 0);
-    const token = loginData.token;
-
-    // 开始问心试炼
-    try {
-      const trialData = await gameApi('POST', '/trial/start', token, {}, env, 1);
-      if (trialData?.battle_id) {
-        // 推进战斗
-        for (let i = 0; i < 60; i++) {
-          await sleep(200);
-          const adv = await gameApi('POST', '/trial/advance?state=lite', token, { battle_id: trialData.battle_id }, env, 2);
-          if (adv?.ended) break;
-        }
-      }
-    } catch(e) {
-      console.log(`    问心试炼: ${e.message}`);
-    }
-
-    await reportLog(env, orderId, username, 'daily_trial', '每日试炼完成');
-    console.log(`  订单#${orderId} 每日试炼完成: ${username}`);
-    return true;
-  } catch(e) {
-    console.log(`  订单#${orderId} 每日试炼失败: ${e.message}`);
-    return false;
-  }
-}
-
-// ═══════════════════════════════════════════
-// 副本刷取工单处理
-// ═══════════════════════════════════════════
-async function processDungeonClear(order, env) {
-  const orderId = order.id;
-  const username = order.game_account_name;
-  const password = order.game_account_password;
-  if (!username || !password) {
-    console.log(`  订单#${orderId} 缺少账号信息`);
-    return false;
-  }
-
-  try {
-    const loginData = await gameApi('POST', '/auth/login', '', { username, password, machine_id: 'dc_' + Date.now() }, env, 0);
-    const token = loginData.token;
-
-    let dungeons = [];
-    try {
-      const listData = await gameApi('GET', '/dungeon/list', token, null, env, 1);
-      dungeons = listData?.dungeons || [];
-    } catch(e) {}
-
-    for (const dg of dungeons) {
-      for (let round = 0; round < 2; round++) {
-        try {
-          const startData = await gameApi('POST', '/dungeon-battle/start', token, { dungeon_id: dg.id }, env, 2);
-          if (!startData?.battle_id) continue;
-          for (let i = 0; i < 60; i++) {
-            await sleep(200);
-            const adv = await gameApi('POST', '/dungeon-battle/advance?state=lite', token, { battle_id: startData.battle_id }, env, 3);
-            if (adv?.ended) break;
-          }
-          await sleep(2000);
-        } catch(e) {}
-      }
-    }
-
-    await reportLog(env, orderId, username, 'dungeon_clear', `副本刷取完成，共${dungeons.length}个副本`);
-    console.log(`  订单#${orderId} 副本刷取完成: ${username}`);
-    return true;
-  } catch(e) {
-    console.log(`  订单#${orderId} 副本刷取失败: ${e.message}`);
-    return false;
-  }
-}
-
-// ═══════════════════════════════════════════
 // 升级引擎（替代 auto_levelup_all）
 // ═══════════════════════════════════════════
 async function processLevelUp(env) {
@@ -499,36 +313,24 @@ async function levelUpOneAccount(acct, env, idx) {
 // ═══════════════════════════════════════════
 // 工单分发器
 // ═══════════════════════════════════════════
+// 平台只保留「购买邀请积分」一种工单，扫描器也只会下发该类型。
+// 任何其他类型（历史遗留）一律跳过，不获取、不执行。
 function classifyOrder(order) {
   const type = String(order.order_type || '').trim();
-  const hasAccount = Boolean(order.game_account_name);
-  const isSubscription = hasAccount && Boolean(order.subscription_end);
-
-  if (type.includes('批量注册') || type.includes('代练') || type.includes('代打') || type.includes('托管')) return 'batch_register';
-  if (type.includes('传人派出') || type.includes('派遣')) return 'dispatch';
-  if (type.includes('每日试炼')) return 'daily_trial';
-  if (type.includes('副本刷取') || type.includes('副本')) return 'dungeon_clear';
-  if (type.includes('试炼测试')) return 'trial_test';
-  if (isSubscription) return 'monthly_card';
-  if (hasAccount) return 'monthly_card';
-  return 'batch_register';
+  if (type === '' || type.includes('代练') || type.includes('代打') || type.includes('托管')) {
+    return 'batch_register';
+  }
+  return null;
 }
 
 async function dispatchOrder(order, env) {
   const type = classifyOrder(order);
-  console.log(`订单#${order.id} [${order.order_type}] -> ${type}`);
-
-  switch(type) {
-    case 'batch_register': return processBatchRegister(order, env);
-    case 'monthly_card': return processMonthlyCard(order, env);
-    case 'dispatch': return processDispatch(order, env);
-    case 'daily_trial': return processDailyTrial(order, env);
-    case 'dungeon_clear': return processDungeonClear(order, env);
-    case 'trial_test':
-      try { await orderApi('/api/gh/process-trial-test', 'POST', { order_id: order.id, game_account_name: order.game_account_name }); } catch(e) {}
-      return true;
-    default: return processMonthlyCard(order, env);
+  if (!type) {
+    console.log(`订单#${order.id} [${order.order_type}] 非邀请积分工单，已下线，跳过`);
+    return false;
   }
+  console.log(`订单#${order.id} [${order.order_type}] -> ${type}`);
+  return processBatchRegister(order, env);
 }
 
 // ═══════════════════════════════════════════

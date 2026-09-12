@@ -13,9 +13,21 @@ function loadStyles() {
 
 const HISTORY = [
   {
+    version: 'v3.6',
+    date: '2026-09-11',
+    badge: 'current',
+    changes: [
+      { type: 'feat', text: '工单类型收敛：平台只保留「购买邀请积分」工单，新建工单不再提供其它类型' },
+      { type: 'feat', text: '修仙币支付工单提交即扣款并自动批准，无需等待人工审核' },
+      { type: 'fix', text: '修仙币自动批准的工单与人工审核权益一致：正常计入经验值、邀请分成与套餐到账' },
+      { type: 'fix', text: '工单创建接口增加类型白名单，非邀请积分类型一律拒绝；扫描器也不再下发此类工单' },
+      { type: 'perf', text: '下线仙盟采集/试炼测试/每日试炼/传人派出/副本刷取：删除对应表单、接口端点与自动化脚本' },
+    ],
+  },
+  {
     version: 'v3.5',
     date: '2026-07-26',
-    badge: 'current',
+    badge: '',
     changes: [
       { type: 'perf', text: '侧边栏分区可折叠：stopPropagation 防止误关闭，状态持久化 localStorage' },
       { type: 'perf', text: '移动端适配：rem 字体缩放到 touch-action 全面优化' },

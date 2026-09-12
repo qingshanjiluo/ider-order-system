@@ -1524,35 +1524,8 @@ async function handleRoute(method, path, request, env, url) {
     return json({ ok: true, accounts: accounts.results });
   }
 
-  if (path === '/api/gh/process-trial-test' && method === 'POST') {
-    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, game_account_name } = body;
-    if (!order_id) return json({ error: '缺少 order_id' }, 400);
-    await env.DB.prepare(
-      "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), status = CASE WHEN status = 'pending' THEN 'processing' ELSE status END, updated_at = datetime('now') WHERE id = ?"
-    ).bind(game_account_name || '', order_id).run().catch(() => {});
-    return json({ ok: true, message: '试炼测试已触发' });
-  }
-
-  if (path === '/api/gh/process-dispatch' && method === 'POST') {
-    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, game_account_name, game_account_password, dispatch_map, material_type } = body;
-    if (!order_id) return json({ error: '缺少 order_id' }, 400);
-    await env.DB.prepare(
-      "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), game_account_password = COALESCE(NULLIF(?, ''), game_account_password), dispatch_map = COALESCE(NULLIF(?, ''), dispatch_map), material_type = COALESCE(NULLIF(?, ''), material_type), last_executed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
-    ).bind(game_account_name || '', game_account_password || '', dispatch_map || '', material_type || '', order_id).run().catch(() => {});
-    return json({ ok: true, message: '传人派出已触发' });
-  }
-
-  if (path === '/api/gh/process-dungeon-clear' && method === 'POST') {
-    if (!authenticateApi(request, env)) return json({ error: '无效API密钥' }, 403);
-    const { order_id, game_account_name, game_account_password, clear_type } = body;
-    if (!order_id) return json({ error: '缺少 order_id' }, 400);
-    await env.DB.prepare(
-      "UPDATE orders SET game_account_name = COALESCE(NULLIF(?, ''), game_account_name), game_account_password = COALESCE(NULLIF(?, ''), game_account_password), clear_type = COALESCE(NULLIF(?, ''), clear_type), last_executed_at = datetime('now'), updated_at = datetime('now') WHERE id = ?"
-    ).bind(game_account_name || '', game_account_password || '', clear_type || '', order_id).run().catch(() => {});
-    return json({ ok: true, message: '副本刷取已触发' });
-  }
+  // 已下线的工单类型端点（试炼测试 / 传人派出 / 副本刷取）已移除。
+  // 平台只保留「购买邀请积分」工单。
 
   // ── Chat Messages ──
   if (path === '/api/chat/messages' && method === 'GET') {

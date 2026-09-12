@@ -5,6 +5,7 @@
 //   3) 名字重复等失败：status = failed / error
 import { json, logActivity } from '../../../../_utils.js';
 import { authenticateAdmin } from '../../../../_auth.js';
+import { isInviteOrderType } from '../../../../_order_types.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -17,7 +18,8 @@ export async function onRequest(context) {
   const order = await env.DB.prepare('SELECT id, status, user_id, quantity, order_type FROM orders WHERE id = ?').bind(orderId).first();
   if (!order) return json({ error: '工单不存在' }, 404);
 
-  const isBatch = ['代练', '代打', '托管', '购买邀请积分'].includes(order.order_type);
+  // 只有邀请积分工单（历史写法 代练/代打/托管）支持补发账号
+  const isBatch = isInviteOrderType(order.order_type);
   if (!isBatch) return json({ error: '该工单类型不支持补发' }, 400);
 
   // 1. 统计订单下账号状态分布

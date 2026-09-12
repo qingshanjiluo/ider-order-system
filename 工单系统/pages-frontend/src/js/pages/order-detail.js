@@ -6,7 +6,18 @@ import { toast } from '../components/toast.js';
 import { store } from '../store.js';
 import { modal } from '../components/modal.js';
 
-const ORDER_TYPE_LABEL = { '代练':'购买邀请积分', '代打':'购买邀请积分', '托管':'购买邀请积分', '仙盟采集':'仙盟采集', '试炼测试':'试炼测试', '每日试炼':'每日试炼' };
+// 邀请积分工单在历史数据中以 代练 / 代打 / 托管 三种写法存储；
+// 已下线的旧类型保留映射，仅用于展示历史工单。
+const ORDER_TYPE_LABEL = {
+  '代练': '购买邀请积分',
+  '代打': '购买邀请积分',
+  '托管': '购买邀请积分',
+  '仙盟采集': '仙盟采集（已下线）',
+  '试炼测试': '试炼测试（已下线）',
+  '每日试炼': '每日试炼（已下线）',
+  '传人派出': '传人派出（已下线）',
+  '副本刷取': '副本刷取（已下线）',
+};
 
 const STATUS_MAP = {
   pending: { label: '待审批', class: 'badge-pending' },

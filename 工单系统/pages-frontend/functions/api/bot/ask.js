@@ -135,7 +135,7 @@ async function getBotAnswer(question, env, user) {
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: '你是艾德尔修仙工单平台的客服助手，回答要简洁友好，用中文回复。平台提供工单代练、修仙币充值、物品交易等服务。' },
+            { role: 'system', content: '你是艾德尔修仙工单平台的客服助手，回答要简洁友好，用中文回复。平台只提供「购买邀请积分」工单（含账号代练交付）、修仙币充值、物品交易等服务，其它类型工单已下线，不要再向用户介绍或承诺。' },
             { role: 'user', content: question },
           ],
           max_tokens: 300,

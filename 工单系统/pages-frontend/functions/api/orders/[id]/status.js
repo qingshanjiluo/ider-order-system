@@ -4,7 +4,7 @@
 //       需同步更新前端调用地址。
 import { json, logActivity } from '../../../_utils.js';
 import { authenticateAdmin } from '../../../_auth.js';
-import { addXP, getInviteBoost } from '../../../_xp.js';
+import { applyApprovalBenefits } from '../../../_order_approval.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -52,52 +52,9 @@ export async function onRequest(context) {
         '重新通过工单，扣除修仙币 ' + order.frozen_points + ' 个');
     }
 
-    // 更新用户订单数统计（消费金额 total_spent 改由现金充值审批时累加，此处不再重复计）
-    await env.DB.prepare(
-      'UPDATE users SET total_orders = total_orders + 1 WHERE id = ?'
-    ).bind(order.user_id).run();
-
-    // 处理邀请套餐订单
-    const isPackage = order.invite_code && order.invite_code.startsWith('PKG:');
-    if (isPackage) {
-      const pkgPoints = order.bonus_points || 0;
-      await env.DB.prepare(
-        'UPDATE users SET total_purchased_points = COALESCE(total_purchased_points, 0) + ?, invite_points = invite_points + ? WHERE id = ?'
-      ).bind(pkgPoints, pkgPoints, order.user_id).run();
-      const pkgName = order.invite_code.replace('PKG:', '').split(':')[1] || '邀请套餐';
-      await env.DB.prepare(
-        "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '套餐已到账', '「' || ? || '」' || ? || ' 邀请积分已到账，当前倍率已提升！', 'commission')"
-      ).bind(order.user_id, pkgName, pkgPoints).run();
-      await logActivity(env, orderId, order.user_id, 'commission', '购买套餐到账 ' + pkgPoints + ' 积分');
-    } else {
-      // XP 基于 bonus_points 统一计算
-      const xpGain = Math.max(10, Math.floor(order.bonus_points * 0.1));
-      await addXP(env, order.user_id, xpGain, '工单 #' + orderId + ' 审核通过');
-      await logActivity(env, orderId, order.user_id, 'approved', '工单已审核通过');
-
-      // 邀请分成（基于 bonus_points 计算佣金）
-      if (order.user_id) {
-        const buyer = await env.DB.prepare('SELECT invited_by FROM users WHERE id = ?').bind(order.user_id).first();
-        if (buyer && buyer.invited_by > 0) {
-          const boostInfo = getInviteBoost(
-            (await env.DB.prepare('SELECT total_purchased_points FROM users WHERE id = ?').bind(buyer.invited_by).first())?.total_purchased_points || 0
-          );
-          const commission = order.bonus_points * (boostInfo.rate / 100);
-          await env.DB.prepare(
-            'UPDATE users SET invite_points = invite_points + ? WHERE id = ?'
-          ).bind(commission, buyer.invited_by).run();
-          await env.DB.prepare(
-            "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '邀请分成到账', '下线成交获得 ' || ? || ' 邀请积分奖励（' || ? || '倍率）', 'commission')"
-          ).bind(buyer.invited_by, commission.toFixed(1), boostInfo.label).run();
-          await logActivity(env, orderId, buyer.invited_by, 'commission', '获得分成 ' + commission.toFixed(1) + ' 积分（' + boostInfo.label + '倍率）');
-        }
-      }
-    }
-
-    // 通知用户工单已通过
-    await env.DB.prepare(
-      "INSERT INTO notifications (user_id, title, content, type) VALUES (?, '工单已通过', '工单 #' || ? || ' 已审核通过，正在处理中', 'order')"
-    ).bind(order.user_id, orderId).run();
+    // 统一权益结算（订单数统计 / XP / 邀请分成 / 套餐到账 / 站内通知）
+    // 与修仙币支付自动批准走同一套逻辑，保证两条路径结果一致。
+    await applyApprovalBenefits(env, order, orderId);
   }
 
   // ── rejected: 拒绝 ─────────────────────────────────

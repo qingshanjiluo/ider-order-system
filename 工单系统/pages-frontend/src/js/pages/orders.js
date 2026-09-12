@@ -1,19 +1,28 @@
 // pages/orders.js — 我的工单列表 + 新建工单
+//
+// 平台只保留「购买邀请积分」一种工单：
+//   - 新建工单不再提供其它类型选项；
+//   - 修仙币支付即时扣款并自动通过（后端直接置为 approved）。
 
 import { api } from '../api.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 
+// 邀请积分工单在历史数据中以 代练 / 代打 / 托管 三种写法存储；
+// 已下线的旧类型保留映射，仅用于展示历史工单（不可再新建）。
 const ORDER_TYPE_LABEL = {
   '代练': '购买邀请积分',
   '代打': '购买邀请积分',
   '托管': '购买邀请积分',
-  '仙盟采集': '仙盟采集',
-  '试炼测试': '试炼测试',
-  '每日试炼': '每日试炼',
-  '传人派出': '传人派出',
-  '副本刷取': '副本刷取',
+  '仙盟采集': '仙盟采集（已下线）',
+  '试炼测试': '试炼测试（已下线）',
+  '每日试炼': '每日试炼（已下线）',
+  '传人派出': '传人派出（已下线）',
+  '副本刷取': '副本刷取（已下线）',
 };
+
+// 新建工单的固定类型（后端白名单：代练 / 代打 / 托管）
+const NEW_ORDER_TYPE = '代练';
 
 const STATUS_MAP = {
   pending: { label: '待审批', class: 'badge-pending' },
@@ -27,12 +36,6 @@ const STATUS_MAP = {
 let _currentPage = 1;
 let _totalPages = 1;
 let _currentStatus = '';
-
-const PAYMENT_METHODS = {
-  wechat: { label: '现金（微信支付）', unit: '元', icon: '¥' },
-  coin: { label: '修仙币', unit: '修仙币', icon: 'B' },
-  spirit_stone: { label: '灵石', unit: '万灵石', icon: '灵' },
-};
 
 export async function renderOrders({ container, query }) {
   // 如果有 ?action=new 则弹出新建工单
@@ -147,33 +150,16 @@ async function showNewOrderModal() {
     userBalance = cachedUser?.bonus_points || 0;
   } catch (e) { /* ignore */ }
 
-  // 工单类型配置
-  const ORDER_TYPES = {
-    '代练': { label: '购买邀请积分', priceUnit: '积分', needsInvite: true, needsAccount: false, fixedPrice: null },
-    '仙盟采集': { label: '仙盟采集', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动领取仙盟并开启采集（1修仙币/月）' },
-    '试炼测试': { label: '试炼测试', priceUnit: '修仙币', needsInvite: false, needsAccount: false, needsAccountName: true, fixedPrice: 0.5, fixedMethod: 'coin', desc: '测试并记录最佳配置（0.5修仙币/次）' },
-    '每日试炼': { label: '每日试炼', priceUnit: '修仙币', needsInvite: false, needsAccount: true, fixedPrice: 2, fixedMethod: 'coin', desc: '每日自动完成试炼挑战（2修仙币/月）' },
-    '传人派出': { label: '传人派出', priceUnit: '修仙币', needsInvite: false, needsAccount: true, needsDispatchFields: true, fixedPrice: 1, fixedMethod: 'coin', desc: '每日自动派出传人采集物资（1修仙币/月）' },
-    '副本刷取': { label: '副本刷取', priceUnit: '修仙币', needsInvite: false, needsAccount: true, needsClearType: true, fixedPrice: 3, fixedMethod: 'coin', desc: '全地图副本刷取，每图战斗2次自动推进（3修仙币/次）' },
-  };
-
   const body = document.createElement('div');
   body.innerHTML = `
     <form id="new-order-form">
       <div class="form-group">
-        <label class="form-label">工单类型 <span style="color:var(--accent-red)">*</span></label>
-        <select class="form-select" id="order-type">
-          <option value="代练">购买邀请积分</option>
-          <option value="仙盟采集">🏯 仙盟采集（1修仙币/月）</option>
-          <option value="试炼测试">⚔️ 试炼测试（0.5修仙币/次）</option>
-          <option value="每日试炼">🗡️ 每日试炼（2修仙币/月）</option>
-          <option value="传人派出">🚚 传人派出（1修仙币/月）</option>
-          <option value="副本刷取">⚔️ 副本刷取（3修仙币/次）</option>
-        </select>
-        <div id="order-type-desc" style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;"></div>
+        <label class="form-label">工单类型</label>
+        <input type="text" class="form-input" value="购买邀请积分" readonly disabled>
+        <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;">平台仅提供购买邀请积分工单</div>
       </div>
 
-      <!-- 付款方式（购买邀请积分时显示） -->
+      <!-- 付款方式 -->
       <div class="form-group" id="payment-method-group-wrap">
         <label class="form-label">付款方式 <span style="color:var(--accent-red)">*</span></label>
         <div class="radio-group" id="payment-method-group" style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -193,9 +179,10 @@ async function showNewOrderModal() {
             <div style="font-size:var(--text-xs);color:var(--text-secondary);">灵石</div>
           </label>
         </div>
+        <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;">修仙币支付即时扣款并自动通过，无需等待审核</div>
       </div>
 
-      <!-- 邀请码 + 积分（购买邀请积分时显示） -->
+      <!-- 邀请码 + 积分 -->
       <div id="invite-fields-wrap">
         <div class="form-group">
           <label class="form-label">邀请码 <span style="color:var(--accent-red)">*</span></label>
@@ -205,61 +192,6 @@ async function showNewOrderModal() {
           <label class="form-label">邀请积分数量 <span style="color:var(--accent-red)">*</span></label>
           <input type="number" class="form-input" id="order-points" value="10" min="10" max="500" step="10">
           <div style="font-size:var(--text-xs);color:var(--text-secondary);margin-top:4px;">每10积分 = 1个120级账号，必须是10的倍数，单工单最多500积分</div>
-        </div>
-      </div>
-
-      <!-- 游戏账号信息（仙盟采集/每日试炼时显示） -->
-      <div id="game-account-fields-wrap" style="display:none;">
-        <div class="form-group">
-          <label class="form-label">游戏账号名 <span style="color:var(--accent-red)">*</span></label>
-          <input type="text" class="form-input" id="order-game-account" placeholder="输入游戏账号名">
-        </div>
-        <div class="form-group">
-          <label class="form-label">游戏账号密码 <span style="color:var(--accent-red)">*</span></label>
-          <input type="password" class="form-input" id="order-game-password" placeholder="输入游戏账号密码">
-        </div>
-      </div>
-
-      <!-- 仅账号名（试炼测试时显示） -->
-      <div id="account-name-only-wrap" style="display:none;">
-        <div class="form-group">
-          <label class="form-label">游戏账号名 <span style="color:var(--accent-red)">*</span></label>
-          <input type="text" class="form-input" id="order-game-account-name" placeholder="输入已注册的游戏账号名">
-        </div>
-      </div>
-
-      <!-- 派出地图 + 物资类别（传人派出时显示） -->
-      <div id="dispatch-fields-wrap" style="display:none;">
-        <div class="form-group">
-          <label class="form-label">派出地图 <span style="color:var(--accent-red)">*</span></label>
-          <select class="form-select" id="order-dispatch-map">
-            <option value="灵翠山脉">灵翠山脉</option>
-            <option value="幽暗森林">幽暗森林</option>
-            <option value="冰霜峡谷">冰霜峡谷</option>
-            <option value="火焰山">火焰山</option>
-            <option value="星辰塔">星辰塔</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">物资类别 <span style="color:var(--accent-red)">*</span></label>
-          <select class="form-select" id="order-material-type">
-            <option value="灵石">灵石</option>
-            <option value="药材">药材</option>
-            <option value="矿石">矿石</option>
-            <option value="木材">木材</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- 刷取类型（副本刷取时显示） -->
-      <div id="clear-type-wrap" style="display:none;">
-        <div class="form-group">
-          <label class="form-label">刷取类型 <span style="color:var(--accent-red)">*</span></label>
-          <select class="form-select" id="order-clear-type">
-            <option value="全物资">全物资 — 副本奖励全部选物资</option>
-            <option value="全阵纹">全阵纹 — 副本奖励全部选阵纹</option>
-            <option value="一半一半">一半一半 — 物资和阵纹各取一半</option>
-          </select>
         </div>
       </div>
 
@@ -283,92 +215,31 @@ async function showNewOrderModal() {
       </div>
     </form>`;
 
-  // ── 工单类型切换逻辑 ──
-  function handleOrderTypeChange() {
-    const type = document.getElementById('order-type').value;
-    const cfg = ORDER_TYPES[type] || {};
-    const descEl = document.getElementById('order-type-desc');
-    const paymentWrap = document.getElementById('payment-method-group-wrap');
-    const inviteWrap = document.getElementById('invite-fields-wrap');
-    const gameAccWrap = document.getElementById('game-account-fields-wrap');
-    const accNameWrap = document.getElementById('account-name-only-wrap');
-    const dispatchWrap = document.getElementById('dispatch-fields-wrap');
-    const clearWrap = document.getElementById('clear-type-wrap');
-
-    descEl.textContent = cfg.desc || '';
-    paymentWrap.style.display = cfg.needsInvite ? '' : 'none';
-    inviteWrap.style.display = cfg.needsInvite ? '' : 'none';
-    gameAccWrap.style.display = cfg.needsAccount ? '' : 'none';
-    accNameWrap.style.display = cfg.needsAccountName ? '' : 'none';
-    dispatchWrap.style.display = cfg.needsDispatchFields ? '' : 'none';
-    clearWrap.style.display = cfg.needsClearType ? '' : 'none';
-
-    // 自动设置付款方式和价格
-    if (cfg.fixedMethod) {
-      const radio = body.querySelector(`input[name="payment-method"][value="${cfg.fixedMethod}"]`);
-      if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
-    }
-    updatePricePreview();
-  }
-
   modal.open({
     title: '新建工单',
     body,
     confirmText: '提交工单',
     onConfirm: async () => {
-      const order_type = document.getElementById('order-type').value;
-      const cfg = ORDER_TYPES[order_type] || {};
       const coupon_code = document.getElementById('order-coupon').value.trim();
       const note = document.getElementById('order-note').value.trim();
+      const payment_method = document.querySelector('input[name="payment-method"]:checked')?.value;
+      const invite_code = document.getElementById('order-invite-code').value.trim();
+      const points = parseInt(document.getElementById('order-points').value) || 0;
 
-      let payment_method, invite_code, points, game_account_name, game_account_password;
-
-      if (cfg.needsInvite) {
-        // 购买邀请积分
-        payment_method = document.querySelector('input[name="payment-method"]:checked')?.value;
-        invite_code = document.getElementById('order-invite-code').value.trim();
-        points = parseInt(document.getElementById('order-points').value) || 0;
-        if (!payment_method) { toast.error('请选择付款方式'); return; }
-        if (!invite_code) { toast.error('请输入邀请码'); return; }
-        if (points < 10 || points % 10 !== 0) { toast.error('积分数量必须是10的倍数'); return; }
-      } else {
-        // 新工单类型：固定修仙币支付
-        payment_method = cfg.fixedMethod || 'coin';
-        invite_code = '';
-        points = Math.round((cfg.fixedPrice || 0) * 100); // 转为整数存储
-        game_account_name = (document.getElementById('order-game-account') || document.getElementById('order-game-account-name'))?.value?.trim() || '';
-        game_account_password = document.getElementById('order-game-password')?.value?.trim() || '';
-        if (!game_account_name) { toast.error('请输入游戏账号名'); return; }
-        if (cfg.needsAccount && !game_account_password) { toast.error('请输入游戏账号密码'); return; }
-      }
-
-      let dispatch_map, material_type, clear_type;
-      if (cfg.needsDispatchFields) {
-        dispatch_map = document.getElementById('order-dispatch-map')?.value;
-        material_type = document.getElementById('order-material-type')?.value;
-        if (!dispatch_map) { toast.error('请选择派出地图'); return; }
-        if (!material_type) { toast.error('请选择物资类别'); return; }
-      }
-      if (cfg.needsClearType) {
-        clear_type = document.getElementById('order-clear-type')?.value;
-        if (!clear_type) { toast.error('请选择刷取类型'); return; }
-      }
+      if (!payment_method) { toast.error('请选择付款方式'); return; }
+      if (!invite_code) { toast.error('请输入邀请码'); return; }
+      if (points < 10 || points % 10 !== 0) { toast.error('积分数量必须是10的倍数'); return; }
+      if (points > 500) { toast.error('单个工单最多500积分'); return; }
 
       try {
-        const payload = {
-          order_type,
+        const res = await api.createOrder({
+          order_type: NEW_ORDER_TYPE,
           payment_method,
           invite_code,
           points,
           coupon_code: coupon_code || undefined,
           note: note || undefined,
-        };
-        if (game_account_name) payload.game_account_name = game_account_name;
-        if (game_account_password) payload.game_account_password = game_account_password;
-        if (dispatch_map) payload.dispatch_map = dispatch_map;
-        if (material_type) payload.material_type = material_type;
-        if (clear_type) payload.clear_type = clear_type;
-        const res = await api.createOrder(payload);
+        });
         toast.success(res.message || '工单创建成功');
         modal.close();
         // 刷新用户余额（扣除修仙币后同步本地存储）
@@ -400,14 +271,10 @@ async function showNewOrderModal() {
     } catch (e) { /* 保持缓存值 */ }
   })();
 
-  // ── 工单类型切换事件（立即绑定，不依赖优惠券验证） ──
-  body.querySelector('#order-type').addEventListener('change', handleOrderTypeChange);
-  handleOrderTypeChange(); // 初始化显示状态
-
   // ── 价格实时预览 ──
   // 缓存灵石兑换比例（从 config 获取）
   let spiritPer10Cache = 1000000; // 默认值
-  
+
   async function loadSpiritConfig() {
     try {
       const cfg = await api.getPublicConfig();
@@ -421,22 +288,6 @@ async function showNewOrderModal() {
     const el = document.getElementById('price-preview');
     if (!el) return;
 
-    const orderType = document.getElementById('order-type').value;
-    const cfg = ORDER_TYPES[orderType] || {};
-
-    // 新工单类型：固定价格预览
-    if (!cfg.needsInvite) {
-      const fixedPrice = cfg.fixedPrice || 0;
-      const desc = cfg.desc || '';
-      el.innerHTML = `
-        <div>类型: <strong>${cfg.label}</strong></div>
-        <div>价格: <strong>${fixedPrice} 修仙币</strong>${cfg.needsAccount ? '（月付）' : '（单次）'}</div>
-        ${desc ? `<div style="color:var(--text-tertiary);font-size:var(--text-xs);margin-top:4px;">${desc}</div>` : ''}
-      `;
-      return;
-    }
-
-    // 购买邀请积分：积分制预览
     const pts = parseInt(document.getElementById('order-points')?.value) || 0;
     const method = document.querySelector('input[name="payment-method"]:checked')?.value;
     if (pts < 10) {
@@ -468,9 +319,11 @@ async function showNewOrderModal() {
       if (discountPercent > 0) discountLine = `<div class="text-xs text-muted mt-1">原价 <s>${spiritPrice.toLocaleString()} 万灵石</s> → 实付 <strong style="color:var(--accent-green)">${final.toLocaleString()} 万灵石</strong></div>`;
     }
 
+    const autoHint = method === 'coin' ? '<div class="text-xs" style="color:var(--accent-green);margin-top:4px;">修仙币支付将自动通过并立即开始处理</div>' : '';
     el.innerHTML = `
       <div>积分: <strong>${pts}</strong> | 账号数: <strong>${accounts}</strong></div>
       <div>实付: <strong>${priceText}</strong>${discountLine}</div>
+      ${autoHint}
     `;
   }
 
@@ -497,7 +350,7 @@ async function showNewOrderModal() {
     const code = body.querySelector('#order-coupon').value.trim();
     const infoEl = body.querySelector('#coupon-info');
     if (!code) { infoEl.textContent = ''; infoEl.dataset.couponType = ''; return; }
-    
+
     try {
       const res = await api.validateCoupon(code);
       if (res.ok) {
@@ -554,4 +407,3 @@ async function cancelOrder(orderId) {
     }
   } catch (e) { toast.error(e.message); }
 }
-

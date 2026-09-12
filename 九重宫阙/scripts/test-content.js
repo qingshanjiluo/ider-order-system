@@ -1,3 +1,7 @@
+const __dbPath = require('path').join(__dirname, '..', 'data', 'game.db');
+const __dbSnap = require('fs').readFileSync(__dbPath);
+// store 会在更晚的时刻注册自己的 exit flush，这里抢先注册还原，保证套件不留侧写
+process.on('exit', function () { try { require('fs').writeFileSync(__dbPath, __dbSnap); } catch (e) {} });
 /* 内容富集完整性验收：技能库/功法生成器/灵宠生成器 */
 const assert = require('assert');
 const skillService = require('../src/services/skill');
@@ -1579,5 +1583,14 @@ t('BOM 锁：任何 .js/.json 不得带 UTF-8 BOM（PS5.1 的 Set-Content -Encod
   assert.deepStrictEqual(bad, [], `这些文件带 BOM：${bad.join(', ')}（Node 的 require 容忍，JSON.parse 不容忍）`);
 });
 
+t('门禁洁净性：npm test 必须走 gate.js 外壳（store 有 20s autosave，测试经服务写脏镜像）', () => {
+  const pkg24 = require(path21.join(__dirname, '..', 'package.json'));
+  assert.strictEqual(pkg24.scripts.test, 'node scripts/gate.js', 'test 未走外壳：跑一次门禁就污染正式存档');
+  const g = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'gate.js'), 'utf8');
+  assert.ok(/readFileSync\(DB\)/.test(g) && /writeFileSync\(DB, snapshot\)/.test(g), 'gate 没有快照/还原');
+  assert.ok(/Buffer\.compare\(back, snapshot\)/.test(g), 'gate 没校验还原结果（还原失败也会绿）');
+  assert.ok(/r\.status/.test(g), 'gate 未透传子进程退出码（门禁会假绿）');
+});
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
+try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

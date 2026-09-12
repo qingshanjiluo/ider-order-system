@@ -19,6 +19,8 @@ const SUITES = [
   ['G2 好友与市场', 'scripts/test-social-market-e2e.js'],
   // 轮54：经验曲线真源与"速度只填满境界"探针（曲线改了必须立刻能看出有没有接上）
   ['G3 经验真源', 'scripts/test-exp-curve-e2e.js'],
+  // 轮55：延寿通道端到端（铁律(2) 的执行手段，后端+货架+前端三段一起锁）
+  ['G4 延寿通道', 'scripts/test-longevity-e2e.js'],
   ['S1 入口 boot 探针', 'scripts/probe-server.js'],
   ['S2 P3 可见性', 'scripts/test-p3-visibility-e2e.js'],
   ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js'],

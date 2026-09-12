@@ -12,11 +12,12 @@
  *   B. **30 世净收支**：一世 = 从炼气修到该境界圆满（时长取 `sim-balance` 同一套 cumT 口径），
  *      收入 = 按等级区间匹配的地图 `spirit_stone_per_second` × 一年秒数，支出 = 破境丹期望消耗
  *      （期望出手次数 = 1/成功率，单价取真实货架价）。
- *   C. **延寿通道可达性**：`LIFE_GAIN` 点名的延寿丹/灵植三件/宗门赏赐/长生功，
- *      是否真有玩家可得的获取路径（轮53 实测：四件灵植全都没上架，`lifespan_bonus` 只在注册时初始化过）。
+ *   C. **延寿通道三段可达性**：`LIFE_GAIN` 点名的灵植必须 买得到（items+货架+价>0）/ 用得动（use-item 与 inventory 都引用
+ *      lifespan-goods）/ 看得见（背包面板有按钮）。轮53 实测 0/3 ⇒ 登记为上线必修；轮55 打通并**转为硬锁**。
+ *   C4. 其余未接线通道（延寿丹四档、宗门赏赐、长生功）必须**显式挂账**，棘轮基线 3 条，只减不增。
  *
  * 用法：node scripts/sim-economy.js [--report 文件.md] [--strict]
- *   门禁模式：A/C 用**基线锁**（只防更糟，不假装已修好）；--strict 把 A 的基线降到 0、C 要求至少一条通道打通。
+ *   门禁模式：A（印钞机）与 C（延寿通道三段）都是**硬锁**；A2/C4 是**棘轮基线**（只防更糟，不假装已修好）。
  */
 const assert = require('assert');
 const fs = require('fs');
@@ -152,21 +153,40 @@ const STRICT = process.argv.includes('--strict');
     const shelf = it ? (db.shop || []).find((s) => Number(s.item_id) === Number(it.id)) : null;
     return { name: n, item: !!it, shelf: !!shelf, shelfPrice: shelf ? Number(shelf.price) : null };
   });
-  const reachable = lifeItems.filter((x) => x.item && x.shelf);
-  console.log('\n  ℹ LIFE_GAIN.plants 点名的灵植：' + lifeItems.map((x) => `${x.name}[items:${x.item ? '有' : '无'} 货架:${x.shelf ? '有' : '无'}]`).join('、'));
-  console.log(`  ℹ 玩家实际可获得的延寿灵植 = ${reachable.length}/${lifeItems.length} 条；延寿丹（LIFE_GAIN.pills 四档）在 items 表里的同名道具 = ${db.items.filter((i) => /延寿丹/.test(i.name || '')).length} 件`);
-  const bonusWriters = fs.readdirSync(path.join(__dirname, '..', 'src', 'routes'))
-    .filter((f) => /lifespan_bonus|addLongevity|LIFE_GAIN/.test(fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', f), 'utf8')));
-  console.log(`  ℹ src/routes 下引用 lifespan_bonus / LIFE_GAIN 的文件：${bonusWriters.length ? bonusWriters.join('、') : '（0 个）'}`);
+  const reachable = lifeItems.filter((x) => x.item && x.shelf && Number(x.shelfPrice) > 0);
+  const readSrc = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
+  // 三段缺一不可：**买得到**（items+货架+价>0）· **用得动**（use-item 与 inventory 都引用 lifespan-goods）·
+  // **看得见**（背包面板渲染出按钮）—— 只补前两段就会造出"服务端可达、玩家无入口"的幽灵通道（轮52 起反复踩）。
+  const usePathOk = /lifespan-goods/.test(readSrc('src/routes/shop.js')) && /lifespan-goods/.test(readSrc('src/routes/character.js'));
+  const feEntry = /data-use-item/.test(readSrc('public/js/ui.js'));
+  const cfgOk = lifeNames.length >= 3 && lifeNames.every((n) => {
+    const p = B.LIFE_GAIN.plants[n];
+    return p && Number(p.ratio) > 0 && Number(p.perLife) >= 1;
+  });
+  console.log('\n  ℹ LIFE_GAIN.plants 点名的灵植：' + lifeItems.map((x) => `${x.name}[items:${x.item ? '有' : '无'} 货架:${x.shelf ? '有' : '无'} 价:${x.shelfPrice == null ? '—' : x.shelfPrice}]`).join('、'));
+  console.log(`  ℹ 延寿通道三段：买得到 ${reachable.length}/${lifeItems.length}　用得动 ${usePathOk ? '✓' : '✗'}　看得见 ${feEntry ? '✓' : '✗'}　配置自洽 ${cfgOk ? '✓' : '✗'}`);
 
-  await t('C 延寿通道可达性（基线锁：至少要有 1 条，实测 0 条 → 已登记为 NO-GO）', () => {
-    const cap = STRICT ? 1 : 0;         // 基线 0 条（只防"更多通道被删"，不假装打通了）
-    if (STRICT) {
-      assert.ok(reachable.length >= cap, `--strict：延寿灵植可获得 ${reachable.length} 条 < ${cap}：铁律(2) 要求"经营寿元"，但市面上买不到任何延寿手段`);
-    } else {
-      assert.ok(reachable.length >= 0, '不该到这里');
-      if (reachable.length === 0) console.log('  ⚠️ 基线锁：延寿四通道（丹药四档 / 灵植三件 / 宗门赏赐 / 长生功）当前**没有一条**玩家可得 ⇒ 铁律(2) 缺执行手段，已登记上线必修');
-    }
+  // LIFE_GAIN 里点名的其余通道：接不上就要**显式挂账**（只减不增，防止悄悄烂成无名配置）
+  const allRoutes = ['src/routes/shop.js', 'src/routes/character.js', 'src/routes/sect.js', 'src/services/gameTime.js', 'src/services/lifespan-goods.js'].map(readSrc).join('\n');
+  const pillGoods = db.items.filter((i) => { try { return Number((JSON.parse(i.stats || '{}') || {}).longevity_ratio) > 0; } catch (_) { return false; } });
+  const unwired = [];
+  if (!pillGoods.length) unwired.push(`延寿丹（LIFE_GAIN.pills 是 ${(B.LIFE_GAIN.pills || []).length} 个无名比例，items 里 0 件带 longevity_ratio）`);
+  if (!/sectBoon/.test(allRoutes)) unwired.push('宗门赏赐 sectBoon（无兑换口）');
+  if (!/longLifeArtPerYear/.test(allRoutes)) unwired.push('长生功 longLifeArtPerYear（无年度结算消费）');
+  console.log(`  ℹ 仍未接线的延寿通道 ${unwired.length} 条${unwired.length ? '：' + unwired.join('；') : ''}`);
+
+  await t('C 延寿通道已打通（硬锁：三件灵植 买得到 + 用得动 + 看得见）', () => {
+    assert.ok(cfgOk, `LIFE_GAIN.plants 配置自洽性不通过（需 ≥3 件且 ratio>0、perLife≥1）：${JSON.stringify(B.LIFE_GAIN.plants)}`);
+    const miss = lifeItems.filter((x) => !(x.item && x.shelf && Number(x.shelfPrice) > 0));
+    assert.ok(miss.length === 0, `延寿灵植买不到：${miss.map((m) => `${m.name}(items:${m.item ? '有' : '无'}/货架:${m.shelf ? '有' : '无'}/价:${m.shelfPrice})`).join('、')} ⇒ 铁律(2) 又缺执行手段`);
+    assert.ok(usePathOk, 'src/routes/shop.js 或 src/routes/character.js 不再引用 lifespan-goods ⇒ 延寿使用通道断了');
+    assert.ok(feEntry, 'public/js/ui.js 背包面板没有「服用」入口 ⇒ 通道退化成只有服务端能碰的幽灵入口');
+  });
+
+  await t('C4 未接线的延寿通道必须显式挂账（棘轮基线 3 条；--strict 要求归零＝上线前目标态）', () => {
+    const cap = STRICT ? 0 : 3;
+    assert.ok(unwired.length <= cap,
+      `未接线延寿通道 ${unwired.length} 条 > 基线 ${cap}${STRICT ? '（--strict 要求 LIFE_GAIN 点名的通道全部接线）' : ''}：${unwired.join('；')}`);
   });
 
   await t('C2 幽灵货架：每条货架必须指向真实物品', () => {
@@ -196,12 +216,19 @@ const STRICT = process.argv.includes('--strict');
       '|---|---|---:|---:|---:|---:|---:|---:|');
     for (const x of rows) md.push(`| ${x.realm} | ${x.map} | ${x.ss} | ${Math.round(x.yearIncome)} | ${x.years < 100 ? x.years.toFixed(2) : Math.round(x.years)} | ${Math.round(x.income)} | ${x.attempts.toFixed(2)} | ${x.cost} |`);
     md.push('', `一世总收入 ≈ ${Math.round(totalIncomeOneLife)} 灵石；破境丹总支出 ${cumCost}；转世保留 30%（70% 折损），${LIVES} 世等比累计上限 ≈ ${Math.round(totalIncomeOneLife * (1 - Math.pow(0.3, LIVES)) / 0.7)}。`,
-      '', '## C 延寿通道可达性', '',
-      '| LIFE_GAIN.plants | items 表 | 货架 |', '|---|---|---|');
-    for (const x of lifeItems) md.push(`| ${x.name} | ${x.item ? '✓' : '✗'} | ${x.shelf ? '✓' : '✗'} |`);
-    md.push('', `玩家可获得的延寿灵植 ${reachable.length}/${lifeItems.length} 条；延寿丹道具 ${db.items.filter((i) => /延寿丹/.test(i.name || '')).length} 件；` +
-      `引用 lifespan_bonus/LIFE_GAIN 的路由 ${bonusWriters.length} 个。`,
-      '⇒ 铁律(2)"元婴之后必须经营寿元"目前**没有执行手段**：化神起唯一的续命通道是 T0-1 大限劫应劫成功（+cap×10%）。');
+      '', '## C 延寿通道可达性（轮55 打通，三段硬锁）', '',
+      '| LIFE_GAIN.plants | items 表 | 货架 | 货架价 | 比例 | 本世限用 |', '|---|---|---|---:|---:|---:|');
+    for (const x of lifeItems) {
+      const p = (B.LIFE_GAIN.plants || {})[x.name] || {};
+      md.push(`| ${x.name} | ${x.item ? '✓' : '✗'} | ${x.shelf ? '✓' : '✗'} | ${x.shelfPrice == null ? '—' : x.shelfPrice} | ${p.ratio} | ${p.perLife} |`);
+    }
+    md.push('', `三段状态：**买得到 ${reachable.length}/${lifeItems.length}**　**用得动 ${usePathOk ? '✓（/shop/use-item 与 /character/inventory 都走 lifespan-goods）' : '✗'}` +
+      `**　**看得见 ${feEntry ? '✓（背包面板「延寿」按钮）' : '✗'}** —— 三段都由 C 锁常驻门禁（不再是基线锁）。`,
+      `延寿年数一律经 \`gameTime.addLifespanBonus()\` 计入 \`longevity_years\` 桶并受 ${(B.LONGEVITY_BONUS_CAP_RATIO * 100).toFixed(0)}% 硬闸；` +
+      `本模块不重算任何寿元算术（\`G4 延寿通道\` ⑥ 有源码锁）。端到端行为（423 拒绝、不白扣道具、perLife、转世清零）在第 20 套。`,
+      '', `### 仍未接线的延寿通道（棘轮基线 3 条，接一条删一条）`, '');
+    for (const w of unwired) md.push(`- ${w}`);
+    if (!unwired.length) md.push('- （无）—— LIFE_GAIN 点名的通道已全部接线，可把 C4 基线降到 0');
     fs.writeFileSync(path.resolve(out), md.join('\n'), 'utf8');
     console.log('\n  报告已写出：' + out);
   }

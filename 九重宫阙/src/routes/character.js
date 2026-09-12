@@ -236,9 +236,24 @@ router.get('/inventory', auth, (req, res) => {
       return res.status(404).json({ error: '角色不存在' });
     }
     const inventory = db.inventory.filter(i => i.character_id === character.id);
+    // 轮55：带上"这是不是延寿货品"的标注，前端才知道要不要点亮「服用」按钮。
+    // 名单与比例一律取自 balance.LIFE_GAIN（经 lifespan-goods），前端不再抄第二份。
+    const lifespanGoods = require('../services/lifespan-goods');
     const items = inventory.map(inv => {
       const item = db.items.find(i => i.id === inv.item_id);
-      return { ...inv, item };
+      const out = { ...inv, item };
+      const good = lifespanGoods.resolveLifespanGood(item);
+      if (good) {
+        const info = lifespanGoods.inspect(character, good);
+        out.longevity = {
+          perLife: good.perLife,
+          leftThisLife: info.left === Infinity ? null : info.left,
+          years: info.wouldGain,
+          canUse: info.ok,
+          reason: info.reason
+        };
+      }
+      return out;
     });
     res.json(items);
   } catch (error) {

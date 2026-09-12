@@ -126,15 +126,33 @@ const ui = {
       el.innerHTML = '<div class="empty-state"><p>背包为空</p></div>';
       return;
     }
-    el.innerHTML = inventory.slice(0, 12).map(item => `
+    // 轮55 修一个真可见性 bug：接口返回的是 `{...背包行, item: 物品定义}`，name/type/quality 都在 `item` 里，
+    // 而这里一直读的是背包行本身 ⇒ 实测 10/10 行 name===undefined ⇒ 背包面板永远显示"未知物品"。
+    // 顺带：本面板是 innerHTML 直插，新增的按钮一律走 esc()，不再扩大注入面（既有债另计）。
+    const esc = (s) => String(s === undefined || s === null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    el.innerHTML = inventory.slice(0, 12).map(row => {
+      const def = row.item || {};
+      const name = def.name || '未知物品';
+      const lg = row.longevity;
+      let action = '';
+      if (lg) {
+        const left = lg.leftThisLife === null ? '' : `(${lg.leftThisLife})`;
+        const label = lg.canUse ? `延寿${left}` : '不可用';
+        action = `<button class="btn btn-small" data-use-item="${esc(name)}"${lg.canUse ? '' : ' disabled'} ` +
+          `title="${esc(lg.canUse ? `服下 +${lg.years} 年寿元（本世限 ${lg.perLife} 次）` : lg.reason)}" ` +
+          `style="font-size:11px;padding:2px 6px;">${label}</button>`;
+      }
+      return `
       <div class="shop-item" style="padding:8px;margin-bottom:4px;">
         <div class="shop-item-info">
-          <div class="shop-item-name" style="font-size:12px;">${item.name || '未知物品'}</div>
-          <div class="shop-item-desc">${item.type || ''} ${item.quality || ''}</div>
+          <div class="shop-item-name" style="font-size:12px;">${esc(name)}</div>
+          <div class="shop-item-desc">${esc(def.type)} ${esc(def.quality)}${lg ? `　<span style="color:var(--accent);">延寿 +${lg.years} 年</span>` : ''}</div>
         </div>
-        <span style="font-size:11px;color:var(--text2);">x${item.quantity || 1}</span>
-      </div>
-    `).join('');
+        <span style="font-size:11px;color:var(--text2);">x${row.quantity || 1}</span>
+        ${action}
+      </div>`;
+    }).join('');
   },
 
   showConfirm(title, text, onConfirm) {

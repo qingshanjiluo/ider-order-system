@@ -95,6 +95,30 @@ async function init() {
     btn.onclick = () => switchTab(btn.dataset.tab);
   });
 
+  // 轮55：背包内延寿货品的「服用」入口。委托挂在容器上 ⇒ 面板重渲染也不失效；
+  // 按钮的显隐/置灰由服务端 /character/inventory 的 longevity 标注决定（名单与比例只有 LIFE_GAIN 一份）。
+  const invListEl = document.getElementById('inventory-list');
+  if (invListEl) {
+    invListEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-use-item]');
+      if (!btn) return;
+      const itemName = btn.dataset.useItem;
+      btn.disabled = true;
+      try {
+        const r = await api.useItem(itemName);
+        if (r && r.success && r.type === 'longevity') {
+          ui.showToast(`寿元 +${r.gained} 年（新上限 ${r.lifespan && r.lifespan.lifespan} 年）`);
+        } else {
+          ui.showToast((r && r.error) || '无法使用');
+        }
+      } catch (err) {
+        // 423 = 状态不允许（本世已用满 / 延寿已达闸），服务端把原因写在 error 里
+        ui.showToast(err && err.message ? err.message : '使用失败');
+      }
+      try { ui.updateInventory(await api.getInventory()); } catch (_) {}
+    });
+  }
+
   const updateMobileNav = () => {
     const isMobile = window.innerWidth <= 768;
     const mobileNav = document.getElementById('mobile-tab-nav');

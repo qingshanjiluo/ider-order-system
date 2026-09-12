@@ -180,6 +180,7 @@ function passAway(character, db) {
   character.age_years = STARTING_AGE;
   character.lifespan_bonus_years = 0;
   character.longevity_years = 0;      // 延寿收益不外世继承（否则转世失去意义）
+  character.longevity_grants = {};    // 轮55：灵植"每世 N 次"的计数也随转世归零（与上面的桶同生命周期）
   character.lifespan_penalty_years = 0;
   character.tribulation = null;       // 大限劫状态随前世一并清空
   character.injury = 0;

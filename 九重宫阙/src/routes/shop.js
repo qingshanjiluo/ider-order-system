@@ -157,6 +157,15 @@ router.post('/sell', auth, (req, res) => {
   }
 });
 
+/** 从背包里扣一件（按角色 + 物品 id）。找不到或数量为 0 返回 false。 */
+function consumeOne(db, characterId, itemId) {
+  const row = (db.inventory || []).find(i => i.character_id === characterId && Number(i.item_id) === Number(itemId) && (i.quantity || 0) > 0);
+  if (!row) return false;
+  if (row.quantity > 1) row.quantity -= 1;
+  else db.inventory.splice(db.inventory.indexOf(row), 1);
+  return true;
+}
+
 router.post('/use-item', auth, (req, res) => {
   try {
     const { itemName } = req.body;
@@ -166,22 +175,44 @@ router.post('/use-item', auth, (req, res) => {
       return res.status(404).json({ error: '角色不存在' });
     }
 
+    const heldRow = (db.inventory || []).find(i =>
+      i.character_id === character.id && (i.quantity || 0) > 0 &&
+      (db.items || []).some(x => Number(x.id) === Number(i.item_id) && x.name === itemName));
+    const heldItem = heldRow ? (db.items || []).find(x => Number(x.id) === Number(heldRow.item_id)) : null;
+
+    // 轮55：延寿货品（LIFE_GAIN.plants 点名的灵植 / stats.longevity_ratio 的丹药）优先走延寿通道。
+    // 这条通道此前全仓无人接线（`addLifespanBonus` 只有 T0-1 应劫一个调用者）⇒
+    // 铁律(2)「元婴之后必须经营寿元」玩家手上零手段（E9 实测可获得 0/3）。
+    // 规矩：**先判定后扣减**（被拒不损耗道具）；寿元算术一律在 `gameTime.addLifespanBonus` 里，这里绝不重算一份。
+    const lifespanGoods = require('../services/lifespan-goods');
+    const good = lifespanGoods.resolveLifespanGood(heldItem);
+    if (good) {
+      const out = lifespanGoods.use(character, good);
+      if (!out.ok) {
+        return res.status(423).json({
+          success: false, status: 423, type: 'lifespan_locked', error: out.reason,
+          item: itemName, leftThisLife: out.left === Infinity ? null : out.left,
+          longevityCeiling: out.ceiling, longevityYears: character.longevity_years || 0
+        });
+      }
+      if (!consumeOne(db, character.id, heldItem.id)) {
+        return res.status(500).json({ error: '内部不一致：延寿已计入但背包扣减失败' });
+      }
+      saveDatabase(db);
+      return res.json({
+        success: true, type: 'longevity', item: itemName, gained: out.gained,
+        longevityYears: character.longevity_years, longevityCeiling: out.ceiling,
+        leftThisLife: out.left === Infinity ? null : out.left - 1,
+        lifespan: require('../services/gameTime').lifespanInfo(character)
+      });
+    }
+    if (heldItem && !heldRow) return res.status(400).json({ error: '背包里没有该物品' });
+
     const buffService = require('../services/buff');
     const result = buffService.applyGuildShopBuff(character.id, itemName);
 
-    if (result.success) {
-      const invIndex = (db.inventory || []).findIndex(i =>
-        i.character_id === character.id &&
-        db.items.find(item => item.id === i.item_id && item.name === itemName)
-      );
-      if (invIndex >= 0) {
-        const invItem = db.inventory[invIndex];
-        if (invItem.quantity > 1) {
-          invItem.quantity -= 1;
-        } else {
-          db.inventory.splice(invIndex, 1);
-        }
-      }
+    if (result.success && heldRow) {
+      consumeOne(db, character.id, heldRow.item_id);
       saveDatabase(db);
     }
 

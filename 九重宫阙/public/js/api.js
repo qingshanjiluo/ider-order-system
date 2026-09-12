@@ -635,6 +635,11 @@ const api = {
     return this.request('POST', '/systems/pills/use', { itemId });
   },
 
+  // 轮55：通用「使用」（延寿灵植等）。注意这条走的是 /shop/use-item，按**物品名**寻址（既有接口形状）。
+  async useItem(itemName) {
+    return this.request('POST', '/shop/use-item', { itemName });
+  },
+
   async getMyTalismans() {
     return this.request('GET', '/systems/talismans/my');
   },

@@ -1462,7 +1462,7 @@ t('槽位严格按章程 min(2+境界序号,8)，且旧公式已彻底移除', (
 t('境界顺序数组不得再有多份副本', () => {
   const b23 = require('../src/config/balance');
   assert.deepStrictEqual(b23.REALM_ORDER, ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升']);
-  const LADDER_BACKLOG = ['src/data/equipment-library.js', 'src/routes/character.js', 'src/services/battle/combat.js', 'src/services/skill.js'];   // 轮37 已知欠账：待逐处改用 REALM_ORDER，此处只防新增副本
+  const LADDER_BACKLOG = ['src/data/equipment-library.js', 'src/routes/character.js', 'src/services/battle/combat.js'];   // 轮37 已知欠账：待逐处改用 REALM_ORDER（轮47 已收掉 skill.js 一笔）
   const roots = ['src'];
   const hits = [];
   const scan = (d) => {
@@ -2241,6 +2241,90 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     const bad = items.filter(i => i.type === '功法' && i.realm && !legal.has(String(i.realm)));
     assert.deepStrictEqual(bad.map(i => `${i.name}:${i.realm}`), [], '功法物品带着非法 realm（items.realm 边会红，境界适配判定落空）');
   });
+// ===== 册三期：P1 技能差口 214->320 与两条"白嫖隐藏技"的门（轮47）=====
+t('技能库达 320 且品质/境界/槽位/类型/元素全部落在自有词表内', () => {
+  const mod = require('../src/services/skill');
+  const S = mod.SKILLS_DATA || [];
+  assert.ok(S.length >= 320, `技能只有 ${S.length} 条，P1 差口（214->320）未完成`);
+  const QL = mod.QUALITY_ORDER, RL = mod.REALM_ORDER;
+  assert.deepStrictEqual(QL, ['黄阶', '玄阶', '地阶', '天阶', '圣阶', '仙阶'], '技能品质阶梯与全局 黄<玄<地<天<圣<仙 不一致（库里真有 圣阶 技能时必须有这一档）');
+  const EL = new Set(Object.keys(mod.ELEMENTS).concat(['none']));
+  for (const x of S) {
+    assert.ok(QL.includes(x.quality), `技能 ${x.name}(${x.id}) 品质 "${x.quality}" 不在阶梯内`);
+    assert.ok(RL.includes(String(x.required_realm || '').replace(/期$/, '')), `技能 ${x.name}(${x.id}) 境界 "${x.required_realm}" 不在境界表内`);
+    assert.ok(['main', 'sub', 'ultimate'].includes(x.slot), `技能 ${x.name}(${x.id}) 槽位 "${x.slot}" 非法`);
+    assert.ok(['active', 'passive', 'key'].includes(x.type), `技能 ${x.name}(${x.id}) 类型 "${x.type}" 非法`);
+    assert.ok(EL.has(x.element), `技能 ${x.name}(${x.id}) 元素 "${x.element}" 不在 7 系+无系 内`);
+  }
+});
+t('技能图自洽：无悬空前置、前置链全部可满足、名字与 id 唯一', () => {
+  const S = require('../src/services/skill').SKILLS_DATA || [];
+  const ids = new Set(S.map((x) => String(x.id)));
+  assert.strictEqual(ids.size, S.length, '技能 id 有重复（新增技能必须换 id 或复用既有 id）');
+  const nm = new Set();
+  for (const x of S) { assert.ok(!nm.has(x.name), `技能名重复：${x.name}`); nm.add(x.name); }
+  for (const x of S) for (const p of (x.prerequisites || [])) assert.ok(ids.has(String(p)), `技能 ${x.name}(${x.id}) 的前置 "${p}" 不存在（会让它永久学不到）`);
+  const learnable = new Set(S.filter((x) => !(x.prerequisites || []).length).map((x) => String(x.id)));
+  let grew = true;
+  while (grew) { grew = false; for (const x of S) { if (learnable.has(String(x.id))) continue; if ((x.prerequisites || []).every((p) => learnable.has(String(p)))) { learnable.add(String(x.id)); grew = true; } } }
+  const dead = S.filter((x) => !learnable.has(String(x.id)));
+  assert.deepStrictEqual(dead.map((x) => x.id), [], `前置链不可满足的技能：${dead.slice(0, 5).map((x) => x.id).join(', ')}`);
+});
+t('化神期以上技能 ≥100 门（原库在这里是 0，五个大境界无新技能可学）', () => {
+  const S = require('../src/services/skill').SKILLS_DATA || [];
+  const hi = ['化神', '炼虚', '合体', '大乘', '渡劫', '飞升'];
+  const n = S.filter((x) => hi.includes(String(x.required_realm).replace(/期$/, ''))).length;
+  assert.ok(n >= 100, `化神期以上只有 ${n} 门（轮47 补到 114，不得回退：这是 P1 唯一有意义的技能缺口）`);
+  const top = S.filter((x) => String(x.damage_mult) !== '0' && Number(x.damage_mult) > 10);
+  assert.deepStrictEqual(top.map((x) => x.id), [], '出现 damage_mult>10 的技能（战力天花板不得被补内容悄悄抬高）');
+});
+t('隐藏技两扇白嫖门都关着：learnSkill 拒 is_hidden，/unlock-hidden 不再收客户端自报条件', () => {
+  const fs = require('fs'), path = require('path');
+  const svc = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'skill.js'), 'utf8');
+  const learn = svc.slice(svc.indexOf('learnSkill(characterId, skillId)'));
+  assert.ok(/if \(skillDef\.is_hidden\)/.test(learn.slice(0, 2200)), 'learnSkill 不再校验 is_hidden —— 知道 id 就能用灵石买走仙阶大招');
+  const rt = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'skill.js'), 'utf8');
+  const uh = rt.slice(rt.indexOf("'/unlock-hidden'"));
+  assert.ok(!/req\.body\.condition/.test(uh.slice(0, 900)), '/unlock-hidden 又去读客户端自报的 condition 了（这是轮47 查出的实打实漏洞）');
+  assert.ok(!/skillService\.unlockHiddenSkill\(/.test(rt), '/unlock-hidden 仍在调用无服务端判定的 unlockHiddenSkill');
+  assert.ok(/501/.test(uh.slice(0, 1200)), '解锁入口没有明确返回"尚未实装"，前端会以为成功');
+  const S = require('../src/services/skill').SKILLS_DATA || [];
+  const hidden = S.filter((x) => x.is_hidden);
+  assert.ok(hidden.length <= 19, `隐藏技从 19 涨到 ${hidden.length}：解锁判定未实装前不得新增拿不到的技能`);
+  for (const x of hidden) assert.ok(x.hidden_condition, `隐藏技 ${x.id} 连解锁条件描述都没有`);
+});
+t('掉落池必须卡境界（否则炼气号能随机掉到飞升期禁式）', () => {
+  const fs = require('fs'), path = require('path');
+  const svc = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'skill.js'), 'utf8');
+  const d = svc.slice(svc.indexOf('dropSkill(characterId'));
+  assert.ok(/meetsRealmRequirement\(character\.realm/.test(d.slice(0, 1200)), 'dropSkill 不再按境界过滤掉落池');
+  const S = require('../src/services/skill').SKILLS_DATA || [];
+  const char = { realm: '炼气' };
+  const pool = S.filter((x) => x.source !== 'hidden' && x.source !== 'quest' && !x.is_hidden && Number(x.realm_level) === 0);
+  assert.ok(pool.length > 0 && pool.length < S.length / 2, `炼气号掉落池 ${pool.length}/${S.length}，境界过滤形同虚设（char 参考=${char.realm}）`);
+});
+t('境界阶梯单一真源：skill.js 不得再抄一份 REALM_ORDER 副本', () => {
+  const fs = require('fs'), path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'skill.js'), 'utf8');
+  assert.ok(/REALM_ORDER = require\('\.\.\/config\/balance'\)\.REALM_ORDER/.test(src), 'skill.js 的境界顺序又变回本地副本了（轮47 已收到单一真源）');
+  assert.ok(!/const REALM_ORDER = \[ '炼气'/.test(src), 'skill.js 里又出现了硬编码境界数组');
+  assert.ok(/REALM_ORDER\.indexOf\(String\(s\.required_realm/.test(src), 'realm_level 不再从 REALM_ORDER 派生（本地清单缺"飞升"会让高阶门槛抹平）');
+});
+
+t('不许再新增"效果文案战斗里做不到"的技能（未实现的战斗类效果数量封在上限内）', () => {
+  const skillState = require('../src/services/battle/skillState');
+  const S = require('../src/services/skill').SKILLS_DATA || [];
+  const buckets = skillState.unimplementedEffects();           // { implemented, needsMultiTarget, nonCombat }
+  const nonCombat = new Set(buckets.nonCombat);
+  const lying = S.filter((x) => !skillState.isImplemented(x.effect_type) && !nonCombat.has(x.effect_type));
+  // 轮47 实测基线：老库 214 条里有 67 条声明了 1v1 模型不实现的 aoe/buff/shield/stun/... 文案，
+  // 这是 T0-3 的已知欠账（skillState 里显式登记，不伪造数值）。上限锁死在 67：
+  // 补内容只准用已实现类型（damage/dot/heal/drain/lifesteal）或明确非战斗的生活类，
+  // 想加新类型必须先让状态机真的消费它 —— 否则就是又一次"定义很多、消费为零"。
+  assert.ok(lying.length <= 67, `声明了战斗做不到的效果的技能有 ${lying.length} 条（基线 67）：${lying.slice(-5).map((x) => `${x.name}(${x.effect_type})`).join(', ')}`);
+  const passiveNoConsume = S.filter((x) => String(x.id).startsWith('hr_') && x.type === 'passive');
+  assert.deepStrictEqual(passiveNoConsume.map((x) => x.id), [], '高阶新库里出现 passive：combat 明确"被动除外"，被动技能等于零消费');
+});
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

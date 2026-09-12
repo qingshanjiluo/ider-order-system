@@ -48,6 +48,7 @@ const t = async (name, fn) => {
   app.use('/api/shop', require('../src/routes/shop'));
   app.use('/api/gongfa', require('../src/routes/gongfa'));
   app.use('/api/sect', require('../src/routes/sect'));
+  app.use('/api/skill', require('../src/routes/skill'));   // 轮47：同一套壳里把技能获取链也走一遍
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const port = server.address().port;
 
@@ -209,6 +210,53 @@ const t = async (name, fn) => {
     const again = await call('POST', '/api/gongfa/study', { itemId: store.bookId }, store.token);
     assert.strictEqual(again.code, 400, '重复研读竟然成功：' + again.raw);
     assert.ok(/背包中没有该物品|已修习过该功法/.test(again.raw), '重复研读的拒绝理由异常：' + again.raw);
+  });
+
+  await t('GET /api/skill/all 列出全部非隐藏技能（含轮47 新加的飞升期禁式）——技能侧的"看得见"', async () => {
+    const r = await call('GET', '/api/skill/all', undefined, store.token);
+    const list = (r.body && r.body.skills) || [];
+    assert.ok(r.code === 200 && list.length >= 300, `技能列表只有 ${list.length} 条（应为全部非隐藏 ${320 - 19} 条上下）：${r.code} ${r.raw}`);
+    assert.ok(!list.some((x) => x.is_hidden), '列表把隐藏技也端出来了，与"隐藏"口径矛盾');
+    assert.ok(list.some((x) => String(x.required_realm || '').indexOf('飞升') === 0), '列表里找不到飞升期技能，新加的 106 门没有真的上线');
+    const shop = await call('GET', '/api/skill/shop', undefined, store.token);
+    const books = (shop.body && shop.body.shop) || [];
+    assert.ok(books.length >= 20, `技能书商店只有 ${books.length} 条（source=shop 的池子没接上）`);
+    assert.ok(books.some((b) => ['圣阶', '仙阶'].includes(b.quality)), '技能书商店里一本高阶书都没有，高阶内容对坊市玩家不可见');
+  });
+
+  await t('炼气号学不了高阶技（境界闸生效，补出来的高阶内容不是点了就有）', async () => {
+    const hi = require('../src/services/skill').SKILLS_DATA.find((x) => x.required_realm === '飞升期' && !(x.prerequisites || []).length) ||
+      require('../src/services/skill').SKILLS_DATA.find((x) => x.required_realm === '飞升期');
+    const r = await call('POST', '/api/skill/learn', { skillId: hi.id }, store.token);
+    assert.strictEqual(r.code, 400, `境界不足竟然学到了 ${hi.name}：${r.raw}`);
+    assert.ok(/需要境界/.test(r.raw), '拒绝理由不是境界：' + r.raw);
+  });
+
+  await t('隐藏技两扇白嫖门都关着（猜 id 学 / 自报条件解锁 都不给）', async () => {
+    const hidden = require('../src/services/skill').SKILLS_DATA.find((x) => x.is_hidden && x.quality === '仙阶');
+    assert.ok(hidden, '库里没有 仙阶 隐藏技，本反证失效');
+    const a = await call('POST', '/api/skill/learn', { skillId: hidden.id }, store.token);
+    assert.strictEqual(a.code, 400, `/learn 竟然能学隐藏技 ${hidden.name}：${a.raw}`);
+    assert.ok(/机缘/.test(a.raw), 'learn 的拒绝理由异常：' + a.raw);
+    const b = await call('POST', '/api/skill/unlock-hidden', { skillId: hidden.id, condition: true }, store.token);
+    assert.strictEqual(b.code, 501, `/unlock-hidden 竟然接受了客户端自报的 condition：${b.raw}`);
+    assert.ok(!((b.body || {}).success), '响应里出现了 success，前端会当成功处理');
+    assert.strictEqual((loadDatabase().player_skills || []).filter((ps) => ps.skill_id === hidden.id).length, 0, '隐藏技还是被写进 player_skills 了');
+  });
+
+  await t('学一门低阶技能 -> player_skills 真的多一行且扣灵石（技能侧"拿得到"）', async () => {
+    const db = loadDatabase();
+    const ch = db.characters.find((c) => Number(c.id) === store.charId);
+    const before = (db.player_skills || []).filter((ps) => Number(ps.character_id) === store.charId).length;
+    const stone = Number(ch.spirit_stone);
+    const def = require('../src/services/skill').SKILLS_DATA.find((x) => x.required_realm === '炼气期' && !(x.prerequisites || []).length && !x.is_hidden);
+    const r = await call('POST', '/api/skill/learn', { skillId: def.id }, store.token);
+    assert.ok(r.code === 200 && r.body && r.body.success, `学 ${def.name} 失败：${r.code} ${r.raw}`);
+    const after = loadDatabase().player_skills.filter((ps) => Number(ps.character_id) === store.charId).length;
+    assert.strictEqual(after, before + 1, 'player_skills 没多出行（战斗侧唯一真源接不上）');
+    assert.strictEqual(Number(loadDatabase().characters.find((c) => Number(c.id) === store.charId).spirit_stone), stone - Number(def.learn_cost || 0), '灵石扣得不等于 learn_cost');
+    const again = await call('POST', '/api/skill/learn', { skillId: def.id }, store.token);
+    assert.strictEqual(again.code, 400, '同一门技能竟然能学两次：' + again.raw);
   });
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

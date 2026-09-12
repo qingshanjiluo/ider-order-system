@@ -4,11 +4,15 @@ const elements = require('./elements');
 // 元素元数据（阶段2：委托单一事实源，7 系金木水火土光明黑暗）
 const ELEMENTS = elements.displayMeta();
 
-const REALM_ORDER = ['炼气', '筑基', '金丹', '元婴', '化神', '炼虚', '合体', '大乘', '渡劫', '飞升'];
+// 境界顺序用单一真源（轮47 收掉 LADDER_BACKLOG 里 skill.js 这一笔欠账：balance.js 零 require，无环）
+const REALM_ORDER = require('../config/balance').REALM_ORDER;
 
 const SLOT_LIMITS = { main: 3, sub: 3, ultimate: 1 };
 
-const QUALITY_ORDER = ['黄阶', '玄阶', '地阶', '天阶', '仙阶'];
+// 技能品质阶梯与全局口径对齐（轮47）：库里存在 7 条 圣阶 技能，而旧数组根本没有"圣阶"，
+// 且把"仙阶"排在了最后 —— 与功法/藏宝阁用的 黄<玄<地<天<圣<仙 相冲突。
+// 这条数组过去没人用（死常量），本轮起被 ref-integrity 与 test-content 当作词表真源，所以必须是对的。
+const QUALITY_ORDER = ['黄阶', '玄阶', '地阶', '天阶', '圣阶', '仙阶'];
 const RARITY_WEIGHTS = { common: 50, uncommon: 30, rare: 15, epic: 4, legendary: 1 };
 
 const SKILLS_DATA = [
@@ -117,6 +121,8 @@ const SKILLS_DATA = [
 
 // ============ 内容富集三期：模板扩充至 200+（数据驱动，完整性由 test-content.js 断言） ============
 SKILLS_DATA.push(...require('../data/skill-expansion').buildSkills());
+// P1 技能差口（轮47）：214 -> 320，全部押在化神期以上的空洞境界（详见该文件头部的可达性口径）
+SKILLS_DATA.push(...require('../data/skill-highrealm').buildSkills());
 
 // 基础手调 10 技能（新手起手套件，数值逐个手调：低耗/稳定/覆盖七系与辅助）
 const BASE_SKILL_IDS = new Set([
@@ -125,7 +131,9 @@ const BASE_SKILL_IDS = new Set([
 ]);
 for (const s of SKILLS_DATA) {
   if (BASE_SKILL_IDS.has(s.id)) { s.base = true; s.learn_cost = Math.min(s.learn_cost || 40, 40); }
-  s.realm_level = Math.max(0, ['炼气期', '筑基期', '金丹期', '元婴期', '化神期', '炼虚期', '合体期', '大乘期', '渡劫期'].indexOf(s.required_realm));
+  // 境界等级一律从 REALM_ORDER 派生（原来这里另抄了一份 9 项清单，缺"飞升"，
+  // 于是 required_realm:'飞升期' 的技能会被算成 realm_level 0 = 炼气，等于把高阶门槛抹平）。
+  s.realm_level = Math.max(0, REALM_ORDER.indexOf(String(s.required_realm || '').replace(/期$/, '')));
 }
 
 function getSkillDef(skillId) {
@@ -184,6 +192,13 @@ class SkillService {
 
     const skillDef = getSkillDef(skillId);
     if (!skillDef) return { success: false, error: '技能不存在' };
+
+    // 轮47：隐藏技不得被"猜 id"白嫖。列表接口本来就过滤 is_hidden（玩家看不见），而这里不校验，
+    // 等于 19 门 天阶/仙阶 大招只要知道 id 就能用灵石买走，hidden_condition 全成了摆设。
+    // 解锁途径（秘境/机缘）尚未实装，先关门；实装时改为校验一条真实达成的解锁记录。
+    if (skillDef.is_hidden) {
+      return { success: false, error: `隐藏技能需通过特定机缘解锁，无法直接参悟：${skillDef.hidden_condition || skillDef.name}` };
+    }
 
     if (!meetsRealmRequirement(character.realm || '炼气', skillDef.required_realm)) {
       return { success: false, error: `需要境界: ${skillDef.required_realm}` };
@@ -501,7 +516,11 @@ class SkillService {
     const character = db.characters.find(c => c.id === characterId);
     if (!character) return null;
 
-    const droppable = SKILLS_DATA.filter(s => s.source !== 'hidden' && s.source !== 'quest' && !s.is_hidden);
+    // 轮47：掉落池必须卡境界 —— 原来只排除 hidden/quest，于是炼气号也能随机掉到圣阶/仙阶技，
+    // 与 learnSkill 的境界闸互相矛盾（学到的还不能用等级门槛）。新增的 106 门高阶技全靠这条兜住。
+    const droppable = SKILLS_DATA.filter(s =>
+      s.source !== 'hidden' && s.source !== 'quest' && !s.is_hidden &&
+      meetsRealmRequirement(character.realm || '炼气', s.required_realm));
     if (droppable.length === 0) return null;
 
     const levelDiff = Math.abs(enemyLevel - (character.level || 1));
@@ -577,5 +596,9 @@ class SkillService {
 
 module.exports = new SkillService();
 module.exports.SKILLS_DATA = SKILLS_DATA;
+// 词表真源对外可见，审计与测试才有东西可校（此前它们只能各自再抄一份，正是漂移的源头）
+module.exports.QUALITY_ORDER = QUALITY_ORDER;
+module.exports.REALM_ORDER = REALM_ORDER;
+module.exports.RARITY_KEYS = Object.keys(RARITY_WEIGHTS);
 module.exports.ELEMENTS = ELEMENTS;
 module.exports.ELEMENTS_MAP = ELEMENTS;

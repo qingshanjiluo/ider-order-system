@@ -181,6 +181,34 @@ try {
   }
   add('player_skills.skill_id -> 代码技能表', skillKeys.size ? psBad : []);
 
+  // 轮47：技能图自身必须自洽。悬空前置 = 该技能永久学不到（learnSkill 逐条卡前置）；
+  // 非法境界/品质会让 realm_level 退化成 0（等于把高阶门槛抹平）。这三类都是"定义在、拿不到"。
+  const skillMod = require('../src/services/skill');
+  const SK = skillMod.SKILLS_DATA || [];
+  const QLT = skillMod.QUALITY_ORDER || [];
+  const skBad = [];
+  let skHidden = 0;
+  {
+    const ids = new Set(SK.map((x) => String(x.id)));
+    for (const x of SK) {
+      for (const p of (x.prerequisites || [])) if (!ids.has(String(p))) skBad.push(`技能 ${x.name}(${x.id}) 的前置 "${p}" 不存在`);
+      if (!realmNames.has(String(x.required_realm || '').replace(/期$/, ''))) skBad.push(`技能 ${x.name}(${x.id}) required_realm "${x.required_realm}" 不在境界表内`);
+      if (!QLT.includes(x.quality)) skBad.push(`技能 ${x.name}(${x.id}) 品质 "${x.quality}" 不在技能阶梯 ${QLT.join('/')} 内`);
+    }
+    const learnable = new Set(SK.filter((x) => !(x.prerequisites || []).length).map((x) => String(x.id)));
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const x of SK) {
+        if (learnable.has(String(x.id))) continue;
+        if ((x.prerequisites || []).every((p) => learnable.has(String(p)))) { learnable.add(String(x.id)); grew = true; }
+      }
+    }
+    for (const x of SK) if (!learnable.has(String(x.id))) skBad.push(`技能 ${x.name}(${x.id}) 前置链成环或不可满足，永远学不到`);
+    skHidden = SK.filter((x) => x.is_hidden).length;
+  }
+  add(`技能定义自洽（前置/境界/品质，共 ${SK.length} 条）`, skBad);
+
   // 物品 realm 必须是已定义境界名
   const itemRealmBad = [];
   for (const it of items) {
@@ -274,6 +302,9 @@ try {
   console.log(`来源路径索引规模（去重名计数之和）= ${srcCount}：${Object.keys(srcSets).map((k) => k + '=' + srcSets[k].size).join(' ')}｜消耗方名字 ${consumedNames.size} 个`);
   // 轮46：按类型给出"实例化型物品"的获取覆盖率（功法/灵宠拿不到，对应集合就永远 0 行）
   console.log(`实例化型物品获取覆盖：${Object.keys(srcByType).map((t) => `${t} ${srcByType[t].ok}/${srcByType[t].total}`).join('｜')}`);
+  // 技能的"可得路径"口径与物品不同：GET /api/skill 列出全部非隐藏技能，learnSkill 只卡境界/前置/灵石，
+  // 所以非隐藏即"看得见也学得了"；隐藏技（解锁判定未实装）单独计数，由 test-content 的上限锁防增长。
+  console.log(`技能可得性：${SK.length} 条定义｜列表可学 ${SK.length - skHidden}｜隐藏未接线 ${skHidden}（learnSkill 与 /unlock-hidden 均已拒绝，待服务端机缘记录）`);
   console.log(`集合行数: items=${items.length} monsters=${monsters.length} maps=${(data.maps || []).length} dungeons=${(data.dungeons || []).length} recipes=${(data.recipes || []).length} forge=${(data.forge_recipes || []).length} blueprints=${(data.blueprints || []).length} player_skills=${(data.player_skills || []).length}`);
   if (total) {
     console.log(`\n🔴 内容引用完整性不合格：共 ${total} 条悬空引用`);

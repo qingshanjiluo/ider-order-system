@@ -15,7 +15,7 @@ const SUITES = [
   ['E2 分层限流', 'scripts/test-tier-limit.js'],
   ['E3 战斗掉落', 'scripts/test-loot.js'],
   ['E5 大限劫路由', 'scripts/test-tribulation.js'],
-  ['G1 功法获取链', 'scripts/test-gongfa-e2e.js']
+  ['G1 功法与技能获取链', 'scripts/test-gongfa-e2e.js']
 ];
 
 let failed = 0;

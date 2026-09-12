@@ -262,12 +262,19 @@ router.post('/unlock-hidden', auth, (req, res) => {
     const character = db.characters.find(c => c.user_id === req.userId);
     if (!character) return res.status(404).json({ error: '角色不存在' });
 
-    const { skillId, condition } = req.body;
+    const { skillId } = req.body;
     if (!skillId) return res.status(400).json({ error: '缺少技能ID' });
 
-    const result = skillService.unlockHiddenSkill(character.id, skillId, condition);
-    if (!result.success) return res.status(400).json(result);
-    res.json(result);
+    // 轮47 修漏洞：这里原先把**客户端自报的** condition 字段直接当作"已达成机缘"传给服务层，
+    // 服务端零校验 —— 任何登录玩家 POST 一个 truthy 的 condition 就能白拿 7.0 倍率的仙阶大招
+    // （前端 public/js/app.js:1821 确实在这么调）。19 门隐藏技的 hidden_condition 至今是散文描述、
+    // 没有可判定的服务端记录，所以在实装真实解锁判定之前，这个入口必须拒绝，而不是假装成功。
+    // 实装方向：给角色加 unlocked_skills 记录，由秘境/BOSS 战（含血量条件）等服务端事件写入，本路由只查不收。
+    res.status(501).json({
+      error: '隐藏技能解锁尚未实装：需要服务端记录的机缘，不接受客户端自报条件',
+      skill_id: skillId,
+      hidden_condition: (skillService.SKILLS_DATA.find((s) => s.id === skillId) || {}).hidden_condition || null
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

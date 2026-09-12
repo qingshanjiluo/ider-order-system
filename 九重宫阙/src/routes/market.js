@@ -22,6 +22,20 @@ router.get('/listings', auth, (req, res) => {
   }
 });
 
+// P2/E8（轮48）：7 日成交价与指导价。?item= 只看一件，否则给全部有行情的资源。
+router.get('/prices', auth, (req, res) => {
+  try {
+    getChar(req, res) && res.json({
+      windowDays: market.PRICE_WINDOW_DAYS,
+      minSamplesForGuidance: market.PRICE_MIN_SAMPLES,
+      deviation: market.PRICE_DEVIATION,
+      prices: req.query.item ? [market.priceStats(`item:${String(req.query.item).trim()}`)] : market.marketPrices()
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/list', auth, (req, res) => {
   try {
     const { inventoryId, quantity, price } = req.body;

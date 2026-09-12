@@ -269,7 +269,7 @@ const t = async (name, fn) => {
   server.close();
   closeDatabase();
   fs.rmSync(TMP, { recursive: true, force: true });
-  console.log(`\nG1 功法获取链: ${pass} 通过, ${fail} 失败`);
+  console.log(`\nG1 功法与技能获取链: ${pass} 通过, ${fail} 失败`);
   process.exitCode = fail ? 1 : 0;
 })().catch((e) => {
   console.error('G1 套件异常：', e && e.stack ? e.stack : e);

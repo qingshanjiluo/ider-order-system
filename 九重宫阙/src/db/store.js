@@ -30,7 +30,7 @@ const SCHEMA_FILE = path.join(__dirname, 'schema.sql');
  */
 const DOC_COLLECTIONS = [
   'achievements', 'blueprints', 'character_buffs', 'characters', 'checkin', 'dungeons',
-  'equipments', 'forge_recipes', 'gongfa', 'guild_members', 'guilds', 'inventory',
+  'equipments', 'forge_recipes', 'friends', 'gongfa', 'guild_members', 'guilds', 'inventory',
   'items', 'maps', 'monsters', 'pets', 'player_skills', 'realms', 'recipes',
   'shop', 'skills', 'users'
 ];

@@ -1307,7 +1307,8 @@ t('成就契约：每个 requirement.type 都有实现，每个实现都被引�
   assert.deepStrictEqual(idle, [], `有实现但无成就引用（空转分支）：${idle.join(',')}`);
 });
 t('成就读取的数据源集合必须存在，缺的只能是我登记过的那一个', () => {
-  const KNOWN_MISSING = ['friends'];   // 好友系统未建（P2），friends 类成就进度恒 0 —— 已知缺口，不许扩散
+  const KNOWN_MISSING = [];   // 轮48（P2/E8）：friends 集合已落地，白名单**清空** —— 成就读到的集合必须真实存在；
+                              // 今后再往这里加名字，就等于允许"只写读方、不建集合"的 D4 型缺陷扩散，必须先补集合。
   const db21 = require('../src/database').loadDatabase();
   const files = ['achievement.js', 'pet.js', 'gongfa.js'];
   const missing = new Set();
@@ -2325,6 +2326,74 @@ t('不许再新增"效果文案战斗里做不到"的技能（未实现的战斗
   const passiveNoConsume = S.filter((x) => String(x.id).startsWith('hr_') && x.type === 'passive');
   assert.deepStrictEqual(passiveNoConsume.map((x) => x.id), [], '高阶新库里出现 passive：combat 明确"被动除外"，被动技能等于零消费');
 });
+// ===== 册四期：P2 · 好友集合与市场 7 日成交价（轮48）=====
+t('friends 已注册为文档集合且成就仍在读它（D4 正式关闭，白名单已清空）', () => {
+  const store = require('../src/db/store');
+  const cols = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'db', 'store.js'), 'utf8');
+  assert.ok(/'friends'/.test(cols), "DOC_COLLECTIONS 里没有 'friends'：新集合没登记，写过一次才存在，等于把崩溃留给下个进程");
+  const db = require('../src/database').loadDatabase();
+  assert.ok(Array.isArray(db.friends), 'db.friends 不是数组（成就读它会 TypeError）');
+  const ach = read21('src', 'routes', 'achievement.js');
+  assert.ok(/type: 'friends'/.test(ach), "成就定义里的 type:'friends' 不见了：那是删定义绕过验收，不是修好了");
+  assert.ok(/case 'friends'/.test(ach), 'friends 进度分支被删（成就永不可达的老洞会复发）');
+  assert.ok(/\(db\.friends \|\| \[\]\)/.test(ach), 'friends 读取丢了空值保护（老档未迁移时会 500）');
+});
+t('好友四端点齐全、挂在服务里、且有限额与防灌水常量（对齐游戏规则）', () => {
+  const fs = require('fs'), path = require('path');
+  const svc = fs.readFileSync(path.join(__dirname, '..', 'src', 'services', 'friend.js'), 'utf8');
+  for (const fn of ['function request', 'function respond', 'function remove', 'function visit', 'function overview']) {
+    assert.ok(svc.includes(fn), `好友服务缺 ${fn}（规划 P2 要的四端点之一）`);
+  }
+  const f = require('../src/services/friend');
+  assert.strictEqual(f.FRIEND_LIMIT, 50, '好友上限被改动：游戏规则.md:106 写的是 50 人');
+  assert.ok(f.PENDING_LIMIT >= 1 && f.PENDING_LIMIT <= 50, '待处理申请上限异常（防灌水必须真有一道闸）');
+  assert.ok(/不能添加自己为好友/.test(svc), '不给自己发申请的闸不见了');
+  assert.ok(/status === 'accepted'/.test(svc), '好友计数不再只认 accepted：发一堆 pending 就能刷满社交成就');
+  const routes = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'friend.js'), 'utf8');
+  for (const r of ["'/request'", "'/respond'", "'/remove'", "'/visit'"]) assert.ok(routes.includes(r), `好友路由缺 ${r}`);
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  assert.ok(/app\.use\('\/api\/friend'/.test(server), '好友路由没挂载（写好的服务没人能调到）');
+  const tier = fs.readFileSync(path.join(__dirname, '..', 'src', 'middleware', 'tierLimit.js'), 'utf8');
+  assert.ok(/prefix: '\/api\/friend\/'/.test(tier), '/api/friend/ 未纳入分层限流（申请与拜访是可灌水的写入口）');
+});
+t('市场 7 日成交价与指导价：窗口/偏离/限频三个数都对得上，且优先用真实成交', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'services', 'market.js'), 'utf8');
+  const m = require('../src/services/market');
+  assert.strictEqual(m.PRICE_WINDOW_DAYS, 7, '成交价窗口不再是 7 日（章程 E8 写死 7 日）');
+  assert.ok(m.PRICE_MIN_SAMPLES >= 3, `样本门槛只有 ${m.PRICE_MIN_SAMPLES}：两三条成交就冒充指导价`);
+  assert.ok(m.PRICE_DEVIATION > 0 && m.PRICE_DEVIATION <= 0.4, `挂单偏离阈值放宽到 ${m.PRICE_DEVIATION}（蓝图画的是 ±40%）`);
+  assert.ok(m.LIST_MAX_PER_WINDOW >= 1 && m.LIST_MAX_PER_WINDOW <= 5, `单角色单资源限频放宽到 ${m.LIST_MAX_PER_WINDOW} 单/窗口`);
+  assert.ok(/source: '7d_median'/.test(src) && /source: 'shop_base'/.test(src), '指导价的两个来源被拆掉一个（成交样本不足时必须退回坊市基准价而不是不设限）');
+  assert.ok(/偏离指导价/.test(src), '偏离指导价的拒绝分支不见了');
+  const server = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'market.js'), 'utf8');
+  assert.ok(/'\/prices'/.test(server), 'GET /api/market/prices 不见了（7 日成交价不可用 = E8 未达）');
+  assert.ok(/不能购买自己的挂单/.test(src), '防自买自卖的闸不见了');
+});
+
+t('应用入口 server.js 必须自己站得住（轮48 教训：入口曾因重复 const 静默坏了 7 轮而门禁全绿）', () => {
+  // 起因：轮40 提交 bfc4541 在 server.js 里插了两行一模一样的
+  //   `const tribulationRoutes = require('./src/routes/tribulation')`，
+  // 那是重复声明，SyntaxError，**整个后端根本起不来**；而 10 个套件全是"自己 new 一个 express 再挂路由"，
+  // 没有一个 require 过 server.js，于是门禁连续 7 轮全绿地把一个起不动的服务当成"可发布"。
+  const { spawnSync } = require('child_process');
+  const ROOT = require('path').join(__dirname, '..');
+  const chk = spawnSync(process.execPath, ['--check', 'server.js'], { cwd: ROOT, encoding: 'utf8', timeout: 30000 });
+  assert.strictEqual(chk.status, 0, `server.js 语法检查失败：\n${(chk.stderr || '').slice(0, 400)}`);
+  const src = require('fs').readFileSync(require('path').join(ROOT, 'server.js'), 'utf8');
+  const tops = [...src.matchAll(/^const\s+([A-Za-z_$][\w$]*)\s*=/gm)].map(m => m[1]);
+  const dupTop = tops.filter((n, i) => tops.indexOf(n) !== i);
+  assert.deepStrictEqual([...new Set(dupTop)], [], `server.js 顶层重复声明：${[...new Set(dupTop)].join(',')}（就是这类静默崩溃）`);
+  const mounts = [...src.matchAll(/app\.use\('(\/api\/[a-z]+)'/g)].map(m => m[1]);
+  const dupMount = mounts.filter((p, i) => mounts.indexOf(p) !== i);
+  assert.deepStrictEqual([...new Set(dupMount)], [], `同一路径挂了两遍：${[...new Set(dupMount)].join(',')}`);
+  for (const m of src.matchAll(/require\('\.\/(src\/routes\/[a-z-]+)'\)/g)) {
+    assert.ok(require('fs').existsSync(require('path').join(ROOT, `${m[1]}.js`)), `挂载了不存在的路由文件 ./${m[1]}.js`);
+  }
+  for (const need of ['/api/friend', '/api/market', '/api/tribulation', '/api/gongfa']) {
+    assert.ok(mounts.includes(need), `入口未挂载 ${need}（服务写好了没人能调）`);
+  }
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

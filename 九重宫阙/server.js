@@ -8,7 +8,6 @@ const { sanitizeMiddleware } = require('./src/middleware/validate');
 
 const authRoutes = require('./src/routes/auth');
 const tribulationRoutes = require('./src/routes/tribulation'); // E5/T0-1 大限劫
-const tribulationRoutes = require('./src/routes/tribulation'); // E5/T0-1 大限劫
 const characterRoutes = require('./src/routes/character');
 const gameRoutes = require('./src/routes/game');
 const cultivationRoutes = require('./src/routes/cultivation');
@@ -102,6 +101,7 @@ app.use('/api/cave', caveRoutes);
 app.use('/api/sect', require('./src/routes/sect'));
 app.use('/api/economy', require('./src/routes/economy'));
 app.use('/api/market', require('./src/routes/market'));
+app.use('/api/friend', require('./src/routes/friend'));   // P2/E8（轮48）：好友与洞府拜访
 app.use('/api/ai', require('./src/routes/ai'));
 app.use('/api/chronicle', require('./src/routes/chronicle'));
 

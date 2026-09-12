@@ -16,6 +16,7 @@
     "sim:battle": "node scripts/sim-battle.js",
     "test": "node scripts/gate.js",
     "test:content": "node scripts/test-content.js",
+    "probe:server": "node scripts/probe-server.js",
     "backup": "node scripts/backup.js",
     "backup:verify": "node scripts/verify-backup.js",
     "restore": "node scripts/restore.js",

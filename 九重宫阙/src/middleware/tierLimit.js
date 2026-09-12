@@ -10,6 +10,7 @@ const TIERS = [
   { prefix: '/api/battle/', max: 25, windowMs: 60000, label: '战斗' },
   { prefix: '/api/auth/', max: 12, windowMs: 60000, label: '认证' },
   { prefix: '/api/market/', max: 30, windowMs: 60000, label: '市场' },
+  { prefix: '/api/friend/', max: 30, windowMs: 60000, label: '好友' },   // P2/E8（轮48）：申请/回应/拜访都是可被灌水的写入口
   { prefix: '/api/guild/', max: 40, windowMs: 60000, label: '仙盟' },
   { prefix: '/api/sect/', max: 40, windowMs: 60000, label: '宗门' },
   { prefix: '/api/cultivation/', max: 60, windowMs: 60000, label: '修炼' },

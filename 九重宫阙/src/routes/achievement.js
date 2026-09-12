@@ -195,7 +195,10 @@ function getProgress(character, requirement) {
       return rank <= requirement.value ? 1 : 0;
     }
     case 'friends': {
-      const friends = (db.friends || []).filter(f => f.character_id === character.id || f.friend_id === character.id).length;
+      // 轮48（P2/E8）：friends 集合已落地（services/friend.js，字段沿用这里已在读的 friend_id，
+      // 消费方优先于规划文档里的 target_character_id 暂名）。这里**只数 accepted**：
+      // 原写法把 pending/rejected 也计入，等于向 50 个角色发申请就能刷满「社交达人」。
+      const friends = (db.friends || []).filter(f => f.status === 'accepted' && (f.character_id === character.id || f.friend_id === character.id)).length;
       return Math.min(1, friends / requirement.value);
     }
     case 'allMaps': {

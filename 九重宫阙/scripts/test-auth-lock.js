@@ -84,6 +84,22 @@ const t = async (name, fn) => {
     assert.strictEqual(code, 200);
   });
 
+  await t('登录失败锁定：5 次起锁、成功即清零、按 用户名+IP 分维度', () => {
+    const guard = require('../src/middleware/loginGuard');
+    guard._store.clear();
+    for (let i = 1; i <= 4; i++) guard.recordFailure('alice|1.2.3.4');
+    assert.strictEqual(guard.lockInfo('alice|1.2.3.4'), null, '第 4 次失败不应锁定');
+    guard.recordFailure('alice|1.2.3.4');
+    const l = guard.lockInfo('alice|1.2.3.4');
+    assert.ok(l && l.locked === true, '第 5 次失败应锁定');
+    assert.ok(l.retryAfterSec > 0 && l.retryAfterSec <= 300, `锁时长异常：${l.retryAfterSec}`);
+    assert.strictEqual(guard.lockInfo('alice|9.9.9.9'), null, '同用户名不同 IP 不应互相影响');
+    assert.strictEqual(guard.lockInfo('bob|1.2.3.4'), null, '同 IP 不同用户名不应互相影响');
+    guard.recordFailure('carol|1.2.3.4');
+    guard._store.delete('carol|1.2.3.4');
+    assert.strictEqual(guard.lockInfo('carol|1.2.3.4'), null, '成功后应清零');
+  });
+
   server.close();
   const ci = db.characters.indexOf(tempChar); if (ci >= 0) db.characters.splice(ci, 1);
   if (Array.isArray(db.users)) { const ui = db.users.indexOf(tempUser); if (ui >= 0) db.users.splice(ui, 1); }

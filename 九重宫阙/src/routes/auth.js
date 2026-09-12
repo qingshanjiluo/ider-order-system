@@ -95,7 +95,7 @@ router.post('/register', turnstileMiddleware, async (req, res) => {
   }
 });
 
-router.post('/login', turnstileMiddleware, async (req, res) => {
+router.post('/login', require('../middleware/loginGuard').guard, turnstileMiddleware, async (req, res) => {
   try {
     const { username, password } = req.body;
     const db = loadDatabase();

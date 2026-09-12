@@ -85,6 +85,7 @@ app.use('/api/cave', caveRoutes);
 app.use('/api/sect', require('./src/routes/sect'));
 app.use('/api/economy', require('./src/routes/economy'));
 app.use('/api/market', require('./src/routes/market'));
+app.use('/api/ai', require('./src/routes/ai'));
 
 // API 未匹配端点统一返回 404 JSON（不得落入 SPA fallback 返回 HTML）
 app.use('/api', (req, res) => {

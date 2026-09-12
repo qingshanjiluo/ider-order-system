@@ -1,7 +1,7 @@
 /**
  * Git 备份（内容真源 + 可恢复性）
  *
- * 为什么存在：data/game.db 被 .gitignore 排除（**/data/*.db），而它是**唯一一份装着全部数值的存档**：
+ * 为什么存在：data/game.db 被 .gitignore 的双星通配规则排除（data 目录下的 db 文件），而它是唯一一份装着全部数值的存档：
  * 86 个怪物模板的 stats、技能表、材料/地图/图纸/副本定义、以及历轮 rebalance --apply 的结果。
  * 轮40 的恢复演练证明：全新克隆里 `npm run init-db` / `expand-data` 都跑不起来
  * （src/database.js:33 在无 legacy game.json 时 db.realms 为 undefined），
@@ -11,6 +11,7 @@
  * ③ bundle（含 tag，脱离 GitHub 也能恢复）④ 存档快照（db + legacy json，附命名说明）。
  *
  * 用法：node scripts/backup.js [--tag 名字] [--force]   （--force 才允许脏树）
+ * 教训：块注释里不要写含星号斜杠的通配模式 —— 它会提前闭合注释，把后面的中文当代码执行。
  */
 const { execFileSync } = require('child_process');
 const fs = require('fs');

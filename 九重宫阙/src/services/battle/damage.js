@@ -46,7 +46,9 @@ class DamageCalculator {
       damage = this.calculateSkillDamage(damage, skill.multiplier || 1.0, skill.level || 1);
     }
 
-    const critResult = this.calculateCriticalDamage(damage, attacker.crit_rate || 0.05);
+        // 修幽灵暴击：`crit_rate || 0.05` 会把**显式的 0** 也吞成 5%，于是声明了不暴击的单位（无 crit 字段的怪物模板、
+    // 测试里的期望值测量）每 20 下偷偷多打 1.5 倍。缺字段才该走默认值，显式 0 必须被尊重 —— 用 ?? 而非 ||。
+    const critResult = this.calculateCriticalDamage(damage, attacker.crit_rate ?? 0.05);
     damage = critResult.damage;
 
     const skillElement = skill?.element || attacker.element;

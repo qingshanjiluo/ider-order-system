@@ -197,6 +197,63 @@ router.post('/generate', auth, (req, res) => {
   }
 });
 
+// 野外捕捉（内容富集六期）：消耗驯兽符，成功率随境界差与地图凶险度结算
+router.post('/capture', auth, (req, res) => {
+  try {
+    const { mapId } = req.body;
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+
+    const map = (db.maps || []).find(m => m.id === mapId);
+    if (!map) return res.status(400).json({ error: '地图不存在' });
+    if ((character.level || 1) < map.min_level) {
+      return res.status(400).json({ error: `等级不足，需要${map.min_level}级` });
+    }
+
+    const talisman = (db.items || []).find(i => i.name === '驯兽符');
+    if (!talisman) return res.status(400).json({ error: '驯兽符未定义' });
+    const invIdx = (db.inventory || []).findIndex(i => i.character_id === character.id && i.item_id === talisman.id);
+    if (invIdx === -1) return res.status(400).json({ error: '缺少驯兽符（坊市可购）' });
+
+    const inv = db.inventory[invIdx];
+    inv.quantity = (inv.quantity || 1) - 1;
+    if (inv.quantity <= 0) db.inventory.splice(invIdx, 1);
+
+    const capture = require('../services/pet-capture');
+    const chance = capture.captureChance(character.level, map);
+    const expConsolation = Math.floor(3 + (map.min_level || 1) * 0.5);
+    character.exp = (character.exp || 0) + expConsolation;
+
+    if (Math.random() > chance) {
+      saveDatabase(db);
+      return res.json({ success: false, caught: false, chance, message: `灵兽挣脱了驯兽符（成功率 ${(chance * 100).toFixed(0)}%），获得历练经验 ${expConsolation}` });
+    }
+
+    const quality = capture.pickQuality(map.difficulty);
+    const realm = capture.realmForMap(map.min_level);
+    const pet = itemService.generatePet(realm, quality);
+    if (!pet) return res.status(400).json({ error: '生成灵兽失败' });
+
+    const itemId = getNextId('items');
+    db.items.push({ id: itemId, ...pet });
+    const petRowId = getNextId('pets');
+    db.pets.push({
+      id: petRowId, character_id: character.id, item_id: itemId, pet_id: itemId,
+      name: pet.name, level: 1, exp: 0, contract_type: '血契', is_active: 0,
+      captured_at: new Date().toISOString(), captured_map: map.name
+    });
+
+    saveDatabase(db);
+    res.json({
+      success: true, caught: true, chance, expGained: expConsolation,
+      pet: { id: petRowId, name: pet.name, quality: pet.quality, realm: pet.realm, stats: JSON.parse(pet.stats || '{}') }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/feed', auth, (req, res) => {
   try {
     const { petId, itemId, quantity } = req.body;

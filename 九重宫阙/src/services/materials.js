@@ -161,7 +161,10 @@ const SHOP_CATALOG = [
   { name: '烈火符', type: '符箓', quality: '灵品', price: 600, stats: {}, desc: '燃烧符纸：攻击提升20%（30分钟）' },
   { name: '寒冰符', type: '符箓', quality: '灵品', price: 600, stats: {}, desc: '寒气入体：速度提升20%（30分钟）' },
   { name: '护身符', type: '符箓', quality: '灵品', price: 700, stats: {}, desc: '金光护体：防御提升25%（30分钟）' },
-  { name: '驱邪符', type: '符箓', quality: '宝品', price: 1500, stats: {}, desc: '百邪不侵：全属性提升5%（120分钟）' }
+  { name: '驱邪符', type: '符箓', quality: '宝品', price: 1500, stats: {}, desc: '百邪不侵：全属性提升5%（120分钟）' },
+  // ---- 内容富集六期：灵兽捕捉/养成 ----
+  { name: '驯兽符', type: '符箓', quality: '灵品', price: 1200, stats: {}, desc: '野外捕捉灵兽之用（各大地图遇兽投符）' },
+  { name: '灵兽粮', type: '消耗品', quality: '凡品', price: 80,  stats: {}, desc: '喂养灵宠，提升其经验与等级' }
 ];
 
 // ---------- 器方/符方图纸库（按名称引用分级材料，学习消耗材料） ----------

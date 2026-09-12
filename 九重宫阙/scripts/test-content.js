@@ -314,5 +314,36 @@ t('器方品质阶梯覆盖凡→仙', () => {
   for (const q of ['凡品', '灵品', '宝品', '仙品']) assert.ok(craftSec.includes(`quality: '${q}'`), `器方缺 ${q}`);
 });
 
+console.log('== 六期：灵兽捕捉闭环 ==');
+const petCapture = require('../src/services/pet-capture');
+t('驯兽符/灵兽粮上架可购', () => {
+  assert.ok(materials.SHOP_CATALOG.find(s => s.name === '驯兽符'), '缺驯兽符');
+  assert.ok(materials.SHOP_CATALOG.find(s => s.name === '灵兽粮'), '缺灵兽粮');
+});
+t('捕捉成功率钳制在 [0.05,0.9] 且随凶险度递减', () => {
+  const easy = petCapture.captureChance(10, { min_level: 1, difficulty: 1 });
+  const hard = petCapture.captureChance(95, { min_level: 95, difficulty: 6 });
+  assert.ok(easy > hard, '高险图应更难');
+  for (const [lv, d] of [[1, 1], [50, 3], [100, 6], [1, 6]]) {
+    const c = petCapture.captureChance(lv, { min_level: 1, difficulty: d });
+    assert.ok(c >= 0.05 && c <= 0.9, `越界 ${c}`);
+  }
+});
+t('品质池随难度提升且映射境界正确', () => {
+  const ORDER = ['凡兽', '灵兽', '玄兽', '地兽', '天兽', '圣兽', '仙兽'];
+  const low = ORDER.indexOf(petCapture.pickQuality(1));
+  const high = ORDER.indexOf(petCapture.pickQuality(5));
+  assert.ok(high > low, '高险图品质应更高');
+  assert.strictEqual(petCapture.realmForMap(1), '炼气');
+  assert.strictEqual(petCapture.realmForMap(45), '化神');
+  assert.strictEqual(petCapture.realmForMap(100), '渡劫');
+});
+t('捕捉路由与 feed 路由均完整挂载', () => {
+  const s = require('fs').readFileSync('src/routes/pet.js', 'utf8');
+  assert.ok(s.includes("router.post('/capture'"), '缺 capture 路由');
+  assert.ok(/router\.post\('\/feed'[\s\S]{0,80}try \{/.test(s), 'feed 路由结构受损');
+  assert.ok(s.includes('db.pets.push'), '未写入兽栏');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

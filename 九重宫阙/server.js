@@ -228,6 +228,20 @@ function handleChatMessage(client, msg) {
   }
 }
 
+// 内容富集二期：材料品阶分级 + 商店目录（幂等，boot 时回填一次）
+try {
+  const materials = require('./src/services/materials');
+  const { loadDatabase, saveDatabase } = require('./src/database');
+  const db = loadDatabase();
+  const res = materials.ensureAll(db);
+  if (res.changed > 0) {
+    saveDatabase(db);
+    console.log(`[materials] 已回填材料分级 ${res.materialGrades} 项、商店货架 ${res.shopEntries} 项`);
+  }
+} catch (e) {
+  console.error('[materials] 内容目录回填失败:', e.message);
+}
+
 server.listen(PORT, () => {
   console.log(`九重宫阙服务器运行于 http://localhost:${PORT}`);
   console.log(`WebSocket 服务已启动，端口: ${PORT}`);

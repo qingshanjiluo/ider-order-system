@@ -71,6 +71,15 @@ function generateForgeResult(db, mainItem, auxMats, catalysts, flame, charStats,
   const mainStats = JSON.parse(mainItem.stats || '{}');
   let resultSlot = mainItem.forge_slot || 'weapon';
   let qualityIdx = QUALITY_ORDER.indexOf(mainItem.quality || '凡器');
+  // 内容富集二期：主材 tier 决定品质上限（材料 quality 字段多为凡品/灵品体系，indexOf 为 -1 时以 tier 封顶为基准）
+  const materials = require('../services/materials');
+  if (mainStats.tier) {
+    const capIdx = QUALITY_ORDER.indexOf(materials.TIER_EQUIP_CAP[mainStats.tier] || '法器');
+    if (capIdx >= 0) {
+      qualityIdx = qualityIdx < 0 ? capIdx : Math.min(qualityIdx, capIdx);
+    }
+  }
+  if (qualityIdx < 0) qualityIdx = 0;
 
   let bonusAttack = 0, bonusDefense = 0, bonusHp = 0, bonusSpeed = 0;
   for (const aux of auxMats) {

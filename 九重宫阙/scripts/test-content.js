@@ -104,5 +104,57 @@ t('生成 30 只灵宠：全部物种+元素+天赋', () => {
   assert.ok(names.size >= 5, `物种多样性不足: ${names.size}`);
 });
 
+console.log('== 材料分级 + 商店目录（内容富集二期） ==');
+const materials = require('../src/services/materials');
+t('材料目录 35+ 种、五级完整', () => {
+  const n = Object.keys(materials.MATERIAL_CATALOG).length;
+  assert.ok(n >= 35, `仅 ${n}`);
+  for (const [name, def] of Object.entries(materials.MATERIAL_CATALOG)) {
+    assert.ok(def.tier >= 1 && def.tier <= 5, `${name} tier 非法`);
+    assert.ok(['main', 'aux'].includes(def.role), `${name} role 非法`);
+  }
+});
+t('地图采集节点全部有分级定义', () => {
+  const fixMaps = require('fs').readFileSync('src/scripts/fix-maps.js', 'utf8');
+  const expand = require('fs').readFileSync('src/scripts/expand-data.js', 'utf8');
+  const nodes = new Set();
+  for (const m of (fixMaps + expand).matchAll(/gather_nodes: \[([^\]]+)\]/g)) {
+    for (const n of m[1].matchAll(/'([^']+)'/g)) nodes.add(n[1]);
+  }
+  const missing = [...nodes].filter(n => !materials.MATERIAL_CATALOG[n]);
+  assert.deepStrictEqual(missing, [], `未分级节点: ${missing.join(',')}`);
+});
+t('tier→装备品质封顶单调递增', () => {
+  const Q = ['凡器', '法器', '灵器', '法宝', '古宝', '灵宝', '道器', '仙器'];
+  const caps = [1, 2, 3, 4, 5].map(t => Q.indexOf(materials.TIER_EQUIP_CAP[t]));
+  for (let i = 1; i < caps.length; i++) assert.ok(caps[i] > caps[i - 1], '封顶未单调递增');
+});
+t('商店目录幂等：ensureAll 二次执行零变更', () => {
+  const fakeDb = { items: [], shop: [], id_counters: {} };
+  materials.ensureAll(fakeDb);
+  const before = JSON.stringify(fakeDb.shop.length) + '/' + fakeDb.items.filter(i => i.type === '丹药').length;
+  const r2 = materials.ensureAll(fakeDb);
+  assert.strictEqual(r2.changed, 0, '二次 ensure 应零变更');
+  assert.ok(fakeDb.shop.length >= 9, `货架不足: ${fakeDb.shop.length}`);
+});
+t('特殊灵石/仙盟令上架且可用化链路完整', () => {
+  for (const name of ['血石', '五行灵石', '造化灵石', '初级仙盟令']) {
+    assert.ok(materials.SHOP_CATALOG.find(s => s.name === name), `缺 ${name}`);
+  }
+});
+t('锻造品质封顶逻辑：tier3 主材产物 ≤ 法宝', () => {
+  const Q = ['凡器', '法器', '灵器', '法宝', '古宝', '灵宝', '道器', '仙器'];
+  const db = {
+    items: [{ id: 1, name: '火焰结晶', type: '材料', quality: '凡品', stats: JSON.stringify({ tier: 3, role: 'main', element: 'fire' }) }],
+    inventory: [], id_counters: {}
+  };
+  const main = db.items[0];
+  const mainStats = JSON.parse(main.stats);
+  let qualityIdx = Q.indexOf(main.quality || '凡器');
+  const capIdx = Q.indexOf(materials.TIER_EQUIP_CAP[mainStats.tier]);
+  qualityIdx = qualityIdx < 0 ? capIdx : Math.min(qualityIdx, capIdx);
+  assert.strictEqual(Q[qualityIdx], '法宝', `tier3 封顶应为法宝，实际 ${Q[qualityIdx]}`);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

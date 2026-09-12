@@ -1,0 +1,136 @@
+/**
+ * 材料品阶分级 + 商店目录（内容富集二期）
+ *
+ * MATERIAL_CATALOG：采集材料五级分类（tier 1-5），标注 主材/辅材 角色与元素亲和。
+ * TIER_EQUIP_CAP：主材 tier → 锻造产物装备品质上限（法器→道器）。
+ * ensureAll(db)：幂等回填 db.items 的材料 grade 属性 + 补齐商店货架（含特殊灵石可用化）。
+ */
+const { getNextId } = require('../database');
+
+const MATERIAL_CATALOG = {
+  // ---- tier 1 凡材 ----
+  '灵草':     { tier: 1, role: 'aux',  element: 'wood' },
+  '清心草':   { tier: 1, role: 'aux',  element: 'wood' },
+  '碎石':     { tier: 1, role: 'main', element: 'earth' },
+  '粗铁矿':   { tier: 1, role: 'main', element: 'metal' },
+  '木材':     { tier: 1, role: 'aux',  element: 'wood' },
+  '聚灵草':   { tier: 1, role: 'aux',  element: 'wood' },
+  // ---- tier 2 良材 ----
+  '精铁矿':   { tier: 2, role: 'main', element: 'metal' },
+  '五行草':   { tier: 2, role: 'aux',  element: 'earth' },
+  '玄铁矿':   { tier: 2, role: 'main', element: 'metal' },
+  '雪莲':     { tier: 2, role: 'aux',  element: 'water' },
+  '妖兽内丹': { tier: 2, role: 'aux',  element: 'none' },
+  // ---- tier 3 珍材 ----
+  '火焰结晶': { tier: 3, role: 'main', element: 'fire' },
+  '寒冰结晶': { tier: 3, role: 'main', element: 'water' },
+  '雷电结晶': { tier: 3, role: 'main', element: 'metal' },
+  '风灵结晶': { tier: 3, role: 'main', element: 'wood' },
+  '大地结晶': { tier: 3, role: 'main', element: 'earth' },
+  '龙血矿':   { tier: 3, role: 'main', element: 'fire' },
+  '冰晶矿':   { tier: 3, role: 'main', element: 'water' },
+  '星辰矿':   { tier: 3, role: 'main', element: 'metal' },
+  '火灵草':   { tier: 3, role: 'aux',  element: 'fire' },
+  '雷灵草':   { tier: 3, role: 'aux',  element: 'metal' },
+  '雷霆结晶': { tier: 3, role: 'main', element: 'metal' },
+  // ---- tier 4 奇材 ----
+  '天外陨铁': { tier: 4, role: 'main', element: 'metal' },
+  '万年血参': { tier: 4, role: 'aux',  element: 'wood' },
+  '九转灵芝': { tier: 4, role: 'aux',  element: 'wood' },
+  '天雷木':   { tier: 4, role: 'main', element: 'metal' },
+  '地心火种': { tier: 4, role: 'main', element: 'fire' },
+  '灵泉水':   { tier: 4, role: 'aux',  element: 'water' },
+  '龙涎香':   { tier: 4, role: 'aux',  element: 'water' },
+  '五行结晶': { tier: 4, role: 'main', element: 'earth' },
+  '暗影结晶': { tier: 4, role: 'main', element: 'dark' },
+  '光明结晶': { tier: 4, role: 'main', element: 'light' },
+  // ---- tier 5 仙材 ----
+  '混沌矿':   { tier: 5, role: 'main', element: 'none' },
+  '混沌结晶': { tier: 5, role: 'main', element: 'none' },
+  '仙晶矿':   { tier: 5, role: 'main', element: 'light' },
+  '仙灵草':   { tier: 5, role: 'aux',  element: 'light' },
+  '仙灵结晶': { tier: 5, role: 'main', element: 'light' },
+  '仙兽内丹': { tier: 5, role: 'aux',  element: 'none' },
+  '远古妖丹': { tier: 5, role: 'aux',  element: 'dark' }
+};
+
+/** 主材 tier → 锻造产物品质上限 */
+const TIER_EQUIP_CAP = {
+  1: '法器',
+  2: '灵器',
+  3: '法宝',
+  4: '古宝',
+  5: '道器'
+};
+
+const TIER_NAMES = { 1: '凡材', 2: '良材', 3: '珍材', 4: '奇材', 5: '仙材' };
+
+function gradeOf(item) {
+  if (!item || item.type !== '材料') return null;
+  try {
+    const st = JSON.parse(item.stats || '{}');
+    if (st.tier) return st;
+  } catch { /* 忽略 */ }
+  const def = MATERIAL_CATALOG[item.name];
+  if (!def) return null;
+  return { ...def };
+}
+
+function ensureMaterialGrades(db) {
+  let changed = 0;
+  for (const item of db.items || []) {
+    if (item.type !== '材料') continue;
+    let st = {};
+    try { st = JSON.parse(item.stats || '{}'); } catch { st = {}; }
+    if (st.tier) continue; // 已分级
+    const def = MATERIAL_CATALOG[item.name];
+    if (!def) continue;
+    st.tier = def.tier;
+    st.role = def.role;
+    st.element = st.element || def.element;
+    st.grade_name = TIER_NAMES[def.tier];
+    item.stats = JSON.stringify(st);
+    changed++;
+  }
+  return changed;
+}
+
+// ---------- 商店目录（丹药/材料包/特殊灵石/凭证） ----------
+const SHOP_CATALOG = [
+  { name: '回气丹',   type: '丹药',   quality: '凡品', price: 50,     stats: { effect_type: 'mp', effect_value: 50 },  desc: '恢复50点灵力' },
+  { name: '培元丹',   type: '丹药',   quality: '凡品', price: 120,    stats: { effect_type: 'hp', effect_value: 100 }, desc: '恢复100点气血' },
+  { name: '疗伤丹',   type: '丹药',   quality: '灵品', price: 500,    stats: { effect_type: 'heal_all' },              desc: '清空全部伤势（阶段5 疗伤丹）' },
+  { name: '血石',     type: '特殊灵石', quality: '灵品', price: 2000,  stats: {}, desc: '魔教秘石，使用后修炼效率-30%（24游戏小时）' },
+  { name: '五行灵石', type: '特殊灵石', quality: '仙品', price: 50000, stats: {}, desc: '五行俱全：3-5灵根增益，1-2灵根反噬' },
+  { name: '造化灵石', type: '特殊灵石', quality: '宝品', price: 12000, stats: {}, desc: '使用有概率获得功法/物品/灵石机缘' },
+  { name: '初级仙盟令', type: '凭证', quality: '凡品', price: 3000,  stats: {}, desc: '创建仙盟的稀缺凭证（亦可拍卖行流通）' },
+  { name: '精铁包',   type: '材料', quality: '灵品', price: 800,    stats: { tier: 2, role: 'main', element: 'metal', bundle: 5 }, desc: '精铁矿×5（良材·主材）' },
+  { name: '玄铁包',   type: '材料', quality: '灵品', price: 1500,   stats: { tier: 2, role: 'main', element: 'metal', bundle: 8 }, desc: '玄铁矿×8（良材·主材）' }
+];
+
+function ensureShopStock(db) {
+  let changed = 0;
+  if (!db.shop) db.shop = [];
+  for (const def of SHOP_CATALOG) {
+    let item = (db.items || []).find(i => i.name === def.name && i.type === def.type);
+    if (!item) {
+      const id = getNextId('items');
+      db.items.push({ id, name: def.name, type: def.type, quality: def.quality, stats: JSON.stringify(def.stats || {}), description: def.desc });
+      item = db.items.find(i => i.id === id);
+      changed++;
+    }
+    if (!db.shop.find(s => s.item_id === item.id)) {
+      db.shop.push({ id: getNextId('shop'), item_id: item.id, price: def.price, stock: 999, description: def.desc });
+      changed++;
+    }
+  }
+  return changed;
+}
+
+function ensureAll(db) {
+  const a = ensureMaterialGrades(db);
+  const b = ensureShopStock(db);
+  return { materialGrades: a, shopEntries: b, changed: a + b };
+}
+
+module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, gradeOf, ensureAll, ensureMaterialGrades, ensureShopStock };

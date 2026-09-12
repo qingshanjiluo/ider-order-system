@@ -40,7 +40,8 @@
     "accept:gen": "node scripts/gen-acceptance.js",
     "accept:check": "node scripts/gen-acceptance.js --check",
     "hygiene": "node scripts/run-hygiene.js",
-    "content:ensure": "node scripts/ensure-content.js"
+    "content:ensure": "node scripts/ensure-content.js",
+    "drill:docker": "node scripts/drill-docker.js"
   },
   "engines": {
     "node": ">=20.11"

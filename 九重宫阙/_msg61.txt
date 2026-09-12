@@ -1,0 +1,19 @@
+﻿P5 轮61(1/2): 容器恢复演练逼出真丢档缺陷 —— WAL 下裸拷贝备份会丢掉未 checkpoint 的已提交事务
+
+现场：store.js 开 PRAGMA journal_mode=WAL，注册等写入先进 -wal（演练里容器内主库只剩 4096B，而 -wal 有 523KB）；
+scripts/backup.js 却是 copyFileSync 主库文件做备份，且自检写成"副本 vs 源 逐字节一致"= 恒真式，什么都没查出来。
+容器里删库还原后，同一账号登录 401 —— 那份备份是废的。
+
+修法：
+- store.snapshotTo / database.snapshotDatabase 用 SQLite VACUUM INTO 出含 WAL 的一致性单文件，并拒绝指向在用库；
+- backup.js 改走快照，自检换成语义核对：integrity_check ok + 关键集合行数与在用库一致（表存在才比、至少比 3 类）；
+- attack-sim.js 的隔离副本同样改快照（否则仿真读到的是缺数据的库）；
+- 新增第 23 套 test-db-snapshot.js（7 条）：陷阱现场留档（同一 -wal 状态下裸拷贝副本不含探针、快照含）、恢复往返、
+  快照不得指向在用库、静态锁禁止退回裸拷贝与恒真比对；扫描前剥注释 —— 我自己的说明文字曾把这条锁打红。
+
+P5 第 3/4/5 项门控改读《部署演练.md》的 DSH-HEADLINE：守护进程在不再算证据，没 build 过就判红。
+新增 scripts/drill-docker.js（npm run drill:docker）：GitHub 新克隆 -> compose config -> build -> up -> 容器内
+healthcheck -> 注册造数据 -> 容器内 VACUUM INTO -> docker cp -> down + 删光 data/*.db* -> 还原 -> up ->
+同账号复登并校验同一角色 id 与 MD5 同源。演练只在临时克隆里做：compose 挂 ./data，在仓库里 up 会改写受保护的存档。
+
+验证：完整门禁 23 套全绿 / 397 条；清单 --check 逐字一致（无演练产物时第 3/4/5 项老实判红）；正式存档 MD5 未变。

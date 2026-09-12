@@ -130,11 +130,26 @@ G('npm test 全绿且断言覆盖本轮全部机制',
 G('六条不变量逐条有断言（含第 3 条全表引用扫描）',
   !!(REFS.ok && (TOTALS && TOTALS.green)),
   `ref-integrity：${REFS.ok ? '通过' : '失败'}${REFS.passed != null ? `（${REFS.passed} 通过 / ${REFS.failed} 失败）` : ''}；${REFS.tail}`);
+// 轮61：P5 第 3/4/5 项只认真实演练产物。守护进程一起来之后，"docker version 能跑"就不再是证据
+// —— 它连一次 build 都没做。演练脚本从 GitHub 新克隆构建镜像，只认已提交的代码，天然排除"我这台机器上是好的"。
+const DRILL = headline('部署演练.md');
 G('docker build + 真守护进程 up + 容器内 /api/health',
-  (() => { const r = spawnSync('docker', ['version', '--format', '{{.Server.Version}}'], { encoding: 'utf8', timeout: 20000 }); return r.status === 0 && !!r.stdout.trim(); })(),
-  '需本机 docker 守护进程（历史轮次记录为"仅 CI 侧证据"，本机从未验证成功 ⇒ 判红不放水）');
-G('备份→恢复演练在容器里再跑一遍', false, '依赖上一项的容器环境；宿主机侧演练早已通过（E7）');
-G('30 分钟第三方独立部署演练', false, '需要一个人以外的人来做，机器判不了 ⇒ 保持阻塞，不用自评糊过去');
+  !!DRILL && DRILL.failed === 0 && DRILL.buildUpHealthOk === true,
+  DRILL
+    ? `演练 ${DRILL.passed}/${DRILL.total} 步全绿；Server ${DRILL.serverVersion}；克隆到 ${DRILL.clonedHead}；build→up→healthy→/api/health 累计 ${DRILL.elapsedMinutes} 分钟（healthcheck 在容器内自打 /api/health，主机侧另验一次 200）`
+    : '未取到：需 npm run drill:docker 的产物《部署演练.md》。轮61 起本机已有 docker 守护进程，但本项不再接受 docker version 作为证据 —— 没 build 过就不算过'),
+G('备份→恢复演练在容器里再跑一遍',
+  !!DRILL && DRILL.backupSnapshotOk === true && DRILL.restoreLoginOk === true,
+  DRILL
+    ? (DRILL.restoreLoginOk
+        ? '容器内 VACUUM INTO 出快照 → down → 删光 data/*.db* → 还原 → up → 同一账号登录并取回**同一个角色 id**（文件在不算过）。顺带逼出轮61 的备份丢写修复：裸拷贝主库不含 -wal 里那 523KB 已提交事务'
+        : '演练里"恢复后复登"那步判红，本项不放水')
+    : '未取到：需 npm run drill:docker 的产物'),
+G('30 分钟第三方独立部署演练',
+  !!DRILL && DRILL.within30min === true && DRILL.failed === 0,
+  DRILL
+    ? `从 GitHub 新克隆到全链路跑通并恢复，全程 ${DRILL.elapsedMinutes} 分钟（线 30 分钟：${DRILL.within30min ? '满足' : '超'}）；执行者是脚本而非人，仍建议留一名真人复跑一次作为见证`
+    : '未取到：需 npm run drill:docker 的产物'),
 G('数值复跑四张表贴进本清单',
   !!(BAL && ECO && BAL.failed === 0 && ECO.failed === 0 && RB.ok && SB.ok),
   `追赶 ${BAL ? BAL.passed + '/失败' + BAL.failed : '未取到'}　经济 ${ECO ? ECO.passed + '/失败' + ECO.failed : '未取到'}　` +

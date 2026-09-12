@@ -100,7 +100,7 @@ const t = async (name, fn) => {
     // 子进程必须用**自己的**数据目录：与父进程共用一个临时库会撞 SQLite 文件锁，
     // 表现成"启动即退出"，把断言假阴性掉（本轮实测踩过）。stderr 用文件 fd 捕获（沙箱禁管道 stdio）。
     const kid = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-attack-kid-'));
-    fs.copyFileSync(LIVE_DB, path.join(kid, 'game.db'));
+      require('../src/database').snapshotDatabase(path.join(kid, 'game.db'));   // 轮61：裸拷贝会漏掉 -wal 里未 checkpoint 的已提交事务
     const boot = (secret, port) => {
       const out = fs.openSync(path.join(TMP, '_o.txt'), 'w');
       const err = fs.openSync(path.join(TMP, '_e.txt'), 'w');

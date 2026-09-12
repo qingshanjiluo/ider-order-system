@@ -153,6 +153,22 @@ function loadDatabase() {
   return mirror;
 }
 
+/**
+ * 一致性快照（轮61）：本项目 store.js 开了 `PRAGMA journal_mode = WAL`，
+ * 裸 `copyFileSync(game.db)` **会丢掉尚未 checkpoint 的已提交事务**。
+ * 容器恢复演练当场复现：注册成功 → cp 主库 → 删库还原 → 同账号登录 401，
+ * 而主库的 MD5 在注册前后一字未变（写都进 -wal 了），所以旧"逐字节比对"永远查不出这事。
+ * VACUUM INTO 由 SQLite 自己写出一个含 WAL 内容的完整单文件，且不与在线写入冲突。
+ */
+function snapshotTo(destFile) {
+  const abs = require('path').resolve(destFile);
+  if (abs === require('path').resolve(DB_FILE)) throw new Error('快照目标不能是在用的 game.db');
+  boot();
+  if (fs.existsSync(abs)) fs.unlinkSync(abs);
+  sqlite.exec(`VACUUM INTO '${abs.replace(/'/g, "''")}'`);
+  return abs;
+}
+
 function saveDatabase(data) {
   boot();
   if (data && typeof data === 'object') mirror = data;
@@ -276,4 +292,4 @@ function close() {
   }
 }
 
-module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, updateRelWhere, deleteRel, incrementRel };
+module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, updateRelWhere, deleteRel, incrementRel, snapshotTo };

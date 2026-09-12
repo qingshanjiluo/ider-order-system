@@ -23,6 +23,10 @@ function invalidateCache() {
   store.invalidateCache();
 }
 
+function snapshotDatabase(destFile) {
+  return store.snapshotTo(destFile);
+}
+
 function closeDatabase() {
   store.close();
 }
@@ -58,4 +62,4 @@ function initDatabase() {
   console.log('数据库初始化完成');
 }
 
-module.exports = { loadDatabase, saveDatabase, getNextId, invalidateCache, initDatabase, closeDatabase };
+module.exports = { snapshotDatabase, loadDatabase, saveDatabase, getNextId, invalidateCache, initDatabase, closeDatabase };

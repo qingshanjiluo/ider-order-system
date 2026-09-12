@@ -78,11 +78,30 @@ if (problems.length) {
 
   // ④ 存档快照：db 是真源；legacy json 只作考古用，放回全新克隆会触发迁移路径
   const snap = path.join(DEST, '存档快照');
-  fs.copyFileSync(DB, path.join(snap, `game-${ts}.db`));
+  // 轮61：这里原来是 fs.copyFileSync(DB, ...) —— 本项目 store.js 开了 WAL，裸拷贝主库会丢掉
+  // 尚未 checkpoint 的已提交事务（容器恢复演练实测：注册后 cp 主库、删库还原，同账号登录 401，
+  // 而主库 MD5 在注册前后一字未变 —— 所以旧的"副本 vs 源 逐字节一致"是恒真式，什么都没查出来）。
+  const snapFile = path.join(snap, `game-${ts}.db`);
+  const { snapshotDatabase, loadDatabase } = require('../src/database');
+  snapshotDatabase(snapFile);
   if (fs.existsSync(LEGACY)) fs.copyFileSync(LEGACY, path.join(snap, `game-legacy-${ts}.json`));
-  const same = fs.readFileSync(DB).equals(fs.readFileSync(path.join(snap, `game-${ts}.db`)));
-  console.log(`③ 存档快照 game-${ts}.db 逐字节一致=${same}`);
-  if (!same) throw new Error('快照与在用 db 不一致');
+  // 语义自检：快照必须能独立打开、integrity ok，且关键集合行数与在用库一致（表存在才比，至少比 3 类）。
+  const { DatabaseSync } = require('node:sqlite');
+  const live = loadDatabase();
+  const probe = new DatabaseSync(snapFile, { readOnly: true });
+  try {
+    const ic = probe.prepare('PRAGMA integrity_check').get();
+    const has = (c) => !!probe.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get('col_' + c);
+    const checks = ['characters', 'users', 'items', 'inventory', 'achievements'].filter(has).map((c) => ({
+      c, snap: probe.prepare(`SELECT COUNT(*) AS n FROM col_${c}`).get().n, live: (live[c] || []).length
+    }));
+    const bad = checks.filter((x) => x.snap !== x.live);
+    console.log(`③ 存档快照 game-${ts}.db（VACUUM INTO）integrity=${ic && ic.integrity_check} 行数核对 `
+      + checks.map((x) => `${x.c}=${x.snap}/${x.live}`).join(' '));
+    if (checks.length < 3) throw new Error('可核对的集合不足 3 类，语义自检失效');
+    if (!ic || ic.integrity_check !== 'ok') throw new Error('快照 integrity_check 未通过：' + JSON.stringify(ic));
+    if (bad.length) throw new Error('快照与在用库行数不一致（WAL 丢写？）：' + bad.map((x) => `${x.c} ${x.snap}!=${x.live}`).join('、'));
+  } finally { probe.close(); }
 
   // 只保留最近 3 份 bundle，避免 145 MB 级别的东西堆满磁盘
   const bundles = fs.readdirSync(DEST).filter(f => f.endsWith('.bundle')).sort();

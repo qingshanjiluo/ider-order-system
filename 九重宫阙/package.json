@@ -23,7 +23,8 @@
     "sim:tribulation": "node scripts/sim-tribulation.js",
     "content:export": "node src/scripts/content-sync.js export",
     "seed:content": "node src/scripts/content-sync.js import",
-    "verify:rebuild": "node scripts/rebuild-check.js"
+    "verify:rebuild": "node scripts/rebuild-check.js",
+    "verify:drift": "node scripts/drift-probe.js"
   },
   "engines": {
     "node": ">=20.11"

@@ -5,13 +5,18 @@
  * 空库时 `db.realms` 是 undefined，`initDatabase` 第一行就 TypeError。"丢了磁盘可以从代码重建"
  * 当时是未经检验的信念；它坏着三轮没人发现，正因为 DATA_DIR 写死，这条路径无法在不破坏正式存档的前提下测试。
  *
- * 判据（轮41 定稿，注意方向性，别把"两边一模一样"当目标）：
+ * 判据（轮42 定稿）：
  *   硬失败 —— 链上任一脚本非零退出；重建库缺任何一个文档集合；
- *             **存档里已有的"定义行"在重建产物中缺失**；隔离性不成立（见下）。
- *   仅告警 —— ① 定义行字段与存档不同（实测 monsters 81/86、items 100/566、maps 15/20…）：
- *               存档是轮38 校准与轮40 暴击修正**之前**的产物，代码侧已变而存档未同步，需单独了结；
- *             ② 重建比存档多出定义行（items +77、dungeons +5）：反向漂移，代码里有、存档里没有。
- *             ③ 运行时集合（users/characters/inventory/…）空库重建必然为空 —— 那是正确行为，不该要求。
+ *             **存档里已有的"定义行"在重建产物中缺失，或字段与台账不同**；隔离性不成立（见下）。
+ *   仅告警 —— ① 重建比存档多出定义行（实测 items +77、dungeons +5）：这是"代码里有、存档里没有"的
+ *               反向漂移，源自历史改名/去重没回写种子；不阻断，但每次都必须如实打印。
+ *             ② 运行时集合（users/characters/inventory/…）空库重建必然为空 —— 那是正确行为，不该要求。
+ *   例外 —— 定义行里被运行时改写的字段不参与比对（RUNTIME_FIELDS，目前只有 shop.stock；
+ *             否则"有人买了东西"就能让门禁随机变红，那是假阳性）。
+ *
+ * 为什么轮42 敢把"字段不同"从告警升级成失败：行级诊断证明差异来自 **seed 之间、以及 seed 与
+ * 一次性脚本（fix-maps.js 等）抢 id**，而不是"数值校准只能活在存档里"。于是把定义内容真源定为
+ * 存档 + 台账（content-export.json），`seed:content` 升级为按 id 覆盖式对齐，重建结果必须与台账精确一致。
  *
  * 隔离性怎么证明才有效（轮41 的教训）：早先这里比较"跑前跑后正式存档字节"，
  * 但在测试套件里**必然误报** —— 套件自身会经服务层写库、结束时才按快照还原，别人写的字节被算到我头上
@@ -35,12 +40,18 @@ const CHAIN = [
   ['expand-data', 'src/scripts/expand-data.js'],
   ['expand-systems', 'src/scripts/expand-systems.js'],
   ['init-gongfa', 'src/scripts/init-gongfa.js'],
-  ['content:import', 'src/scripts/content-sync.js', 'import'],
-  ['seed:rebalance', 'scripts/rebalance-monsters.js', '--apply']
+  // rebalance 必须在台账对齐**之前**：否则它会按当前曲线再改写一遍怪物 stats，
+  // 与台账冲突（轮42 实测 22/86 行不同）。定义内容的最后一锤是 content:import。
+  // 真要走"重新校准"这条路，就在正式存档上跑 seed:rebalance、复测 E3 胜率、再 content:export 重出台账。
+  ['seed:rebalance', 'scripts/rebalance-monsters.js', '--apply'],
+  ['content:import', 'src/scripts/content-sync.js', 'import']
 ];
-// 定义类集合：内容必须可被代码 + 导出文件完整重出
+// 定义类集合：内容必须与台账（存档）逐项精确一致，差异即失败（轮42 升级）
 const DEFINITIONS = ['realms', 'maps', 'items', 'monsters', 'dungeons', 'blueprints',
   'recipes', 'forge_recipes', 'shop', 'skills', 'gongfa', 'pets', 'achievements'];
+// 定义行里被运行时改写的字段：不纳入一致性判据。shop.stock 会被购买消耗 ——
+// 若把它算进硬判据，门禁会因为"有人买了东西"而随机变红（假阳性），必须显式排除并留痕。
+const RUNTIME_FIELDS = { shop: ['stock'] };
 
 const liveBefore = fs.readFileSync(LIVE_DB);
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'rebuild41-'));
@@ -122,9 +133,16 @@ if (!fs.existsSync(newDb)) {
     const b = B[name];
     const isDef = DEFINITIONS.includes(name);
     let missing = 0, differ = 0;
+    const strip = RUNTIME_FIELDS[name] || [];
+    const norm = (o) => {
+      if (!strip.length) return JSON.stringify(o);
+      const c = Object.assign({}, o);
+      for (const f of strip) delete c[f];
+      return JSON.stringify(c);
+    };
     for (const [id, row] of a) {
       if (!b.has(id)) { missing++; continue; }
-      if (JSON.stringify(row) !== JSON.stringify(b.get(id))) differ++;
+      if (norm(row) !== norm(b.get(id))) differ++;
     }
     const extra = Array.from(b.keys()).filter(k => !a.has(k)).length;
     let verdict = '';
@@ -134,8 +152,9 @@ if (!fs.existsSync(newDb)) {
     } else if (missing) {
       verdict = '· 运行时数据，不要求重出';
     } else if (differ && isDef) {
-      verdict = '⚠ 定义与存档漂移';
-      drift.push(`${name}: ${differ}/${a.size} 行字段不同（存档是轮38/轮40 之前的校准产物，或是后续一次性脚本改过的结果；需定以谁为准）`);
+      verdict = '✗ 定义与台账不一致';
+      problems.push(`${name}: ${differ}/${a.size} 行定义字段与存档不同 —— 台账（content:export）本应钉死定义，`
+        + `说明 seed 与台账冲突且 import 未能收敛，或有未登记的运行时字段被写进了定义行`);
     } else if (differ) {
       verdict = '· 运行时数据不要求一致';
     } else if (extra) {

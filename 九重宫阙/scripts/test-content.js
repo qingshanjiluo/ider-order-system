@@ -1789,11 +1789,13 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     assert.ok(/persisted\.set\(name, '\[\]'\)/.test(src), '自愈出的空集合没登记进 persisted（会被反复判脏并写盘）');
     assert.ok(/process\.env\.DSH_DATA_DIR/.test(src), 'DATA_DIR 不可覆盖：空库重建路径无法在不碰正式存档的前提下测试（这正是它坏了三轮没人发现的原因）');
   });
-  t('initDatabase 不得假设白名单已覆盖本集合（三处 undefined 防护必须在）', () => {
+  t('initDatabase：realms 兜底须防 undefined，且禁止再兜底播种 maps/items（轮42 的 id 抢位 bug）', () => {
     const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'database.js'), 'utf8');
-    for (const k of ['realms', 'maps', 'items']) {
-      assert.ok(new RegExp('!Array\\.isArray\\(db\\.' + k + '\\)').test(src), 'initDatabase 里 db.' + k + ' 仍可能 undefined');
-    }
+    assert.ok(/!Array\.isArray\(db\.realms\)/.test(src), 'initDatabase 里 db.realms 仍可能 undefined');
+    // 反向锁：贫字段样本一旦回到 initDatabase，就会在空库上抢先占掉 id 1-6，
+    // 而 init-db / expand-data 都是"id 已存在则跳过"，正式地图的 monsters/gather_nodes 会被遮蔽。
+    assert.ok(!/db\.maps = \[/.test(src), 'initDatabase 又开始了播种 maps（空库 id 抢位会遮蔽正式地图）');
+    assert.ok(!/db\.items = \[/.test(src), 'initDatabase 又开始了播种 items（同上，会遮蔽 init-db 的正式物品）');
   });
   t('内容导出文件必须存在，且其计数与在用存档逐集合一致', () => {
     const p = path21.join(__dirname, '..', 'src', 'data', 'content-export.json');
@@ -1821,7 +1823,7 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     assert.ok(src.slice(a, b).indexOf('saveDatabase(') < 0, 'export 分支里出现了 saveDatabase 调用：导出会变成二次真源');
     assert.ok(src.indexOf('JSON.stringify(payload,') < 0, 'JSON.stringify 用了数组 replacer：它会在每一层生效，把行对象字段滤光（静默丢数据）');
   });
-  t('空库重建检查必须通过，且必须仍把定义漂移如实报出来（不许用变绿的锁掩盖漂移）', () => {
+  t('空库重建检查必须通过：定义与台账精确一致，且反向漂移必须仍如实报出', () => {
     if (process.env.DSH_SKIP_REBUILD_CHECK === '1') { console.log('  [跳过] DSH_SKIP_REBUILD_CHECK=1'); return; }
     const pkg = require(path21.join(__dirname, '..', 'package.json'));
     assert.ok(pkg.scripts['verify:rebuild'], '未挂 npm run verify:rebuild');
@@ -1830,8 +1832,23 @@ t('门禁外壳必须把 -wal / -shm 一并纳管（只还原 game.db 会留下�
     const r = require('child_process').spawnSync(process.execPath, [path21.join(root, 'scripts', 'rebuild-check.js')], { cwd: root, encoding: 'utf8' });
     const out = (r.stdout || '') + (r.stderr || '');
     assert.strictEqual(r.status, 0, '空库重建不合格：' + out.split(String.fromCharCode(10)).slice(-8).join(' / '));
-    assert.ok(/定义与存档漂移/.test(out), '漂移清单不见了 —— 要么真消除了（那应把本锁改成断言无漂移），要么判据被悄悄放宽');
+    assert.ok(/反向漂移/.test(out), '反向漂移清单不见了 —— 要么真消除了（那应把本锁改成断言"代码不再多出定义行"），要么判据被悄悄放宽');
     assert.ok(/硬编码路径扫描 = 未见/.test(out) && /正向探针（库落在临时目录而非正式目录）= true/.test(out), '重建检查的隔离性判据没过（可能把 seed 跑到了正式存档上；原"比较正式存档字节"的判据在套件内必然误报，已换成扫描+探针两条硬判据）');
+  });
+  t('重建链的收尾必须是台账，且运行时字段要显式排除（轮42 的两条制度）', () => {
+    const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'rebuild-check.js'), 'utf8');
+    // 按 CHAIN 数组的**元素顺序**判定，不能用 indexOf 找首次出现：注释里也提到 content:import，
+    // 文本定位会把注释当数组项（本轮就误报过一次）。
+    const entries = src.match(/\['[a-zA-Z:_-]+',\s*'[^']+'(?:,\s*'[^']*')?\]/g) || [];
+    const at = (label) => entries.findIndex(e => e.startsWith("['" + label + "'"));
+    const iRebal = at('seed:rebalance');
+    const iLedger = at('content:import');
+    assert.ok(iRebal >= 0 && iLedger >= 0, 'CHAIN 里找不到 seed:rebalance / content:import 两项（' + entries.length + ' 项）');
+    assert.ok(iLedger > iRebal, '台账对齐必须排在 rebalance 之后：rebalance 会按当前曲线再改写怪物 stats（轮42 实测 22/86 行与台账冲突）');
+    assert.ok(/RUNTIME_FIELDS/.test(src) && /shop: \['stock'\]/.test(src), 'shop.stock 这类被运行时消耗的字段必须显式排除，否则门禁会因"有人买了东西"随机变红');
+    const cs = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'scripts', 'content-sync.js'), 'utf8');
+    assert.ok(/nChg\+\+/.test(cs) && /db\[name\]\[i\] = row/.test(cs), 'content-sync import 必须仍是按 id 覆盖式对齐（只补缺无法收敛 seed 与台账的差异）');
+    assert.ok(/补入 ' \+ added \+ ' 行，覆盖 /.test(cs), 'import 必须同时报告补入行数与覆盖行数（幂等判据要求两者都为 0）');
   });
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }

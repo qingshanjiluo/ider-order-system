@@ -45,29 +45,14 @@ function initDatabase() {
     ];
   }
 
-  if (!Array.isArray(db.maps) || db.maps.length === 0) {   // 空库自愈：不能假设 store 白名单已覆盖本集合
-    db.maps = [
-      { id: 1, name: '青云山麓', min_level: 1, max_level: 15, difficulty: 1, drop_rate: 1.0, description: '适合新手修炼的山麓地带' },
-      { id: 2, name: '妖兽森林', min_level: 15, max_level: 30, difficulty: 2, drop_rate: 1.2, description: '妖兽出没的危险森林' },
-      { id: 3, name: '火焰山', min_level: 30, max_level: 45, difficulty: 3, drop_rate: 1.5, description: '炽热的火焰山脉' },
-      { id: 4, name: '冰雪原', min_level: 45, max_level: 60, difficulty: 4, drop_rate: 1.8, description: '寒冷的冰雪荒原' },
-      { id: 5, name: '雷劫谷', min_level: 60, max_level: 75, difficulty: 5, drop_rate: 2.0, description: '雷电交加的危险山谷' },
-      { id: 6, name: '混沌深渊', min_level: 75, max_level: 90, difficulty: 6, drop_rate: 2.5, description: '通往混沌的神秘深渊' }
-    ];
-  }
-
-  if (!Array.isArray(db.items) || db.items.length === 0) {   // 空库自愈：不能假设 store 白名单已覆盖本集合
-    db.items = [
-      { id: 1, name: '铁剑', type: '装备', quality: '凡器', realm: '炼气', stats: '{"attack":5}', description: '普通的铁剑', subtype: 'weapon' },
-      { id: 2, name: '青云剑', type: '装备', quality: '法器', realm: '筑基', stats: '{"attack":20}', description: '青云宗制式长剑', subtype: 'weapon' },
-      { id: 3, name: '玄天甲', type: '装备', quality: '灵器', realm: '金丹', stats: '{"defense":30}', description: '玄天宗宝甲', subtype: 'chest' },
-      { id: 4, name: '基础功法', type: '功法', quality: '黄阶', realm: '炼气', stats: '{"cultivation_speed":1.1}', description: '基础修炼功法' },
-      { id: 5, name: '青云剑诀', type: '功法', quality: '玄阶', realm: '筑基', stats: '{"cultivation_speed":1.3,"skill_damage":1.2}', description: '青云宗剑法' },
-      { id: 6, name: '小狐狸', type: '灵宠', quality: '凡兽', realm: '炼气', stats: '{"hp":50,"attack":5}', description: '可爱的小狐狸' }
-    ];
-  }
-
-  if (!db.id_counters) db.id_counters = {};
+  // 轮42：此处**不再兜底播种 maps / items**。原先这 6 张图与 6 件物品只在空库时插入，
+  // 于是抢先占掉 id 1-6；而 init-db / expand-data 的插入都是"id 已存在则跳过"，
+  // 结果带 monsters/gather_nodes 的正式地图被这批贫字段行遮蔽 —— 全新安装会拿到
+  // "没有刷怪表与采集点"的地图（存档当年是从 game.json 迁移来的、长度非 0，兜底没触发，
+  // 所以这个 bug 十年不发作，只有空库重建才暴露）。
+  // 集合的存在性由 src/db/store.js 的 DOC_COLLECTIONS 白名单负责（自愈成空数组），无需在此造样本。
+  // realms 的兜底保留：它是所有路由与境界曲线的依赖，且与 seed 不抢 id、各处定义一致。
+  if (!Array.isArray(db.id_counters)) db.id_counters = {};
 
   saveDatabase(db);
   console.log('数据库初始化完成');

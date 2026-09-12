@@ -1,0 +1,45 @@
+# 清理超额账号
+#
+# 修复历史超量注册（#193 订购 50 → 4924 个账号、#262 → 3693、#292 → 2243、
+# #293 → 383）。这些多余账号会被自动升级/健康检测反复遍历，是 D1 免费日读
+# 额度被烧光的主因，清掉后自动化的读压力会大幅下降。
+#
+# 排在 D1 免费额度每日重置（00:00 UTC）之后运行，确保有读额度可用。
+# 注意：本工作流不传 WORKER_URL —— 该 secret 当前指向端点不全的遗留 Worker，
+# 脚本内部默认使用 Pages API。
+name: 清理超额账号
+
+on:
+  schedule:
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+    inputs:
+      order_id:
+        description: '只清理指定工单 ID（留空 = 全部超额工单）'
+        required: false
+        default: ''
+      reason:
+        description: '触发原因'
+        required: false
+        default: '手动触发'
+
+jobs:
+  cleanup:
+    name: 清理超额账号
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 执行清理
+        working-directory: 工单系统
+        env:
+          ORDER_ID: ${{ github.event.inputs.order_id || '' }}
+        run: node gh-actions/cleanup_excess.js

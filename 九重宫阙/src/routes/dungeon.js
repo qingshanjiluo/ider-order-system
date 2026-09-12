@@ -195,6 +195,11 @@ router.post('/enter', auth, async (req, res) => {
       character.dungeon_count = (character.dungeon_count || 0) + 1;
       if (rating >= 4) character.dungeon_star = Math.max(character.dungeon_star || 0, rating);
       if (dungeon.boss) character.boss_kill = (character.boss_kill || 0) + 1;
+      // 成就「世界征服者 / 全五星」：记录通关副本与最高星级（内容富集九期接线）
+      if (!Array.isArray(character.cleared_dungeons)) character.cleared_dungeons = [];
+      if (!character.cleared_dungeons.includes(dungeon.id)) character.cleared_dungeons.push(dungeon.id);
+      if (!character.dungeon_stars || typeof character.dungeon_stars !== 'object') character.dungeon_stars = {};
+      character.dungeon_stars[dungeon.id] = Math.max(Number(character.dungeon_stars[dungeon.id]) || 0, rating);
       rewards.grantedItems = grantDungeonItems(character, rewards.items, db);
       const { updateQuestProgress } = require('./quests');
       updateQuestProgress(character.id, 'dungeon', 1);

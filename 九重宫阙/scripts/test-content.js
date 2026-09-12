@@ -498,5 +498,58 @@ t('数据卫生：非法品阶归一且保留原始值', () => {
   for (const it of fakeDb.items) assert.ok(hygiene.LEGAL_QUALITIES.has(it.quality), '仍有非法品阶');
 });
 
+console.log('== 九期：成就系统死活条件修复 ==');
+const achRoutes = require('../src/routes/achievement');
+const achDefs = achRoutes.__DEFINITIONS;
+const achProgress = achRoutes.__getProgress;
+t(`成就定义 50 条且 id 唯一`, () => {
+  assert.strictEqual(achDefs.length, 50, `实际 ${achDefs.length}`);
+  const ids = achDefs.map(a => a.id);
+  assert.strictEqual(new Set(ids).size, ids.length, 'id 重复');
+});
+t('全部条件类型均有实现（不再恒返回 0）', () => {
+  const src = require('fs').readFileSync('src/routes/achievement.js', 'utf8');
+  const types = [...new Set(achDefs.map(a => a.requirement.type))];
+  assert.ok(types.length >= 12, `条件类型仅 ${types.length}`);
+  // 旧的恒 0 实现必须已被替换
+  for (const dead of ["case 'arenaRank':\n      return 0;", "case 'friends':\n      return 0;", "case 'allMaps':\n      return 0;"]) {
+    assert.ok(!src.includes(dead), `死条件仍在: ${dead.slice(0, 20)}`);
+  }
+});
+t('竞技名次按真实积分实算（榜首=1）', () => {
+  const champ = { id: -1, arena_points: 999999, realm: '筑基', spirit_stone: 0 };
+  const low = { id: -2, arena_points: 0, realm: '炼气', spirit_stone: 0 };
+  const pTop = achProgress(champ, { type: 'arenaRank', value: 100 });
+  const pLow = achProgress(low, { type: 'arenaRank', value: 100 });
+  assert.strictEqual(pTop, 1, '积分最高者应入榜');
+  assert.ok(pLow >= 0 && pLow <= 1, '进度越界');
+});
+t('地图探索/副本通关/五星进度按真实记录计算', () => {
+  const { loadDatabase } = require('../src/database');
+  const db = loadDatabase();
+  const allMaps = (db.maps || []).map(m => m.id);
+  const allDungeons = (db.dungeons || []).map(d => d.id);
+  const full = {
+    id: -3, realm: '金丹', spirit_stone: 0,
+    visited_maps: allMaps, cleared_dungeons: allDungeons,
+    dungeon_stars: Object.fromEntries(allDungeons.map(id => [id, 5]))
+  };
+  const empty = { id: -4, realm: '炼气', spirit_stone: 0 };
+  assert.strictEqual(achProgress(full, { type: 'allMaps', value: 1 }), 1, '全图探索应满进度');
+  assert.strictEqual(achProgress(full, { type: 'allDungeons', value: 1 }), 1, '全副本应满进度');
+  assert.strictEqual(achProgress(full, { type: 'allDungeonStar', value: 5 }), 1, '全五星应满进度');
+  assert.ok(achProgress(empty, { type: 'allMaps', value: 1 }) < 1, '空进度不应满');
+  assert.ok(achProgress(empty, { type: 'allDungeons', value: 1 }) < 1);
+});
+t('探索/通关记录已接线到对应路由', () => {
+  const g = require('fs').readFileSync('src/routes/gathering.js', 'utf8');
+  const d = require('fs').readFileSync('src/routes/dungeon.js', 'utf8');
+  assert.ok(g.includes('visited_maps'), '采集未记录 visited_maps');
+  assert.ok(d.includes('cleared_dungeons'), '副本未记录 cleared_dungeons');
+  assert.ok(d.includes('dungeon_stars'), '副本未记录 dungeon_stars');
+  const s = require('fs').readFileSync('server.js', 'utf8');
+  assert.ok(s.includes("app.use('/api/achievement'"), '成就路由未挂载');
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

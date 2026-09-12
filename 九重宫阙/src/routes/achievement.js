@@ -189,16 +189,34 @@ function getProgress(character, requirement) {
       return 0;
     case 'arena':
       return Math.min(1, (character.arena_points || 0) / requirement.value);
-    case 'arenaRank':
-      return 0;
-    case 'friends':
-      return 0;
-    case 'allMaps':
-      return 0;
-    case 'allDungeons':
-      return 0;
-    case 'allDungeonStar':
-      return 0;
+    case 'arenaRank': {
+      // 内容富集九期修复：按竞技积分实算名次（原实现恒返回 0 → 天/地/人榜成就永不可得）
+      const rank = 1 + db.characters.filter(c => c.id !== character.id && (c.arena_points || 0) > (character.arena_points || 0)).length;
+      return rank <= requirement.value ? 1 : 0;
+    }
+    case 'friends': {
+      const friends = (db.friends || []).filter(f => f.character_id === character.id || f.friend_id === character.id).length;
+      return Math.min(1, friends / requirement.value);
+    }
+    case 'allMaps': {
+      // 已探索地图（由采集/战斗入口写入 visited_maps）
+      const visited = new Set(character.visited_maps || []);
+      const total = (db.maps || []).length || 1;
+      return Math.min(1, visited.size / total);
+    }
+    case 'allDungeons': {
+      // 已通关副本（由副本通关写入 cleared_dungeons）
+      const cleared = new Set(character.cleared_dungeons || []);
+      const total = (db.dungeons || []).length || 1;
+      return Math.min(1, cleared.size / total);
+    }
+    case 'allDungeonStar': {
+      // 全副本五星（由副本结算写入 dungeon_stars 最高评价）
+      const stars = character.dungeon_stars || {};
+      const total = (db.dungeons || []).length || 1;
+      const five = Object.values(stars).filter(v => Number(v) >= 5).length;
+      return Math.min(1, five / total);
+    }
     default:
       return 0;
   }
@@ -209,3 +227,6 @@ function isAchievementUnlocked(character, requirement) {
 }
 
 module.exports = router;
+module.exports.__getProgress = getProgress;
+module.exports.__isUnlocked = isAchievementUnlocked;
+module.exports.__DEFINITIONS = ACHIEVEMENTS;

@@ -117,6 +117,9 @@ router.post('/gather', auth, (req, res) => {
 
     const expGained = Math.floor(5 + map.min_level * 2);
     character.exp = (character.exp || 0) + expGained;
+    // 成就「地图探索者」：记录已探索地图（内容富集九期接线）
+    if (!Array.isArray(character.visited_maps)) character.visited_maps = [];
+    if (!character.visited_maps.includes(map.id)) character.visited_maps.push(map.id);
     // 阶段3：采集熟练度
     const gProf = proficiencyService.addExp(character, 'gathering', 2 + (map.difficulty || 1));
     const { updateQuestProgress } = require('./quests');

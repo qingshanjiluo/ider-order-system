@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 艾德尔工单系统 - 账号健康检测 + 自动维护 v3
  * 扫描所有进行中的账号：
  *   - 自动升级到最高级(120)
@@ -9,7 +9,9 @@ const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
 const { ensureCharacter } = require('./_character');
 
-const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
+// 必须指向 Pages Functions：遗留 Worker 缺少 /api/gh/all-accounts 等端点，
+// 会让健康检测静默取到空列表而"空转成功"。
+const WORKER_URL = process.env.ORDER_API_URL || 'https://ider-order-system.pages.dev';
 const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
 const API_BASE = process.env.API_BASE || 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';

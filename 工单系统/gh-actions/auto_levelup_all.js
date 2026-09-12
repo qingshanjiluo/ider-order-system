@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 艾德尔工单系统 - 全账号升级（每2h）并发版
  * 遍历所有未完成工单的账号，并发处理，反复升级直到经验不足
  * 纯升级，不修战斗/功法，极限速度
@@ -8,7 +8,10 @@ const crypto = require('crypto');
 const antiDetect = require('./_anti_detect');
 const { ensureCharacter } = require('./_character');
 
-const WORKER_URL = process.env.WORKER_URL || 'https://ider-order-system.sifangzhiji.workers.dev';
+// 必须指向 Pages Functions：遗留 Worker 缺少 /api/gh/all-accounts，
+// 会让升级脚本取到空账号列表而"空转成功"。
+// 注意：不使用 secrets.WORKER_URL —— 该 secret 当前指向遗留 Worker。
+const WORKER_URL = process.env.ORDER_API_URL || 'https://ider-order-system.pages.dev';
 const API_KEY = process.env.API_KEY || 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
 const API_BASE = process.env.API_BASE || 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';

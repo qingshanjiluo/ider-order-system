@@ -8,7 +8,13 @@ const crypto = require('crypto');
 // Node.js 20+ 内置 fetch，无需 node-fetch
 const antiDetect = require('./_anti_detect');
 
-const WORKER_URL = 'https://ider-order-system.sifangzhiji.workers.dev';
+// ⚠️ 必须指向 Pages Functions —— 它是唯一实现完整 /api/gh/* 的 API，
+//    包含 /api/gh/account-count（账号数守卫）与 report-account 的服务端
+//    "已达订购上限(capped)"硬上限。
+//    不要再指向遗留 Worker `ider-order-system.sifangzhiji.workers.dev`：
+//    它缺少 /api/gh/account-count（返回 404），会让"已有账号数"恒为 0，
+//    导致每次扫描对每张工单都新建 50 个账号（历史上 #193 曾达 4924 个）。
+const WORKER_URL = process.env.ORDER_API_URL || 'https://ider-order-system.pages.dev';
 const API_KEY = 'ider-gh-5fc9c4b0899ad14bc2ee55562eaa5b3a';
 const API_BASE = process.env.API_BASE || 'https://ideer-game-api.sifangzhiji.workers.dev';
 const CLIENT_VERSION = process.env.CLIENT_VERSION || '1.2.4';
@@ -63,11 +69,22 @@ function tsLog(msg) {
   console.log(`[${t}] ${msg}`);
 }
 
+// 调用 Worker API。遇到非 2xx / 非 JSON / 带 error 字段的响应一律抛错，
+// 绝不再把 404（{"error":"Not found"}）当成正常数据，否则计数守卫会被静默绕过。
 async function workerApi(path, method = 'GET', body = null) {
   const headers = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
   const url = WORKER_URL.replace(/\/+$/, '') + path;
   const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(30000) });
-  return r.json();
+  const text = await r.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error('Worker 非JSON响应(' + r.status + '): ' + text.slice(0, 120));
+  }
+  if (!r.ok) throw new Error('Worker 请求失败(' + r.status + '): ' + ((data && data.error) || text.slice(0, 120)));
+  if (data && data.error) throw new Error('Worker 返回错误: ' + data.error);
+  return data;
 }
 
 // 批量日志收集器（减少D1调用）
@@ -136,6 +153,11 @@ async function registerAndSetup(workerOrder, orderIdx) {
       // 预检接口失败则继续，后续会捕获游戏服错误
     }
 
+    // ⚠️ 必须在 try 之外声明：catch 分支（重复重试 / 失败上报 / 错误日志）也要引用它。
+    // 之前用 const 声明在 try 内，catch 里引用会抛
+    // ReferenceError: accountId is not defined，导致整轮扫描崩溃退出。
+    let accountId = 0;
+
     try {
       const machineId = antiDetect.generateMachineId(apiIdx);
       const stepDelay = () => antiDetect.randomDelay(1200, 2500);
@@ -159,7 +181,7 @@ async function registerAndSetup(workerOrder, orderIdx) {
         tsLog('[' + username + '] ⛔ 已达订购数量上限，跳过注册');
         return { username, ok: false, capped: true, error: reportRes.message || '已达上限' };
       }
-      const accountId = reportRes.account_id || 0;
+      accountId = reportRes.account_id || 0;
 
       // ── 2) 创建角色（金灵根100），角色名冲突时自动加后缀重试 ──
       let playerName = username.slice(0, 12);
@@ -401,17 +423,21 @@ async function dispatchOrder(order, orderIdx) {
   // 注意：不能只用 valid（已交付挂机）数量，否则注册中的账号不被计入，
   // 每次扫描都会误以为"数量不足"而继续注册，导致严重超量注册。
   // 已满足计数 = 总数 - 失败/错误（失败账号需另补，不占名额）
-  let existingAccounts = 0;
+  //
+  // ⛔ 安全失败：取不到账号数就【绝不下单】。宁可这轮不处理（下轮再试），
+  //    也不能把"读不到"当成"已有 0 个"——那正是历史上一轮超量注册 50 个的根因。
+  let existingAccounts;
   let failedErrCount = 0;
   try {
     const countRes = await workerApi('/api/gh/account-count?order_id=' + order.id);
     const byStatus = countRes.by_status || {};
     const total = countRes.total != null ? countRes.total : countRes.valid;
+    if (typeof total !== 'number') throw new Error('account-count 未返回 total 字段');
     failedErrCount = (byStatus.failed || 0) + (byStatus.error || 0);
-    existingAccounts = Math.max(0, (total || 0) - failedErrCount);
+    existingAccounts = Math.max(0, total - failedErrCount);
   } catch (e) {
-    tsLog('⚠️ 查询账号数量失败，使用 order.total_accounts_created: ' + e.message);
-    existingAccounts = Math.max(0, (order.total_accounts_created || 0) - failedErrCount);
+    tsLog('⛔ 无法获取账号数量，跳过本工单（避免超量注册）: ' + e.message);
+    return false;
   }
   // 目标账号数 = 订购数量 + 1（每个工单多发一个冗余，宁多勿少）
   const accountsToCreate = (order.quantity || (order.bonus_points ? Math.max(1, Math.ceil(order.bonus_points / 10)) : 1)) + 1;
@@ -445,7 +471,12 @@ async function dispatchOrder(order, orderIdx) {
           tsLog('✅ 已达目标 ' + rcExisting + '/' + accountsToCreate + '，提前结束');
           break;
         }
-      } catch (e) { /* 忽略复查失败 */ }
+      } catch (e) {
+        // ⛔ 复查失败同样按安全失败处理：立刻停止本工单创建。
+        //    原实现是"忽略复查失败"，这也是超量注册的成因之一。
+        tsLog('⛔ 复查账号数量失败，立即停止本工单创建: ' + e.message);
+        break;
+      }
     }
   }
   return true;
@@ -476,11 +507,16 @@ async function main() {
 
     const success = await dispatchOrder(order, i);
 
-    if (success) {
+    if (!success) {
+      tsLog('工单 #' + order.id + ' 本轮未处理（已跳过或失败），继续下一张');
+      continue;
+    }
+    // 单张工单的完成校验失败不应终止整轮扫描
+    try {
       const completeRes = await workerApi('/api/gh/complete-order', 'POST', { order_id: order.id });
       tsLog('工单 #' + order.id + ' 账号补充完成: ' + (completeRes.message || '') + ' (状态: ' + (completeRes.status || order.status) + ')');
-    } else {
-      tsLog('工单 #' + order.id + ' 处理失败');
+    } catch (e) {
+      tsLog('⚠️ 工单 #' + order.id + ' 完成校验失败（不影响后续工单）: ' + e.message);
     }
   }
 

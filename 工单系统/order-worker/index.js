@@ -98,7 +98,16 @@ async function orderApi(path, method, body, env) {
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(30000),
   });
-  return r.json();
+  const text = await r.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    throw new Error('非JSON响应(' + r.status + '): ' + text.slice(0, 120));
+  }
+  if (!r.ok) throw new Error('请求失败(' + r.status + '): ' + ((data && data.error) || text.slice(0, 120)));
+  if (data && data.error) throw new Error('接口返回错误: ' + data.error);
+  return data;
 }
 
 async function reportAccount(env, orderId, data) {
@@ -116,8 +125,21 @@ async function processBatchRegister(order, env) {
   const quantity = Number(order.quantity) || 0;
   const inviteCode = order.invite_code || '';
 
-  const countData = await orderApi('/api/gh/account-count?order_id=' + orderId);
-  const existing = countData?.count || 0;
+  // 账号数守卫：/api/gh/account-count 返回的是 total / valid，**没有 count 字段**。
+  // 之前读 countData?.count 恒为 undefined → 恒等于 0 → 每 30 分钟都给同一张
+  // 工单补号，是超量注册（#193 达 4924 个账号）的第二个成因。
+  // ⛔ 安全失败：读不到账号数就绝不建号。
+  let existing;
+  try {
+    const countData = await orderApi('/api/gh/account-count?order_id=' + orderId, 'GET', null, env);
+    const total = countData?.total != null ? countData.total : countData?.valid;
+    if (typeof total !== 'number') throw new Error('account-count 未返回 total 字段');
+    const failed = (countData?.by_status?.failed || 0) + (countData?.by_status?.error || 0);
+    existing = Math.max(0, total - failed);
+  } catch (e) {
+    console.log(`  订单#${orderId} ⛔ 无法获取账号数量，跳过（避免超量注册）: ${e.message}`);
+    return false;
+  }
   const needed = quantity + 1 - existing;
   if (needed <= 0) {
     console.log(`  订单#${orderId} 已创建 ${existing}/${quantity} 个账号，跳过`);

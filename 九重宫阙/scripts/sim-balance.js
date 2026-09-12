@@ -33,6 +33,7 @@ const { expPerSecond } = require('../src/services/cultivation-model');
 const charService = require('../src/services/character');
 const realmService = require('../src/services/realm');
 const { loadDatabase, closeDatabase } = require('../src/database');
+const CMZ = require('../src/services/cultivation-model');   // 轮57：乘区拆分直接问模型，不在脚本里重算一份
 
 const SECONDS_PER_GAME_YEAR = 3600 / gameTime.GAME_YEARS_PER_REAL_HOUR;
 const ORDER = B.REALM_ORDER.filter((r) => r !== '飞升');
@@ -52,21 +53,55 @@ const ri = (r) => ORDER.indexOf(r);
  */
 const TARGET_RATIO = { 炼气: [60, 80], 筑基: [40, 55], 金丹: [25, 35], 元婴: [20, 28] };
 
+/**
+ * 轮57：画像里的功法**必须取自 items 真源**。此前手写 `gongfas: [{ quality: '玄阶', level: 10 }]`
+ * 漏了 `cultivationSpeed` ⇒ 模型（`cultivation-model.js:95` 明确消费该字段）按 1.0 计，
+ * 而生产路径 `services/cultivation.js:39` 是 `cultivationSpeed: stats.cultivation_speed` 喂进来的，
+ * items 里 98 件功法带这个字段（黄阶最高 1.35 … 仙阶最高 10）⇒ **量尺比生产慢了一截，P2 列失真**。
+ * 取法：P2 用该阶**中位**（常规玩家运气一般），P3 用该阶**最大值**（极限 build 拿得到毕业功法）。
+ */
+let REAL_GONGFA = null;
+let EXP_REWARD_STATS = null;   // 轮57：零头锁的实测口径，报告直接读它（不许手写数字）
+function pickRealGongfa(items) {
+  const byTier = {};
+  for (const i of items || []) {
+    if (i.type !== '功法' && i.type !== '功法书') continue;
+    let s = {};
+    try { s = JSON.parse(i.stats || '{}') || {}; } catch (_) { continue; }
+    const sp = Number(s.cultivation_speed);
+    if (!Number.isFinite(sp) || sp <= 0) continue;
+    (byTier[i.quality] = byTier[i.quality] || []).push({ name: i.name, sp });
+  }
+  const sorted = (k) => (byTier[k] || []).slice().sort((a, b) => a.sp - b.sp);
+  const xuan = sorted('玄阶');
+  const xian = sorted('仙阶');
+  if (!xuan.length || !xian.length) return null;
+  const med = xuan[Math.floor(xuan.length / 2)];
+  const top = xian[xian.length - 1];
+  return {
+    byTier: Object.keys(byTier).reduce((a, k) => (a[k] = { n: byTier[k].length, min: sorted(k)[0].sp, max: sorted(k)[sorted(k).length - 1].sp, median: sorted(k)[Math.floor(sorted(k).length / 2)].sp }, a), {}),
+    P2: { quality: '玄阶', level: 10, cultivationSpeed: med.sp, _from: med.name },
+    P3: { quality: '仙阶', level: 50, cultivationSpeed: top.sp, _from: top.name }
+  };
+}
+
 /** 三画像：字段名与 services/cultivation.js 注入给模型的 ctx 完全一致 */
 const PROFILES = {
   P1: { label: '慢速·新手（无功法/不入关）', ctxOf: (realm) => ({ realm, level: 1, stats: {}, gongfas: [], seclusion: 'none' }) },
   P2: {
-    label: '常规（玄阶十层 + 坐忘 + 中等地脉）',
+    label: '常规（玄阶十层真功法 + 坐忘 + 中等地脉）',
     ctxOf: (realm) => ({
       realm, level: 1, stats: { talent: 12, comprehension: 12, dao_affinity: 10 },
-      gongfas: [{ quality: '玄阶', level: 10 }], mapDifficulty: 3, veinLevel: 3, seclusion: 'zuowang'
+      gongfas: [REAL_GONGFA ? { quality: '玄阶', level: 10, cultivationSpeed: REAL_GONGFA.P2.cultivationSpeed } : { quality: '玄阶', level: 10 }],
+      mapDifficulty: 3, veinLevel: 3, seclusion: 'zuowang'
     })
   },
   P3: {
-    label: '极限（仙阶五十层 + 入定 + 满环境）',
+    label: '极限（仙阶五十层真功法 + 入定 + 满环境）',
     ctxOf: (realm) => ({
       realm, level: 1, stats: { talent: 20, comprehension: 20, dao_affinity: 18 },
-      gongfas: [{ quality: '仙阶', level: 50 }], mapDifficulty: 9, veinLevel: 9, seclusion: 'ruding',
+      gongfas: [REAL_GONGFA ? { quality: '仙阶', level: 50, cultivationSpeed: REAL_GONGFA.P3.cultivationSpeed } : { quality: '仙阶', level: 50 }],
+      mapDifficulty: 9, veinLevel: 9, seclusion: 'ruding',
       pillMultiplier: 1.5, caveMultiplier: 1.3, sectMultiplier: 1.2, spiritRoots: [{ type: 'metal', purity: 90 }]
     })
   }
@@ -94,6 +129,11 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
 
   const db = loadDatabase();
   const realms = db.realms || [];
+﻿  REAL_GONGFA = pickRealGongfa(db.items);   // 轮57：画像的功法乘区改从 items 真源取（含 cultivation_speed）
+  if (REAL_GONGFA) {
+    console.log('  ℹ 画像功法真源：P2 = ' + REAL_GONGFA.P2._from + '(玄阶中位 ×' + REAL_GONGFA.P2.cultivationSpeed + ')　P3 = ' + REAL_GONGFA.P3._from + '(仙阶最大 ×' + REAL_GONGFA.P3.cultivationSpeed + ')');
+    console.log('  ℹ 各阶 cultivation_speed：' + Object.entries(REAL_GONGFA.byTier).map(([k, v]) => k + ' n=' + v.n + ' ' + v.min + '~' + v.max + '（中位 ' + v.median + '）').join('　'));
+  } else console.log('  ⚠ items 里找不到带 cultivation_speed 的玄阶/仙阶功法 ⇒ 画像退回旧写法，下面的乘区2真源锁会红');
   const expForLevel = charService.calculateExpForLevel
     ? (L, realm) => charService.calculateExpForLevel(L, realm)     // 必须带 realm：不带就退回旧曲线（轮54 首跑就被这个兼容分支骗过一次，于是加了下面的真源一致性锁）
     : (L) => Math.floor(100 * Math.pow(1.5, L - 1));
@@ -143,13 +183,15 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
     for (const line of render(key)) console.log('    ' + line);
   }
 
-  // ---- 一处值得单独立刻的数据事实
-  const ghostField = (() => {
-    const hit = (db.gongfa || []).some((g) => g && 'cultivation_speed' in g);
-    return hit;
-  })();
-  console.log(`\n  ℹ 乘区2（功法）实际只吃"品阶 × 层数"：存档 gongfa 集合里 cultivation_speed ${ghostField ? '存在' : '一行都没有'}` +
-    `（模型第 95 行读它，读不到就当没有 ⇒ 该通道恒等 1.0）`);
+  // ---- 一处值得单独立刻的数据事实（轮57 订正：字段在 items 里活着，为空的是 db.gongfa 实例表）
+  const speedOnItems = (db.items || []).filter((i) => {
+    try { return Number(JSON.parse(i.stats || '{}').cultivation_speed) > 0; } catch (_) { return false; }
+  }).length;
+  const gongfaRows = (db.gongfa || []).length;
+  console.log(`  ℹ 乘区2（功法）：items 里 ${speedOnItems} 件功法带 cultivation_speed（黄阶≤1.35 … 仙阶≤10，中位 1.05~1.6），` +
+    `模型 :95 消费它、services/cultivation.js:39 从 stats 换算喂它 —— 通道本身是通的；` +
+    `但 db.gongfa 实例表 ${gongfaRows} 行（还没有角色真正修过功法 ⇒ 线上生效值仍是 1.0，这是 T1-1 零实例问题不是空通道问题）。` +
+    `量尺自轮57 起从 items 真源取功法，P2 不再少算 1.12 倍。`);
   console.log('  ℹ 突破的修为闸门 exp_requirement 与等级曲线钉住的 exp 相比：');
   const maxDrift = Math.max(...tables.P1.map((x) => Math.abs(x.need - x.gateExp) / x.gateExp));
   console.log(`  ℹ 真源一致：境界内等级需求之和 vs realms.exp_requirement，十境最大偏差 ${(maxDrift * 100).toFixed(3)}%` +
@@ -307,6 +349,43 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
 
 
   // ---- 报告
+﻿  // ================= 轮57 新增：乘区2 真源一致 + 单次修为奖励零头锁 =================
+  await t('乘区2 真源一致：画像的功法必须能在 items 里找到同名件，且 speed 与该件一致', () => {
+    assert.ok(REAL_GONGFA, 'items 里没有带 cultivation_speed 的玄阶/仙阶功法 ⇒ 量尺退回手写画像，乘区2 会静默少算（生产路径是真吃这个字段的）');
+    for (const pair of [['玄阶', REAL_GONGFA.P2], ['仙阶', REAL_GONGFA.P3]]) {
+      const tier = pair[0], pick = pair[1];
+      const src = (db.items || []).find((i) => i.name === pick._from && (i.type === '功法' || i.type === '功法书'));
+      assert.ok(src, '画像引用了不存在的功法 ' + pick._from);
+      const sp = Number((JSON.parse(src.stats || '{}') || {}).cultivation_speed);
+      assert.strictEqual(pick.cultivationSpeed, sp, tier + '：画像 speed ' + pick.cultivationSpeed + ' != items[' + pick._from + '].cultivation_speed ' + sp + ' ⇒ 两处又各说各话');
+      assert.ok(sp > 1, tier + ' 选中的功法 speed=' + sp + ' 等于不加成，说明取错了档');
+    }
+    const p2 = CMZ.computeCultivation(PROFILES.P2.ctxOf('筑基'));
+    assert.ok(p2.parts.gongfa > 1.3, 'P2 功法乘区只有 ' + p2.parts.gongfa.toFixed(2) + ' ⇒ cultivationSpeed 没被模型吃到（模型搬家了本脚本需同步）');
+  });
+
+  await t('零头锁：routes 里的 exp 奖励常量单次 ≤0.5%、合计 ≤2% 整境需求（修为必须来自修炼）', () => {
+    const minRealmFill = Math.min(...ORDER.map((r) => Number((realms.find((x) => x.name === r) || {}).exp_requirement)).filter((v) => v > 0));
+    const cap = minRealmFill * 0.005;                       // 单次上限 0.5%
+    const capTotal = minRealmFill * 0.02;
+    const dir = path.join(__dirname, '..', 'src', 'routes');
+    const hits = [];
+    for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.js'))) {
+      const body = fs.readFileSync(path.join(dir, f), 'utf8').replace(/^\s*\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const mm of body.matchAll(/\bexp:\s*(\d{3,})/g)) hits.push({ file: f, v: Number(mm[1]) });
+    }
+    hits.sort((a, b) => b.v - a.v);
+    const over = hits.filter((h) => h.v > cap);
+    const total = hits.reduce((x, h) => x + h.v, 0);
+    EXP_REWARD_STATS = { count: hits.length, max: hits[0] ? hits[0].v : 0, maxFile: hits[0] ? hits[0].file : '—', total, minRealmFill };
+    console.log('  ℹ routes 里的 exp 奖励常量 ' + hits.length + ' 处，最大 ' + (hits[0] ? hits[0].v : 0) +
+      '（' + (hits[0] ? hits[0].file : '—') + '）= 最低境整境需求的 ' + (hits[0] ? ((hits[0].v / minRealmFill) * 100).toFixed(3) : '0') + '%，单次上限 0.5%');
+    assert.ok(total <= capTotal, 'routes 里一次性/可重复的 exp 奖励常量合计 ' + total.toLocaleString() + ' 超过最低境整境需求的 2%（' + big(minRealmFill) + '）⇒ 加内容等于加修为，铁律(3) 的余量带会被悄悄掏空');
+    console.log('  ℹ 合计 ' + total.toLocaleString() + ' = ' + (total / minRealmFill * 100).toFixed(2) + '%，上限 2%');
+    assert.deepStrictEqual(over.map((h) => h.file + ':' + h.v), [],
+      '有 ' + over.length + ' 处单次修为奖励超过整境需求的 0.5%（最大 ' + (over[0] ? over[0].v : '?') + '）⇒ 单次奖励就能顶掉一段修炼，铁律(3) 的余量带会被这类奖励掏空');
+  });
+
   const repArg = process.argv.indexOf('--report');
   if (repArg !== -1 && process.argv[repArg + 1]) {
     const out = [];
@@ -355,8 +434,10 @@ const pc1 = (v) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`;   // 先量化�
     out.push('  轮53 记录的"圆满钉值恒盖过闸门 ⇒ 闸门形同虚设"与轮54 中途发现的"只改语义会让同一份 exp 被升级与闸门各收一次'
       + '（⇒ 永远冲不了突破）"是同一个数被两处消费的两面；现在两处消费同一个数、突破不再重复索要，病根消除。');
     out.push('- 突破的真实瓶颈 = **等级封顶 + 突破概率 + 寿元 + 契机**（`realm.js` 的 `canBreakthrough` 不再额外索要整境 exp，`quests.js` 的私有升级循环已删）。');
-    out.push('- 仍未修（已登记上线必修）：乘区 2 的 `cultivation_speed` 全档无人提供（模型读不到 ⇒ 恒 1.0，功法实际只按"品阶 × 层数"加成）；'
-      + '任务/副本/签到/采集的 exp 奖励量级仍按旧曲线写（50~1000），相对新需求 5.2e6 已近乎零头，需重标或明确其为零头。');
+    out.push(`- 通道状态订正（轮57）：乘区2 的 \`cultivation_speed\` **不是空通道** —— items 里 ${speedOnItems} 件功法带值（黄阶≤1.35 … 仙阶≤10，中位 1.05~1.6），\`services/cultivation.js:39\` 换算、模型 \`:95\` 消费、前端也显示；真正为空的是 **\`db.gongfa\` 实例表 ${gongfaRows} 行**（还没有角色修过功法 ⇒ 线上生效值仍是 1.0，属 T1-1 零实例问题，不是空通道）。` +
+      `量尺画像改为从 items 真源取功法（P2=${REAL_GONGFA ? REAL_GONGFA.P2._from + ' ×' + REAL_GONGFA.P2.cultivationSpeed : '手写'} / P3=${REAL_GONGFA ? REAL_GONGFA.P3._from + ' ×' + REAL_GONGFA.P3.cultivationSpeed : '手写'}），` +
+      `报表 P2 列此前少算约 1.12 倍已修正；P1（裸修）与 P3（撞 ×12 总闸被削平）不变 ⇒ 轮54 的目标带与铁律(2) 结论不受影响。`);
+    out.push('- 修为奖励量级已实测并上锁（轮57）：' + (EXP_REWARD_STATS ? 'routes 里 `exp:` 常量 ' + EXP_REWARD_STATS.count + ' 处，合计 ' + EXP_REWARD_STATS.total.toLocaleString() + ' = 最低境整境需求（' + Math.round(EXP_REWARD_STATS.minRealmFill).toLocaleString() + '）的 ' + (EXP_REWARD_STATS.total / EXP_REWARD_STATS.minRealmFill * 100).toFixed(2) + '%；单笔最大 ' + EXP_REWARD_STATS.max.toLocaleString() + '（' + EXP_REWARD_STATS.maxFile + '）= ' + (EXP_REWARD_STATS.max / EXP_REWARD_STATS.minRealmFill * 100).toFixed(2) + '%。' : '（零头锁未执行）') + '缩放前一次性成就独占 531,400（单笔最大 200,000 = 3.85% 整境），现已两轮收敛到成就合计 5.7 万。**零头锁**：单次 ≤0.5% 且全库常量合计 ≤2% 整境需求 ⇒ 以后往成就/任务里塞大额修为会直接跑红，"修为必须来自修炼"不再靠运气。');
     fs.writeFileSync(path.resolve(repArg === -1 ? '数值追赶校验.md' : process.argv[repArg + 1]), out.join('\n'), 'utf8');
     console.log('\n  报告已写出：' + process.argv[repArg + 1]);
   }

@@ -19,7 +19,10 @@ const SUITES = [
   ['G2 好友与市场', 'scripts/test-social-market-e2e.js'],
   ['S1 入口 boot 探针', 'scripts/probe-server.js'],
   ['S2 P3 可见性', 'scripts/test-p3-visibility-e2e.js'],
-  ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js']
+  ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js'],
+  // P4 章程硬指标（轮52）：E1 的 HTTP 级并发守恒 + E2 的攻击模拟
+  ['E1 HTTP 并发守恒', 'scripts/concurrency-test.js'],
+  ['E2 攻击模拟', 'scripts/attack-sim.js']
 ];
 
 let failed = 0;

@@ -50,8 +50,15 @@ app.use(sanitizeMiddleware); // Sanitize all inputs
 app.use(rateLimit); // Apply rate limiting globally（天花板）
 app.use(require('./src/middleware/tierLimit')); // E2：按端点代价分层收紧（健康探针豁免）
 
-// E2 安全加固：反向代理下取真实 IP（限流依赖）+ 生产环境密钥断言
-app.set('trust proxy', 1);
+// E2 安全加固：生产 JWT 密钥断言 + 反向代理下的真实 IP（限流依赖）。
+// trust proxy 轮52 改为**默认不信任**（原先无条件 `app.set('trust proxy', 1)`，直连部署时任何客户端
+// 都能伪造 X-Forwarded-For 拿到全新的 IP 限流桶，等于限流与封禁全部可绕 —— 由 E2 攻击模拟的静态锁抓到）。
+// 确实架在反向代理后面时，运维显式设 DSH_TRUST_PROXY=1（或代理层数 2）；未设则按 socket 真实地址判定。
+const trustProxy = process.env.DSH_TRUST_PROXY;
+if (trustProxy && trustProxy !== '0' && trustProxy !== 'false') {
+  app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === 'true' ? true : trustProxy);
+  console.log(`[server] trust proxy 已开启（DSH_TRUST_PROXY=${trustProxy}）：IP 限流按 X-Forwarded-For 判定`);
+}
 if (process.env.NODE_ENV === 'production') {
   const secret = process.env.JWT_SECRET || '';
   if (!secret || secret.length < 32 || /change|default|secret|example/i.test(secret)) {
@@ -113,6 +120,9 @@ app.use('/api', (req, res) => {
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// 统一错误出口（必须最后挂）：畸形 JSON / 超大 body 不再回 HTML 堆栈页，而是回结构化 JSON
+app.use(require('./src/middleware/requestError'));
 
 const http = require('http');
 const WebSocket = require('ws');

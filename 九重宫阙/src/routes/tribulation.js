@@ -16,34 +16,54 @@ const gameTime = require('../services/gameTime');
 const combatService = require('../services/battle/combat');
 const B = require('../config/balance');
 
-/** 天劫强度：目标等级 = 自身等级 + (境界序号+1)×每阶加成。确定性，不含随机。 */
-function tribulationTargetLevel(character, realmIndex) {
+/** 天劫强度：目标等级 = 自身等级 + 固定小台阶，并被本境界等级上限夹住。
+ *  旧口径 lv + (境界序号+1)×3 会让渡劫 +27 级，等于跨一整个境界去打飞升 Boss
+ *  （sim-tribulation 实测五境界应劫胜率全 0.0%，R3"胜则续命"形同强制转世）。
+ */
+function tribulationTargetLevel(character, realmRow) {
   const lv = Math.max(1, Number(character && character.level) || 1);
-  const per = (B.TRIBULATION && B.TRIBULATION.bossLevelPerRealm) || 3;
-  return lv + (Math.max(0, realmIndex) + 1) * per;
+  const step = (B.TRIBULATION && B.TRIBULATION.bossLevelStep) || 2;
+  const cap = Number(realmRow && realmRow.max_level) || lv;
+  return Math.min(lv + step, cap);
 }
 
 /**
- * 从天劫模板池挑一只与目标等级匹配的怪（复用轮 29 的 buildMonsterFromTemplate 通道）。
- * 优先取"区间上界不弱于目标"的候选，再取中位最接近目标者；同分按 id 保证确定性。
+ * 挑劫敌：**先限境界池，再按强度（hp）贴近池中位**取。
+ * 以前按"等级区间中位最接近目标等级"选，等于在同一段 ±1.6 倍的强度带里凭运气抽档 ——
+ * 单场战斗近乎确定（随机源只有暴击与克制），抽到池尾就是 0% 胜、抽到池中就是必胜。
+ * 现在锁定"池中位强度"这一档，使应劫难度可预期；返回里带上 pickedHp/poolMedianHp 供复算与日志。
+ * 确定性：同分按模板 id。
  */
 function pickTribulationMonster(db, character) {
   const realms = (db && db.realms) || [];
-  const idx = realms.findIndex(r => r && r.name === (character && character.realm));
-  const target = tribulationTargetLevel(character, idx);
-  const pool = ((db && db.monsters) || []).map(m => {
+  const realmRow = realms.find(x => x && x.name === (character && character.realm)) || null;
+  const target = tribulationTargetLevel(character, realmRow);
+  const all = [];
+  for (const m of ((db && db.monsters) || [])) {
     const range = Array.isArray(m.level_range) ? m.level_range : [];
     const lo = Math.max(1, Number(range[0]) || 1);
     const hi = Math.max(lo, Number(range[1]) || lo);
-    return { tpl: m, lo, hi, mid: (lo + hi) / 2 };
-  });
-  if (!pool.length) return null;
-  const tough = pool.filter(x => x.hi >= target);
-  const cand = (tough.length ? tough : pool).slice()
-    .sort((a, b) => Math.abs(a.mid - target) - Math.abs(b.mid - target) || (a.tpl.id || 0) - (b.tpl.id || 0));
-  return { tpl: cand[0].tpl, targetLevel: target, lo: cand[0].lo, hi: cand[0].hi };
+    let st = {}; try { st = JSON.parse(m.stats || "{}"); } catch (e) { st = null; }
+    if (!st) continue;
+    const hp = Number(st.hp) || 0;
+    if (hp <= 0) continue;
+    all.push({ tpl: m, lo, hi, mid: (lo + hi) / 2, hp, attack: Number(st.attack) || 0, defense: Number(st.defense) || 0 });
+  }
+  if (!all.length) return null;
+  const rLo = Number(realmRow && realmRow.min_level) || 1;
+  const rHi = Number(realmRow && realmRow.max_level) || target;
+  const sameRealm = all.filter(x => x.hi >= rLo && x.lo <= rHi);
+  const pool = sameRealm.length ? sameRealm : all;
+  const sorted = pool.map(x => x.hp).sort((a, b) => a - b);
+  const med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+  const cand = pool.slice().sort((a, b) => Math.abs(a.hp - med) - Math.abs(b.hp - med) || (a.tpl.id || 0) - (b.tpl.id || 0));
+  const pick = cand[0];
+  return {
+    tpl: pick.tpl, targetLevel: target, lo: pick.lo, hi: pick.hi,
+    band: sameRealm.length ? "本境界" : "全池回退",
+    pickedHp: pick.hp, poolMedianHp: med, poolSize: pool.length
+  };
 }
-
 function getChar(req, res, db) {
   const character = db.characters.find(c => c.user_id === req.userId);
   if (!character) {

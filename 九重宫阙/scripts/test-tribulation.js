@@ -80,18 +80,29 @@ function rq(port, opts = {}) {
     assert.strictEqual(typeof router.tribulationTargetLevel, 'function');
   });
 
-  await t('天劫目标等级确定性：随境界单调、同输入同输出', () => {
-    const a = router.tribulationTargetLevel({ level: 30 }, 0);
-    const b = router.tribulationTargetLevel({ level: 30 }, 5);
-    assert.ok(b > a, '更高境界的天劫反而更弱');
-    assert.strictEqual(a, router.tribulationTargetLevel({ level: 30 }, 0), '同一输入产生不同结果');
-    assert.strictEqual(
-      router.tribulationTargetLevel({ level: 30 }, 5),
-      30 + 6 * B.TRIBULATION.bossLevelPerRealm, '未走 balance 常数（写死了？）');
-    assert.strictEqual(router.tribulationTargetLevel({}, 0), 1 + B.TRIBULATION.bossLevelPerRealm, '缺 level 未降级');
-  });
-
-  await t('Boss 挑选：优先不弱于目标等级、结果确定、极端输入不崩', () => {
+  // 本轮改口径：目标等级改由**自身等级 + 有界台阶**驱动，并被**本境界 max_level** 夹住。
+// 旧断言锁的是 lv+(境界序号+1)×3（第二参数为境界序号），该口径经 sim-tribulation 实测
+// 让合体以上应劫胜率归零（等于强制转世），故连同它的锁一起更新，不是把锁拆掉。
+await t('天劫目标等级：自身等级驱动、被本境界上限夹住、真实角色跨境界仍单调', () => {
+  const row = { min_level: 41, max_level: 50 };
+  const a = router.tribulationTargetLevel({ level: 41 }, row);
+  const b = router.tribulationTargetLevel({ level: 49 }, row);
+  assert.ok(b >= a, '境界内等级更高，天劫不该更弱');
+  assert.strictEqual(router.tribulationTargetLevel({ level: 50 }, row), 50, '顶格时目标等级越过了本境界上限（旧公式会一路加到跨境界 Boss）');
+  assert.strictEqual(a, router.tribulationTargetLevel({ level: 41 }, row), '同一输入产生不同结果');
+  assert.strictEqual(router.tribulationTargetLevel({ level: 10 }, { max_level: 100 }), 10 + B.TRIBULATION.bossLevelStep, '未走 balance 常数（写死了？）');
+  assert.strictEqual(router.tribulationTargetLevel({}, null), 1, '缺 level 且无境界行时应降级为自身等级');
+  assert.ok(!('bossLevelPerRealm' in B.TRIBULATION), '旧的每境界加成常数不该还活着');
+  const dbr = loadDatabase();
+  let prev = 0;
+  for (const rn of ['化神', '炼虚', '合体', '大乘', '渡劫']) {
+    const rr = (dbr.realms || []).find(x => x.name === rn);
+    const tt = router.tribulationTargetLevel({ level: Number(rr.max_level) }, rr);
+    assert.ok(tt > prev, `${rn} 顶格应劫目标等级 ${tt} 未高于上一境界 ${prev}（难度被改平了）`);
+    prev = tt;
+  }
+});
+await t('Boss 挑选：优先不弱于目标等级、结果确定、极端输入不崩', () => {
     const db = loadDatabase();
     assert.ok((db.monsters || []).length >= 86, `怪物模板池退化：${(db.monsters || []).length}`);
     assert.ok((db.realms || []).length >= 10, `境界表退化：${(db.realms || []).length}`);

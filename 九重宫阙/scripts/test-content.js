@@ -1591,6 +1591,60 @@ t('门禁洁净性：npm test 必须走 gate.js 外壳（store 有 20s autosave�
   assert.ok(/Buffer\.compare\(back, snapshot\)/.test(g), 'gate 没校验还原结果（还原失败也会绿）');
   assert.ok(/r\.status/.test(g), 'gate 未透传子进程退出码（门禁会假绿）');
 });
+console.log('== 廿五期：T0-1 应劫 Boss 选取（不出本境界、不抽池尾）==');
+t('选人逻辑源码锁：限本境界池 + 按强度贴池中位 + 有界台阶（旧跨境界公式禁止复活）', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'src', 'routes', 'tribulation.js'), 'utf8');
+  assert.ok(/sameRealm/.test(src), '未把劫敌限定在本境界等级区间（旧实现会跨到飞升 Boss）');
+  assert.ok(/Math\.abs\(a\.hp - med\)/.test(src), '未按强度贴近池中位选档（等于在池内凭运气抽强度）');
+  assert.ok(!/realmIndex\s*\+\s*1\)\s*\*\s*per/.test(src), '旧的 lv+(境界序号+1)×3 台阶又回来了（渡劫 +27 级）');
+  assert.ok(/bossLevelStep/.test(src) && /realmRow && realmRow\.max_level/.test(src), '台阶未被本境界上限夹住');
+  const bal25 = require('../src/config/balance');
+  assert.ok(bal25.TRIBULATION.bossLevelStep > 0 && bal25.TRIBULATION.bossLevelStep <= 5, '台阶超出可解释范围');
+  assert.ok(!('bossLevelPerRealm' in bal25.TRIBULATION), 'bossLevelPerRealm 成了无人消费的幽灵配置');
+});
+t('目标等级永不出本境界，且选定劫敌不得是池尾（数据锁）', () => {
+  const db25 = require('../src/database').loadDatabase();
+  const tri25 = require('../src/routes/tribulation');
+  const eligible = (require('../src/config/balance').TRIBULATION || {}).eligibleRealms || [];
+  assert.ok(eligible.length >= 3, '可应劫境界过少，本锁失去意义');
+  for (const realm of eligible) {
+    const row = (db25.realms || []).find(r => r.name === realm);
+    if (!row) continue;
+    const ch = Object.assign({}, db25.characters[0], { realm, level: Number(row.max_level) });
+    const p = tri25.pickTribulationMonster(db25, ch);
+    assert.ok(p && p.tpl, `${realm} 选不出劫敌`);
+    assert.ok(p.targetLevel <= Number(row.max_level), `${realm} 目标等级 ${p.targetLevel} 越过本境界上限 ${row.max_level}`);
+    assert.strictEqual(p.band, '本境界', `${realm} 回退到了全池，说明本境界池被清空`);
+    const rLo = Number(row.min_level), rHi = Number(row.max_level);
+    const hps = (db25.monsters || []).map(m => {
+      let st = null; try { st = JSON.parse(m.stats || '{}'); } catch (e) { return 0; }
+      const hp = Number(st.hp) || 0;
+      if (hp <= 0) return 0;
+      const rg = Array.isArray(m.level_range) ? m.level_range : [];
+      const lo = Number(rg[0]) || 1, hi = Number(rg[1]) || lo;
+      return (hi >= rLo && lo <= rHi) ? hp : 0;
+    }).filter(v => v > 0).sort((a, b) => a - b);
+    const p90 = hps[Math.min(hps.length - 1, Math.floor(hps.length * 0.9))];
+    assert.ok(p.pickedHp <= p90, `${realm} 劫敌 hp ${p.pickedHp} 高于本池 90 分位 ${p90}（又抽到池尾）`);
+  }
+});
+t('sim-tribulation 是应劫赢面的正式量尺：只读 + 双指标 + 挂 npm', () => {
+  const src = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'sim-tribulation.js'), 'utf8');
+  assert.ok(!/saveDatabase\s*\(/.test(src), 'sim-tribulation 会写库');
+  assert.ok(/pickTribulationMonster/.test(src), '未复用线上选人函数（另造一套就失去意义）');
+  assert.ok(/decideInitiative/.test(src) && /executeRound/.test(src), '未复用真实回合数学');
+  assert.ok(/池内可战胜比例|池可战胜比例/.test(src), '丢了防抽卡的第二指标');
+  assert.ok(/process\.exitCode = allOk \? 0 : 2/.test(src), '退出码语义缺失');
+  const pkg25 = require(path21.join(__dirname, '..', 'package.json'));
+  assert.ok(/sim-tribulation\.js/.test(pkg25.scripts['sim:tribulation'] || ''), 'sim:tribulation 未挂载');
+});
+t('已知偏差登记：章程 R3 写 5%cap，实现是 10%cap（须走章程补正，不许静默漂移）', () => {
+  const DOC_CODE_DIVERGENCES = [
+    { item: 'R3 应劫续命比例', doc: '开发自治章程 R3 原文 5%cap', code: 'TRIBULATION.renewRatio = 0.1', why: '当前目标口径为 cap×10%，章程待补更正' }
+  ];
+  const reg = DOC_CODE_DIVERGENCES.find(d => d.item === 'R3 应劫续命比例');
+  assert.strictEqual(require('../src/config/balance').TRIBULATION.renewRatio, 0.1, `代码值变了但偏差登记未更新（登记：${reg.code}）`);
+});
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 try { require('fs').writeFileSync(__dbPath, __dbSnap); console.log('（本套件经服务调用写过库，结束时已按字节还原 game.db）'); } catch (e) { console.log('还原 game.db 失败: ' + e.message); fail++; }
 process.exitCode = fail > 0 ? 1 : 0;

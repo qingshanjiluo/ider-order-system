@@ -289,5 +289,30 @@ t('灵兽物种 ≥ 16', () => {
   assert.ok(names.size >= 16, `实测物种 ${names.size}`);
 });
 
+t('器方/符方图纸库 ≥12 且材料全部可解析', () => {
+  const src = require('fs').readFileSync('src/services/materials.js', 'utf8');
+  assert.ok(src.includes("name: '青锋剑图纸'") && src.includes("name: '太阳神弓图纸'"), '器方缺失');
+  assert.ok(src.includes("name: '烈火符方'") && src.includes("name: '驱邪符方'"), '符方缺失');
+  // 所有图纸材料名必须已分级或可购
+  const bpNames = [...src.matchAll(/name: '([^']+图纸|[^']+符方)'/g)].map(m => m[1]);
+  assert.ok(bpNames.length >= 12, `图纸仅 ${bpNames.length}`);
+  const mats = [...src.matchAll(/\{ name: '([^']+)', quantity: \d+ \}/g)].map(m => m[1]);
+  for (const m of mats) {
+    assert.ok(materials.MATERIAL_CATALOG[m] || materials.SHOP_CATALOG.find(s => s.name === m), `图纸材料 ${m} 不可解析`);
+  }
+});
+t('符箓成品可购可用', () => {
+  for (const name of ['烈火符', '寒冰符', '护身符', '驱邪符']) {
+    assert.ok(materials.SHOP_CATALOG.find(s => s.name === name && s.type === '符箓'), `商店缺符箓 ${name}`);
+  }
+  const r = buffService.applyGuildShopBuff(-999, '护身符');
+  assert.ok(r.success, '护身符使用失败');
+});
+t('器方品质阶梯覆盖凡→仙', () => {
+  const src = require('fs').readFileSync('src/services/materials.js', 'utf8');
+  const craftSec = src.slice(src.indexOf('BLUEPRINT_CATALOG'), src.indexOf('function ensureBlueprints'));
+  for (const q of ['凡品', '灵品', '宝品', '仙品']) assert.ok(craftSec.includes(`quality: '${q}'`), `器方缺 ${q}`);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

@@ -63,7 +63,8 @@ const MATERIAL_CATALOG = {
   '太阴玄冰': { tier: 4, role: 'main', element: 'water' },
   '五色土':   { tier: 3, role: 'aux',  element: 'earth' },
   '星陨砂':   { tier: 4, role: 'main', element: 'metal' },
-  '混沌土':   { tier: 5, role: 'aux',  element: 'none' }
+  '混沌土':   { tier: 5, role: 'aux',  element: 'none' },
+  '朱砂':     { tier: 3, role: 'aux',  element: 'fire' }
 };
 
 // 新材料入图（采集可玩性）：材料 → 适合地图名（幂等追加 gather_nodes）
@@ -78,7 +79,8 @@ const MAP_GATHER_ADDITIONS = {
   '太阴玄冰': ['寒冰谷', '幽冥地府'],
   '五色土':   ['沙漠遗迹', '神兽平原'],
   '星陨砂':   ['沙漠遗迹', '雷霆峰'],
-  '混沌土':   ['混沌海', '魔道深渊']
+  '混沌土':   ['混沌海', '魔道深渊'],
+  '朱砂':     ['沙漠遗迹', '幽冥地府']
 };
 
 function ensureMapNodes(db) {
@@ -154,8 +156,41 @@ const SHOP_CATALOG = [
   { name: '聚灵阵',   type: '阵法', quality: '灵品', price: 3000,   stats: {}, desc: '布下聚灵阵：修炼效率提升15%（480分钟）' },
   { name: '固元阵',   type: '阵法', quality: '灵品', price: 3200,   stats: {}, desc: '布下固元阵：防御提升15%（480分钟）' },
   { name: '破军杀阵', type: '阵法', quality: '宝品', price: 8000,   stats: {}, desc: '杀阵冲霄：攻击提升25%（240分钟）' },
-  { name: '五行大阵', type: '阵法', quality: '仙品', price: 20000,  stats: {}, desc: '五行轮转：全属性提升10%（720分钟）' }
+  { name: '五行大阵', type: '阵法', quality: '仙品', price: 20000,  stats: {}, desc: '五行轮转：全属性提升10%（720分钟）' },
+  // ---- 内容富集五期：符箓（成品可购可用；符方图纸入图纸库可学） ----
+  { name: '烈火符', type: '符箓', quality: '灵品', price: 600, stats: {}, desc: '燃烧符纸：攻击提升20%（30分钟）' },
+  { name: '寒冰符', type: '符箓', quality: '灵品', price: 600, stats: {}, desc: '寒气入体：速度提升20%（30分钟）' },
+  { name: '护身符', type: '符箓', quality: '灵品', price: 700, stats: {}, desc: '金光护体：防御提升25%（30分钟）' },
+  { name: '驱邪符', type: '符箓', quality: '宝品', price: 1500, stats: {}, desc: '百邪不侵：全属性提升5%（120分钟）' }
 ];
+
+// ---------- 器方/符方图纸库（按名称引用分级材料，学习消耗材料） ----------
+const BLUEPRINT_CATALOG = [
+  { name: '青锋剑图纸', type: 'crafting', quality: '凡品', materials: [{ name: '粗铁矿', quantity: 5 }, { name: '木材', quantity: 2 }], desc: '入门剑器，法器品质' },
+  { name: '玄铁重剑图纸', type: 'crafting', quality: '灵品', materials: [{ name: '玄铁矿', quantity: 8 }, { name: '精铁矿', quantity: 4 }], desc: '重剑无锋，灵器品质' },
+  { name: '寒冰法杖图纸', type: 'crafting', quality: '灵品', materials: [{ name: '寒冰结晶', quantity: 4 }, { name: '冰晶矿', quantity: 6 }], desc: '寒气凝杖，法修所爱' },
+  { name: '炎鳞甲图纸', type: 'crafting', quality: '宝品', materials: [{ name: '龙血矿', quantity: 5 }, { name: '火焰结晶', quantity: 4 }], desc: '火龙鳞甲，宝器品质' },
+  { name: '山岳重盾图纸', type: 'crafting', quality: '宝品', materials: [{ name: '五色土', quantity: 6 }, { name: '星辰矿', quantity: 4 }], desc: '厚重如山，护体大盾' },
+  { name: '星陨剑图纸', type: 'crafting', quality: '宝品', materials: [{ name: '星陨砂', quantity: 6 }, { name: '天外陨铁', quantity: 3 }], desc: '星陨铸剑，锋芒毕露' },
+  { name: '混沌灵甲图纸', type: 'crafting', quality: '仙品', materials: [{ name: '混沌矿', quantity: 6 }, { name: '混沌结晶', quantity: 4 }], desc: '混沌之气织甲，仙器品质' },
+  { name: '太阳神弓图纸', type: 'crafting', quality: '仙品', materials: [{ name: '离火精', quantity: 4 }, { name: '仙晶矿', quantity: 4 }], desc: '射日之弓，一击焚天' },
+  { name: '烈火符方', type: 'talisman', quality: '灵品', materials: [{ name: '赤焰髓', quantity: 2 }, { name: '灵草', quantity: 3 }], desc: '画烈火符之方' },
+  { name: '寒冰符方', type: 'talisman', quality: '灵品', materials: [{ name: '太阴玄冰', quantity: 2 }, { name: '灵草', quantity: 3 }], desc: '画寒冰符之方' },
+  { name: '护身符方', type: 'talisman', quality: '灵品', materials: [{ name: '五色土', quantity: 3 }, { name: '清心草', quantity: 3 }], desc: '画护身符之方' },
+  { name: '驱邪符方', type: 'talisman', quality: '宝品', materials: [{ name: '朱砂', quantity: 3 }, { name: '紫猴花', quantity: 3 }], desc: '画驱邪符之方' }
+];
+
+function ensureBlueprints(db) {
+  let added = 0;
+  if (!db.blueprints) db.blueprints = [];
+  for (const def of BLUEPRINT_CATALOG) {
+    if (db.blueprints.find(b => b.name === def.name)) continue;
+    const id = db.blueprints.length ? Math.max(...db.blueprints.map(b => Number(b.id) || 0)) + 1 : 1;
+    db.blueprints.push({ id, name: def.name, type: def.type, quality: def.quality, materials: def.materials, desc: def.desc });
+    added++;
+  }
+  return added;
+}
 
 function ensureShopStock(db) {
   let changed = 0;
@@ -180,9 +215,10 @@ function ensureAll(db) {
   const a = ensureMaterialGrades(db);
   const b = ensureShopStock(db);
   const c = ensureMapNodes(db);
+  const e = ensureBlueprints(db);
   let d = 0;
   try { const alchemy = require('../routes/alchemy'); if (alchemy.__ensureRecipes) { d = alchemy.__ensureRecipes(db) || 0; } } catch { /* alchemy 未就绪则跳过 */ }
-  return { materialGrades: a, shopEntries: b, mapNodes: c, recipes: d, changed: a + b + c + d };
+  return { materialGrades: a, shopEntries: b, mapNodes: c, blueprints: e, recipes: d, changed: a + b + c + e + d };
 }
 
 module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, gradeOf, ensureAll, ensureMaterialGrades, ensureShopStock };

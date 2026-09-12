@@ -68,7 +68,12 @@ class BuffService {
       '聚灵阵': { type: 'exp', value: 1.15, duration: 28800000 },
       '固元阵': { type: 'defense', value: 1.15, duration: 28800000 },
       '破军杀阵': { type: 'attack', value: 1.25, duration: 14400000 },
-      '五行大阵': { type: 'all', value: 1.1, duration: 43200000 }
+      '五行大阵': { type: 'all', value: 1.1, duration: 43200000 },
+      // 符箓（短时爆发型）
+      '烈火符': { type: 'attack', value: 1.2, duration: 1800000 },
+      '寒冰符': { type: 'speed', value: 1.2, duration: 1800000 },
+      '护身符': { type: 'defense', value: 1.25, duration: 1800000 },
+      '驱邪符': { type: 'all', value: 1.05, duration: 7200000 }
     };
     const def = buffDefinitions[itemName];
     if (def) {

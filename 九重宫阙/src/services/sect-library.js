@@ -10,7 +10,7 @@ const { GONGFA_LIBRARY } = require('../data/gongfa-library');
 
 const CONTRIB_BY_QUALITY = { 黄阶: 10, 玄阶: 20, 地阶: 40, 天阶: 80, 圣阶: 150, 仙阶: 300, 凡品: 10, 灵品: 20, 宝品: 40 };
 const LEARN_COST = { 黄阶: 20, 玄阶: 40, 地阶: 80, 天阶: 160, 圣阶: 300, 仙阶: 600 };
-const UPLOAD_KINDS = ['功法', '丹方', '器方', '符方', '技能书'];
+const UPLOAD_KINDS = ['功法', '丹方', '器方', '符方', '技能书', '阵法'];
 
 function entriesOf(sectId) {
   return store.queryRel('sect_library', { sect_id: sectId }, 'rowid');

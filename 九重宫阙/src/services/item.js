@@ -195,7 +195,14 @@ class ItemService {
       { name: '幽冥猫', element: 'dark', trait: '影遁：提升主人闪避' },
       { name: '雷罡豹', element: 'metal', trait: '雷驰：大幅提升速度' },
       { name: '冰晶蝶', element: 'water', trait: '凝霜：攻击概率冻结' },
-      { name: '墨鳞蛟', element: 'dark', trait: '蛟威：威压降敌攻' }
+      { name: '墨鳞蛟', element: 'dark', trait: '蛟威：威压降敌攻' },
+      { name: '金睛猿', element: 'earth', trait: '灵目：识破敌人弱点' },
+      { name: '碧火凰', element: 'fire', trait: '涅槃：濒死时浴火重生一次' },
+      { name: '雪魄狼', element: 'water', trait: '啸月：寒夜中全属性提升' },
+      { name: '紫电貂', element: 'metal', trait: '电掣：出手概率先攻' },
+      { name: '吞天蟾', element: 'dark', trait: '吞灵：吞噬敌方灵力' },
+      { name: '青鸾', element: 'light', trait: '清音：净化主人负面状态' },
+      { name: '玉麒麟', element: 'light', trait: '瑞气：提升主人气运与机缘' }
     ];
     const sp = SPECIES[Math.floor(Math.random() * SPECIES.length)];
     const name = `${sp.name}（${realm}${quality}${stage}）`;

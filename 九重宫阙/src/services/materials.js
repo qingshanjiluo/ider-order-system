@@ -51,8 +51,49 @@ const MATERIAL_CATALOG = {
   '仙灵草':   { tier: 5, role: 'aux',  element: 'light' },
   '仙灵结晶': { tier: 5, role: 'main', element: 'light' },
   '仙兽内丹': { tier: 5, role: 'aux',  element: 'none' },
-  '远古妖丹': { tier: 5, role: 'aux',  element: 'dark' }
+  '远古妖丹': { tier: 5, role: 'aux',  element: 'dark' },
+  // ---- 内容富集四期：灵植/液体/火焰/土石 细分品类 ----
+  '龙须草':   { tier: 3, role: 'aux',  element: 'wood' },
+  '紫猴花':   { tier: 3, role: 'aux',  element: 'wood' },
+  '玉髓芝':   { tier: 4, role: 'aux',  element: 'wood' },
+  '万年寒潭水': { tier: 4, role: 'aux', element: 'water' },
+  '地髓乳':   { tier: 5, role: 'aux',  element: 'earth' },
+  '赤焰髓':   { tier: 4, role: 'main', element: 'fire' },
+  '离火精':   { tier: 5, role: 'main', element: 'fire' },
+  '太阴玄冰': { tier: 4, role: 'main', element: 'water' },
+  '五色土':   { tier: 3, role: 'aux',  element: 'earth' },
+  '星陨砂':   { tier: 4, role: 'main', element: 'metal' },
+  '混沌土':   { tier: 5, role: 'aux',  element: 'none' }
 };
+
+// 新材料入图（采集可玩性）：材料 → 适合地图名（幂等追加 gather_nodes）
+const MAP_GATHER_ADDITIONS = {
+  '龙须草':   ['翠竹林', '妖兽森林'],
+  '紫猴花':   ['翠竹林', '青云山'],
+  '玉髓芝':   ['神兽平原', '天界花园'],
+  '万年寒潭水': ['寒冰谷', '冰火两重天'],
+  '地髓乳':   ['混沌海', '时空裂缝'],
+  '赤焰髓':   ['火焰山', '龙巢'],
+  '离火精':   ['龙巢', '冰火两重天'],
+  '太阴玄冰': ['寒冰谷', '幽冥地府'],
+  '五色土':   ['沙漠遗迹', '神兽平原'],
+  '星陨砂':   ['沙漠遗迹', '雷霆峰'],
+  '混沌土':   ['混沌海', '魔道深渊']
+};
+
+function ensureMapNodes(db) {
+  let changed = 0;
+  for (const map of db.maps || []) {
+    if (!Array.isArray(map.gather_nodes)) continue;
+    for (const [matName, mapNames] of Object.entries(MAP_GATHER_ADDITIONS)) {
+      if (mapNames.includes(map.name) && !map.gather_nodes.includes(matName)) {
+        map.gather_nodes.push(matName);
+        changed++;
+      }
+    }
+  }
+  return changed;
+}
 
 /** 主材 tier → 锻造产物品质上限 */
 const TIER_EQUIP_CAP = {
@@ -105,7 +146,15 @@ const SHOP_CATALOG = [
   { name: '造化灵石', type: '特殊灵石', quality: '宝品', price: 12000, stats: {}, desc: '使用有概率获得功法/物品/灵石机缘' },
   { name: '初级仙盟令', type: '凭证', quality: '凡品', price: 3000,  stats: {}, desc: '创建仙盟的稀缺凭证（亦可拍卖行流通）' },
   { name: '精铁包',   type: '材料', quality: '灵品', price: 800,    stats: { tier: 2, role: 'main', element: 'metal', bundle: 5 }, desc: '精铁矿×5（良材·主材）' },
-  { name: '玄铁包',   type: '材料', quality: '灵品', price: 1500,   stats: { tier: 2, role: 'main', element: 'metal', bundle: 8 }, desc: '玄铁矿×8（良材·主材）' }
+  { name: '玄铁包',   type: '材料', quality: '灵品', price: 1500,   stats: { tier: 2, role: 'main', element: 'metal', bundle: 8 }, desc: '玄铁矿×8（良材·主材）' },
+  // ---- 内容富集四期：进阶丹药 + 阵法（使用后走 buff 管线） ----
+  { name: '淬体丹',   type: '丹药', quality: '灵品', price: 800,    stats: {}, desc: '淬炼体魄：防御提升15%（120分钟）' },
+  { name: '凝神丹',   type: '丹药', quality: '灵品', price: 900,    stats: {}, desc: '凝神静气：修炼效率提升30%（120分钟）' },
+  { name: '龙血丹',   type: '丹药', quality: '宝品', price: 2500,   stats: {}, desc: '龙血洗礼：攻击提升35%（60分钟）' },
+  { name: '聚灵阵',   type: '阵法', quality: '灵品', price: 3000,   stats: {}, desc: '布下聚灵阵：修炼效率提升15%（480分钟）' },
+  { name: '固元阵',   type: '阵法', quality: '灵品', price: 3200,   stats: {}, desc: '布下固元阵：防御提升15%（480分钟）' },
+  { name: '破军杀阵', type: '阵法', quality: '宝品', price: 8000,   stats: {}, desc: '杀阵冲霄：攻击提升25%（240分钟）' },
+  { name: '五行大阵', type: '阵法', quality: '仙品', price: 20000,  stats: {}, desc: '五行轮转：全属性提升10%（720分钟）' }
 ];
 
 function ensureShopStock(db) {
@@ -130,7 +179,10 @@ function ensureShopStock(db) {
 function ensureAll(db) {
   const a = ensureMaterialGrades(db);
   const b = ensureShopStock(db);
-  return { materialGrades: a, shopEntries: b, changed: a + b };
+  const c = ensureMapNodes(db);
+  let d = 0;
+  try { const alchemy = require('../routes/alchemy'); if (alchemy.__ensureRecipes) { d = alchemy.__ensureRecipes(db) || 0; } } catch { /* alchemy 未就绪则跳过 */ }
+  return { materialGrades: a, shopEntries: b, mapNodes: c, recipes: d, changed: a + b + c + d };
 }
 
-module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, gradeOf, ensureAll, ensureMaterialGrades, ensureShopStock };
+module.exports = { MATERIAL_CATALOG, TIER_EQUIP_CAP, TIER_NAMES, SHOP_CATALOG, MAP_GATHER_ADDITIONS, gradeOf, ensureAll, ensureMaterialGrades, ensureShopStock };

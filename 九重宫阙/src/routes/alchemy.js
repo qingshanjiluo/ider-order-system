@@ -31,6 +31,32 @@ const PILL_RECIPES = [
   { id: 11, name: '道源丹', quality: '道品', realm: '大乘', herbId: 40, herbQty: 15, resultId: 34, baseSuccess: 0.15, expGain: 80, desc: '悟道之丹', aux: { herbId: 59, bonus: 0.12 }, catalyst: { herbId: 65, bonus: 0.2 } }
 ];
 
+// 内容富集四期：扩展丹方（ herbs 以名称动态解析 → 与新材料体系联动 ）
+const EXTENDED_PILL_RECIPES = [
+  { name: '淬体丹', quality: '灵品', realm: '筑基', herbName: '龙须草', herbQty: 3, resultName: '淬体丹', baseSuccess: 0.6, expGain: 22, desc: '淬炼体魄，防御提升' },
+  { name: '凝神丹', quality: '灵品', realm: '筑基', herbName: '紫猴花', herbQty: 3, resultName: '凝神丹', baseSuccess: 0.55, expGain: 24, desc: '凝神静气，修炼加速' },
+  { name: '龙血丹', quality: '宝品', realm: '金丹', herbName: '玉髓芝', herbQty: 4, resultName: '龙血丹', baseSuccess: 0.4, expGain: 34, desc: '龙血洗礼，攻击大增' },
+  { name: '太阴凝魂丹', quality: '仙品', realm: '化神', herbName: '万年寒潭水', herbQty: 5, resultName: '培元丹', baseSuccess: 0.25, expGain: 55, desc: '凝魂固魄，抵御心魔' }
+];
+function ensureExtendedRecipes(db) {
+  if (PILL_RECIPES.__extended) return;
+  let resolved = 0;
+  for (const r of EXTENDED_PILL_RECIPES) {
+    const herb = (db.items || []).find(i => i.name === r.herbName);
+    const result = (db.items || []).find(i => i.name === r.resultName);
+    if (!herb || !result) continue;
+    if (PILL_RECIPES.find(p => p.name === r.name)) continue;
+    PILL_RECIPES.push({
+      id: 100 + PILL_RECIPES.length, name: r.name, quality: r.quality, realm: r.realm,
+      herbId: herb.id, herbQty: r.herbQty, resultId: result.id,
+      baseSuccess: r.baseSuccess, expGain: r.expGain, desc: r.desc
+    });
+    resolved++;
+  }
+  if (resolved === EXTENDED_PILL_RECIPES.length) PILL_RECIPES.__extended = true;
+  return resolved;
+}
+
 const ALCHEMY_TALENTS = [
   { id: 'flame_control', name: '火焰掌控', desc: '炼丹成功率+5%', levelReq: 5, effect: { type: 'success_bonus', value: 0.05 } },
   { id: 'herb_affinity', name: '灵植亲和', desc: '主材消耗-1', levelReq: 8, effect: { type: 'herb_reduce', value: 1 } },
@@ -534,3 +560,4 @@ router.get('/proficiency', auth, (req, res) => {
 });
 
 module.exports = router;
+module.exports.__ensureRecipes = ensureExtendedRecipes;

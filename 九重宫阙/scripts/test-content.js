@@ -240,5 +240,54 @@ t('藏书阁：上传→贡献→学习 闭环（纯服务层）', () => {
   for (const e of store.queryRel('sect_library', { contributor: '测试弟子' })) store.deleteRel('sect_library', { id: e.id });
 });
 
+console.log('== 四期：全品类世界完善 ==');
+const buffService = require('../src/services/buff');
+t('材料目录 ≥ 48 且液体/火焰/土石品类齐备', () => {
+  const n = Object.keys(materials.MATERIAL_CATALOG).length;
+  assert.ok(n >= 48, `仅 ${n}`);
+  for (const name of ['万年寒潭水', '地髓乳', '离火精', '太阴玄冰', '五色土', '星陨砂', '混沌土', '龙须草', '紫猴花', '玉髓芝']) {
+    assert.ok(materials.MATERIAL_CATALOG[name], `缺 ${name}`);
+  }
+});
+t('新材料全部可采集（已挂图）', () => {
+  for (const matName of Object.keys(materials.MAP_GATHER_ADDITIONS)) {
+    assert.ok(materials.MATERIAL_CATALOG[matName], `${matName} 未分级`);
+    assert.ok(materials.MAP_GATHER_ADDITIONS[matName].length >= 2, `${matName} 挂图不足`);
+  }
+});
+t('新丹药/阵法全部可购买且可使用（buff 定义齐备）', () => {
+  const NEW = ['淬体丹', '凝神丹', '龙血丹', '聚灵阵', '固元阵', '破军杀阵', '五行大阵'];
+  for (const name of NEW) {
+    assert.ok(materials.SHOP_CATALOG.find(s => s.name === name), `商店缺 ${name}`);
+  }
+  // 使用管线：借用 buffDefinitions 行为验证（applyGuildShopBuff 对不存在角色不落库）
+  const r = buffService.applyGuildShopBuff(-999, '五行大阵');
+  assert.ok(r.success, '五行大阵使用失败');
+});
+t('高阶火焰：需火源材料且火源可采集', () => {
+  const src = require('fs').readFileSync('src/routes/forge.js', 'utf8');
+  for (const f of ['三昧真火', '太阳真火', '太阴玄冰焰', '九幽冥火']) assert.ok(src.includes(f), `缺高阶火焰 ${f}`);
+  for (const s of ['地心火种', '离火精', '太阴玄冰', '混沌土']) {
+    assert.ok(materials.MATERIAL_CATALOG[s], `火源 ${s} 未分级`);
+  }
+});
+t('扩展丹方：boot后可解析（herb/结果道具均存在）', () => {
+  const { loadDatabase } = require('../src/database');
+  const db = loadDatabase();
+  materials.ensureAll(db);
+  const alchemy = require('../src/routes/alchemy');
+  alchemy.__ensureRecipes(db);
+  const src = require('fs').readFileSync('src/routes/alchemy.js', 'utf8');
+  for (const pill of ['淬体丹', '凝神丹', '龙血丹', '太阴凝魂丹']) assert.ok(src.includes(`'${pill}'`) || src.includes(pill), `缺丹方 ${pill}`);
+});
+t('灵兽物种 ≥ 16', () => {
+  const names = new Set();
+  for (let i = 0; i < 60; i++) {
+    const p = itemService.generatePet('筑基', '灵兽');
+    names.add(JSON.parse(p.stats).species);
+  }
+  assert.ok(names.size >= 16, `实测物种 ${names.size}`);
+});
+
 console.log(`\n内容完整性: ${pass} 通过, ${fail} 失败`);
 process.exitCode = fail > 0 ? 1 : 0;

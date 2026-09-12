@@ -293,8 +293,23 @@ router.post('/forge', auth, (req, res) => {
       'metal': { name: '金锐焰', element: '金', speedBonus: 0.08, successBonus: 0.06 },
       'wood': { name: '木灵焰', element: '木', speedBonus: 0.06, successBonus: 0.07 },
       'dark': { name: '幽暗焰', element: '黑暗', speedBonus: 0.1, successBonus: 0.04 },
-      'light': { name: '神圣焰', element: '光明', speedBonus: 0.07, successBonus: 0.09 }
+      'light': { name: '神圣焰', element: '光明', speedBonus: 0.07, successBonus: 0.09 },
+      // 内容富集四期：高阶火焰（需持有火源材料方可驾驭）
+      'samadhi': { name: '三昧真火', element: '火', speedBonus: 0.15, successBonus: 0.18, source_item: '地心火种', tier: '高阶' },
+      'sunfire': { name: '太阳真火', element: '火', speedBonus: 0.2, successBonus: 0.25, source_item: '离火精', tier: '高阶' },
+      'taiyin': { name: '太阴玄冰焰', element: '水', speedBonus: 0.18, successBonus: 0.15, source_item: '太阴玄冰', tier: '高阶' },
+      'youming_fire': { name: '九幽冥火', element: '黑暗', speedBonus: 0.15, successBonus: 0.16, source_item: '混沌土', tier: '高阶' }
     };
+    // 高阶火焰门槛：持有对应火源
+    if (flame && flame.source_item) {
+      const hasSource = inventory.some(i => {
+        const it = db.items.find(x => x.id === i.item_id);
+        return it && it.name === flame.source_item;
+      });
+      if (!hasSource) {
+        return res.status(400).json({ error: `需持有「${flame.source_item}」方可驾驭${flame.name}` });
+      }
+    }
     const flame = flames[flameType] || flames['basic'];
 
     const charStats = character.stats || {};

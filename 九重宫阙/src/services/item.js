@@ -202,7 +202,27 @@ class ItemService {
       { name: '紫电貂', element: 'metal', trait: '电掣：出手概率先攻' },
       { name: '吞天蟾', element: 'dark', trait: '吞灵：吞噬敌方灵力' },
       { name: '青鸾', element: 'light', trait: '清音：净化主人负面状态' },
-      { name: '玉麒麟', element: 'light', trait: '瑞气：提升主人气运与机缘' }
+      { name: '玉麒麟', element: 'light', trait: '瑞气：提升主人气运与机缘' },
+      // ---- E6 数据深化：物种池 17 → 36（火4/木3/水3/金3/土3/光2/暗1）----
+      { name: '赤焰狮', element: 'fire', trait: '燎原：群战时灼烧伤害翻倍' },
+      { name: '毕方', element: 'fire', trait: '独足踏火：出手附带灼烧并提升先攻' },
+      { name: '金乌', element: 'fire', trait: '日轮：白昼全属性+10%，灼烧不中断' },
+      { name: '焱甲虫', element: 'fire', trait: '炎壳：受击反弹火焰伤害' },
+      { name: '藤萝蟒', element: 'wood', trait: '缠绕：普攻概率定身一回合' },
+      { name: '苍梧鹤', element: 'wood', trait: '啄灵：攻击吸取生命反哺主人' },
+      { name: '芝灵童', element: 'wood', trait: '共生：主人炼丹时提高成丹率' },
+      { name: '沧溟鲲', element: 'water', trait: '吞海：HP 上限大幅提升' },
+      { name: '碧潭蛛', element: 'water', trait: '凝露：战斗开始为己方挂护盾' },
+      { name: '潮音蚌', element: 'water', trait: '潮律：每回合回复主人灵力' },
+      { name: '太白庚兽', element: 'metal', trait: '裂金：无视目标 15% 防御' },
+      { name: '锖甲犀', element: 'metal', trait: '冲撞：突进首回合伤害+30%' },
+      { name: '素月兔', element: 'metal', trait: '望月：夜晚速度与会心提升' },
+      { name: '岩岳兽', element: 'earth', trait: '镇岳：受击减伤并积累势能反击' },
+      { name: '黄壤鼹', element: 'earth', trait: '掘土：采集时额外获得土石材料' },
+      { name: '磁光鲨', element: 'earth', trait: '磁力：干扰敌方金属性输出' },
+      { name: '净世犼', element: 'light', trait: '净世：驱散敌方增益效果' },
+      { name: '昭明羽人', element: 'light', trait: '昭明：延长了主增益状态持续' },
+      { name: '蚀骨蝠', element: 'dark', trait: '蚀骨：攻击叠加削弱敌方防御' }
     ];
     const sp = SPECIES[Math.floor(Math.random() * SPECIES.length)];
     const name = `${sp.name}（${realm}${quality}${stage}）`;

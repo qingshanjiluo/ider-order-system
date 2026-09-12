@@ -280,11 +280,11 @@ t('扩展丹方：boot后可解析（herb/结果道具均存在）', () => {
   const src = require('fs').readFileSync('src/routes/alchemy.js', 'utf8');
   for (const pill of ['淬体丹', '凝神丹', '龙血丹', '太阴凝魂丹']) assert.ok(src.includes(`'${pill}'`) || src.includes(pill), `缺丹方 ${pill}`);
 });
-t('灵兽物种池 ≥ 17（源数据校验）+ 生成器多样', () => {
+t('灵兽物种池 ≥ 36（源数据校验）+ 生成器多样', () => {
   const src = require('fs').readFileSync('src/services/item.js', 'utf8');
   const speciesSec = src.slice(src.indexOf('const SPECIES'), src.indexOf('const sp ='));
   const pool = [...speciesSec.matchAll(/\{ name: '([^']+)', element:/g)].map(m => m[1]);
-  assert.ok(pool.length >= 17, `物种池仅 ${pool.length}`);
+  assert.ok(pool.length >= 36, `物种池仅 ${pool.length}`);
   assert.strictEqual(new Set(pool).size, pool.length, '物种池有重名');
   const seen = new Set();
   for (let i = 0; i < 60; i++) seen.add(JSON.parse(itemService.generatePet('筑基', '灵兽').stats).species);

@@ -52,136 +52,97 @@
     </div>
 
     <div class="game-body">
-      <nav class="sidebar-nav">
-        <div class="nav-section">
-          <div class="nav-section-title">角色</div>
-          <div class="nav-item active" data-tab="character">
-            <span class="nav-icon">身</span>
-            <span>角色信息</span>
-          </div>
-          <div class="nav-item" data-tab="cultivation">
-            <span class="nav-icon">修</span>
-            <span>闭关修炼</span>
-          </div>
-          <div class="nav-item" data-tab="battle">
-            <span class="nav-icon">战</span>
-            <span>战斗历练</span>
-          </div>
-          <div class="nav-item" data-tab="dungeon">
-            <span class="nav-icon">副</span>
-            <span>副本挑战</span>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- 阶段10：12 主导航 + 二级菜单（面板导航设计 12 收敛 27 平铺） -->
+        <div class="nav-group open">
+          <div class="nav-group-title"><span class="nav-icon">图</span>地图</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="battle"><span class="nav-icon">怪</span>刷怪历练</div>
+            <div class="nav-item" data-tab="dungeon"><span class="nav-icon">副</span>副本挑战</div>
+            <div class="nav-item" data-tab="gathering"><span class="nav-icon">采</span>采集</div>
+            <div class="nav-item" data-tab="afk"><span class="nav-icon">挂</span>挂机扫荡</div>
           </div>
         </div>
-
-        <div class="nav-section">
-          <div class="nav-section-title">养成</div>
-          <div class="nav-item" data-tab="skill">
-            <span class="nav-icon">技</span>
-            <span>技能心法</span>
-          </div>
-          <div class="nav-item" data-tab="gongfa">
-            <span class="nav-icon">功</span>
-            <span>功法修炼</span>
-          </div>
-          <div class="nav-item" data-tab="pet">
-            <span class="nav-icon">宠</span>
-            <span>灵宠培养</span>
-          </div>
-          <div class="nav-item" data-tab="weapons">
-            <span class="nav-icon">器</span>
-            <span>法器</span>
-          </div>
-          <div class="nav-item" data-tab="pills">
-            <span class="nav-icon">丹</span>
-            <span>丹药</span>
-          </div>
-          <div class="nav-item" data-tab="talismans">
-            <span class="nav-icon">符</span>
-            <span>符箓</span>
-          </div>
-          <div class="nav-item" data-tab="formations">
-            <span class="nav-icon">阵</span>
-            <span>阵法</span>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">易</span>交易</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="shop"><span class="nav-icon">市</span>坊市</div>
+            <div class="nav-item" data-tab="market"><span class="nav-icon">拍</span>拍卖行</div>
+            <div class="nav-item" data-tab="economy"><span class="nav-icon">石</span>灵石兑换</div>
           </div>
         </div>
-
-        <div class="nav-section">
-          <div class="nav-section-title">制造</div>
-          <div class="nav-item" data-tab="forge">
-            <span class="nav-icon">炼</span>
-            <span>炼器</span>
-          </div>
-          <div class="nav-item" data-tab="alchemist">
-            <span class="nav-icon">药</span>
-            <span>炼丹</span>
-          </div>
-          <div class="nav-item" data-tab="gathering">
-            <span class="nav-icon">采</span>
-            <span>采集</span>
-          </div>
-          <div class="nav-item" data-tab="cave">
-            <span class="nav-icon">洞</span>
-            <span>洞府</span>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">炼</span>炼制</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="forge"><span class="nav-icon">器</span>炼器</div>
+            <div class="nav-item" data-tab="alchemist"><span class="nav-icon">药</span>炼丹</div>
+            <div class="nav-item" data-tab="talismans"><span class="nav-icon">符</span>符箓</div>
+            <div class="nav-item" data-tab="formations"><span class="nav-icon">阵</span>阵法</div>
           </div>
         </div>
-
-        <div class="nav-section">
-          <div class="nav-section-title">社交</div>
-          <div class="nav-item" data-tab="guild">
-            <span class="nav-icon">宗</span>
-            <span>仙盟</span>
-          </div>
-          <div class="nav-item" data-tab="arena">
-            <span class="nav-icon">竞</span>
-            <span>竞技排行</span>
-          </div>
-          <div class="nav-item" data-tab="chat">
-            <span class="nav-icon">聊</span>
-            <span>聊天频道</span>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">门</span>宗门</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="sect"><span class="nav-icon">宗</span>我的宗门</div>
           </div>
         </div>
-
-        <div class="nav-section">
-          <div class="nav-section-title">其他</div>
-          <div class="nav-item" data-tab="shop">
-            <span class="nav-icon">市</span>
-            <span>仙市交易</span>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">盟</span>仙盟</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="guild"><span class="nav-icon">盟</span>仙盟事务</div>
           </div>
-          <div class="nav-item" data-tab="afk">
-            <span class="nav-icon">挂</span>
-            <span>挂机修炼</span>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">设</span>设置</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="settings"><span class="nav-icon">设</span>设置</div>
+            <div class="nav-item" data-tab="vip"><span class="nav-icon">V</span>VIP特权</div>
+            <div class="nav-item" data-tab="invite"><span class="nav-icon">邀</span>邀请好友</div>
+            <div class="nav-item" data-tab="quests"><span class="nav-icon">任</span>任务系统</div>
+            <div class="nav-item" data-tab="achievement"><span class="nav-icon">成</span>成就系统</div>
+            <div class="nav-item" data-tab="admin" id="nav-admin" style="display:none;"><span class="nav-icon">管</span>管理面板</div>
           </div>
-          <div class="nav-item" data-tab="season">
-            <span class="nav-icon">赛</span>
-            <span>赛季竞技</span>
+        </div>
+        <div class="nav-group open">
+          <div class="nav-group-title"><span class="nav-icon">身</span>角色</div>
+          <div class="nav-items">
+            <div class="nav-item active" data-tab="character"><span class="nav-icon">身</span>角色总览</div>
+            <div class="nav-item" data-tab="cultivation"><span class="nav-icon">修</span>闭关修炼</div>
+            <div class="nav-item" data-tab="chronicle"><span class="nav-icon">记</span>剧情记年</div>
           </div>
-          <div class="nav-item" data-tab="vip">
-            <span class="nav-icon">V</span>
-            <span>VIP特权</span>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">洞</span>洞府</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="cave"><span class="nav-icon">洞</span>洞府</div>
+            <div class="nav-item" data-tab="pet"><span class="nav-icon">宠</span>灵宠</div>
           </div>
-          <div class="nav-item" data-tab="achievement">
-            <span class="nav-icon">成</span>
-            <span>成就系统</span>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">技</span>技能</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="skill"><span class="nav-icon">技</span>技能心法</div>
           </div>
-          <div class="nav-item" data-tab="settings">
-            <span class="nav-icon">设</span>
-            <span>设置</span>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">功</span>功法</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="gongfa"><span class="nav-icon">功</span>功法修炼</div>
           </div>
-          <div class="nav-item" data-tab="invite">
-            <span class="nav-icon">邀</span>
-            <span>邀请好友</span>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">囊</span>背包</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="weapons"><span class="nav-icon">器</span>法器</div>
+            <div class="nav-item" data-tab="pills"><span class="nav-icon">丹</span>丹药</div>
           </div>
-          <div class="nav-item" data-tab="quests">
-            <span class="nav-icon">任</span>
-            <span>任务系统</span>
-          </div>
-          <div class="nav-item" data-tab="chronicle">
-            <span class="nav-icon">记</span>
-            <span>剧情记年</span>
-          </div>
-          <div class="nav-item" data-tab="admin" id="nav-admin" style="display:none;">
-            <span class="nav-icon">管</span>
-            <span>管理面板</span>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-title"><span class="nav-icon">斗</span>战斗</div>
+          <div class="nav-items">
+            <div class="nav-item" data-tab="arena"><span class="nav-icon">竞</span>擂台竞技</div>
+            <div class="nav-item" data-tab="season"><span class="nav-icon">赛</span>赛季排行</div>
+            <div class="nav-item" data-tab="chat"><span class="nav-icon">聊</span>聊天频道</div>
           </div>
         </div>
       </nav>

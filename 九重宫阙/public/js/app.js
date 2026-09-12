@@ -86,6 +86,11 @@ async function init() {
     item.onclick = () => switchTab(item.dataset.tab);
   });
 
+  // 阶段10：12 主导航分组折叠
+  document.querySelectorAll('.nav-group-title').forEach(title => {
+    title.onclick = () => title.closest('.nav-group').classList.toggle('open');
+  });
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.onclick = () => switchTab(btn.dataset.tab);
   });
@@ -182,6 +187,9 @@ async function loadTabContent(tab) {
       case 'formations': await loadFormationsTab(); break;
       case 'quests': await loadQuestsTab(); break;
       case 'chronicle': await loadChronicleTab(); break;
+      case 'market': await loadMarketTab(); break;
+      case 'economy': await loadEconomyTab(); break;
+      case 'sect': await loadSectTab(); break;
       case 'forge': await loadForgeTab(); break;
       case 'alchemist': await loadAlchemistTab(); break;
       case 'gathering': await loadGatheringTab(); break;
@@ -2868,6 +2876,128 @@ async function enhanceBiography(btn) {
   } finally {
     btn.disabled = false;
   }
+}
+
+// 阶段10：拍卖行页（阶段6 后端）
+async function loadMarketTab() {
+  const content = document.getElementById('tab-content');
+  content.innerHTML = `
+    <div class="char-panel">
+      <div class="char-panel-header"><div class="char-panel-title">拍卖行</div></div>
+      <div id="market-listings">加载中…</div>
+      <div style="margin-top:14px;font-size:12px;font-weight:600;">我的挂单</div>
+      <div id="market-my">加载中…</div>
+    </div>`;
+  await refreshMarket();
+}
+
+async function refreshMarket() {
+  try {
+    const [list, my] = await Promise.all([api.getMarketListings(), api.getMarketMy()]);
+    const rows = (list.listings || []).map(l => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;background:var(--bg2);">
+        <div>
+          <div style="font-size:12px;font-weight:600;">${l.item ? l.item.name : '未知物品'} ×${l.quantity} <span style="color:#c9a227;font-size:10px;">${l.item ? l.item.quality : ''}</span></div>
+          <div style="font-size:11px;color:var(--text2);">单价 ${l.unitNow}（挂 ${l.priceEach} × 供需 ${l.marketRate}） · 卖家 ${l.seller}</div>
+        </div>
+        <button class="btn small" onclick="marketBuy(${l.id})">购买</button>
+      </div>`).join('');
+    document.getElementById('market-listings').innerHTML = rows || '<div style="font-size:12px;color:var(--text2);">暂无在售挂单</div>';
+    const mine = (my.listings || []).map(l => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid var(--border);font-size:11px;">
+        <span>${l.item} ×${l.quantity} @${l.priceEach} <span style="color:var(--text2);">[${l.status}]</span></span>
+        ${l.status === 'open' ? `<button class="btn small danger" onclick="marketCancel(${l.id})">下架</button>` : ''}
+      </div>`).join('');
+    document.getElementById('market-my').innerHTML = mine || '<div style="font-size:12px;color:var(--text2);">暂无挂单</div>';
+  } catch (e) {
+    document.getElementById('market-listings').innerHTML = `<div style="color:#e74c3c;font-size:12px;">${e.message}</div>`;
+  }
+}
+
+async function marketBuy(id) {
+  try { await api.marketBuy(id); ui.toast ? ui.toast('购买成功') : null; } catch (e) { alert(e.message); }
+  await refreshMarket();
+}
+
+async function marketCancel(id) {
+  try { await api.marketCancel(id); } catch (e) { alert(e.message); }
+  await refreshMarket();
+}
+
+// 阶段10：灵石兑换页（四级灵石 + 2% 手续费）
+async function loadEconomyTab() {
+  const content = document.getElementById('tab-content');
+  content.innerHTML = `
+    <div class="char-panel">
+      <div class="char-panel-header"><div class="char-panel-title">灵石钱包</div></div>
+      <div id="wallet-box">加载中…</div>
+      <div style="margin-top:14px;font-size:12px;font-weight:600;">双向兑换（2% 手续费）</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;">
+        <select id="ex-from" class="input-field" style="width:auto;"><option value="lower">下品</option><option value="middle">中品</option><option value="upper">上品</option><option value="extreme">极品</option></select>
+        <span>→</span>
+        <select id="ex-to" class="input-field" style="width:auto;"><option value="middle" selected>中品</option><option value="lower">下品</option><option value="upper">上品</option><option value="extreme">极品</option></select>
+        <input id="ex-amount" class="input-field" type="number" min="1" placeholder="数量" style="width:90px;">
+        <button class="btn small" onclick="doExchange()">兑换</button>
+      </div>
+      <div id="ex-msg" style="font-size:11px;color:var(--text2);margin-top:6px;"></div>
+    </div>`;
+  await refreshWallet();
+}
+
+async function refreshWallet() {
+  try {
+    const w = await api.getWallet();
+    document.getElementById('wallet-box').innerHTML = `
+      <div style="font-size:20px;font-weight:700;color:#c9a227;">${w.display} <span style="font-size:11px;color:var(--text2);">下品基准（精确 ${w.base}）</span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--text2);">
+        ${Object.values(w.tiers).map(t => `<span>${t.name} ×${t.count}</span>`).join('')}
+        <span>点券 ${w.jade}</span>
+      </div>`;
+  } catch (e) {
+    document.getElementById('wallet-box').innerHTML = `<div style="color:#e74c3c;font-size:12px;">${e.message}</div>`;
+  }
+}
+
+async function doExchange() {
+  const msg = document.getElementById('ex-msg');
+  try {
+    const r = await api.exchange(document.getElementById('ex-from').value, document.getElementById('ex-to').value, Number(document.getElementById('ex-amount').value));
+    msg.textContent = `成功：费 ${r.fee.display}，得 ${r.received.display}，余额 ${r.balanceDisplay}`;
+    await refreshWallet();
+  } catch (e) {
+    msg.textContent = e.message;
+  }
+}
+
+// 阶段10：宗门页（阶段4 后端）
+async function loadSectTab() {
+  const content = document.getElementById('tab-content');
+  content.innerHTML = `
+    <div class="char-panel">
+      <div class="char-panel-header"><div class="char-panel-title">宗门</div></div>
+      <div id="sect-box">加载中…</div>
+    </div>`;
+  try {
+    const [my, list] = await Promise.all([api.getSectMy().catch(() => null), api.getSectList()]);
+    const sects = (list.sects || list || []).map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;background:var(--bg2);">
+        <div>
+          <div style="font-size:12px;font-weight:600;">${s.name} <span style="color:#c9a227;font-size:10px;">${s.gongfa_focus || ''}</span></div>
+          <div style="font-size:11px;color:var(--text2);">弟子 ${s.member_count ?? '—'} · 上限 ${s.member_cap ?? '—'}</div>
+        </div>
+        <button class="btn small" onclick="sectJoin(${s.id})">拜入</button>
+      </div>`).join('');
+    document.getElementById('sect-box').innerHTML = (my && my.sect)
+      ? `<div style="font-size:13px;font-weight:600;margin-bottom:6px;">当前宗门：${my.sect.name}</div>
+         <div style="font-size:12px;color:var(--text2);">贡献 ${my.contribution || 0} · 职位 ${my.post || '外门弟子'}</div>`
+      : `${sects || '<div style="font-size:12px;color:var(--text2);">暂无宗门</div>'}`;
+  } catch (e) {
+    document.getElementById('sect-box').innerHTML = `<div style="color:#e74c3c;font-size:12px;">${e.message}</div>`;
+  }
+}
+
+async function sectJoin(key) {
+  try { await api.sectJoin(key); ui.toast ? ui.toast('拜入成功') : null; await loadSectTab(); } catch (e) { alert(e.message); }
 }
 
 async function loadQuestsTab() {

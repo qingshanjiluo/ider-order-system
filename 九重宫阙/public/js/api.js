@@ -672,6 +672,35 @@ const api = {
     return this.request('POST', '/chronicle/biography/enhance', {});
   },
 
+  // 阶段10：拍卖行 / 灵石 / 宗门
+  async getMarketListings() {
+    return this.request('GET', '/market/listings');
+  },
+  async getMarketMy() {
+    return this.request('GET', '/market/my');
+  },
+  async marketBuy(listingId) {
+    return this.request('POST', '/market/buy', { listingId });
+  },
+  async marketCancel(listingId) {
+    return this.request('POST', '/market/cancel', { listingId });
+  },
+  async getWallet() {
+    return this.request('GET', '/economy/wallet');
+  },
+  async exchange(fromTier, toTier, amount) {
+    return this.request('POST', '/economy/exchange', { fromTier, toTier, amount });
+  },
+  async getSectList() {
+    return this.request('GET', '/sect/list');
+  },
+  async getSectMy() {
+    return this.request('GET', '/sect/my');
+  },
+  async sectJoin(sectId) {
+    return this.request('POST', '/sect/join', { sectId });
+  },
+
   // Announcements
   async getAnnouncements() {
     return this.request('GET', '/announcements');

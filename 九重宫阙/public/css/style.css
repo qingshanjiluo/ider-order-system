@@ -1051,3 +1051,16 @@ select.input-field {
   background: var(--red);
   color: #fff;
 }
+
+/* 阶段10：12 主导航分组折叠 */
+.nav-group { margin-bottom: 2px; }
+.nav-group-title {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; user-select: none; color: var(--text);
+  border-radius: var(--radius);
+}
+.nav-group-title:hover { background: var(--bg2); }
+.nav-group .nav-items { display: none; }
+.nav-group.open .nav-items { display: block; }
+.nav-group .nav-item { padding-left: 26px; }

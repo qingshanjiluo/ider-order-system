@@ -9,6 +9,13 @@ const GONGFA_TYPES = {
   'combat': { name: '战斗功法', maxSlots: 6 }
 };
 
+// gongfa.type 的规范词表（轮60）：读取方说的是中文 —— services/cultivation.js 过滤 '修炼'、
+// battle/skill.js 与 combat.js 过滤 '战斗'；而本路由历史上把 API 键 cultivation/combat 直接落库，
+// 于是"坊市买功法 → 装备"写出来的行**永远进不了任何结算**（G1 的直连断言抓到：ctx.gongfas 为空）。
+// 规则：写库处一律经 canonType() 归一，读取方保持中文不动；API 契约里的 type 键不变（前端无需改）。
+const TYPE_CANON = { cultivation: '修炼', combat: '战斗', '修炼': '修炼', '战斗': '战斗' };
+function canonType(t) { return TYPE_CANON[t] || null; }
+
 router.get('/', auth, (req, res) => {
   try {
     const db = loadDatabase();
@@ -38,7 +45,8 @@ router.get('/slots', auth, (req, res) => {
     const slots = {};
     for (const [typeId, typeInfo] of Object.entries(GONGFA_TYPES)) {
       const equipped = db.gongfa.filter(
-        g => g.character_id === character.id && g.type === typeId
+        // 两侧都归一：typeId 是 API 键（cultivation/combat），g.type 落库是中文规范词
+        g => g.character_id === character.id && canonType(g.type) === canonType(typeId)
       );
       slots[typeId] = {
         name: typeInfo.name,
@@ -81,9 +89,11 @@ router.post('/equip', auth, (req, res) => {
     if (!typeConfig) {
       return res.status(400).json({ error: '无效的功法类型' });
     }
+    // 落库用规范词；计数时两种词表都认（历史数据/宗门路径写的都是中文，避免归一后反而漏计）
+    const dbType = canonType(gongfaType);
 
     const currentEquipped = db.gongfa.filter(
-      g => g.character_id === character.id && g.type === gongfaType
+      g => g.character_id === character.id && canonType(g.type) === dbType
     );
     if (currentEquipped.length >= typeConfig.maxSlots) {
       return res.status(400).json({ error: `${typeConfig.name}已达上限` });
@@ -93,7 +103,7 @@ router.post('/equip', auth, (req, res) => {
     db.gongfa.push({
       id: gongfaId,
       character_id: character.id,
-      type: gongfaType,
+      type: dbType,
       item_id: itemId,
       level: 1,
       exp: 0

@@ -119,6 +119,28 @@ const t = async (name, fn) => {
     assert.ok(g.body[0].item && g.body[0].item.name, '实例行没带上功法定义（前端面板会是空的）');
     store.equippedId = Number(g.body[0].id);
   });
+  await t('装上修炼功法后，九乘区的功法乘区真的从 1.0 抬起（轮60 直连断言：证明实例行不是躺着好看，会进结算）', () => {
+    const svc = require('../src/services/cultivation');
+    const model = require('../src/services/cultivation-model');
+    const db = loadDatabase();
+    const ch = db.characters.find((c) => Number(c.id) === store.charId);
+    const detail = svc.getCultivationDetail(ch);
+    const withG = Number(detail.parts && detail.parts.gongfa);
+    const ctx = svc.buildContext(ch, db);
+    const bare = model.expPerSecond(Object.assign({}, ctx, { gongfas: [] }));
+    assert.ok(ctx.gongfas.length >= 1, 'ctx 里一个功法都没有，说明 db.gongfa 实例行没被 buildContext 吃到');
+    const cs = Number(JSON.parse((db.items.find((i) => Number(i.id) === Number(store.buy.itemId)) || {}).stats || '{}').cultivation_speed);
+    assert.ok(Number(ctx.gongfas[0].cultivationSpeed) === cs,
+      `ctx 的 cultivationSpeed=${ctx.gongfas[0].cultivationSpeed} 与 items 定义 ${cs} 不一致（cultivation.js 的换算断了）`);
+    assert.ok(Number.isFinite(withG) && withG > 1, `功法乘区没抬起（装完仍是 ${withG}）：实例行存在但模型没吃到`);
+    assert.ok(Math.abs(Number(bare.parts.gongfa) - 1) < 1e-9, `空手基准不是 1.0 而是 ${bare.parts.gongfa}（本断言的因果对照失效）`);
+    if (!detail.capped && !bare.capped) {
+      assert.ok(Number(detail.rate) > Number(bare.rate), `总速率未因功法上升：${detail.rate} vs ${bare.rate}`);
+    } else {
+      console.log(`  · 一侧撞上总闸（capped=${!!detail.capped}/${!!bare.capped}），只比乘区不比总速率`);
+    }
+  });
+
 
   await t('槽位上限真实生效（/gongfa/slots 报 n/max，修炼槽 3 格不可突破）', async () => {
     const db = loadDatabase();

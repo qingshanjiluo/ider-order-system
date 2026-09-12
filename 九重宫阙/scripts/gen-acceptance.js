@@ -171,7 +171,45 @@ const SKILL_DEFS = (() => {
 console.log('  技能定义（字面量 + buildSkills 实测）= ' + SKILL_DEFS + (SKILL_DEFS_ERR ? '　⚠ ' + SKILL_DEFS_ERR : ''));
 
 
-// ============================ E1→E10 状态推导 ============================
+// ---- 轮60：谎报成功的端点审计（启发式扫描 + 只许降不许升的棘轮）----
+// 判据：写操作 handler 里出现 success:true，却找不到任何"真的动了数据"的标记（写库/入集合/扣加值/委托 service）。
+// 第一例是 POST /api/battle/skills/learn：只回"功法已领悟"，从不写库 —— 已删除。
+const NOOP_ENDPOINTS = (() => {
+  const fs2 = require('fs'), p2 = require('path');
+  const dir = p2.join(ROOT, 'src', 'routes');
+  const out = [];
+  let names = [];
+  try { names = fs2.readdirSync(dir).filter((f) => f.endsWith('.js')); } catch (e) { return ['<无法列目录：' + e.message + '>']; }
+  for (const f of names) {
+    let src = '';
+    try { src = rd('src/routes/' + f); } catch (e) { continue; }
+    src = src.replace(/^\s*\/\/.*$/gm, '');
+    const destructuredNames = new Set();
+    for (const mm of src.matchAll(/const\s*\{([^}]+)\}\s*=\s*require/g)) {
+      for (const raw of mm[1].split(',')) { const nm = (raw.split(':').pop() || '').trim(); if (/^[A-Za-z_$][\w$]*$/.test(nm)) destructuredNames.add(nm); }
+    }
+    const re = /router\.(post|put|patch)\(\s*'([^']+)'[\s\S]*?\n\}\);/g;
+    let m;
+    while ((m = re.exec(src))) {
+      const h = m[0];
+      if (!/success:\s*true/.test(h)) continue;
+      if (/saveDatabase|\.push\(|\.splice\(|\.findIndex\(|-=|\+=|Service\.|updateQuestProgress|setPassword|\.save\(/.test(h)) continue;
+      // 调用了本文件解构进来的函数（如 admin 的 broadcastSystem(...)）= 副作用是真的，不算谎报
+      let delegated = false;
+      for (const nm of destructuredNames) { if (new RegExp('\\b' + nm + '\\s*\\(').test(h)) { delegated = true; break; } }
+      if (delegated) continue;
+      out.push(f.replace(/\.js$/, '') + ' ' + m[1].toUpperCase() + ' ' + m[2]);
+    }
+  }
+  return out;
+})();
+const NOOP_BASELINE = 0;   // 轮60 实测：删掉 /skills/learn 后为 0；此后只许降不许升
+// 轮60 真 bug 的静态锁：功法 type 必须在写库处归一（API 键 cultivation/combat vs 读取方的中文 '修炼'/'战斗'）
+const GONGFA_ROUTE_SRC = exists('src/routes/gongfa.js') ? rd('src/routes/gongfa.js') : '';
+const GONGFA_CANON_OK = /TYPE_CANON/.test(GONGFA_ROUTE_SRC) && /canonType\(gongfaType\)/.test(GONGFA_ROUTE_SRC) && /type:\s*dbType/.test(GONGFA_ROUTE_SRC) && !/type:\s*gongfaType,/.test(GONGFA_ROUTE_SRC);
+console.log('  谎报成功端点候选 = ' + NOOP_ENDPOINTS.length + '（基线 ' + NOOP_BASELINE + '）' + (NOOP_ENDPOINTS.length ? ' → ' + NOOP_ENDPOINTS.slice(0, 6).join('、') : '') + '　功法 type 归一锁=' + GONGFA_CANON_OK);
+
+// ============================ E1→E11 状态推导 ============================
 const rows = [];
 const R = (id, name, level, evidence, gaps) => rows.push({ id, name, level, evidence, gaps });
 const LOK = { done: '✅', most: '🟡', part: '🟡', bad: '🔴' };
@@ -202,7 +240,7 @@ R('E5', '大限劫/延寿/丹毒/燃寿', LOK.done,
   `延寿通道尚有 3 条挂账（延寿丹四档 items 里带 longevity_ratio 的 = ${DB.pillsWithLongevity} 件／宗门赏赐无兑换口／长生功无年度消费）；丹毒四档与燃寿端点按 R5/R6 决策未列入上线阻塞`);
 R('E6', '数据深化', LOK.done,
   `行数实测（存档副本只读）：材料 ${DB.materials}（目标 86）· 地图 ${DB.maps}（32）· 图纸 ${DB.blueprints}（40）· 副本 ${DB.dungeons}（50）· items 总 ${DB.items}· 功法类 items ${DB.gongfaDef}（目标 130）；` +
-  `技能定义在代码侧共 ${SKILL_DEFS} 条（db.skills 集合 0 行是设计如此 —— 轮59 之前清单写的"技能定义 0（320）"就是读错源造出的自相矛盾）；台账往返 verify:rebuild 🟢`,
+  `技能定义在代码侧共 ${SKILL_DEFS} 条（db.skills 集合 0 行是设计如此 —— 轮59 之前那条把代码侧定义读成空集合的自相矛盾说法）；台账往返 verify:rebuild 🟢`,
   `SKILL_DEFS 与章程目标 320 的差额本轮只报实测、不下结论；其余挂账（items 重名、legacy skills 条数）以《开发日志》为准，本轮未复核就不复述`);
 R('E7', '交付物', LOK.most,
   'Dockerfile + compose（name 显式，config -q 通过）、PM2 fork/instances=1、备份→校验→破坏性恢复演练（删表→0 行→还原）、CI（测试+audit+容器冒烟轮询 health）',
@@ -221,6 +259,13 @@ R('E10', '前端闭环', LOK.most,
   `静态：后端 ${COV && COV.total != null ? COV.total : '未取到'} 端点 / 玩家可点 ${COV && COV.clickable != null ? COV.clickable : '未取到'} / 幽灵 ${COV && COV.ghost != null ? COV.ghost : '未取到'}（第 21 套之外由 coverage:api 出表）；动态：S3 把 31 个页签在无浏览器环境下真跑一遍（不抛异常、非空白、无 undefined 泄漏、onclick 有定义、进度条分母>0），当场修掉五处真缺陷；突破来源/槽位 n÷8/保底进度/423+429 语义/背包延寿按钮均已可见`,
   '**未做真浏览器（Playwright 级）交互与视觉验证** —— "注册→修炼→突破→应劫→转世"一次纯点 UI 闭环至今没有实测记录；蛇形/驼峰契约未归一；public/js/character.js 与 game.js 两个孤档待删');
 
+R('E11', '谎报成功的端点（轮60 新增审计）', (NOOP_ENDPOINTS.length === 0 && GONGFA_CANON_OK) ? LOK.done : (NOOP_ENDPOINTS.length > NOOP_BASELINE ? LOK.bad : LOK.most),
+  `扫描 src/routes/*.js 的写操作 handler：出现 success:true 却找不到任何"真动了数据"的标记（写库 / 入集合 / 扣加值 / 委托 service / 调用本文件解构进来的函数如 broadcastSystem）即列嫌疑。` +
+  `本轮实测候选 ${NOOP_ENDPOINTS.length} 个（基线 ${NOOP_BASELINE}，只许降不许升）；首已删：POST /api/battle/skills/learn（只回"功法已领悟"从不写库）。` +
+  `功法 type 词表归一静态锁：${GONGFA_CANON_OK ? '在位（写库处 canonType 归一，读取方保持中文）' : '**已失效：有人把归一改回去了**'}`,
+  (NOOP_ENDPOINTS.length ? '待逐个判定（启发式难免误报）：' + NOOP_ENDPOINTS.slice(0, 6).join('、') : '0 候选不等于端点都诚实 —— 扫描是启发式，仍需抽 10 个看响应与副作用是否一致') +
+  `；轮60 顺带修掉的隐形 bug：/gongfa/equip 曾把 API 键 cultivation/combat 直接落库，而读取方过滤中文词 ⇒ 坊市买的功法装上后在九乘区与战斗里都不生效（G1 直连断言抓到并已锁）`);
+
 // ============================ 结论 ============================
 const blockers = gate.filter((g) => !g.ok).map((g) => g.name);
 const envBlockers = blockers.filter((b) => /docker|容器|独立部署|人工/.test(b));
@@ -236,7 +281,7 @@ out.push('> 取不到的数据一律写「未取到」，不拿历史叙述当�
 out.push('');
 out.push(`## 结论：**${GO ? 'GO' : 'NO-GO'}**`);
 out.push('');
-out.push(GO ? '七项门控全绿 + E1→E10 无红项 ⇒ 允许发布。'
+out.push(GO ? '七项门控全绿 + E1→E11 无红项 ⇒ 允许发布。'
   : `仍有 ${blockers.length} 项门控未过：${blockers.map((b) => '「' + b + '」').join('、')}。`);
 if (softBlockers.length) out.push('', `**机器可解的阻塞（${softBlockers.length} 项）**：${softBlockers.join('；')} —— 这些是还能自己写的代码。`);
 if (envBlockers.length) out.push('', `**环境/人工门（${envBlockers.length} 项）**：${envBlockers.join('；')} —— 机器判不了或本机条件不具备，按章程必须由人签核，**不用自评把它们划掉**。`);
@@ -256,7 +301,7 @@ out.push(`- 本轮实测：追赶校验 ${BAL ? BAL.passed + ' 通过 / ' + BAL.
   `R11 渡劫 ${RB.passed != null ? RB.passed + ' 条' : '未取到'}（寿尽 ${RB.pct == null ? '?' : RB.pct + '%'}、卡死 ${RB.stuck == null ? '?' : RB.stuck + '%'}，线 <5%）；战斗 ${SB.passed != null ? SB.passed + ' 条' : '未取到'}；全表引用 ${REFS.ok ? '通过' : '判红'}。`);
 out.push('- 数值表：`数值追赶校验.md`、`经济守恒表.md`、`零实例表可达性审计.md`、`前端可见性与覆盖率测量.md`（前两张尾部带 DSH-HEADLINE 机器块，本清单只引用机器块，不引用正文）。');
 out.push('');
-out.push('## E1→E10 逐项状态（由实测推导）');
+out.push('## E1→E11 逐项状态（由实测推导）');
 out.push('');
 out.push('| 项 | 状态 | 已交付且有证据 | 缺口 |');
 out.push('|---|---|---|---|');

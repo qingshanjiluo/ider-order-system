@@ -118,6 +118,9 @@ const api = {
   async removeFriend(friendId) { return this.request('POST', '/friend/remove', { friendId }); },
   async visitFriendCave(hostId) { return this.request('POST', '/friend/visit', { hostId }); },
 
+  // —— P3（轮50）突破面板：概率构成 / 契机丹 / 失败折寿预告 / 掉落保底，一次取全 ——
+  async getBreakthroughPanel() { return this.request('GET', '/cultivation/can-breakthrough'); },
+
   // —— P2 市场 7 日成交价与指导价 ——
   async getMarketPrices(item) { return this.request('GET', item ? `/market/prices?item=${encodeURIComponent(item)}` : '/market/prices'); },
 

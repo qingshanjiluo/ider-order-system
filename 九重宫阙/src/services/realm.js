@@ -193,6 +193,63 @@ class RealmService {
   }
 
   /**
+   * 失败代价预览（P3 · 轮50）。**这不是第二套寿元判定** —— 下面的 handleBreakthroughFailure
+   * 改成调用本函数取数，所以"面板上预告的折寿"与"真失败时扣的寿元"必然一致；
+   * 谁将来改了预览忘了改结算，G1 的行为断言会直接把两边对不上抓出来。
+   * @param {object} character 角色（用其当前 breakthrough_failures）
+   * @param {number} [failureNumberOverride] 已知的"这是第几次失败"（结算路径里已自增过）
+   */
+  previewBreakthroughFailureCost(character, failureNumberOverride) {
+    const B = require('../config/balance');
+    const cap = gameTime.effectiveLifespan(character) || 0;
+    const C = B.BREAKTHROUGH_LIFE_COST;
+    const failures = Number.isFinite(failureNumberOverride)
+      ? failureNumberOverride
+      : (character.breakthrough_failures || 0) + 1;
+    const ratio = Math.min(C.max, C.base + C.perFail * (failures - 1));
+    return {
+      failureNumber: failures,
+      cap,
+      ratio: Number(ratio.toFixed(4)),
+      years: B.yearsOfRatio(cap, ratio),
+      expFallbackRatio: B.BREAKTHROUGH_FAIL.expFallbackRatio,
+      innerDemonAfter: (character.inner_demon || 0) + 1,
+      failuresAfter: failures
+    };
+  }
+
+  /**
+   * 突破面板数据包（P3：前端只显示后端真说清楚的东西，不自己猜）。
+   * chance/parts 来自 breakthroughProbability（与结算同一个函数），mods 是"这次判定实际吃到哪些加成"，
+   * pill 是契机丹持有数（判定时一次性消耗），failurePreview 与失败结算同源。
+   */
+  breakthroughPanel(character) {
+    const B = require('../config/balance');
+    const can = this.canBreakthrough(character);
+    const prob = this.breakthroughProbability(character);
+    const pillRow = this._findPillRow(character.id);
+    return {
+      canBreakthrough: can,
+      chance: can ? prob.chance : 0,
+      parts: prob.parts,
+      mods: this.resolveBreakthroughMods(character),
+      pill: {
+        held: pillRow ? Math.max(0, Number(pillRow.quantity) || 0) : 0,
+        names: B.BREAKTHROUGH_PILL_NAMES || [],
+        bonusEach: (B.BREAKTHROUGH_MODS || {}).pill || 0,
+        oneShot: true
+      },
+      failurePreview: this.previewBreakthroughFailureCost(character),
+      counters: {
+        breakthrough_failures: character.breakthrough_failures || 0,
+        inner_demon: character.inner_demon || 0,
+        loot_dry_streak: character.loot_dry_streak || 0,
+        loot_pity_threshold: ((B.LOOT_PITY || {}).dryStreakToGuarantee) || null
+      }
+    };
+  }
+
+  /**
    * 失败结算（R1 比例折寿 / R6 不降境界 / 心魔 +1 / 修为回落 10%）。
    * 只处理带 _pending_breakthrough_failure 标记的判定失败：闸门未过一律不罚。
    */
@@ -208,10 +265,11 @@ class RealmService {
     character.breakthrough_failures = failures;
     character.inner_demon = (character.inner_demon || 0) + 1;
 
-    const cap = gameTime.effectiveLifespan(character) || 0;
-    const C = B.BREAKTHROUGH_LIFE_COST;
-    const ratio = Math.min(C.max, C.base + C.perFail * (failures - 1));
-    const lost = B.yearsOfRatio(cap, ratio);
+    // 数值取自 previewBreakthroughFailureCost —— 与突破面板的"失败折寿预告"是同一份实现
+    const preview = this.previewBreakthroughFailureCost(character, failures);
+    const cap = preview.cap;
+    const ratio = preview.ratio;
+    const lost = preview.years;
     gameTime.subtractLifespan(character, lost);
 
     const before = character.exp || 0;

@@ -62,9 +62,9 @@ router.get('/can-breakthrough', auth, (req, res) => {
     if (!character) {
       return res.status(404).json({ error: '角色不存在' });
     }
-    const canBreak = realmService.canBreakthrough(character);
-    const prob = realmService.breakthroughProbability(character);
-    res.json({ canBreakthrough: canBreak, chance: canBreak ? prob.chance : 0, parts: prob.parts });
+    // P3（轮50）：从"只回 chance/parts"升级为整份面板 —— 前端要显示 概率构成、契机丹持有与一次性消耗、
+    // 失败折寿预告（与结算同源）、以及掉落保底进度，全部由服务端一处算好，界面不再自己猜。
+    res.json(realmService.breakthroughPanel(character));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

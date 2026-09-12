@@ -239,6 +239,14 @@ async function loadCharacterTab() {
           <div class="bar-label"><span>修为</span><span id="exp-text">${char.exp || 0}/${char.expToNext || 100}</span></div>
           <div class="bar-track"><div class="bar-fill exp-fill" id="exp-bar" style="width:${((char.exp || 0) / (char.expToNext || 100)) * 100}%"></div></div>
         </div>
+        <div class="bar-group">
+          <div class="bar-label">
+            <span>掉落保底</span>
+            <span id="pity-text">${(char.lootPity || {}).dryStreak || 0}/${(char.lootPity || {}).threshold || '?'}${(char.lootPity || {}).nextIsGuaranteed ? ' · 下次必出' : ''}</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="pity-bar" style="width:${Math.min(100, ((char.lootPity || {}).dryStreak || 0) / Math.max(1, (char.lootPity || {}).threshold || 1) * 100)}%;background:var(--gold);"></div></div>
+          <div style="font-size:10px;color:var(--text2);margin-top:2px;">连续 ${(char.lootPity || {}).dryStreak || 0} 场空手；满 ${(char.lootPity || {}).threshold || '?'} 场下一场必定掉落。</div>
+        </div>
       </div>
 
       <div class="char-panel">
@@ -309,11 +317,53 @@ async function loadCharacterTab() {
   }
 }
 
+// P3（轮50）：突破概率构成与失败代价。数据全部来自服务端同一份实现
+// （realm.breakthroughPanel → 与 breakthroughProbability / handleBreakthroughFailure 同源），
+// 界面不做任何二次计算，避免"显示 85% 实际按 70% 掷骰"这类漂移。
+const BT_PART_LABELS = {
+  base: '境界基础', innerDemon: '心魔侵蚀', failures: '连败累罚', heavenShield: '天道庇护',
+  pill: '契机丹', formation: '聚灵阵法', vein: '洞府灵脉', artPerfect: '功法大成',
+  epiphany: '顿悟', daoDamage: '道伤'
+};
+
+function btPartsRows(parts) {
+  if (!parts) return '<p style="font-size:11px;color:var(--text2);">尚未达到瓶颈，暂无突破判定。</p>';
+  return Object.keys(BT_PART_LABELS).map((k) => {
+    const v = Number(parts[k]) || 0;
+    if (v === 0) return '';
+    return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;">
+      <span style="color:var(--text2);">${BT_PART_LABELS[k]}</span>
+      <span style="color:${v > 0 ? 'var(--success, #4caf50)' : '#e57373'};">${v > 0 ? '+' : ''}${v}%</span></div>`;
+  }).join('') || '<div style="font-size:11px;color:var(--text2);">仅有境界基础值。</div>';
+}
+
 async function loadCultivationTab() {
   const content = document.getElementById('tab-content');
   try {
     const realm = await api.getRealm();
     const cultivation = await api.getCultivationStatus();
+    const bt = await api.getBreakthroughPanel();
+    const fp = bt.failurePreview || {};
+    const panel = `
+      <div class="char-panel" style="margin-top:16px;">
+        <div class="char-panel-title" style="font-size:13px;margin-bottom:8px;">突破判定（与服务端结算同源）</div>
+        <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">
+          ${bt.canBreakthrough
+            ? `本次冲关成功率 <b style="color:var(--gold);">${bt.chance}%</b>（判定区间 5%~95%）`
+            : '尚未满足突破条件（修为未满或瓶颈未破），以下为下次判定的预估'}
+        </div>
+        ${btPartsRows(bt.parts)}
+        <div style="font-size:11px;margin-top:8px;padding-top:6px;border-top:1px dashed var(--gold);">
+          契机丹持有 <b>${(bt.pill || {}).held || 0}</b> 枚
+          ${(bt.pill || {}).held > 0
+            ? `（判定 +${(bt.pill || {}).bonusEach}%，<span style="color:var(--text2);">无论成败只作用一次并消耗一枚</span>）`
+            : `（<span style="color:var(--text2);">坊市可购，持有即 +${(bt.pill || {}).bonusEach || 0}%</span>）`}
+        </div>
+        <div style="font-size:11px;color:#e57373;margin-top:6px;">
+          失败代价：折寿 <b>${fp.years || 0}</b> 年（当前寿元上限的 ${Math.round((fp.ratio || 0) * 100)}%）、
+          修为回落 ${Math.round((fp.expFallbackRatio || 0) * 100)}%、心魔升至 ${fp.innerDemonAfter || 1} 层。
+        </div>
+      </div>`;
 
     content.innerHTML = `
       <div class="char-panel">
@@ -337,9 +387,10 @@ async function loadCultivationTab() {
           <button class="btn" onclick="handleTrainOffline()" style="flex:1;min-width:120px;">离线修炼</button>
         </div>
       </div>
+      ${panel}
     `;
   } catch (error) {
-    content.innerHTML = '<div class="char-panel"><p>加载失败</p></div>';
+    content.innerHTML = `<div class="char-panel"><p>加载失败：${escText(api.errInfo(error).text)}</p></div>`;
   }
 }
 
@@ -357,7 +408,16 @@ async function handleCultivate() {
 }
 
 async function handleBreakthrough() {
-  ui.showConfirm('突破境界', '确定要尝试突破吗？突破失败会损失修为。', async () => {
+  // 以前这里固定写"失败会损失修为"，玩家不知道失败还要折寿 —— 现在把服务端同一份预览念出来
+  let detail = '确定要尝试突破吗？';
+  try {
+    const bt = await api.getBreakthroughPanel();
+    const fp = bt.failurePreview || {};
+    detail += `\n成功率 ${bt.chance}%（构成见修炼页）。`
+      + `\n失败：折寿 ${fp.years} 年（寿元上限的 ${Math.round((fp.ratio || 0) * 100)}%）、`
+      + `修为回落 ${Math.round((fp.expFallbackRatio || 0) * 100)}%、心魔升至 ${fp.innerDemonAfter} 层。`;
+  } catch (e) { detail += '突破失败会损失修为与寿元。'; }
+  ui.showConfirm('突破境界', detail, async () => {
     try {
       const result = await api.breakthrough();
       if (result.success) {
@@ -1567,7 +1627,15 @@ async function loadSkillSub(sub, btn) {
 
       container.innerHTML = `
         <div style="margin-bottom:12px;">
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px;">装备槽位 ${data.cdPenalty > 1 ? `<span style="color:#ff6b35;font-size:10px;">⚠ 冷却×${data.cdPenalty}</span>` : ''}</div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px;">装备槽位
+            <span style="color:${totalEquipped >= (data.maxSlots || 8) ? '#ff6b35' : 'var(--text2)'};font-size:11px;">
+              已用 ${totalEquipped}/${data.maxSlots || '?'}（境界决定上限，min(2+境界序号, 8)）${totalEquipped >= (data.maxSlots || 8) ? ' · 已满，需先卸下一个' : ''}
+            </span>
+            ${data.cdPenalty > 1 ? `<span style="color:#ff6b35;font-size:10px;">⚠ 冷却×${data.cdPenalty}</span>` : ''}
+          </div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">
+            低境界时下方 ${Object.values(SERVER_MAX).reduce((a, b) => a + b, 0)} 个分类槽位**装不满**：真正的限制是上面这条总槽位上限（服务端 ${data.maxSlots}）。
+          </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-bottom:12px;">
             ${['main','sub','ultimate'].map(slot => {
               const slotSkills = equipped.filter(s => s.equipped_slot === slot);

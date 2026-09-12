@@ -29,6 +29,12 @@ router.get('/', auth, (req, res) => {
     res.json({
       ...character,
       lifespan: gameTime.lifespanInfo(character),
+      // P3（轮50）：掉落保底进度显式给前端，阈值由 balance 单点决定，界面不得自己写死 5
+      lootPity: {
+        dryStreak: Math.max(0, Number(character.loot_dry_streak) || 0),
+        threshold: require('../config/balance').LOOT_PITY.dryStreakToGuarantee,
+        nextIsGuaranteed: (Number(character.loot_dry_streak) || 0) >= require('../config/balance').LOOT_PITY.dryStreakToGuarantee
+      },
       injury: { value: Math.round(character.injury || 0), status: character.injury_status || 'none', autoMeditating: injuryService.shouldAutoMeditate(character), recovered: Math.round(recovered) },
       timeAdvanced: { years: Number(settled.advancedYears.toFixed(4)) },
       reincarnated

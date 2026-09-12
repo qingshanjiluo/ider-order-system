@@ -13,20 +13,9 @@ router.get('/list', auth, (req, res) => {
 
     const skills = skillService.getSkills(character.id);
 
-    const level = character.level || 1;
-    const talent = (character.stats && character.stats.talent) || 10;
-    const baseSlots = 3;
-    const levelBonus = Math.floor(level / 10);
-    const talentBonus = Math.floor(talent / 15);
-    let gongfaBonus = 0;
-    const gongfas = db.gongfa.filter(g => g.character_id === character.id);
-    for (const gf of gongfas) {
-      const item = db.items.find(i => i.id === gf.item_id);
-      if (item) {
-        const stats = JSON.parse(item.stats || '{}');
-        gongfaBonus += stats.skill_slots || 0;
-      }
-    }
+    // 轮50 删除：baseSlots/levelBonus/talentBonus/gongfaBonus 这段旧分解（两处路由里各一份）
+    // 早已不参与 maxSlots 计算（真源只有下面的 balance.skillSlotCap），却仍随响应发给前端，
+    // 等于让界面有机会对玩家展示过期构成；两处局部变量在本文件内均无其它引用（已全量核对）。
     const maxSlots = B.skillSlotCap((B.REALM_ORDER || []).indexOf(character.realm));   // E3 章程口径：min(2+境界序号, 8)，等级/天赋/功法不再参与
     const equippedCount = skills.filter(s => s.equipped).length;
     const cdPenalty = equippedCount > 5 ? Math.pow(2, equippedCount - 5) : 1;
@@ -63,10 +52,6 @@ router.get('/list', auth, (req, res) => {
       slotLimits: { main: 3, sub: 3, ultimate: 1 },
       equippedCount,
       cdPenalty,
-      baseSlots,
-      levelBonus,
-      talentBonus,
-      gongfaBonus,
       equipmentSkills,
       rootPassives,
       petSkills
@@ -150,20 +135,9 @@ router.post('/equip', auth, (req, res) => {
     if (!playerSkillId || !slot) return res.status(400).json({ error: '缺少玩家技能ID或槽位' });
 
     const skills = skillService.getSkills(character.id);
-    const level = character.level || 1;
-    const talent = (character.stats && character.stats.talent) || 10;
-    const baseSlots = 3;
-    const levelBonus = Math.floor(level / 10);
-    const talentBonus = Math.floor(talent / 15);
-    let gongfaBonus = 0;
-    const gongfas = db.gongfa.filter(g => g.character_id === character.id);
-    for (const gf of gongfas) {
-      const item = db.items.find(i => i.id === gf.item_id);
-      if (item) {
-        const stats = JSON.parse(item.stats || '{}');
-        gongfaBonus += stats.skill_slots || 0;
-      }
-    }
+    // 轮50 删除：baseSlots/levelBonus/talentBonus/gongfaBonus 这段旧分解（两处路由里各一份）
+    // 早已不参与 maxSlots 计算（真源只有下面的 balance.skillSlotCap），却仍随响应发给前端，
+    // 等于让界面有机会对玩家展示过期构成；两处局部变量在本文件内均无其它引用（已全量核对）。
     const maxSlots = B.skillSlotCap((B.REALM_ORDER || []).indexOf(character.realm));   // E3 章程口径：min(2+境界序号, 8)，等级/天赋/功法不再参与
     const equippedCount = skills.filter(s => s.equipped).length;
     if (equippedCount >= maxSlots) {

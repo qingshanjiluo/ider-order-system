@@ -6,6 +6,7 @@ const damageCalculator = require('../services/battle/damage');
 const characterService = require('../services/character');
 const itemService = require('../services/item');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const opportunity = require('../services/opportunity'); // 轮69：副本通关写机缘（剑冢顿悟/建木之灵认可）
 
 function calculateRating(result) {
   if (!result.attackerMaxHp) return 3;
@@ -180,7 +181,9 @@ router.post('/enter', auth, async (req, res) => {
       attackerMaxHp: attacker.maxHp,
       attackerFinalHp: Math.max(0, attacker.hp)
     };
-    const combatService = require('../services/battle/combat');
+    // 轮69：这里原来有一句局部重复的 `const combatService = require(...)`，它在同一 try 块里
+    // 遮蔽了上方 :136/:140 的调用 ⇒ TDZ，/enter 一直 500（死端点，第 26 套之前没有任何测试打到它）。
+    // 顶部第 4 行的常量已覆盖全部使用点，删掉局部声明即修复 —— 由 ㉖ 的副本通关链第一次真测到。
     combatService.aftermath(character, battleResult);
     const rating = winner === 'attacker' ? calculateRating({
       attackerMaxHp: attacker.maxHp,
@@ -203,6 +206,10 @@ router.post('/enter', auth, async (req, res) => {
       rewards.grantedItems = grantDungeonItems(character, rewards.items, db);
       const { updateQuestProgress } = require('./quests');
       updateQuestProgress(character.id, 'dungeon', 1);
+      // 轮69：通关对应副本 ⇒ 写一条服务端机缘（ten_thousand_swords/jianmu_sky 的判据）。
+      // 必须在 winner === 'attacker' 分支内（败战不记）；saveDatabase 在下面负责落库。
+      const dungeonOpp = opportunity.opportunityFromDungeonClear(dungeon);
+      if (dungeonOpp) opportunity.record(character, dungeonOpp, { dungeon: dungeon.name, rating });
     }
     saveDatabase(db);
 

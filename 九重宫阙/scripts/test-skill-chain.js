@@ -415,6 +415,70 @@ let DISC_VALUE = 0;
     assert.strictEqual(OPP67.opportunityFromBattle({ winner: 'attacker', attackerMaxHp: 100, attackerFinalHp: 1 }), OPP67.KEYS.NEAR_DEATH_VICTORY, '1% 血量取胜应记为濒死');
     assert.strictEqual(OPP67.opportunityFromBattle({ winner: 'attacker', attackerMaxHp: 100, attackerFinalHp: 10 }), null, '10% 不该算 1% 以下');
   });
+  // ---- 轮69 · 副本通关机缘（㉖㉗ 行为，㉘ 静态断因，㉙ 单元）----
+  const dbD69 = dbApi.loadDatabase();
+  const charD69 = dbD69.characters.find((c) => String(c.id) === String(CHAR));
+  charD69.realm = '化神';   // 两门技能都要求化神期（learnSkill 只对要求侧去期，口径见 services/skill.js:151）
+  charD69.level = 70;       // /enter 有 min_level 门槛：剑冢深处 28、建木遗迹 58
+  charD69.stats = Object.assign({}, charD69.stats || {}, { strength: 99999, constitution: 99999 });   // getEntity 从 stats 派生面板（combat.js:243-245），直改 attack 无效
+  charD69.spirit_stone = Math.max(charD69.spirit_stone || 0, 400000);   // 50000+48000 的学习费
+  charD69.opportunities = [];   // 显式清空 ⇒ "其余门槛全过、只差机缘"，负向断言才真敏感（轮67 同法）
+  dbD69.player_skills.push(
+    { id: 960001, character_id: Number(CHAR), skill_id: 'voltage_surge', level: 1, exp: 0, equipped_slot: null },
+    { id: 960002, character_id: Number(CHAR), skill_id: 'gengmetal_sky_rend', level: 1, exp: 0, equipped_slot: null },
+    { id: 960003, character_id: Number(CHAR), skill_id: 'wind_walk', level: 1, exp: 0, equipped_slot: null },
+    { id: 960004, character_id: Number(CHAR), skill_id: 'greenwood_bind', level: 1, exp: 0, equipped_slot: null }
+  );
+  dbApi.saveDatabase(dbD69);
+  const swordTomb = dbD69.dungeons.find((d) => d.name === '剑冢深处');   // 键在名字：数字 id 种子时生成，跨环境不稳定
+  const jianmuRuins = dbD69.dungeons.find((d) => d.name === '建木遗迹');
+  // 跨进程事实（轮69 实测教训）：store.js 的 loadDatabase 返回常驻内存 mirror（:151-154），
+  // 服务器进程启动后不再重读文件 ⇒ 套件进程直改 db 再 save，/enter（HTTP，读服务器 mirror）看不见；
+  // 反过来 /enter 写的机缘也只在服务器 mirror ⇒ 本块断言全部走 HTTP，不再走套件内服务层。
+  // invalidateCache 是空操作（store.js:199-201），重启服务器是唯一让两侧 mirror 一致的合法手段。
+  await killServer(CHILD);
+  const c69 = await startServer('轮69重启');
+  const learnNoOpp = await req(PORT, 'POST', '/api/skill/learn', { skillId: 'ten_thousand_swords' }, TOK);
+  const enterSword = await req(PORT, 'POST', '/api/dungeon/enter', { dungeonId: swordTomb && swordTomb.id }, TOK);
+  const learnSword = await req(PORT, 'POST', '/api/skill/learn', { skillId: 'ten_thousand_swords' }, TOK);
+  const learnSwordAgain = await req(PORT, 'POST', '/api/skill/learn', { skillId: 'ten_thousand_swords' }, TOK);
+  const enterJianmu = await req(PORT, 'POST', '/api/dungeon/enter', { dungeonId: jianmuRuins && jianmuRuins.id }, TOK);
+  const learnJianmu = await req(PORT, 'POST', '/api/skill/learn', { skillId: 'jianmu_sky' }, TOK);
+  const learnJianmuAgain = await req(PORT, 'POST', '/api/skill/learn', { skillId: 'jianmu_sky' }, TOK);
+  t('㉖ 通关剑冢深处 ⇒ 服务端记机缘，万剑归宗可学（无机缘时仍拒，全链走 HTTP）', () => {
+    if (!c69) throw new Error('重启服务器失败 ⇒ 夹具对 /enter 不可见');
+    if (!swordTomb) throw new Error('副本库里没有"剑冢深处"，样本失效');
+    assert.strictEqual(learnNoOpp.status, 400, '无机缘时该 400 却回 ' + learnNoOpp.status + '：' + learnNoOpp.text.slice(0, 160));
+    assert.ok(/机缘/.test(learnNoOpp.text), '拒绝语没提机缘：' + learnNoOpp.text.slice(0, 160));
+    assert.strictEqual(enterSword.status, 200, '进副本失败 ' + enterSword.status + '：' + enterSword.text.slice(0, 160));
+    assert.strictEqual((enterSword.json || {}).winner, 'attacker', '夹具属性没生效（必胜局打输了）：' + enterSword.text.slice(0, 160));
+    assert.strictEqual(learnSword.status, 200, '通关后仍学不到（闸门没认机缘记录）：' + learnSword.status + ' ' + learnSword.text.slice(0, 180));
+    assert.ok(/已学习/.test(learnSwordAgain.text), '二次学习没报已学习 ⇒ player_skills 没真落行：' + learnSwordAgain.text.slice(0, 160));
+  });
+  t('㉗ 通关建木遗迹 ⇒ 建木通天可学（同一设计解读的第二条，防只做一半）', () => {
+    if (!jianmuRuins) throw new Error('副本库里没有"建木遗迹"，样本失效');
+    assert.strictEqual(enterJianmu.status, 200, '进秘境失败 ' + enterJianmu.status + '：' + enterJianmu.text.slice(0, 160));
+    assert.strictEqual((enterJianmu.json || {}).winner, 'attacker', '必胜局打输了：' + enterJianmu.text.slice(0, 160));
+    assert.strictEqual(learnJianmu.status, 200, '通关建木后仍学不到：' + learnJianmu.status + ' ' + learnJianmu.text.slice(0, 180));
+    assert.ok(/已学习/.test(learnJianmuAgain.text), '二次学习没报已学习 ⇒ 没真落行：' + learnJianmuAgain.text.slice(0, 160));
+  });
+  t('㉘ 生产者与映射真在活路径上（断因不断果）', () => {
+    const src = fs.readFileSync(path.join(ROOT, 'src', 'routes', 'dungeon.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    assert.ok(src.indexOf(String.fromCharCode(39) + '../services/opportunity') >= 0, 'dungeon.js 没声明 opportunity 模块');
+    assert.ok(src.indexOf('opportunityFromDungeonClear(dungeon)') >= 0, 'dungeon.js 没调用判定入口');
+    assert.ok(src.indexOf('opportunity.record(') >= 0, 'dungeon.js 没调用 record ⇒ 机缘只能靠夹具，玩家永远拿不到');
+    const oppSrc = fs.readFileSync(path.join(ROOT, 'src', 'services', 'opportunity.js'), 'utf8');
+    assert.ok(oppSrc.indexOf('剑冢深处') >= 0 && oppSrc.indexOf('建木遗迹') >= 0, 'opportunity.js 缺副本名映射 ⇒ 判定永远 null');
+    assert.ok(oppSrc.indexOf('ten_thousand_swords') >= 0 && oppSrc.indexOf('jianmu_sky') >= 0, 'SKILL_REQUIREMENT 缺两条技能映射 ⇒ learnSkill 仍一律拒');
+  });
+  t('㉙ opportunityFromDungeonClear 只认副本名，脏数据一律判否', () => {
+    assert.strictEqual(OPP67.opportunityFromDungeonClear(null), null, 'null 不该判成机缘');
+    assert.strictEqual(OPP67.opportunityFromDungeonClear({}), null, '无名副本不该判成机缘');
+    assert.strictEqual(OPP67.opportunityFromDungeonClear({ name: 123 }), null, 'name 不是字符串不该判成机缘');
+    assert.strictEqual(OPP67.opportunityFromDungeonClear({ name: '赤霞洞' }), null, '不在白名单的副本不该判成机缘');
+    assert.strictEqual(OPP67.opportunityFromDungeonClear({ name: '剑冢深处' }), 'sword_tomb_enlightenment', '剑冢深处应映射到剑冢顿悟');
+    assert.strictEqual(OPP67.opportunityFromDungeonClear({ name: '建木遗迹' }), 'jianmu_spirit_acknowledged', '建木遗迹应映射到建木之灵认可');
+  });
   t('⑭ 临时副本里每一行 player_skills 都是可解析的技能（skill_id ∈ SKILLS_DATA）', () => {
     const rows = dbApi.loadDatabase().player_skills || [];
     const bad = rows.filter((r) => !DATA.some((d) => d.id === r.skill_id));

@@ -159,6 +159,21 @@ const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
 
 
 
+  // 轮66：口令完整性 —— 清洗层曾顺手删掉密码里的 <>"'&，把多种写法塌缩成同一个 hash。
+  const PW_ODD = 'Passw<ord>&1x'; // 清洗后仍达长度下限，账号能建成 ⇒ 才能露出塌缩本身
+  const PW_SAME = 'Passw1x'; // = PW_ODD 先被当作标签削掉 <ord>、再删掉 & 的真实产物（负向对照实测出来的，不是我口算的） // 就是 PW_ODD 被清洗层削出来的那串
+  const PW_NAME = 'e2pw' + Date.now().toString(36).slice(-5);
+  const pwReg = await req(PORT, 'POST', '/api/auth/register', { username: PW_NAME, password: PW_ODD, nickname: '口令' });
+  const pwLoginExact = await req(PORT, 'POST', '/api/auth/login', { username: PW_NAME, password: PW_ODD });
+  const pwLoginCollapsed = await req(PORT, 'POST', '/api/auth/login', { username: PW_NAME, password: PW_SAME });
+  t('⑪ 口令里的尖括号与引号必须原样参与哈希（按注册时那串能登录）', () => {
+    assert.strictEqual(pwReg.status, 200, '含特殊字符密码注册失败：' + pwReg.status + ' ' + pwReg.text.slice(0, 150));
+    assert.strictEqual(pwLoginExact.status, 200, '原密码登录被拒 ⇒ 注册与登录被改写成两串：' + pwLoginExact.text.slice(0, 150));
+  });
+  t('⑫ 塌缩防御：删掉那五个字符得到的近似密码必须登录失败', () => {
+    assert.strictEqual(pwLoginCollapsed.status, 401, '近似密码登录成功（状态 ' + pwLoginCollapsed.status + '）⇒ 口令被清洗塌缩成同一 hash，缺陷复现');
+  });
+
   child.kill();
   await new Promise((r) => setTimeout(r, 400));
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { console.log('  · 临时目录未删净：' + e.code); }
@@ -169,7 +184,7 @@ const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
     assert.strictEqual(regOk.status, 200, '合法用户名被误挡 = 校验器过严：' + JSON.stringify(regOk).slice(0, 190));
   });
 
-  t('⑨ 正式存档 data/game.db 逐字节未被本套件动过', () => {
+  t('⑬ 正式存档 data/game.db 逐字节未被本套件动过', () => {
     assert.ok(fs.readFileSync(path.join(ROOT, 'data', 'game.db')).equals(liveDb), 'data/game.db 被改动，隔离失败');
   });
 

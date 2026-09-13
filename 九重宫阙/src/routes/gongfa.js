@@ -10,7 +10,9 @@ const GONGFA_TYPES = {
 };
 
 // gongfa.type 的规范词表（轮60）：读取方说的是中文 —— services/cultivation.js 过滤 '修炼'、
-// battle/skill.js 与 combat.js 过滤 '战斗'；而本路由历史上把 API 键 cultivation/combat 直接落库，
+  // 轮66：本路由按类型分槽（GONGFA_TYPES.maxSlots），与技能槽的境界总闸（balance.skillSlotCap，
+// 见 routes/skill.js）是两套各自成立的上限。历史上还有一份按境界扫槽的并行实现
+// （src/services/battle/skill.js 的 getNextSlot），它无人 require，已随死代码删除。
 // 于是"坊市买功法 → 装备"写出来的行**永远进不了任何结算**（G1 的直连断言抓到：ctx.gongfas 为空）。
 // 规则：写库处一律经 canonType() 归一，读取方保持中文不动；API 契约里的 type 键不变（前端无需改）。
 const TYPE_CANON = { cultivation: '修炼', combat: '战斗', '修炼': '修炼', '战斗': '战斗' };

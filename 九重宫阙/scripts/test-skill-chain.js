@@ -339,6 +339,29 @@ let DISC_VALUE = 0;
     assert.ok(sellSide.length === 0 || sellSide.indexOf('buyDiscount') < 0, '折扣串到了出售价（双向套利风险）');
   });
 
+  t('⑳ player_skills 是战斗技能唯一真源（死模块已删，不得再长出第二个同名实现）', () => {
+    assert.ok(!fs.existsSync(path.join(ROOT, 'src', 'services', 'battle', 'skill.js')),
+      'src/services/battle/skill.js 又回来了 —— 它拿 db.gongfa 当技能源，与路由侧的 player_skills 池构成双真源（轮64 就是被这条歧路带偏的）');
+    const defs = [];
+    const walk = (dir) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name === 'node_modules' || e.name === '.git') continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) { walk(p); continue; }
+        if (!e.name.endsWith('.js')) continue;
+        const src = fs.readFileSync(p, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+        if (/getCharacterSkills\s*\([^)]*\)\s*\{/.test(src)) defs.push({ rel: path.relative(ROOT, p), src });
+      }
+    };
+    walk(path.join(ROOT, 'src'));
+    assert.strictEqual(defs.length, 1, 'getCharacterSkills 的定义出现在 ' + defs.length + ' 个文件（应为 1）：' + defs.map((x) => x.rel).join(', '));
+    const at = defs[0].src.search(/getCharacterSkills\s*\([^)]*\)\s*\{/);
+    const body = defs[0].src.slice(at, at + 1200);
+    assert.ok(/player_skills/.test(body), defs[0].rel + ' 的取技实现不读 player_skills');
+    assert.ok(!/db\.gongfa/.test(body), defs[0].rel + ' 的取技实现又去读 db.gongfa 了');
+    console.log('  · 取技实现唯一：' + defs[0].rel);
+  });
+
   t('⑭ 临时副本里每一行 player_skills 都是可解析的技能（skill_id ∈ SKILLS_DATA）', () => {
     const rows = dbApi.loadDatabase().player_skills || [];
     const bad = rows.filter((r) => !DATA.some((d) => d.id === r.skill_id));

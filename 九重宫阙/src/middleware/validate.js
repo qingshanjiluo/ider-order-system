@@ -174,6 +174,12 @@ function validateRequest(rules) {
 }
 
 // Sanitize input to prevent injection
+// 轮66：口令字段必须**原样**透传，不参与清洗。
+// 旧实现对每个字符串都删 <>"'&，于是密码 "Pw<ord>&1" 与 "Pword1" 被削成同一串 ⇒ 同一个 bcrypt hash
+// ⇒ 这五个字符事实上变成"可忽略字符"：猜中其中一种写法就能登录用另一种写法的账号。
+// 而 <>"'& 都是合法密码字符（password 规则只查长度 6-50），用户改密码时被静默改写也是真实现象。
+// XSS 的防线不在这里：前端渲染侧与 SQL 参数化各有其位，本中间件洗的是展示型输入。
+const CREDENTIAL_KEY = /password/i;   // password / newPassword / currentPassword / confirmPassword 全覆盖
 function sanitizeInput(obj) {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'string') {
@@ -190,7 +196,7 @@ function sanitizeInput(obj) {
   if (typeof obj === 'object') {
     const sanitized = {};
     for (const [key, value] of Object.entries(obj)) {
-      sanitized[key] = sanitizeInput(value);
+      sanitized[key] = CREDENTIAL_KEY.test(key) ? value : sanitizeInput(value);   // 轮66：口令原样透传
     }
     return sanitized;
   }

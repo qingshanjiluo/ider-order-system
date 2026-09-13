@@ -6,11 +6,17 @@
  * 设计约束：
  *   - 不读库、不写库；只在传入的实体对象上维护 mp / cooldowns / statusEffects；
  *   - 由 executeRound 在"该实体自己行动的那一刻"调用 tick，因此**不需要改主循环**；
- *   - 1v1 战斗模型下 aoe/buff/debuff/taunt 等无额外目标或需多实体协作的效果**不伪造伤害**，
- *     统一走 unimplementedEffects() 显式登记（与修炼模型的 pending 同一口径）。
+ *   - 1v1 战斗模型下 aoe/taunt 无额外目标或需多实体协作 ⇒ 不伪造数值，统一走 unimplementedEffects()
+ *     显式登记（与修炼模型的 pending 同一口径）。轮70 起九类 1v1 可判效果已实装（见 IMPLEMENTED）。
  */
-const IMPLEMENTED = ['damage', 'dot', 'heal', 'lifesteal', 'drain'];
-const NEEDS_MULTI_TARGET = ['aoe', 'buff', 'debuff', 'taunt', 'shield', 'stun', 'dodge', 'hot', 'heal_amp', 'thorns', 'crit'];
+const IMPLEMENTED = ['damage', 'dot', 'heal', 'lifesteal', 'drain',
+  // 轮70：1v1 模型下可机械判定的九类效果落地 —— buff/debuff 全维强化（数据无 stat 字段，
+  // 设计解读：attack/defense/speed 各乘 1±value，注释与测试同源）、stun 确定性跳过一次行动
+  // （effect_value 0.35 无回合语义，概率化会破坏二十期行为锁与 TTK 确定性锁）、shield/hot 按
+  // maxHp 比例、thorns/heal_amp/crit/dodge 按比例。消费点：skillState 与 combat 的
+  // runBattleLoop（landDamage 统一结算口）/executeRound（tickHeal 与受疗放大）。
+  'buff', 'debuff', 'stun', 'shield', 'hot', 'thorns', 'heal_amp', 'crit', 'dodge'];
+const NEEDS_MULTI_TARGET = ['aoe', 'taunt'];   // 1v1 无额外目标/无协作实体 ⇒ 持续挂账（登记不伪造）
 const NON_COMBAT = ['craft_amp', 'alchemy_amp', 'discount', 'gather_amp'];
 
 /** 该效果类型是否已被回合制实现（false 时只记日志/登记，不产生假数值） */
@@ -57,7 +63,7 @@ function spend(skill, actor) {
  * @returns {{ tickDamage:number, lines:string[] }} tickDamage 为需在自身 hp 上扣除的量
  */
 function tick(actor) {
-  const out = { tickDamage: 0, lines: [] };
+  const out = { tickDamage: 0, tickHeal: 0, lines: [] };
   if (!actor) return out;
   if (actor.cooldowns) {
     for (const k of Object.keys(actor.cooldowns)) {
@@ -73,6 +79,13 @@ function tick(actor) {
       out.tickDamage += dmg;
       eff.roundsLeft = (Number(eff.roundsLeft) || 0) - 1;
       out.lines.push(`${actor.name} 受【${eff.source || '灼烧'}】侵蚀，损失 ${dmg} 点生命`);
+      if (eff.roundsLeft > 0) keep.push(eff);
+    } else if (eff && eff.type === 'hot') {
+      // 轮70：持续回复（hot）——与 dot 同构，perRound 按施放时折算的固定值逐回合回血
+      const heal = Math.max(1, Math.floor(Number(eff.perRound) || 0));
+      out.tickHeal += heal;
+      eff.roundsLeft = (Number(eff.roundsLeft) || 0) - 1;
+      out.lines.push(`${actor.name} 受【${eff.source || '回春'}】滋养，回复 ${heal} 点生命`);
       if (eff.roundsLeft > 0) keep.push(eff);
     } else {
       keep.push(eff);
@@ -114,6 +127,77 @@ function applyEffect(skill, actor, target, damageDealt) {
     const amount = Math.max(1, Math.floor((Number(damageDealt) || 0) * Math.min(ratio || 0.3, 1)));
     res.selfHeal = amount;
     res.lines.push(`${actor && actor.name} ${type === 'drain' ? '汲取' : '嗜血'}回复 ${amount} 点生命`);
+    return res;
+  }
+  // ===== 轮70：九类 1v1 可判效果 =====
+  // buff/debuff：数据里没有字段指明强化哪一维（21+7 条只有 effect_value 比例），设计解读为
+  // "攻防速全维"乘 1±value，只改战时临时实体（getEntity 每次从 db 现算，不落库）。
+  if (type === 'buff') {
+    const mult = 1 + Math.min(Math.max(ratio, 0), 2);
+    if (actor) {
+      actor.attack = Math.floor((Number(actor.attack) || 0) * mult);
+      actor.defense = Math.floor((Number(actor.defense) || 0) * mult);
+      actor.speed = Math.floor((Number(actor.speed) || 0) * mult);
+    }
+    res.lines.push(`${actor && actor.name} 气劲鼓荡（攻防速各提升 ${Math.round((mult - 1) * 100)}%）`);
+    return res;
+  }
+  if (type === 'debuff') {
+    const mult = 1 - Math.min(Math.max(ratio, 0), 0.9);
+    if (target) {
+      target.attack = Math.floor((Number(target.attack) || 0) * mult);
+      target.defense = Math.floor((Number(target.defense) || 0) * mult);
+      target.speed = Math.floor((Number(target.speed) || 0) * mult);
+    }
+    res.lines.push(`${target && target.name} 气势受挫（攻防速各降低 ${Math.round((1 - mult) * 100)}%）`);
+    return res;
+  }
+  // stun：确定性跳过一次行动（value 0.35 无回合/概率可机读语义；概率化会破坏二十期行为锁
+  // 与 TTK 确定性锁）。消费点在 combat.executeRound 顶部。
+  if (type === 'stun') {
+    if (target) target.stunPending = Math.max(Number(target.stunPending) || 0, 1);
+    res.lines.push(`${target && target.name} 被震慑，下次行动无法出手`);
+    return res;
+  }
+  // shield：按施法者 maxHp 比例凝池，消费点在 combat.landDamage（掉血前先扣池）。
+  if (type === 'shield') {
+    const pool = Math.max(1, Math.floor((Number(actor && actor.maxHp) || 0) * Math.min(ratio, 1)));
+    if (actor) actor.shieldPool = (Number(actor.shieldPool) || 0) + pool;
+    res.lines.push(`${actor && actor.name} 凝起护盾（可抵 ${pool} 点伤害）`);
+    return res;
+  }
+  // hot：持续回复挂 statusEffects，tick 逐回合结算（与 dot 同构，3 回合）。
+  if (type === 'hot') {
+    const per = Math.max(1, Math.floor((Number(actor && actor.maxHp) || 0) * Math.min(ratio, 1)));
+    if (actor) {
+      if (!Array.isArray(actor.statusEffects)) actor.statusEffects = [];
+      actor.statusEffects.push({ type: 'hot', source: skill.name || '回春', perRound: per, roundsLeft: 3 });
+    }
+    res.lines.push(`${actor && actor.name} 生机流转（每回合回复 ${per} 点，共 3 回合）`);
+    return res;
+  }
+  // thorns / heal_amp / crit / dodge：比例语义直读，消费点在 combat.landDamage 与 executeRound。
+  if (type === 'thorns') {
+    if (actor) actor.thornsPct = Math.min(Math.max(ratio, 0), 1);
+    res.lines.push(`${actor && actor.name} 周身荆棘倒竖（受击反噬 ${Math.round(ratio * 100)}%）`);
+    return res;
+  }
+  if (type === 'heal_amp') {
+    if (actor) {
+      if (!Array.isArray(actor.statusEffects)) actor.statusEffects = [];
+      actor.statusEffects.push({ type: 'heal_amp', mult: 1 + Math.min(Math.max(ratio, 0), 2) });
+    }
+    res.lines.push(`${actor && actor.name} 生息汇聚（受疗效果提升 ${Math.round(ratio * 100)}%）`);
+    return res;
+  }
+  if (type === 'crit') {
+    if (actor) actor.crit_rate = Math.min((Number(actor.crit_rate) || 0) + Math.min(ratio, 1), 1);
+    res.lines.push(`${actor && actor.name} 气机锐利（暴击率提升 ${Math.round(ratio * 100)}%）`);
+    return res;
+  }
+  if (type === 'dodge') {
+    if (actor) actor.dodgePct = Math.min(Math.max(ratio, 0), 1);
+    res.lines.push(`${actor && actor.name} 身法虚影幢幢（闪避率 ${Math.round(ratio * 100)}%）`);
     return res;
   }
   res.unimplemented = type;

@@ -35,7 +35,7 @@ class CombatService {
         attackerFirst ? useSkillIndex : null);
       battleLog.push(r1.log);
       // 天罚波动只作用在应劫者（攻方）承受的伤上：攻方后手时 r1 打中的就是攻方
-      second.hp -= Math.round(r1.damage * (attackerFirst ? 1 : roll));
+      second.hp -= this.landDamage(second, first, Math.round(r1.damage * (attackerFirst ? 1 : roll)), battleLog);
       if (attackerFirst) useSkillIndex = null;
       if (second.hp <= 0) {
         if (survive) {
@@ -50,7 +50,7 @@ class CombatService {
 
       const r2 = this.executeRound(second, first, attackerFirst ? 'defender' : 'attacker', useSkillIndex);
       battleLog.push(r2.log);
-      first.hp -= Math.round(r2.damage * (attackerFirst ? roll : 1));
+      first.hp -= this.landDamage(first, second, Math.round(r2.damage * (attackerFirst ? roll : 1)), battleLog);
       useSkillIndex = null;
       if (first.hp <= 0) {
         battleLog.push(`${first.name} 被击败！`);
@@ -72,6 +72,38 @@ class CombatService {
       battleLog, round, timedOut,
       winner: attacker.hp > 0 ? 'attacker' : (defender.hp > 0 ? 'defender' : 'draw')
     };
+  }
+
+  /**
+   * 轮70：伤害的统一结算口——闪避→护盾→荆棘反噬一条链走完，返回实际掉血量。
+   * sim（sim-battle/sim-tribulation/TTK）的实体不带技能，dodgePct/shieldPool/thornsPct 全为空，
+   * 本函数对它们恒等于原样扣血 ⇒ 二十期行为锁与 TTK 确定性锁不受影响（门禁实测为证）。
+   */
+  landDamage(target, attacker, rawDamage, battleLog) {
+    let d = Number(rawDamage) || 0;
+    if (d <= 0 || !target) return Math.max(0, d);
+    if ((Number(target.dodgePct) || 0) > 0 && Math.random() < Number(target.dodgePct)) {
+      battleLog.push(`${target.name} 身形一晃，避开了这一击。`);
+      return 0;
+    }
+    const pool = Number(target.shieldPool) || 0;
+    if (pool > 0) {
+      const absorbed = Math.min(pool, d);
+      target.shieldPool = pool - absorbed;
+      d -= absorbed;
+      battleLog.push(`${target.name} 的护盾抵消 ${absorbed} 点伤害${target.shieldPool <= 0 ? '（护盾破碎）' : ''}`);
+    }
+    const thorns = Number(target.thornsPct) || 0;
+    if (thorns > 0 && attacker) {
+      // 反噬按"这一下原始伤害"的比例算（护盾吸收与否不影响反噬基数）
+      const reflected = Math.max(1, Math.round(Number(rawDamage) * Math.min(thorns, 1)));
+      const backPool = Number(attacker.shieldPool) || 0;
+      const backAbsorbed = Math.min(backPool, reflected);
+      if (backAbsorbed > 0) attacker.shieldPool = backPool - backAbsorbed;
+      attacker.hp = Math.max(0, (Number(attacker.hp) || 0) - (reflected - backAbsorbed));
+      battleLog.push(`${target.name} 的荆棘反噬 ${attacker.name} ${reflected} 点伤害`);
+    }
+    return d;
   }
 
   async startBattle(attackerId, defenderId, attackerType = 'character', defenderType = 'monster', skillIndex = null, opts = null) {
@@ -110,12 +142,29 @@ class CombatService {
     const tick = skillState.tick(attacker);
     if (tick.tickDamage > 0) {
       attacker.hp = Math.max(0, (Number(attacker.hp) || 0) - tick.tickDamage);
-      before.push(...tick.lines);
     }
+    // 轮70：hot 的逐回合回复——与 dot 同一"行动前"结算点，且不越过 maxHp
+    if ((tick.tickHeal || 0) > 0) {
+      const capHp = Number(attacker.maxHp) || 0;
+      const healed = (Number(attacker.hp) || 0) + tick.tickHeal;
+      attacker.hp = capHp > 0 ? Math.min(capHp, healed) : healed;
+    }
+    if (tick.lines.length && (tick.tickDamage > 0 || (tick.tickHeal || 0) > 0)) before.push(...tick.lines);
     if ((Number(attacker.hp) || 0) <= 0) {
       return {
         damage: 0, statusDamage: tick.tickDamage, skillUsed: null, unimplementedEffect: null,
         log: (before.length ? before.join('；') : `${attacker.name} 死于持续伤害`)
+      };
+    }
+    // 轮70：眩晕——时间照常流逝（上面冷却/dot/hot 都已结算），但本次不出手。
+    // 确定性 1 回合是设计解读：stun 的 effect_value 0.35 无回合/概率可机读语义，
+    // 概率化会让二十期行为锁与 TTK 确定性锁变成掷骰子，故不采。
+    if ((Number(attacker.stunPending) || 0) > 0) {
+      attacker.stunPending = (Number(attacker.stunPending) || 0) - 1;
+      before.push(`${attacker.name} 被眩晕，无法行动！`);
+      return {
+        damage: 0, statusDamage: tick.tickDamage, skillUsed: null, unimplementedEffect: null,
+        log: before.join('；')
       };
     }
 
@@ -163,6 +212,9 @@ class CombatService {
 
     const after = [];
     const eff = skillState.applyEffect(skill, attacker, defender, result.damage);
+    // 轮70：heal_amp 挂自身（战时临时 statusEffect），所有 selfHeal 通道（heal/lifesteal/drain）都吃它
+    const ampEff = Array.isArray(attacker.statusEffects) ? attacker.statusEffects.find((e) => e && e.type === 'heal_amp') : null;
+    if (eff.selfHeal > 0 && ampEff) eff.selfHeal = Math.round(eff.selfHeal * (Number(ampEff.mult) || 1));
     if (eff.selfHeal > 0) {
       const cap = Number(attacker.maxHp) || (Number(attacker.hp) || 0) + eff.selfHeal;
       attacker.hp = Math.min(cap, (Number(attacker.hp) || 0) + eff.selfHeal);

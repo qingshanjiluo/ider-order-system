@@ -1211,7 +1211,10 @@ t('applyEffect：damage 无副作用；dot/heal/lifesteal 按口径产生数值'
   assert.strictEqual(ls.selfHeal, 100, 'lifesteal 应按实际伤害比例');
 });
 t('未实现效果**不伪造数值**，只登记待实现（1v1 无额外目标）', () => {
-  for (const tt of ['aoe', 'buff', 'debuff', 'stun', 'shield', 'taunt', 'craft_amp']) {
+  // 轮70 名单收紧：buff/debuff/stun/shield（连同 hot/thorns/heal_amp/crit/dodge）已实装并有行为锁，
+  // 这里只钉**仍然做不到**的：aoe/taunt（1v1 无额外目标）与 craft_amp（非战斗）。
+  // 判据不变：登记 unimplemented、零 selfHeal、零 dot、零日志 ⇒ 任何时候被"顺手伪造"都会在这里炸。
+  for (const tt of ['aoe', 'taunt', 'craft_amp']) {
     const r = skillState.applyEffect({ name: 'x', key: tt, effectType: tt, effectValue: 9 }, mkEnt(), mkEnt(), 100);
     assert.strictEqual(r.unimplemented, tt, `${tt} 应登记为未实现`);
     assert.strictEqual(r.selfHeal, 0);
@@ -1257,6 +1260,81 @@ t('行为验证：指定技 MP 不足时退回普攻，**绝不静默换成另�
   assert.strictEqual(r.skillUsed, null, '指定技不可用却被替换成别的技能（旧 bug）');
   assert.ok(/灵力不足/.test(r.log), `日志未说明原因：${r.log}`);
   assert.strictEqual(atk.mp, 5, '普攻却消耗了 MP');
+});
+// ===== 轮70：九类 1v1 效果真的被消费（此前 67 条棘轮里的 buff/debuff/stun/shield/hot/thorns/heal_amp/crit/dodge）=====
+t('轮70 buff 全维强化：施放即抬自身攻防速（设计解读：数据无 stat 字段 ⇒ 全维×(1+value)）', () => {
+  const a = mkEnt({});
+  const b = mkEnt({ name: '木桩', hp: 99999, maxHp: 99999 });
+  const eff = skillState.applyEffect({ name: '磐石壁垒', key: 'k', effectType: 'buff', effectValue: 0.5, manaCost: 0, cooldown: 0 }, a, b, 0);
+  assert.strictEqual(eff.unimplemented, null, 'buff 仍登记为未实现 ⇒ 注册表没接上');
+  assert.strictEqual(a.attack, 300, `attack 应为 200×1.5：${a.attack}`);
+  assert.strictEqual(a.defense, 75, 'defense 没抬');
+  assert.strictEqual(a.speed, 15, 'speed 没抬');
+  assert.strictEqual(b.attack, 200, 'buff 不该动对手');
+});
+t('轮70 debuff 削弱对手三维 + stun 确定性跳过一次行动', () => {
+  const a = mkEnt({ mp: 999 });
+  const b = mkEnt({ name: '树精', hp: 9000, maxHp: 9000 });
+  const deff = skillState.applyEffect({ name: '冰封牢笼', key: 'd1', effectType: 'debuff', effectValue: 0.25, manaCost: 0, cooldown: 0 }, a, b, 0);
+  assert.strictEqual(deff.unimplemented, null, 'debuff 仍登记为未实现');
+  assert.strictEqual(b.attack, 150, `attack 应 200×0.75：${b.attack}`);
+  assert.strictEqual(b.defense, 37, `defense 应 floor(50×0.75)=37：${b.defense}`);
+  skillState.applyEffect({ name: '定身', key: 's1', effectType: 'stun', effectValue: 0.35, manaCost: 0, cooldown: 0 }, a, b, 0);
+  assert.strictEqual(b.stunPending, 1, 'stun 没挂上');
+  const r = combatSvc.executeRound(b, a, 'defender', null);
+  assert.strictEqual(r.damage, 0, '眩晕中仍打得出伤害 ⇒ stun 未被消费');
+  assert.ok(/眩晕/.test(r.log), `战报没写眩晕：${r.log}`);
+  assert.strictEqual(b.stunPending, 0, '眩晕没消耗掉');
+  const r2 = combatSvc.executeRound(b, a, 'defender', null);
+  assert.ok(r2.damage > 0, '解除后仍不能行动');
+});
+t('轮70 走真回合：护盾先吸收且满闪避恒免伤（runBattleLoop ⇒ landDamage 统一结算口）', () => {
+  const a = mkEnt({ name: '攻方' });
+  const d = mkEnt({ name: '盾木', shieldPool: 60 });
+  const out = combatSvc.runBattleLoop(a, d, { maxRounds: 3 });
+  assert.ok(out.battleLog.some((l) => /护盾抵消/.test(String(l))), '护盾没进结算口：' + out.battleLog.join(' | ').slice(0, 160));
+  assert.ok((Number(d.shieldPool) || 0) <= 0, '60 点池三回合都打不破？');
+  const a2 = mkEnt({ name: '攻方' });
+  const d2 = mkEnt({ name: '虚影', dodgePct: 1 });   // pct=1 ⇒ Math.random()<1 必真，确定性免伤
+  combatSvc.runBattleLoop(a2, d2, { maxRounds: 2 });
+  assert.strictEqual(d2.hp, 1000, '满闪避还被打了');
+  assert.ok(a2.hp < 1000, '回合没在双向跑（d2 的反击应落在 a2 上）');
+});
+t('轮70 landDamage 算术逐位钉死：盾吞 30/伤害 100 ⇒ 掉 70、池清零、荆棘按原始伤害反 50', () => {
+  const tank = mkEnt({ name: '盾刺', shieldPool: 30, thornsPct: 0.5 });
+  const hitter = mkEnt({ name: '打手' });
+  const logs = [];
+  const loss = combatSvc.landDamage(tank, hitter, 100, logs);
+  assert.strictEqual(loss, 70, `护盾应吞 30、实掉 ${loss}`);
+  assert.strictEqual(tank.shieldPool, 0, '池没清空');
+  assert.strictEqual(hitter.hp, 950, `荆棘应反 round(100×0.5)=50：${hitter.hp}`);
+  assert.ok(logs.some((l) => /护盾抵消/.test(l)) && logs.some((l) => /荆棘反噬/.test(l)), '战报缺项：' + logs.join(' | '));
+});
+t('轮70 hot 逐回合回血、封顶 maxHp、三轮到期摘除', () => {
+  const dummy = () => mkEnt({ name: '木桩', hp: 99999, maxHp: 99999 });
+  const a = mkEnt({ hp: 400 });
+  skillState.applyEffect({ name: '甘霖', key: 'h', effectType: 'hot', effectValue: 0.1, manaCost: 0, cooldown: 0 }, a, null, 0);
+  assert.strictEqual(a.statusEffects.length, 1, 'hot 没挂上');
+  combatSvc.executeRound(a, dummy(), 'attacker', null);
+  assert.strictEqual(a.hp, 500, `第一回合应回 floor(1000×0.1)=100：${a.hp}`);
+  a.hp = 950;
+  combatSvc.executeRound(a, dummy(), 'attacker', null);
+  assert.strictEqual(a.hp, 1000, `不该越过 maxHp：${a.hp}`);
+  combatSvc.executeRound(a, dummy(), 'attacker', null);
+  assert.strictEqual(a.statusEffects.length, 0, 'hot 到期没摘除');
+});
+t('轮70 heal_amp 放大所有 selfHeal 通道；crit 抬暴击率', () => {
+  const dummy = () => mkEnt({ name: '木桩', hp: 99999, maxHp: 99999 });
+  const a = mkEnt({ hp: 500, mp: 999, skills: [{ name: '小疗', key: 'x', multiplier: 0, manaCost: 0, cooldown: 0, effectType: 'heal', effectValue: 0.1 }] });
+  combatSvc.executeRound(a, dummy(), 'attacker', 0);
+  assert.strictEqual(a.hp, 600, `未放大时小疗应回 100：${a.hp}`);
+  skillState.applyEffect({ name: '生生不息', key: 'amp', effectType: 'heal_amp', effectValue: 0.5, manaCost: 0, cooldown: 0 }, a, null, 0);
+  a.hp = 500;
+  combatSvc.executeRound(a, dummy(), 'attacker', 0);
+  assert.strictEqual(a.hp, 650, `放大 1.5× 后应回 150：${a.hp}`);
+  const c = mkEnt({ crit_rate: 0.05 });
+  skillState.applyEffect({ name: '破妄', key: 'c', effectType: 'crit', effectValue: 0.2, manaCost: 0, cooldown: 0 }, c, null, 0);
+  assert.ok(Math.abs(c.crit_rate - 0.25) < 1e-9, `暴击率应 0.05+0.2：${c.crit_rate}`);
 });
 t('旧缺陷永久封住：主循环不再随机选技、字段不再被丢弃', () => {
   const fs = require('fs'); const path = require('path');
@@ -2321,11 +2399,10 @@ t('不许再新增"效果文案战斗里做不到"的技能（未实现的战斗
   const buckets = skillState.unimplementedEffects();           // { implemented, needsMultiTarget, nonCombat }
   const nonCombat = new Set(buckets.nonCombat);
   const lying = S.filter((x) => !skillState.isImplemented(x.effect_type) && !nonCombat.has(x.effect_type));
-  // 轮47 实测基线：老库 214 条里有 67 条声明了 1v1 模型不实现的 aoe/buff/shield/stun/... 文案，
-  // 这是 T0-3 的已知欠账（skillState 里显式登记，不伪造数值）。上限锁死在 67：
-  // 补内容只准用已实现类型（damage/dot/heal/drain/lifesteal）或明确非战斗的生活类，
-  // 想加新类型必须先让状态机真的消费它 —— 否则就是又一次"定义很多、消费为零"。
-  assert.ok(lying.length <= 67, `声明了战斗做不到的效果的技能有 ${lying.length} 条（基线 67）：${lying.slice(-5).map((x) => `${x.name}(${x.effect_type})`).join(', ')}`);
+  // 轮47 基线 67；轮70 实装了 1v1 可判的九类（buff21/debuff7/shield2/stun1/hot1/thorns1/heal_amp1/crit1/dodge1=36 条），
+  // 棘轮随实现收紧：67 → **31**（余 aoe 30 + taunt 1，1v1 无额外目标，继续显式挂账不伪造）。
+  // 想再降这条线只能继续"先让状态机真的消费，再收数字"；反向放宽一律视为回归。
+  assert.ok(lying.length <= 31, `声明了战斗做不到的效果的技能有 ${lying.length} 条（轮70 基线 31）：${lying.slice(-5).map((x) => `${x.name}(${x.effect_type})`).join(', ')}`);
   const passiveNoConsume = S.filter((x) => String(x.id).startsWith('hr_') && x.type === 'passive');
   assert.deepStrictEqual(passiveNoConsume.map((x) => x.id), [], '高阶新库里出现 passive：combat 明确"被动除外"，被动技能等于零消费');
 });

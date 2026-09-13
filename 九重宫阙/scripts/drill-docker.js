@@ -23,13 +23,22 @@ const REPO_URL = process.env.DRILL_REPO || 'https://github.com/qingshanjiluo/ide
 const SUBDIR = '九重宫阙';
 const KEEP = process.argv.includes('--keep');
 const CONTAINER = 'jiuchong';
-const USER = 'drill-' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
+// 轮63：具名不得含连字符 —— username 规则是 [A-Za-z0-9_汉字]{3,20}，而校验器本轮才真挂上 /register。
+// 上一版这里是 drill-YYYYMMDD，容器演练注册直接吃 400（演练如实判红，没有蒙过去）。
+const USER = 'drill' + new Date().toISOString().slice(0, 10).replace(/-/g, '');
 const PASS = 'P5-Drill-' + Math.random().toString(36).slice(2, 12) + '!';
 
 const t0 = Date.now();
 const el = () => ((Date.now() - t0) / 1000).toFixed(0) + 's';
 const steps = [];
-const rec = (name, ok, detail) => { steps.push({ name, ok, detail }); console.log(`  ${ok ? '✅' : '❌'} [${el()}] ${name}${detail ? '　— ' + detail : ''}`); };
+const rec = (name, ok, detail) => {
+  // 轮63：detail 要进 markdown 表格，先把竖线与换行压掉；并留 900 字符上限。
+  // 同轮修掉的更大的坑：build 失败时只取了 stdout —— docker 的构建输出走 stderr，于是报告里
+  // 只剩"用时 123s / /"，一次失败变成无法复盘的悬案。失败步骤必须带原始输出尾部。
+  const d = String(detail == null ? '' : detail).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ⏎ ').slice(0, 900);
+  steps.push({ name, ok, detail: d });
+  console.log(`  ${ok ? '✅' : '❌'} [${el()}] ${name}${d ? '　— ' + d : ''}`);
+};
 
 function sh(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, Object.assign({ encoding: 'utf8', timeout: opts.timeout || 900000, cwd: opts.cwd }, opts.env ? { env: Object.assign({}, process.env, opts.env) } : {}));
@@ -90,7 +99,8 @@ function httpJson(method, url, body, token, timeoutMs = 20000) {
   if (cfg.code !== 0) return finish();
 
   const bd = sh('docker', ['compose', 'build'], { cwd: proj, timeout: 1800000 });
-  rec('docker compose build', bd.code === 0, '用时 ' + el() + (bd.code === 0 ? '' : '　' + (bd.out || '').split('\n').slice(-3).join(' / ')));
+  const bdTail = ((bd.err || '') + '\n' + (bd.out || '')).trim().split('\n').slice(-14).join('\n');
+  rec('docker compose build', bd.code === 0, '用时 ' + el() + (bd.code === 0 ? '' : '　' + bdTail));
   if (bd.code !== 0) return finish();
 
   const up = sh('docker', ['compose', 'up', '-d'], { cwd: proj, timeout: 300000 });
@@ -114,7 +124,7 @@ function httpJson(method, url, body, token, timeoutMs = 20000) {
   const token = reg.json && (reg.json.token || (reg.json.user && reg.json.token));
   const ch = token ? await httpJson('GET', 'http://127.0.0.1:3000/api/character', undefined, token) : { status: 0, json: null };
   rec('容器内注册 + 取到角色（制造待恢复数据）', reg.status === 200 && !!token && ch.status === 200 && !!(ch.json && ch.json.id),
-    `HTTP ${reg.status}/${ch.status} user=${ch.json && ch.json.user_id} realm=${ch.json && ch.json.realm}`);
+    `HTTP ${reg.status}/${ch.status} user=${ch.json && ch.json.user_id} realm=${ch.json && ch.json.realm} 注册响应=${JSON.stringify(reg.json || reg.text || '').slice(0, 150)}`);
 
   // 5) 备份：容器内走 snapshotDatabase(VACUUM INTO)，再 cp 出来。轮61 之前这一步是裸拷贝主库 ⇒ 丢写。
   const inSnap = '/tmp/snap-' + Date.now() + '.db';

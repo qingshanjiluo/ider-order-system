@@ -84,6 +84,11 @@ const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
   const extra = await req(PORT, 'POST', '/api/auth/login', {
     username: 'e2_probe_user', password: 'whatever123', admin: true, role: 'super_admin', isVip: 1
   });
+  // 轮63：用户名规则边界的实测样本（连字符/点应被拒、合法具名必须放行）。
+  // 起因：容器演练的 drill-YYYYMMDD 账号在这条规则上吃了 400 —— 口径要钉住，也要防它过度收紧。
+  const regHyphen = await req(PORT, 'POST', '/api/auth/register', { username: 'drill-20260913', password: 'whatever123', nickname: '探针' });
+  const regDot = await req(PORT, 'POST', '/api/auth/register', { username: 'a.b', password: 'whatever123', nickname: '探针' });
+  const regOk = await req(PORT, 'POST', '/api/auth/register', { username: 'e2_ok_name', password: 'whatever123', nickname: '探针' });
   const H = health.headers || {};
 
   t('① 服务能在隔离目录起来（否则下面全是空断言）', () => {
@@ -157,6 +162,12 @@ const child = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
   child.kill();
   await new Promise((r) => setTimeout(r, 400));
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e) { console.log('  · 临时目录未删净：' + e.code); }
+
+  t('⑩ username 规则边界钉住：连字符与点必须被拒，合法具名必须放行（防过度收紧）', () => {
+    assert.strictEqual(regHyphen.status, 400, '带连字符的用户名本该被挡在校验层（演练具名曾因此 400）：' + JSON.stringify(regHyphen).slice(0, 150));
+    assert.strictEqual(regDot.status, 400, '带点的用户名本该被挡在校验层：' + JSON.stringify(regDot).slice(0, 150));
+    assert.strictEqual(regOk.status, 200, '合法用户名被误挡 = 校验器过严：' + JSON.stringify(regOk).slice(0, 190));
+  });
 
   t('⑨ 正式存档 data/game.db 逐字节未被本套件动过', () => {
     assert.ok(fs.readFileSync(path.join(ROOT, 'data', 'game.db')).equals(liveDb), 'data/game.db 被改动，隔离失败');

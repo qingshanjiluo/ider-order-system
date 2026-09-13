@@ -8,6 +8,8 @@ const ELEMENTS = elements.displayMeta();
 const REALM_ORDER = require('../config/balance').REALM_ORDER;
 
 const SLOT_LIMITS = { main: 3, sub: 3, ultimate: 1 };
+// 轮64：槽位中文名（装备报错与前端入口共用同一口径，避免"main/主/主技能"三套说法漂移）
+const SLOT_LABELS = { main: '主技能', sub: '副技能', ultimate: '终极技' };
 
 // 技能品质阶梯与全局口径对齐（轮47）：库里存在 7 条 圣阶 技能，而旧数组根本没有"圣阶"，
 // 且把"仙阶"排在了最后 —— 与功法/藏宝阁用的 黄<玄<地<天<圣<仙 相冲突。
@@ -178,6 +180,7 @@ class SkillService {
         skill_type: skillDef ? skillDef.type : 'active',
         skill_quality: skillDef ? skillDef.quality : '黄阶',
         skill_rarity: skillDef ? skillDef.rarity : 'common',
+        skill_slot: skillDef ? (skillDef.slot || null) : null, // 轮64：卡片要按"技能自身的槽位"给出装备入口，必须透出（此前该视图里的 slot 渲染成 undefined）
         skill_description: skillDef ? skillDef.effect : '',
         current_stats: stats,
         upgrade_cost: skillDef ? getUpgradeCost(skillDef, ps.level) : 0
@@ -291,6 +294,14 @@ class SkillService {
 
     const skillDef = getSkillDef(playerSkill.skill_id);
     if (!skillDef) return { success: false, error: '技能数据不存在' };
+    // 轮64：技能只能进它自己的槽；被动技常驻生效、没有出战槽。
+    // 旧实现两条都不校验：sub 技可被装进 main，被动技可装备但被 combat.js:360 静默丢弃（占槽零收益）。
+    if (skillDef.type === 'passive') {
+      return { success: false, error: `${skillDef.name || playerSkill.skill_id} 是被动技能，无需装备（常驻生效）` };
+    }
+    if (skillDef.slot && skillDef.slot !== slot) {
+      return { success: false, error: `${skillDef.name || playerSkill.skill_id} 是${SLOT_LABELS[skillDef.slot] || skillDef.slot}，不能装进${SLOT_LABELS[slot] || slot}` };
+    }
 
     const allSkills = (db.player_skills || []).filter(ps => ps.character_id === characterId);
     const slotCount = allSkills.filter(ps => ps.equipped_slot === slot).length;

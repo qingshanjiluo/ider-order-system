@@ -17,8 +17,7 @@ router.get('/list', auth, (req, res) => {
     // 早已不参与 maxSlots 计算（真源只有下面的 balance.skillSlotCap），却仍随响应发给前端，
     // 等于让界面有机会对玩家展示过期构成；两处局部变量在本文件内均无其它引用（已全量核对）。
     const maxSlots = B.skillSlotCap((B.REALM_ORDER || []).indexOf(character.realm));   // E3 章程口径：min(2+境界序号, 8)，等级/天赋/功法不再参与
-    const equippedCount = skills.filter(s => s.equipped).length;
-    const cdPenalty = equippedCount > 5 ? Math.pow(2, equippedCount - 5) : 1;
+    const equippedCount = skills.filter(s => s.equipped_slot).length;
 
     const equipSkills = db.equipments.filter(e => e.character_id === character.id);
     const equipmentSkills = [];
@@ -51,7 +50,6 @@ router.get('/list', auth, (req, res) => {
       maxSlots,
       slotLimits: { main: 3, sub: 3, ultimate: 1 },
       equippedCount,
-      cdPenalty,
       equipmentSkills,
       rootPassives,
       petSkills
@@ -139,7 +137,7 @@ router.post('/equip', auth, (req, res) => {
     // 早已不参与 maxSlots 计算（真源只有下面的 balance.skillSlotCap），却仍随响应发给前端，
     // 等于让界面有机会对玩家展示过期构成；两处局部变量在本文件内均无其它引用（已全量核对）。
     const maxSlots = B.skillSlotCap((B.REALM_ORDER || []).indexOf(character.realm));   // E3 章程口径：min(2+境界序号, 8)，等级/天赋/功法不再参与
-    const equippedCount = skills.filter(s => s.equipped).length;
+    const equippedCount = skills.filter(s => s.equipped_slot).length;
     if (equippedCount >= maxSlots) {
       return res.status(400).json({ error: `技能槽已满（${maxSlots}个）`, maxSlots, equippedCount });
     }
@@ -148,11 +146,9 @@ router.post('/equip', auth, (req, res) => {
     if (!result.success) return res.status(400).json(result);
 
     const newSkills = skillService.getSkills(character.id);
-    const newEquipped = newSkills.filter(s => s.equipped).length;
-    const newCdPenalty = newEquipped > 5 ? Math.pow(2, newEquipped - 5) : 1;
+    const newEquipped = newSkills.filter(s => s.equipped_slot).length;
     result.maxSlots = maxSlots;
     result.equippedCount = newEquipped;
-    result.cdPenalty = newCdPenalty;
     if (newEquipped > 5) {
       result.warning = `技能数量超过5个，冷却时间翻倍（${newCdPenalty}x）`;
     }

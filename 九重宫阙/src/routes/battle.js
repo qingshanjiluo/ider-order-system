@@ -78,20 +78,22 @@ router.get('/skills', auth, (req, res) => {
     if (!character) {
       return res.status(404).json({ error: '角色不存在' });
     }
-    const gongfas = db.gongfa.filter(g => g.character_id === character.id);
-    const skills = [];
-    for (const gf of gongfas) {
-      const item = db.items.find(i => i.id === gf.item_id);
-      if (item) {
-        skills.push({
-          id: gf.id,
-          name: item.name,
-          type: gf.type || item.type,
-          level: gf.level || 1,
-          stats: JSON.parse(item.stats || '{}')
-        });
-      }
-    }
+    // 轮64：选招与战斗池必须同源。此前这里返回 db.gongfa（功法，实测 0 行），而战斗读的是
+    // player_skills 的 equipped_slot 池 ⇒ 界面「选择技能」永远不渲染，currentBattleSkill 恒 0。
+    // 改成直接吐出 combat 侧的池（同一函数、同一排序：main < sub < ultimate ⇒ 下标语义一致）。
+    const pool = combatService.getCharacterSkills(character.id, db);
+    const skills = pool.map((s, i) => ({
+      index: i,
+      key: s.key,
+      name: s.name,
+      slot: s.slot,
+      level: s.level,
+      element: s.element,
+      multiplier: s.multiplier,
+      manaCost: s.manaCost,
+      cooldown: s.cooldown,
+      effectType: s.effectType
+    }));
     res.json(skills);
   } catch (error) {
     res.status(500).json({ error: error.message });

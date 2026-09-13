@@ -1658,7 +1658,6 @@ async function loadSkillSub(sub, btn) {
       const unequipped = skills.filter(s => !s.equipped_slot);
       // 阶段5：消费服务端槽位上限与 CD 惩罚
       const SERVER_MAX = data.slotLimits || {};
-      const cdPenalty = data.cdPenalty || 1;
       const totalEquipped = equipped.length;
 
       container.innerHTML = `
@@ -1667,7 +1666,6 @@ async function loadSkillSub(sub, btn) {
             <span style="color:${totalEquipped >= (data.maxSlots || 8) ? '#ff6b35' : 'var(--text2)'};font-size:11px;">
               已用 ${totalEquipped}/${data.maxSlots || '?'}（境界决定上限，min(2+境界序号, 8)）${totalEquipped >= (data.maxSlots || 8) ? ' · 已满，需先卸下一个' : ''}
             </span>
-            ${data.cdPenalty > 1 ? `<span style="color:#ff6b35;font-size:10px;">⚠ 冷却×${data.cdPenalty}</span>` : ''}
           </div>
           <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">
             低境界时下方 ${Object.values(SERVER_MAX).reduce((a, b) => a + b, 0)} 个分类槽位**装不满**：真正的限制是上面这条总槽位上限（服务端 ${data.maxSlots}）。
@@ -1736,7 +1734,7 @@ async function loadSkillSub(sub, btn) {
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <div>
                 <span style="font-weight:600;color:${ELEMENT_COLORS[s.element] || '#fff'};">[${ELEMENT_NAMES[s.element] || '无'}] ${s.name}</span>
-                <span style="font-size:10px;padding:2px 6px;margin-left:6px;border-radius:3px;background:${ELEMENT_COLORS[s.element] || '#888'}40;">${SLOT_NAMES[s.slot] || s.slot}</span>
+                <span style="font-size:10px;padding:2px 6px;margin-left:6px;border-radius:3px;background:${ELEMENT_COLORS[s.element] || '#888'}40;">${SLOT_NAMES[s.skill_slot || s.slot] || s.skill_slot || s.slot}</span>
                 <span style="font-size:10px;padding:2px 6px;margin-left:4px;border-radius:3px;background:var(--border);">${TYPE_NAMES[s.type] || s.type}</span>
               </div>
               <button class="btn small primary" onclick="handleLearnSkill('${s.id}')">领悟</button>
@@ -1867,14 +1865,22 @@ function renderSkillCard(s, showActions = false) {
         </div>
         ${showActions ? `
           <div style="display:flex;gap:4px;">
-            <button class="btn small" onclick="handleEquipSkillUI('${s.id}', 'main')">主</button>
-            <button class="btn small" onclick="handleEquipSkillUI('${s.id}', 'sub')">副</button>
+            ${(() => {
+              // 轮64：装备入口由技能自身的槽位决定。旧写法对每张卡都固定给「主/副」两个按钮，
+              // 于是 sub 技能被装进 main、19 门 ultimate 根本没有入口、被动技装备后被战斗丢弃。
+              const own = s.skill_slot || s.slot || null;
+              const kind = s.skill_type || s.type;
+              if (kind === 'passive') return '<span style="font-size:10px;color:var(--text2);align-self:center;">被动·常驻生效</span>';
+              if (!own) return '';
+              const label = { main: '装为主技', sub: '装为副技', ultimate: '装为终极' }[own] || ('装入 ' + own);
+              return `<button class="btn small" onclick="handleEquipSkillUI('${s.id}', '${own}')">${label}</button>`;
+            })()}
             <button class="btn small" onclick="handleUpgradeSkillUI('${s.id}')">升级</button>
           </div>
         ` : ''}
       </div>
       <div style="font-size:11px;color:var(--text2);margin-top:4px;">
-        ${TYPE_NAMES[s.type] || s.type} | ${SLOT_NAMES[s.slot] || s.slot} | 消耗:${s.mana_cost} | 冷却:${s.cooldown}回合 | 倍率:${(s.damage_mult*100).toFixed(0)}%
+        ${TYPE_NAMES[s.type] || s.type} | ${SLOT_NAMES[s.skill_slot || s.slot] || s.skill_slot || s.slot} | 消耗:${s.mana_cost} | 冷却:${s.cooldown}回合 | 倍率:${(s.damage_mult*100).toFixed(0)}%
       </div>
       <div style="font-size:10px;color:var(--gold);margin-top:2px;">${s.quality || ''} | ${s.effect || ''}</div>
     </div>

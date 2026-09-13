@@ -129,7 +129,9 @@ const mode = process.argv[2] || 'phaseA';
       const r = await api('GET', '/api/skill/list', null, token);
       assert.strictEqual(r.status, 200);
       assert.deepStrictEqual(r.json.slotLimits, { main: 3, sub: 3, ultimate: 1 });
-      assert.ok(r.json.cdPenalty >= 1);
+      assert.ok(typeof r.json.maxSlots === 'number' && r.json.maxSlots >= 1, 'slot 总闸字段缺失');
+      // 轮64：cdPenalty 已删 —— 它由一个恒 0 的错误计数算出、战斗侧也无消费点，却在界面上当「冷却×N」展示。
+      assert.ok(!('cdPenalty' in r.json), 'cdPenalty 又回来了（无消费方的虚构字段不该下发）');
       assert.ok(r.json.maxSlots >= 3);
     });
 

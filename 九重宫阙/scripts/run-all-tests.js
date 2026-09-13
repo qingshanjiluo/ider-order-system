@@ -41,6 +41,7 @@ const SUITES = [
   ['S4 API 覆盖率', 'scripts/endpoint-coverage.js', ['--report', '前端可见性与覆盖率测量.md']],
   // P5（轮58）：验收清单不许是手抄文档，必须由实测重出并与 git 里的版本一致
   ['E2 安全头与入参校验', 'scripts/test-e2-security.js'],
+  ['战斗技能链','scripts/test-skill-chain.js'],
   // 轮61：容器恢复演练把存档弄丢后新增（WAL 下裸拷贝备份会丢未 checkpoint 的已提交事务）
   ['S5 存档快照与恢复', 'scripts/test-db-snapshot.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']

@@ -55,6 +55,13 @@ class DamageCalculator {
     const elementResult = this.calculateElementDamage(damage, skillElement, defender.element);
     damage = elementResult.damage;
 
+    // 轮64：战斗功法的伤害乘区必须真被消费。combat.js:299 一直算出 skillDamageMultiplier
+    // （功法 skill_damage × 灵根加成），但全仓无人读取 —— 等于"买了战斗功法却零作用"，
+    // 而且留着一个看起来生效的字段骗审计。这里消费它；怪物实体没有该字段 ⇒ 缺省 1。
+    const gongfaMul = Number(attacker.skillDamageMultiplier);
+    if (Number.isFinite(gongfaMul) && gongfaMul !== 1) {
+      damage = Math.floor(damage * gongfaMul);
+    }
     return {
       damage,
       isCritical: critResult.isCritical,

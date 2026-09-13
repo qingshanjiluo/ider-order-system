@@ -433,15 +433,12 @@ router.post('/spirit-infuse', auth, (req, res) => {
       equip.has_spirit = true;
       spiritUnlocked = true;
       const spiritSkill = `spirit_${equip.item_id}`;
-      if (!db.player_skills) db.player_skills = [];
-      db.player_skills.push({
-        id: getNextId('player_skills'),
-        character_id: character.id,
-        skill_id: spiritSkill,
-        name: `${db.items.find(i => i.id === equip.item_id)?.name || '法器'}器灵技能`,
-        level: 1,
-        type: 'spirit_artifact'
-      });
+      // 轮64：这里曾往 player_skills push 一行"器灵技"，但该行**没有 equipped_slot 键**，
+      // 且 skill_id 形如 spirit_<itemId> 从不在 SKILLS_DATA 注册 ⇒ 战斗侧 find(def) 落空，
+      // 成为永久孤儿行（占集合不产出任何玩法，还会污染"每行都可解析"的完整性扫描）。
+      // 器灵的解锁仍然如实记在装备上（has_spirit / spirit_affinity），响应照旧返回 spiritUnlocked；
+      // 真要让它进战斗，应当把器灵技注册成技能定义并补齐字段 —— 那是功能设计，不该由一行 push 冒名顶替。
+      console.log(`器灵已唤醒（${spiritSkill}）：当前未注册为可出战技能定义，故不写入 player_skills`);
     }
 
     saveDatabase(db);

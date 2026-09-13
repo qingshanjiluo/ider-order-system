@@ -315,9 +315,16 @@ R('E9', '数值验证', LOK.done,
   `量尺画像功法取自 items 真源（${BAL && BAL.gongfa ? BAL.gongfa.P2 + ' ×' + BAL.gongfa.P2speed + ' / ' + BAL.gongfa.P3 + ' ×' + BAL.gongfa.P3speed : '?'}）；` +
   `R11：渡劫寿尽 ${RB.pct == null ? '?' : RB.pct}%（线 <5%）、卡死 ${RB.stuck == null ? '?' : RB.stuck}%`,
   '挂机收益倒挂 2 对未修（非阻塞，已登记）；mods 阵法/灵脉取值未实测');
+// 轮68：E10 的"真浏览器"部分不再抄我的口头自白 —— 读第 26 套落在磁盘上的实测状态。
+// 状态文件不存在或 ran=false 时，这行必须继续如实说"未做"，不能因为套件登记了就说成测过。
+let E10B = null;
+try { E10B = JSON.parse(fs.readFileSync(path.join(__dirname, '.e10-state.json'), 'utf8')); } catch (e) { E10B = null; }
+const e10Browser = E10B && E10B.ran && E10B.dom_bytes > E10B.raw_bytes
+  ? `**真浏览器已实测（第 26 套，零依赖无头内核）**：${E10B.kernel} 经 HTTP 渲染首页：服务端原始 HTML ${E10B.raw_bytes} 字节 / ${E10B.inputs_raw} 个 input → 浏览器 DOM 渲染后 ${E10B.inputs_js_on} 个 input（DOM 字节严格大于原始）；负向对照：禁用 JS 后 input 归 ${E10B.inputs_js_off}（证明这段 DOM 依赖脚本执行）。这里只嵌跨运行稳定的字段——端口/时间戳/精确字节数留在 scripts/.e10-state.json：第 26 套每次跑都会重写它们，嵌进清单会让新鲜度套件永远红（轮68 自查更正）`
+  : '**真浏览器渲染未实测**（第 26 套没跑出状态：本机无 Edge/Chrome 内核或未执行）——不许拿"登记了套件"当"测过了"';
 R('E10', '前端闭环', LOK.most,
   `静态：后端 ${COV && COV.total != null ? COV.total : '未取到'} 端点 / 玩家可点 ${COV && COV.clickable != null ? COV.clickable : '未取到'} / 幽灵 ${COV && COV.ghost != null ? COV.ghost : '未取到'}（第 21 套之外由 coverage:api 出表）；动态：S3 把 31 个页签在无浏览器环境下真跑一遍（不抛异常、非空白、无 undefined 泄漏、onclick 有定义、进度条分母>0），当场修掉五处真缺陷；突破来源/槽位 n÷8/保底进度/423+429 语义/背包延寿按钮均已可见`,
-  '**未做真浏览器（Playwright 级）交互与视觉验证** —— "注册→修炼→突破→应劫→转世"一次纯点 UI 闭环至今没有实测记录；蛇形/驼峰契约未归一；public/js/character.js 与 game.js 两个孤档待删');
+  e10Browser + '；仍欠：带 auth 的"注册→修炼→突破→应劫→转世"纯点 UI 闭环（不会为测试在产品里开"token 走 URL"的口子，故仍挂账）；蛇形/驼峰契约未归一；public/js/character.js 与 game.js 两个孤档待删');
 
 R('E11', '谎报成功的端点（轮60 新增审计）', (NOOP_ENDPOINTS.length === 0 && GONGFA_CANON_OK) ? LOK.done : (NOOP_ENDPOINTS.length > NOOP_BASELINE ? LOK.bad : LOK.most),
   `扫描 src/routes/*.js 的写操作 handler：出现 success:true 却找不到任何"真动了数据"的标记（写库 / 入集合 / 扣加值 / 委托 service / 调用本文件解构进来的函数如 broadcastSystem）即列嫌疑。` +

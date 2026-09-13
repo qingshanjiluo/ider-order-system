@@ -1,0 +1,41 @@
+# 停用超额账号（一次性 + 可重复执行）
+#
+# 目的：切断"垃圾账号 → 升级任务遍历 → 烧光 D1 额度 → 清理跑不动"的死循环。
+#
+# 与 cleanup-excess 的区别：
+#   cleanup-excess 走 Pages Function，会逐个账号读出来再写日志（读放大）；
+#   本工作流直接用 wrangler d1 execute 跑一条【纯写入 UPDATE】，
+#   用窗口函数算出每张工单应保留的前 quantity+1 个账号，其余就地标记，
+#   几乎不产生读放大 —— 在额度紧张时也能跑通。
+#
+# 幂等：已标记的账号不再匹配 health_status != 'cleaned'，可重复执行。
+name: 停用超额账号
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '触发原因'
+        required: false
+        default: '手动触发'
+
+jobs:
+  move-excess:
+    name: 停用超额账号
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 wrangler
+        run: npm install -g wrangler@4.114.0
+
+      - name: 执行维护 SQL
+        run: |
+          wrangler d1 execute ider-orders --file=maintenance_move_excess_accounts.sql --remote
+        working-directory: 工单系统
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

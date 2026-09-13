@@ -66,7 +66,9 @@ const t = async (name, fn) => {
   });
 
   const reg = async (tag) => {
-    const u = `${tag}_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+    // 轮63：用户名必须落在 /api/auth/register 的 schema 规则内（3-20 字符，[A-Za-z0-9_汉字]）；
+    // 旧写法带 13 位毫秒时间戳 + 4 位随机，实测 25 字符，一挂校验就 400。
+    const u = String(tag).replace(/[^A-Za-z0-9]/g, "").slice(0, 5) + Date.now().toString(36).slice(-5) + Math.floor(Math.random() * 1e3);
     const r = await call('POST', '/api/auth/register', { username: u, password: 'pw-dummy-123', nickname: u, faction: 'martial' });
     assert.ok(r.code === 200 && r.body && r.body.token, `注册 ${tag} 失败：${r.code} ${r.raw}`);
     const db = loadDatabase();
@@ -254,8 +256,12 @@ const t = async (name, fn) => {
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(`\nG2 好友与市场: ${pass} 通过, ${fail} 失败`);
   process.exitCode = fail ? 1 : 0;
+  // 轮63：exitCode 不强退 ⇒ 异常路径上未关的 server 句柄会吊住事件循环（门禁假死过一次）
+  setTimeout(() => process.exit(process.exitCode), 300).unref();
 })().catch((e) => {
   console.error('G2 套件异常：', e && e.stack ? e.stack : e);
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e2) { /* 忽略 */ }
   process.exitCode = 1;
+  // 轮63：exitCode 不强退 ⇒ 异常路径上未关的 server 句柄会吊住事件循环（门禁假死过一次）
+  setTimeout(() => process.exit(process.exitCode), 300).unref();
 });

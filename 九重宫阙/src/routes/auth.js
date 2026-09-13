@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { validateRequest, VALIDATION_RULES } = require('../middleware/validate');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
@@ -8,7 +9,7 @@ const store = require('../db/store');
 const { turnstileMiddleware } = require('../middleware/turnstile');
 const config = require('../config');
 
-router.post('/register', turnstileMiddleware, async (req, res) => {
+router.post('/register', validateRequest({ username: VALIDATION_RULES.username, password: VALIDATION_RULES.password, nickname: VALIDATION_RULES.nickname }), turnstileMiddleware, async (req, res) => {
   try {
     const { username, password, nickname, faction } = req.body;
     if (!username || !password) {
@@ -99,7 +100,7 @@ router.post('/register', turnstileMiddleware, async (req, res) => {
   }
 });
 
-router.post('/login', require('../middleware/loginGuard').guard, turnstileMiddleware, async (req, res) => {
+router.post('/login', validateRequest({ username: VALIDATION_RULES.username, password: VALIDATION_RULES.password }), require('../middleware/loginGuard').guard, turnstileMiddleware, async (req, res) => {
   try {
     const { username, password } = req.body;
     const db = loadDatabase();

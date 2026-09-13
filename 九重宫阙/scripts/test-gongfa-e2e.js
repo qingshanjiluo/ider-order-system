@@ -74,7 +74,7 @@ const t = async (name, fn) => {
   const store = { token: null, userId: null, charId: null };
 
   await t('新号注册即得 100 灵石（买得起最廉价的具名功法，T1-1 硬约束 2 的量化前提）', async () => {
-    const u = 'gf_e2e_' + Date.now();
+    const u = 'gfE2e' + Date.now().toString(36).slice(-6) + Math.floor(Math.random() * 100); // 轮63：旧写法 21 字符超 schema 上限 20
     const r = await call('POST', '/api/auth/register', { username: u, password: 'pw-dummy-123', nickname: u, faction: 'martial' });
     assert.ok(r.code === 200 && r.body && (r.body.token || r.body.success), '注册失败：' + r.code + ' ' + r.raw);
     store.token = r.body.token;
@@ -293,8 +293,12 @@ const t = async (name, fn) => {
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(`\nG1 功法与技能获取链: ${pass} 通过, ${fail} 失败`);
   process.exitCode = fail ? 1 : 0;
+  // 轮63：exitCode 不强退 ⇒ 异常路径上未关的 server 句柄会吊住事件循环（门禁假死过一次）
+  setTimeout(() => process.exit(process.exitCode), 300).unref();
 })().catch((e) => {
   console.error('G1 套件异常：', e && e.stack ? e.stack : e);
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e2) { /* 忽略 */ }
   process.exitCode = 1;
+  // 轮63：exitCode 不强退 ⇒ 异常路径上未关的 server 句柄会吊住事件循环（门禁假死过一次）
+  setTimeout(() => process.exit(process.exitCode), 300).unref();
 });

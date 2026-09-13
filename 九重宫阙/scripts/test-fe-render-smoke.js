@@ -125,7 +125,8 @@ function leakContext(html) {
     r.end();
   });
 
-  const uname = `smoke_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+  // 轮63：具名压进 register 的 schema 规则（3-20 字符），并显式检查 400
+  const uname = "feR" + Date.now().toString(36).slice(-6) + Math.floor(Math.random() * 100);
   const reg = await rawCall('POST', '/api/auth/register', { username: uname, password: 'pw-dummy-123', nickname: uname, faction: 'martial' });
   assert.ok(reg.code === 200 && reg.body && reg.body.token, '注册失败：' + reg.code + ' ' + reg.raw);
   const db0 = loadDatabase();
@@ -223,7 +224,8 @@ function leakContext(html) {
   });
 
   await t('好友面板真点击链路（渲染 → 搜索 → 申请 → 面板刷新）', async () => {
-    const rival = `smokeb_${Date.now() % 100000}`;
+    // 轮63：具名压进 register 的 schema 规则（3-20 字符），并显式检查 400
+    const rival = "feR" + Date.now().toString(36).slice(-6) + Math.floor(Math.random() * 100);
     const r2 = await rawCall('POST', '/api/auth/register', { username: rival, password: 'pw-dummy-123', nickname: rival, faction: 'magic' });
     assert.ok(r2.code === 200, '第二个角色注册失败：' + r2.code + ' ' + r2.raw);
     const db = loadDatabase();

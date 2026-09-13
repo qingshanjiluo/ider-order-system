@@ -70,7 +70,8 @@ const nextRowId = (arr) => (arr || []).reduce((m, r) => Math.max(m, Number(r.id)
     r.end();
   });
 
-  const uname = `vis_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+  // 轮63：具名压进 register 的 schema 规则（3-20 字符），并显式检查 400
+  const uname = "p3v" + Date.now().toString(36).slice(-6) + Math.floor(Math.random() * 100);
   const reg = await call('POST', '/api/auth/register', { username: uname, password: 'pw-dummy-123', nickname: uname, faction: 'martial' });
   assert.ok(reg.code === 200 && reg.body && reg.body.token, `注册失败：${reg.code} ${reg.raw}`);
   const db0 = loadDatabase();
@@ -258,8 +259,12 @@ const nextRowId = (arr) => (arr || []).reduce((m, r) => Math.max(m, Number(r.id)
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(`\nS2 P3 可见性: ${pass} 通过, ${fail} 失败`);
   process.exitCode = fail ? 1 : 0;
+  // 轮63：exitCode 不强退 ⇒ 异常路径上未关的 server 句柄会吊住事件循环（门禁假死过一次）
+  setTimeout(() => process.exit(process.exitCode), 300).unref();
 })().catch((e) => {
   console.error('S2 套件异常：', e && e.stack ? e.stack : e);
   try { fs.rmSync(TMP, { recursive: true, force: true }); } catch (e2) { /* 忽略 */ }
   process.exitCode = 1;
+  // 轮63：exitCode 不强退 ⇒ 异常路径上未关的 server 句柄会吊住事件循环（门禁假死过一次）
+  setTimeout(() => process.exit(process.exitCode), 300).unref();
 });

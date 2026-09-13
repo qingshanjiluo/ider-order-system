@@ -252,9 +252,30 @@ const LOK = { done: '✅', most: '🟡', part: '🟡', bad: '🔴' };
 R('E1', '写安全', LOK.done,
   `并发守恒 7 条在第 18 套内（50 路同购余额精确到枚 / 库存只够 K 次成功恰 K / 20 路锻造双守恒 / 混合写四项同精 / 多角色无重复 id）；auth 层按角色串行 + 15s 看门狗`,
   '脏集合增量写（性能欠债，单实例下正确）；getNextId 在"await 后 push"交错下无测试');
-R('E2', '安全加固', LOK.most,
-  `攻击模拟 11 条在门禁内；坏 token 五种全 401、爆破 423、注入不绕认证、XSS 道号净化、越权 admin 被拒、超大 body/畸形 JSON 回 JSON 不回堆栈；trust proxy 改显式开关`,
-  grepAny(['package.json'], '"helmet"') ? 'helmet 已在依赖（CSP 仍待复核）' : '未做：helmet/CSP 未引入（现只有自备头）；schema 级入参校验未做（现只有 sanitize）；DSH_TRUST_PROXY=1 无真实反代验证；登录锁定为进程内状态');
+// ---- E2 探针（轮63）：这一行的结论必须从代码里读出来，不许手抄 ----
+const SEC_HEADERS_ON = exists('src/middleware/secureHeaders.js') && /app\.use\(secureHeaders\)/.test(rd('server.js'));
+const VALIDATOR_WIRED = (() => {
+  let n = 0;
+  try {
+    for (const f of require('fs').readdirSync(path.join(ROOT, 'src', 'routes'))) {
+      if (!f.endsWith('.js')) continue;
+      n += (rd('src/routes/' + f).replace(/^\s*\/\/.*$/gm, '').match(/validateRequest\(/g) || []).length;
+    }
+  } catch (e) { return -1; }
+  return n;
+})();
+const DUP_RULES = (() => {
+  if (!exists('src/middleware/validate.js')) return -1;
+  const keys = [...rd('src/middleware/validate.js').matchAll(/^  ([A-Za-z]\w*)\s*:\s*\(val/gm)].map((m) => m[1]);
+  return [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))].length;
+})();
+const INLINE_ATTRS = exists('public/index.html') ? ((rd('public/index.html').match(/\son[a-z]+\s*=/g) || []).length) : -1;
+const CSP_INLINE = exists('src/middleware/secureHeaders.js') && /unsafe-inline/.test(rd('src/middleware/secureHeaders.js'));
+console.log('  E2 探针：安全头=' + SEC_HEADERS_ON + ' 校验器接线=' + VALIDATOR_WIRED + ' 处 重复规则键=' + DUP_RULES + ' 组 内联事件=' + INLINE_ATTRS + ' 处 CSP含unsafe-inline=' + CSP_INLINE);
+R('E2', '安全加固', (SEC_HEADERS_ON && VALIDATOR_WIRED > 0 && DUP_RULES === 0) ? LOK.most : LOK.bad,
+  `自备安全头 ${SEC_HEADERS_ON ? '已挂（CSP / nosniff / frame-ancestors / Referrer-Policy 等由第 24 套②逐条实测）' : '未挂（第 24 套②判红）'}；` +
+  `入参校验器在路由里接线 ${VALIDATOR_WIRED} 处（轮63 之前它是 145 条规则的零引用死代码）；重复规则键 ${DUP_RULES} 组`,
+  `剩余差口：CSP 仍含 'unsafe-inline'（前端 ${INLINE_ATTRS} 处内联事件未重构掉）；DSH_TRUST_PROXY=1 缺真实反代验证；登录失败锁定是进程内状态（多实例不共享）`);
 R('E3', '战斗接线', (E3_MP_WIRED && !LEARN_STUB_PRESENT) ? LOK.done : LOK.most,
   `槽位 min(2+境界,8) 且满槽拒、比值减伤 def/(def+K)、掉落真入包 + 5 次保底按敌级分档、先手按 speed、怪物模板入战；` +
   (E3_MP_WIRED

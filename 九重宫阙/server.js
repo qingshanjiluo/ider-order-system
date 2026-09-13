@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const { secureHeaders } = require('./src/middleware/secureHeaders');
 const path = require('path');
 require('dotenv').config();
 
@@ -42,6 +43,7 @@ const alchemyRoutes = require('./src/routes/alchemy');
 const caveRoutes = require('./src/routes/cave');
 
 const app = express();
+app.use(secureHeaders); // E2（轮63）：自备安全头，不引 helmet —— 镜像走 npm ci，加依赖会让镜像与本地不一致
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());

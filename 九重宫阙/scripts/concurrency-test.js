@@ -79,18 +79,20 @@ const nextId = (arr) => (arr || []).reduce((m, r) => Math.max(m, Number(r.id) ||
     const headers = { 'content-type': 'application/json' };
     if (token) headers.authorization = 'Bearer ' + token;
     if (data) headers['content-length'] = Buffer.byteLength(data);
-    const r = http.request({ host: '127.0.0.1', port, path: p, method, headers }, (rs) => {
+    const r = http.request({ host: '127.0.0.1', port, path: p, method, headers, timeout: 20000 }, (rs) => {
       let buf = '';
       rs.on('data', (c) => { buf += c; });
       rs.on('end', () => { let j = null; try { j = JSON.parse(buf); } catch (e) { } resolve({ code: rs.statusCode, body: j, raw: buf.slice(0, 200) }); });
     });
     r.on('error', reject);
+    // 轮63：加超时 ⇒ 对端不回时 Promise 一定 settle，不会把整个门禁吊住
+    r.on('timeout', () => { r.destroy(); resolve({ code: 0, body: null, raw: 'timeout' }); });
     if (data) r.write(data);
     r.end();
   });
 
   const reg = async (tag) => {
-    const u = `${tag}_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+    const u = String(tag).replace(/[^A-Za-z0-9_]/g, '').slice(0, 4) + Date.now().toString(36).slice(-5) + Math.floor(Math.random() * 100); // 轮63：旧拼法 23 字符超 schema 上限 20
     const r = await call('POST', '/api/auth/register', { username: u, password: 'pw-dummy-123', nickname: u, faction: 'martial' });
     assert.ok(r.code === 200 && r.body && r.body.token, `注册 ${tag} 失败：${r.code} ${r.raw}`);
     const db = loadDatabase();

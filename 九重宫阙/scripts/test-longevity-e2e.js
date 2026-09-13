@@ -65,7 +65,8 @@ const run = async () => {
     r.end();
   });
 
-  const u = `g4_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+  // 轮63：具名压进 schema 的 3-20 字符规则（旧拼法 21 字符）
+  const u = `g4`.slice(0,0) + "g4" + Date.now().toString(36).slice(-6) + Math.floor(Math.random() * 100);
   const reg = await call('POST', '/api/auth/register', { username: u, password: 'pw-g4-dummy-1', nickname: u, faction: 'martial' });
   assert.ok(reg.code === 200 && reg.body && reg.body.token, `注册失败：${reg.code} ${reg.raw}`);
   const token = reg.body.token;

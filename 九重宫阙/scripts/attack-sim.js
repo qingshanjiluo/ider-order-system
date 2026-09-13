@@ -19,6 +19,8 @@ const jwt = require('jsonwebtoken');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-attack-'));
 process.env.DSH_DATA_DIR = TMP;
+// 轮63 看门狗：子进程句柄未关时 spawnSync 的 timeout 也可能拖不住，宁可判红不要假死
+setTimeout(() => { console.log("  ❌ attack-sim 看门狗：300s 未退出，判红并强杀"); process.exit(1); }, 300000);
 // 注意：这个夹具本身必须**通过**生产强度断言 —— 第一版我写成 'attack-sim-secret-…'，
 // 里面的 "secret" 恰好命中 server.js 的弱口令黑名单，导致对照组"设了强 secret 反而退出"，
 // 差点被误判成产品缺陷。用无禁用词的随机串才对。
@@ -82,7 +84,7 @@ const t = async (name, fn) => {
     r.end();
   });
 
-  const uniq = (tag) => `${tag}_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+const uniq = (tag) => String(tag).replace(/[^A-Za-z0-9_]/g, '').slice(0, 7) + Date.now().toString(36).slice(-5) + Math.floor(Math.random() * 100); // 轮63：旧拼法 22-26 字符，超 register 的 3-20 规则
   const reg = async (tag, nickname) => {
     const u = uniq(tag);
     const r = await call('POST', '/api/auth/register', { username: u, password: 'pw-dummy-123', nickname: nickname || u, faction: 'martial' });

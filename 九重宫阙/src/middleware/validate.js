@@ -83,19 +83,16 @@ const VALIDATION_RULES = {
   maxLevel: (val) => Number.isInteger(val) && val > 0,
   required: (val) => Number.isInteger(val) && val >= 0,
   minLevel: (val) => Number.isInteger(val) && val >= 0,
-  maxLevel: (val) => Number.isInteger(val) && val >= 0,
   difficulty: (val) => Number.isInteger(val) && val > 0 && val <= 10,
   dropRate: (val) => typeof val === 'number' && val > 0,
   element: (val) => typeof val === 'string' && val.length > 0,
   levelRange: (val) => Array.isArray(val) && val.length === 2 && val.every(v => Number.isInteger(v) && v > 0),
-  stats: (val) => typeof val === 'string' && val.length > 0,
-  element: (val) => typeof val === 'string' && val.length > 0,
   channel: (val) => typeof val === 'string' && val.length > 0,
   lastLogin: (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val),
   createdAt: (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val),
   expiresAt: (val) => val === null || (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)),
   priority: (val) => ['low', 'normal', 'high'].includes(val),
-  type: (val) => ['system', 'event', 'maintenance'].includes(val),
+  announcementType: (val) => ['system', 'event', 'maintenance'].includes(val),
   title: (val) => typeof val === 'string' && val.length >= 1 && val.length <= 100,
   guildName: (val) => typeof val === 'string' && val.length >= 1 && val.length <= 20,
   notice: (val) => typeof val === 'string' && val.length <= 500,
@@ -119,7 +116,6 @@ const VALIDATION_RULES = {
   alchemyLevel: (val) => Number.isInteger(val) && val > 0,
   alchemyExp: (val) => Number.isInteger(val) && val >= 0,
   practiceCount: (val) => Number.isInteger(val) && val >= 0,
-  craftCount: (val) => Number.isInteger(val) && val >= 0,
   dailyCraft: (val) => Number.isInteger(val) && val >= 0,
   lastCraftDay: (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val),
   talents: (val) => Array.isArray(val),
@@ -134,7 +130,6 @@ const VALIDATION_RULES = {
   spiritRoots: (val) => Array.isArray(val) && val.every(r => r.type && typeof r.purity === 'number'),
   mood: (val) => typeof val === 'string' && val.length > 0,
   moodActions: (val) => typeof val === 'object' && val !== null,
-  stats: (val) => typeof val === 'object' && val !== null,
   constitution: (val) => Number.isInteger(val) && val >= 1,
   strength: (val) => Number.isInteger(val) && val >= 1,
   physique: (val) => Number.isInteger(val) && val >= 1,
@@ -182,7 +177,12 @@ function validateRequest(rules) {
 function sanitizeInput(obj) {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === 'string') {
-    return obj.replace(/[<>\"'&]/g, '');
+    // 轮63：原来只删 <>"'&，于是 <script>alert(1)</script>道号 被削成 scriptalert(1)/script道号
+    // （23 字符）。这既不算"洗干净"（标签名和斜杠全留下），又撞上 nickname 的 20 字符上限，
+    // 表现为"带 XSS 前缀的合法汉字道号被误杀"。先整段去掉标签，再兜底删残留的裸字符。
+    let cleaned = obj.replace(/<[^>]*>/g, '');
+    cleaned = cleaned.replace(/[<>"'&]/g, '');
+    return cleaned;
   }
   if (Array.isArray(obj)) {
     return obj.map(sanitizeInput);

@@ -1,4 +1,5 @@
 const express = require('express');
+const skillSvc = require('../services/skill'); // 轮65：被动技（craft_amp/alchemy_amp/discount/gather_amp）常驻生效
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
@@ -72,9 +73,13 @@ router.post('/gather', auth, (req, res) => {
     const gatheredItems = [];
     const gatherProf = proficiencyService.get(character, 'gathering');
     const baseChance = 0.3 + (character.level || 1) * 0.005 + gatherProf.successBonus * 0.5; // 熟练度加成（阶段3）
+    // 轮65：被动技"天机感应"等在此常驻生效（不占槽、无需装备），封顶 0.95 防堆成必出。
+    const gatherBonus = skillSvc.getPassiveBonus(character.id, 'gather_amp');
+    const nodeChance = Math.min(0.95, baseChance + gatherBonus);
+
 
     for (const nodeName of gatherNodes) {
-      if (Math.random() < baseChance) {
+      if (Math.random() < nodeChance) {
         const item = (db.items || []).find(i => i.name === nodeName);
         if (item) {
           gatheredItems.push({

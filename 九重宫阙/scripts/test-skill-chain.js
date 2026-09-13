@@ -61,6 +61,14 @@ const spawnServer = () => {
   CHILD.on('exit', () => { try { fs.appendFileSync(ERRF, ''); } catch (e) { } });
   return CHILD;
 };
+// 轮65：/api/character 的灵石字段名在不同视图里叫过 spirit_stone / stones，容错读取，读不到就交回原文炸断言
+const readStones = (res) => {
+  const j = (res && res.json) || {};
+  const c = j.character || j;
+  for (const k of ['spirit_stone', 'stones', 'spiritStone']) if (typeof c[k] === 'number') return c[k];
+  return -1;
+};
+
 const waitHealth = async () => {
   for (let i = 0; i < 40; i++) {
     await new Promise((r) => setTimeout(r, 400));
@@ -115,6 +123,29 @@ console.log('== 第 25 套 · 战斗技能链（临时数据目录 ' + path.base
     assert.ok(tok1, '没拿到 token');
     assert.ok(Number(CHAR) > 0, '拿不到角色 id：' + String(reg.text).slice(0, 120));
   });
+  // ★ 轮65（规划 ⑦）：不白送技能 —— 只验"起步资金确实够走到有可出战技能"，走不通就是新手第一步死路
+  const SK0 = require(path.join(ROOT, 'src', 'services', 'skill.js')).SKILLS_DATA;
+  const STARTER = SK0.filter((d) => d.slot === 'main' && d.type === 'active' && !d.is_hidden && d.required_realm === '炼气期' && !(d.prerequisites || []).length)
+    .sort((x, y) => (x.learn_cost || 0) - (y.learn_cost || 0))[0];
+  const stones0 = await req(PORT, 'GET', '/api/character', undefined, tok1);
+  const st0 = readStones(stones0);
+  const lr = await req(PORT, 'POST', '/api/skill/learn', { skillId: STARTER && STARTER.id }, tok1);
+  const lst0 = await req(PORT, 'GET', '/api/skill/list', undefined, tok1);
+  const row0 = ((lst0.json && lst0.json.skills) || []).find((s) => s.skill_id === (STARTER && STARTER.id));
+  const eq0 = await req(PORT, 'POST', '/api/skill/equip', { playerSkillId: row0 && row0.id, slot: 'main' }, tok1);
+  const poolA = await req(PORT, 'GET', '/api/battle/skills', undefined, tok1);
+  const un0 = await req(PORT, 'POST', '/api/skill/unequip', { playerSkillId: row0 && row0.id }, tok1);
+  const poolB = await req(PORT, 'GET', '/api/battle/skills', undefined, tok1);
+  t('★ 新号起步闭环：' + (STARTER ? STARTER.id : '无样本') + '（最便宜的炼气主技）在起步资金内可 学→装→进池→卸下回空', () => {
+    assert.ok(STARTER, '抽不到 炼气期/无前置/非隐藏 的主技，样本失效');
+    assert.ok(st0 >= STARTER.learn_cost, `起步灵石 ${st0} 学不起 ${STARTER.id}（${STARTER.learn_cost}）⇒ 新手第一步是死路：` + stones0.text.slice(0, 140));
+    assert.strictEqual(lr.status, 200, 'HTTP 学技能失败 ' + lr.status + ' ' + lr.text.slice(0, 140));
+    assert.ok(row0, '列表里找不到刚学的行：' + lst0.text.slice(0, 140));
+    assert.strictEqual(eq0.status, 200, 'HTTP 装备失败 ' + eq0.status + ' ' + eq0.text.slice(0, 140));
+    assert.strictEqual(poolA.json.length, 1, '选招池没出现它：' + JSON.stringify(poolA.json).slice(0, 140));
+    assert.strictEqual(un0.status, 200, '卸下失败 ' + un0.status + ' ' + un0.text.slice(0, 120));
+    assert.strictEqual(poolB.json.length, 0, '卸下后池未清空（槽位泄漏）：' + JSON.stringify(poolB.json).slice(0, 120));
+  });
   await killServer(c1);
 
   // ---- B · 服务层准备数据：补足灵石并学 4 门技能（主/副/终极/被动各一）----
@@ -134,6 +165,10 @@ console.log('== 第 25 套 · 战斗技能链（临时数据目录 ' + path.base
   });
   const learnErrs = [];   // 作用域：断言在 if 块外，声明也必须在块外
   const learnIds = {};
+let SHOP_ITEM = 0;
+let SHOP_PRICE = 0;
+let DISC_VALUE = 0;
+
   if (defOk) {
     const db = dbApi.loadDatabase();
     const ch = db.characters.find((c) => Number(c.id) === Number(CHAR));
@@ -157,6 +192,13 @@ console.log('== 第 25 套 · 战斗技能链（临时数据目录 ' + path.base
       dbApi.saveDatabase(db2);
       learnIds[DEF_ULT.id] = ultRow.id;
     // 说明：learnSkill 内部已 saveDatabase，这里只需关连接让 WAL 落盘（门面没有 flushAll 这个导出）
+      // 轮65：再学一门 discount 被动（财源广进），用于下面的确定性 HTTP 行为锁；并挑一件明码标价的货架
+      const discDef = DATA.find((d) => d.type === 'passive' && d.effect_type === 'discount');
+      if (discDef) { const r3 = svc.learnSkill(Number(CHAR), discDef.id); if (!r3 || !r3.success) learnErrs.push('discount:' + discDef.id + '=' + ((r3 && r3.error) || '无返回')); else DISC_VALUE = Number(discDef.effect_value) || 0; }
+      const dbS = dbApi.loadDatabase();
+      const shopRow = (dbS.shop || []).find((s) => Number(s.price) >= 40 && (s.stock === -1 || Number(s.stock) > 2));
+      if (shopRow) { SHOP_ITEM = shopRow.id; SHOP_PRICE = Number(shopRow.price); }
+
     dbApi.closeDatabase();
   }
   t('③ 三门可学技能进 player_skills、终极技以夹具补齐，且每行都带 equipped_slot 键', () => {
@@ -219,6 +261,19 @@ console.log('== 第 25 套 · 战斗技能链（临时数据目录 ' + path.base
     assert.ok((list.json.skills || []).every((s) => 'skill_slot' in s), '列表行缺 skill_slot，前端无法按自身槽位给出入口');
   });
 
+  const stonesPre = await req(PORT, 'GET', '/api/character', undefined, TOK);
+  const buyRes = await req(PORT, 'POST', '/api/shop/buy', { itemId: SHOP_ITEM, quantity: 1 }, TOK);
+  const stonesPost = await req(PORT, 'GET', '/api/character', undefined, TOK);
+  t('⑮ 被动技常驻生效（确定性 HTTP 行为锁）：学了财源广进后坊市实付按 discount 打折', () => {
+    assert.ok(SHOP_PRICE > 0, '没挑到货架项，样本失效');
+    assert.ok(DISC_VALUE > 0, 'discount 被动没学上（见 ③ 的原因采集）');
+    assert.strictEqual(buyRes.status, 200, '购买失败 ' + buyRes.status + ' ' + buyRes.text.slice(0, 160));
+    const spent = readStones(stonesPre) - readStones(stonesPost);
+    const want = Math.max(1, Math.round(SHOP_PRICE * (1 - Math.min(0.5, DISC_VALUE))));
+    assert.strictEqual(spent, want, `实付 ${spent} ≠ 打折后应付 ${want}（原价 ${SHOP_PRICE}）⇒ 被动没生效或口径变了`);
+    assert.ok(spent < SHOP_PRICE, '打折没体现：' + spent + ' vs 原价 ' + SHOP_PRICE);
+  });
+
   // ---- D · 静态与乘区（无需服务）----
   t('⑪ 战斗功法乘区真被消费（skillDamageMultiplier 不再是空转字段）', () => {
     const dmg = require(path.join(ROOT, 'src', 'services', 'battle', 'damage.js'));
@@ -247,6 +302,43 @@ console.log('== 第 25 套 · 战斗技能链（临时数据目录 ' + path.base
     assert.ok(/s\.skill_slot/.test(s), '卡片没消费服务端透出的 skill_slot');
     assert.ok(!/data\.cdPenalty/.test(s), '界面还在读已删除的 cdPenalty');
   });
+  t('⑯ getPassiveBonus 只认"学没学"、不认装备，且按等级放大、跨门累加', () => {
+    const svcS = require(path.join(ROOT, 'src', 'services', 'skill.js'));
+    const dbX = dbApi.loadDatabase();
+    const cid = 900001;
+    // 夹具只存在于内存对象上（不调 saveDatabase ⇒ 不落盘），跑完即摘
+    dbX.player_skills.push(
+      { id: 900001, character_id: cid, skill_id: 'forge_master', level: 1, exp: 0, equipped_slot: null },
+      { id: 900002, character_id: cid, skill_id: 'dan_heart', level: 1, exp: 0, equipped_slot: null },
+      { id: 900003, character_id: cid, skill_id: 'wealth_luck', level: 3, exp: 0, equipped_slot: 'sub' }
+    );
+    const craft1 = svcS.getPassiveBonus(cid, 'craft_amp');
+    const alch1 = svcS.getPassiveBonus(cid, 'alchemy_amp');
+    assert.ok(craft1 > 0 && alch1 > 0, '未装备的两门被动算出 0（常驻生效没做到）：craft=' + craft1 + ' alch=' + alch1);
+    assert.strictEqual(svcS.getPassiveBonus(cid, 'gather_amp'), 0, '没学过 gather_amp 却给收益');
+    const defW = svcS.SKILLS_DATA.find((d) => d.id === 'wealth_luck');
+    const disc = svcS.getPassiveBonus(cid, 'discount');
+    assert.ok(Math.abs(disc - defW.effect_value * (1 + 2 * 0.03)) < 1e-9, '等级放大口径不是 1+(level-1)*0.03：' + disc);
+    assert.strictEqual(svcS.getPassiveBonus(cid, 'not_a_type'), 0, '未知 effect_type 必须给 0');
+    assert.strictEqual(svcS.getPassiveBonus(0, 'craft_amp'), 0, '无角色 id 必须给 0');
+    for (const id of [900001, 900002, 900003]) { const k = dbX.player_skills.findIndex((r) => r.id === id); if (k >= 0) dbX.player_skills.splice(k, 1); }
+  });
+  t('⑰ 四处消费点都真接上了（剥注释后仍在 ⇒ 不是注释里的空话）', () => {
+    const sites = [['src/routes/gathering.js', 'gather_amp'], ['src/routes/forge.js', 'craft_amp'], ['src/routes/alchemy.js', 'alchemy_amp'], ['src/routes/shop.js', 'discount']];
+    for (const pair of sites) {
+      const src = fs.readFileSync(path.join(ROOT, pair[0]), 'utf8').replace(/\/\/[^\n]*/g, '');
+      // 不用正则：多层 here-string 叠转义极易写出坏模式（本轮就写出了 Unterminated group）
+      const q = String.fromCharCode(39);
+      const declNeedle = 'const skillSvc = require(' + q + '../services/skill';
+      assert.ok(src.indexOf(declNeedle) >= 0, pair[0] + ' 调用了 skillSvc.getPassiveBonus 却没有声明 skillSvc（上一版就是这样 500 的）');
+      const callAt = src.indexOf('skillSvc.getPassiveBonus(');
+      assert.ok(callAt >= 0 && src.slice(callAt, callAt + 90).indexOf(pair[1]) >= 0, pair[0] + ' 的 ' + pair[1] + ' 调用形状不对');
+    }
+    const shopSrc = fs.readFileSync(path.join(ROOT, 'src', 'routes', 'shop.js'), 'utf8');
+    const sellSide = shopSrc.slice(shopSrc.indexOf('router.post(' + String.fromCharCode(39) + '/sell'));
+    assert.ok(sellSide.length === 0 || sellSide.indexOf('buyDiscount') < 0, '折扣串到了出售价（双向套利风险）');
+  });
+
   t('⑭ 临时副本里每一行 player_skills 都是可解析的技能（skill_id ∈ SKILLS_DATA）', () => {
     const rows = dbApi.loadDatabase().player_skills || [];
     const bad = rows.filter((r) => !DATA.some((d) => d.id === r.skill_id));
@@ -267,7 +359,7 @@ function finish(child) {
   for (const c of [child, CHILD]) { if (c) { try { c.kill(); } catch (e) { } } }   // 崩溃路径也杀：不留僵尸端口
   try { dbApiClose(); } catch (e) { }
   const after = fs.readFileSync(path.join(ROOT, 'data', 'game.db'));
-  t('⑮ 正式存档 data/game.db 逐字节未被本套件动过', () => {
+  t('⑲ 正式存档 data/game.db 逐字节未被本套件动过', () => {
     assert.strictEqual(crypto.createHash('md5').update(after).digest('hex'), crypto.createHash('md5').update(liveDb).digest('hex'),
       '正式存档被改写：' + liveDb.length + 'B → ' + after.length + 'B');
   });

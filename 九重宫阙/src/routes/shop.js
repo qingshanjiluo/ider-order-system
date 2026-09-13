@@ -1,4 +1,5 @@
 const express = require('express');
+const skillSvc = require('../services/skill'); // 轮65：被动技（craft_amp/alchemy_amp/discount/gather_amp）常驻生效
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
@@ -105,7 +106,9 @@ router.post('/buy', auth, (req, res) => {
     }
 
     const qty = quantity || 1;
-    const totalCost = shopItem.price * qty;
+// 轮65：被动技"财源广进"（discount）常驻生效：只降购入价，出售价不动（防止双向套利）。
+    const buyDiscount = Math.min(0.5, skillSvc.getPassiveBonus(character.id, 'discount'));
+    const totalCost = Math.max(1, Math.round(shopItem.price * qty * (1 - buyDiscount)));
 
     if ((character.spirit_stone || 0) < totalCost) {
       return res.status(400).json({ error: '灵石不足', required: totalCost, current: character.spirit_stone || 0 });

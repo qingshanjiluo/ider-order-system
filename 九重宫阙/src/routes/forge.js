@@ -1,4 +1,5 @@
 const express = require('express');
+const skillSvc = require('../services/skill'); // 轮65：被动技（craft_amp/alchemy_amp/discount/gather_amp）常驻生效
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
@@ -59,9 +60,10 @@ function calcSuperiorRate(auxMats, catalysts, flame, charStats) {
   return Math.min(0.5, Math.max(0.01, rate));
 }
 
-function generateForgeResult(db, mainItem, auxMats, catalysts, flame, charStats, profBonus = 0) {
+function generateForgeResult(db, mainItem, auxMats, catalysts, flame, charStats, profBonus = 0, craftBonus = 0) {
   const successRate = calcForgeSuccessRate(mainItem, auxMats, catalysts, flame, charStats, profBonus);
-  const superiorRate = calcSuperiorRate(auxMats, catalysts, flame, charStats);
+  // 轮65：craft_amp（"锻造出高品质器材的概率提升"）常驻生效，加在函数内部封顶之后，避免被 0.5 上限吃掉
+  const superiorRate = Math.min(0.95, calcSuperiorRate(auxMats, catalysts, flame, charStats) + (Number(craftBonus) || 0));
 
   const roll = Math.random();
   if (roll > successRate) {
@@ -314,7 +316,7 @@ router.post('/forge', auth, (req, res) => {
 
     const charStats = character.stats || {};
     const prof = proficiencyService.get(character, 'crafting');
-    const result = generateForgeResult(db, mainItem, auxItems, catItems, flame, charStats, prof.successBonus);
+    const result = generateForgeResult(db, mainItem, auxItems, catItems, flame, charStats, prof.successBonus, skillSvc.getPassiveBonus(character.id, 'craft_amp'));
 
     if (result.success) {
       const profResult = proficiencyService.addExp(character, 'crafting', result.isSuperior ? 25 : 10);

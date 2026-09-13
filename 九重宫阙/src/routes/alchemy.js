@@ -1,4 +1,5 @@
 const express = require('express');
+const skillSvc = require('../services/skill'); // 轮65：被动技（craft_amp/alchemy_amp/discount/gather_amp）常驻生效
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
@@ -249,7 +250,8 @@ router.post('/craft', auth, (req, res) => {
 
     const profBonus = getProficiency(character, recipe.id) * 0.001;
     const talentSuccess = getTalentBonus(character, 'success_bonus');
-    const successRate = Math.min(0.95, recipe.baseSuccess + alchemyInfo.level * 0.02 + furnace.successBonus + profBonus + talentSuccess + auxBonus + catalystBonus);
+      const alchBonus = skillSvc.getPassiveBonus(character.id, 'alchemy_amp'); // 轮65：被动技常驻生效（成功率与爆表率都吃 alchemy_amp）
+      const successRate = Math.min(0.95, recipe.baseSuccess + alchemyInfo.level * 0.02 + furnace.successBonus + profBonus + talentSuccess + auxBonus + catalystBonus + alchBonus);
     const roll = Math.random();
 
     alchemyInfo.craftCount = (alchemyInfo.craftCount || 0) + 1;
@@ -276,7 +278,7 @@ router.post('/craft', auth, (req, res) => {
     }
 
     let quantity = recipe.resultQty;
-    const critRate = 0.1 + getTalentBonus(character, 'crit_rate');
+    const critRate = Math.min(0.95, 0.1 + getTalentBonus(character, 'crit_rate') + alchBonus); // 轮65：爆表率同样吃 alchemy_amp
     const isCrit = Math.random() < critRate;
     if (isCrit) quantity += 1;
 

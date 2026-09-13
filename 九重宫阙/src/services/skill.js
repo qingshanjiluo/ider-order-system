@@ -166,6 +166,24 @@ function getSkillStatsAtLevel(skillDef, level) {
   };
 }
 
+// 轮65：被动技（type==='passive'）的收益此前**全仓无任何消费点** —— craft_amp / alchemy_amp / discount / gather_amp
+// 四个 effect_type 只出现在技能定义与 skillState 的 NON_COMBAT 名单里，等于"花灵石学了个零收益"。
+// 被动按定义就是常驻生效：不占技能槽、无需装备（装备反而被 ③ 拒绝），所以这里只认"学没学 + 几级"。
+// 等级放大沿用仓内既有口径（combat.js 功法乘区与 character.js 都用 1+(level-1)*0.03），不另造一套系数。
+const PASSIVE_EFFECTS = ['craft_amp', 'alchemy_amp', 'discount', 'gather_amp'];
+
+function getPassiveBonus(characterId, effectType) {
+  if (!characterId || PASSIVE_EFFECTS.indexOf(effectType) < 0) return 0;
+  const dbRef = loadDatabase();
+  const rows = (dbRef.player_skills || []).filter((ps) => Number(ps.character_id) === Number(characterId));
+  let sum = 0;
+  for (const r of rows) {
+    const def = SKILLS_DATA.find((d) => d.id === r.skill_id);
+    if (!def || def.type !== 'passive' || def.effect_type !== effectType) continue;
+    sum += (Number(def.effect_value) || 0) * (1 + ((Number(r.level) || 1) - 1) * 0.03);
+  }
+  return sum;
+}
 class SkillService {
   getSkills(characterId) {
     const db = loadDatabase();
@@ -613,3 +631,5 @@ module.exports.REALM_ORDER = REALM_ORDER;
 module.exports.RARITY_KEYS = Object.keys(RARITY_WEIGHTS);
 module.exports.ELEMENTS = ELEMENTS;
 module.exports.ELEMENTS_MAP = ELEMENTS;
+module.exports.PASSIVE_EFFECTS = PASSIVE_EFFECTS;
+module.exports.getPassiveBonus = getPassiveBonus;

@@ -182,7 +182,11 @@ const SKILLSTATE_SRC = exists('src/services/battle/skillState.js') ? rd('src/ser
 const E3_MP_WIRED = /skillState\.canUse/.test(COMBAT_SRC) && /skillState\.spend/.test(COMBAT_SRC) && /skillState\.applyEffect/.test(COMBAT_SRC) && /skillState\.tick/.test(COMBAT_SRC) &&
   /(mana|mp)\b/i.test(SKILLSTATE_SRC) && /cooldown/i.test(SKILLSTATE_SRC);
 const E3_FALLBACK_OK = /改为普通攻击/.test(COMBAT_SRC);
-const GONGFA_WRITE = grepAny(['src/services/battle/skill.js', 'src/routes/gongfa.js'], /gongfa\.push/);
+  // 轮65：证据源只留真挂了路由的那条 —— src/services/battle/skill.js 里也有 gongfa.push，
+  // 但该模块全仓无人 require（死代码），拿它当"功法可达"的证据会把审计引到不存在的执行路径上。
+// 但该模块全仓无人 require（死代码）⇒ 拿它当"功法可达"的证据会把审计引到不存在的执行路径上。
+const GONGFA_WRITE_SRC = 'src/routes/gongfa.js';
+const GONGFA_WRITE = grepAny([GONGFA_WRITE_SRC], /gongfa\.push/);
 const LEARN_STUB_PRESENT = grepAny(['src/routes/battle.js'], /skills\/learn/);
 /** 技能定义：一部分是 skill.js 里的字面量，另两批是 buildSkills() 程序化生成 —— 只数 `{ id:` 会漏掉绝大部分（轮59 实测：字面量 92 条，生成批数千倍于此）。 */
 let SKILL_DEFS_ERR = null;
@@ -288,7 +292,7 @@ R('E3', '战斗接线', (E3_MP_WIRED && !LEARN_STUB_PRESENT) ? LOK.done : LOK.mo
 R('E4', '修炼结算', LOK.done,
   `九乘区模型已接入生产路径（services/cultivation.js 引 cultivation-model，ctx.gongfas 由 db.gongfa 映射并把 stats.cultivation_speed 换算成 cultivationSpeed）；曲线真源 = realms.exp_requirement，十境最大偏差 ${BAL ? BAL.maxDriftPercent + '%' : '未取到'}；闭关/环境/灵植/资质各区有 pending 上报`,
   (GONGFA_WRITE
-    ? `db.gongfa 当前 ${DB.gongfaRows} 行属"尚无角色装备"，**不是可达性缺口**（写库路径存在：battle/skill.js 的 gongfa.push，且 G1 套件端到端锁住"买功法→装备→实例行出现→槽位上限生效"）；`
+    ? `db.gongfa 当前 ${DB.gongfaRows} 行属"尚无角色装备"，**不是可达性缺口**（写库路径存在：${GONGFA_WRITE_SRC} 的 gongfa.push，且 G1 套件端到端锁住"买功法→装备→实例行出现→槽位上限生效"）；`
     : '**无任何代码写 db.gongfa ⇒ 功法乘区对玩家不可达（真缺口）**；') +
   `突破立涨 ΔL 未在面板显示；mods 阵法/灵脉乘区取值未实测`);
 R('E5', '大限劫/延寿/丹毒/燃寿', LOK.done,

@@ -261,7 +261,7 @@ const t = async (name, fn) => {
     assert.strictEqual(a.code, 400, `/learn 竟然能学隐藏技 ${hidden.name}：${a.raw}`);
     assert.ok(/机缘/.test(a.raw), 'learn 的拒绝理由异常：' + a.raw);
     const b = await call('POST', '/api/skill/unlock-hidden', { skillId: hidden.id, condition: true }, store.token);
-    assert.strictEqual(b.code, 501, `/unlock-hidden 竟然接受了客户端自报的 condition：${b.raw}`);
+    assert.ok(b.code === 409 || b.code === 400, `/unlock-hidden 在无机缘时竟回了 ${b.code}（无判据/未达成必须是 4xx，不能假装成功）：${b.raw}`);
     assert.ok(!((b.body || {}).success), '响应里出现了 success，前端会当成功处理');
     assert.strictEqual((loadDatabase().player_skills || []).filter((ps) => ps.skill_id === hidden.id).length, 0, '隐藏技还是被写进 player_skills 了');
   });

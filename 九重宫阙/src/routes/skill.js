@@ -3,6 +3,7 @@ const B = require('../config/balance');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const skillService = require('../services/skill');
+const opportunity = require('../services/opportunity'); // 轮67：事件写机缘
 const { loadDatabase } = require('../database');
 
 router.get('/list', auth, (req, res) => {
@@ -239,12 +240,25 @@ router.post('/unlock-hidden', auth, (req, res) => {
     // 服务端零校验 —— 任何登录玩家 POST 一个 truthy 的 condition 就能白拿 7.0 倍率的仙阶大招
     // （前端 public/js/app.js:1821 确实在这么调）。19 门隐藏技的 hidden_condition 至今是散文描述、
     // 没有可判定的服务端记录，所以在实装真实解锁判定之前，这个入口必须拒绝，而不是假装成功。
-    // 实装方向：给角色加 unlocked_skills 记录，由秘境/BOSS 战（含血量条件）等服务端事件写入，本路由只查不收。
-    res.status(501).json({
-      error: '隐藏技能解锁尚未实装：需要服务端记录的机缘，不接受客户端自报条件',
-      skill_id: skillId,
-      hidden_condition: (skillService.SKILLS_DATA.find((s) => s.id === skillId) || {}).hidden_condition || null
-    });
+    // 轮67：这条方向已落地为 services/opportunity.js（character.opportunities），写入方只有战斗与应劫两处。
+    // 轮67：本入口从"一刀切 501（尚未实装）"改为**只认服务端记录的真动作**：
+    //   · 该隐藏技今天仍无服务端判据 ⇒ 409 如实挂账，绝不假装成功；
+    //   · 有判据但角色身上没这条机缘记录 ⇒ 409，并告知差哪一条；
+    //   · 有判据且已达成 ⇒ 委托 skillService.learnSkill 走同一套闸门（境界/前置/灵石）并真正写库。
+    // 客户端自报的条件字段自始至终不参与判定 —— 轮47 查出的"自报即白拿仙阶大招"那个洞仍然关着。
+    const skillDef = skillService.SKILLS_DATA.find((s) => s.id === skillId);
+    if (!skillDef) return res.status(400).json({ error: '技能不存在' });
+    if (!skillDef.is_hidden) return res.status(400).json({ error: '该技能不是隐藏技能，可直接参悟' });
+    const info = opportunity.describeRequirement(skillDef, character);
+    if (!info.required) {
+      return res.status(409).json({ error: '该隐藏技的解锁条件尚无服务端判据（挂账中，见开发日志轮67）', skill_id: skillId, hidden_condition: skillDef.hidden_condition || null, required_opportunity: null });
+    }
+    if (!info.achieved) {
+      return res.status(409).json({ error: '机缘尚未达成：它只由服务端事件写入，不接受自报', skill_id: skillId, required_opportunity: info.required, hidden_condition: info.condition });
+    }
+    const done = skillService.learnSkill(character.id, skillId);
+    if (!done.success) return res.status(400).json(Object.assign({ required_opportunity: info.required }, done));
+    res.json(Object.assign({ unlocked: true }, done));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

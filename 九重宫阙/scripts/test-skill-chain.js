@@ -274,6 +274,38 @@ let DISC_VALUE = 0;
     assert.ok(spent < SHOP_PRICE, '打折没体现：' + spent + ' vs 原价 ' + SHOP_PRICE);
   });
 
+  // ---- 轮67 · 隐藏技的服务端机缘记录（㉑㉒㉓）----
+  const OPP67 = require(path.join(ROOT, 'src', 'services', 'opportunity.js'));
+  const dbH = dbApi.loadDatabase();
+  const charH = dbH.characters.find((c) => String(c.id) === String(CHAR));
+  charH.realm = '元婴';   // 口径：角色身上的 realm 用 REALM_ORDER（不带期），技能定义的 required_realm 带期且只在要求侧去期（services/skill.js:151）
+  charH.opportunities = [];   // 显式清空 ⇒ 此刻境界/前置/灵石全都够、只差机缘，㉑ 的第一条断言才是真敏感（轮67 负向对照校正）
+  dbH.player_skills.push({ id: 950001, character_id: Number(CHAR), skill_id: 'void_blast', level: 1, exp: 0, equipped_slot: null });
+  dbApi.saveDatabase(dbH);
+  const learnHidNoRecord = svc.learnSkill(Number(CHAR), 'forbidden_seal');
+  const rec67 = OPP67.record(charH, OPP67.KEYS.NEAR_DEATH_VICTORY, { hp_left: 1, hp_max: 400 });
+  dbApi.saveDatabase(dbH);
+  const learnHidWithRecord = svc.learnSkill(Number(CHAR), 'forbidden_seal');
+  const selfReport = await req(PORT, 'POST', '/api/skill/unlock-hidden', { skillId: 'primordial_chaos', condition: '我已通关全部隐藏副本' }, TOK);
+  const afterSelf = await req(PORT, 'GET', '/api/skill/list', undefined, TOK);
+  t('㉑ 没有服务端机缘记录时隐藏技仍然学不到（轮47 的防白嫖闸门不许被本轮实装顶掉）', () => {
+    assert.notStrictEqual(learnHidNoRecord.success, true, '无机缘也能学隐藏技 ⇒ 仙阶大招白嫖复现：' + JSON.stringify(learnHidNoRecord).slice(0, 140));
+    assert.ok(/机缘/.test(String(learnHidNoRecord.error || '')), '拒绝语没提机缘，玩家不知道差什么：' + JSON.stringify(learnHidNoRecord).slice(0, 140));
+  });
+  t('㉒ 记上 near_death_victory 后 forbidden_seal 可学且真的落库（仍要过元婴与前置）', () => {
+    assert.strictEqual(rec67.recorded, true, 'record 没写进去：' + JSON.stringify(rec67));
+    assert.strictEqual(learnHidWithRecord.success, true, '有记录仍学不到：' + JSON.stringify(learnHidWithRecord).slice(0, 180));
+    const hasRow = dbApi.loadDatabase().player_skills.some((r) => String(r.character_id) === String(CHAR) && r.skill_id === 'forbidden_seal');
+    assert.ok(hasRow, 'learnSkill 报成功却没在 player_skills 落行');
+  });
+  t('㉓ 客户端自报条件依然无效：/unlock-hidden 只查不写，也不把未达成说成已达成', () => {
+    assert.strictEqual(selfReport.status, 409, '无机缘时该回 409 却回了 ' + selfReport.status + '：' + selfReport.text.slice(0, 140));
+    const j = selfReport.json || {};
+    assert.strictEqual(j.success, undefined, '响应带 success ⇒ 没办成事却告诉前端成功了：' + JSON.stringify(j).slice(0, 140));
+    assert.ok(j.required_opportunity === null, 'primordial_chaos 的条件今天无服务端判据，required_opportunity 应为 null：' + JSON.stringify(j).slice(0, 160));
+    const learned = JSON.stringify((afterSelf.json && afterSelf.json.skills) || []);
+    assert.ok(learned.indexOf('primordial_chaos') < 0, '自报条件把隐藏技写进了技能列表：' + learned.slice(0, 160));
+  });
   // ---- D · 静态与乘区（无需服务）----
   t('⑪ 战斗功法乘区真被消费（skillDamageMultiplier 不再是空转字段）', () => {
     const dmg = require(path.join(ROOT, 'src', 'services', 'battle', 'damage.js'));
@@ -362,6 +394,27 @@ let DISC_VALUE = 0;
     console.log('  · 取技实现唯一：' + defs[0].rel);
   });
 
+  t('㉔ 生产者真在活路径上调用 record（断因不断果）', () => {
+    const pairs = [['src/routes/battle.js', 'opportunityFromBattle'], ['src/routes/tribulation.js', 'TRIBULATION_SURVIVED']];
+    for (const pair of pairs) {
+      const src = fs.readFileSync(path.join(ROOT, pair[0]), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+      assert.ok(src.indexOf('require(' + String.fromCharCode(39) + '../services/opportunity') >= 0, pair[0] + ' 没声明 opportunity 模块');
+      assert.ok(src.indexOf('opportunity.record(') >= 0, pair[0] + ' 没调用 record ⇒ 机缘只能靠夹具，玩家永远拿不到');
+      assert.ok(src.indexOf(pair[1]) >= 0, pair[0] + ' 缺少 ' + pair[1] + ' 这条判定入口');
+    }
+  });
+  t('㉕ 机缘键只认 KEYS 白名单，且濒死判定不吃脏数据', () => {
+    const fake = { opportunities: [] };
+    assert.strictEqual(OPP67.record(fake, 'i_want_it_all', null).recorded, false, '任意字符串都能写入 ⇒ 记录机制可被滥用');
+    assert.strictEqual(OPP67.record(fake, OPP67.KEYS.NEAR_DEATH_VICTORY, null).recorded, true, '合法键写不进去');
+    assert.strictEqual(OPP67.record(fake, OPP67.KEYS.NEAR_DEATH_VICTORY, null).repeated, true, '同键重复写应累加而不是造第二条');
+    assert.ok(OPP67.has(fake, OPP67.KEYS.NEAR_DEATH_VICTORY), 'has 认不出刚写的记录');
+    assert.strictEqual(OPP67.has({}, OPP67.KEYS.NEAR_DEATH_VICTORY), false, '空角色应为 false');
+    assert.strictEqual(OPP67.opportunityFromBattle({ winner: 'attacker', attackerMaxHp: 0, attackerFinalHp: 0 }), null, 'maxHp 为 0 不该判成濒死');
+    assert.strictEqual(OPP67.opportunityFromBattle({ winner: 'defender', attackerMaxHp: 100, attackerFinalHp: 1 }), null, '败战不该记机缘');
+    assert.strictEqual(OPP67.opportunityFromBattle({ winner: 'attacker', attackerMaxHp: 100, attackerFinalHp: 1 }), OPP67.KEYS.NEAR_DEATH_VICTORY, '1% 血量取胜应记为濒死');
+    assert.strictEqual(OPP67.opportunityFromBattle({ winner: 'attacker', attackerMaxHp: 100, attackerFinalHp: 10 }), null, '10% 不该算 1% 以下');
+  });
   t('⑭ 临时副本里每一行 player_skills 都是可解析的技能（skill_id ∈ SKILLS_DATA）', () => {
     const rows = dbApi.loadDatabase().player_skills || [];
     const bad = rows.filter((r) => !DATA.some((d) => d.id === r.skill_id));

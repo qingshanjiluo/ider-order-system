@@ -1,4 +1,5 @@
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const opportunity = require('./opportunity'); // 轮67：隐藏技的解锁判据来自服务端机缘记录
 const elements = require('./elements');
 
 // 元素元数据（阶段2：委托单一事实源，7 系金木水火土光明黑暗）
@@ -216,9 +217,16 @@ class SkillService {
 
     // 轮47：隐藏技不得被"猜 id"白嫖。列表接口本来就过滤 is_hidden（玩家看不见），而这里不校验，
     // 等于 19 门 天阶/仙阶 大招只要知道 id 就能用灵石买走，hidden_condition 全成了摆设。
-    // 解锁途径（秘境/机缘）尚未实装，先关门；实装时改为校验一条真实达成的解锁记录。
+    // 轮67 起部分实装（判据与记录见 services/opportunity.js）：已登记机械判据的隐藏技改为校验服务端记录，
     if (skillDef.is_hidden) {
-      return { success: false, error: `隐藏技能需通过特定机缘解锁，无法直接参悟：${skillDef.hidden_condition || skillDef.name}` };
+      const need = opportunity.requiredOpportunityOf(skillDef.id);
+      if (!need) {
+        // 该隐藏技今天仍没有服务端判据（条件依赖不存在的地点或尚无进度的收集）⇒ 继续拒绝，不猜、不放宽
+        return { success: false, error: `隐藏技能需通过特定机缘解锁，无法直接参悟：${skillDef.hidden_condition || skillDef.name}` };
+      }
+      if (!opportunity.has(character, need)) {
+        return { success: false, error: `尚未达成「${skillDef.name}」的解锁机缘（${skillDef.hidden_condition || need}）` };
+      }
     }
 
     if (!meetsRealmRequirement(character.realm || '炼气', skillDef.required_realm)) {

@@ -5,6 +5,7 @@ const combatService = require('../services/battle/combat');
 const characterService = require('../services/character');
 const injuryService = require('../services/injury');
 const { loadDatabase, saveDatabase } = require('../database');
+const opportunity = require('../services/opportunity'); // 轮67：事件写机缘
 
 router.get('/enemy', auth, (req, res) => {
   try {
@@ -51,6 +52,9 @@ router.post('/battle', auth, async (req, res) => {
       if (result.winner === 'attacker') {
         character.win_streak = (character.win_streak || 0) + 1;
         character.total_kills = (character.total_kills || 0) + 1;
+        // 轮67：濒死取胜 ⇒ 就地记一条服务端机缘（forbidden_seal 的判据）；下面的 saveDatabase 负责落库
+        const oppKey = opportunity.opportunityFromBattle(result);
+        if (oppKey) opportunity.record(character, oppKey, { hp_left: result.attackerFinalHp, hp_max: result.attackerMaxHp });
         character.spirit_stone = (character.spirit_stone || 0) + (result.rewards?.spiritStone || 0);
         const { updateQuestProgress } = require('./quests');
         const completed = updateQuestProgress(character.id, 'kill', 1);

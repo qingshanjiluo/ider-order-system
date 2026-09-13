@@ -14,6 +14,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase } = require('../database');
 const gameTime = require('../services/gameTime');
+const opportunity = require('../services/opportunity'); // 轮67：事件写机缘
 const combatService = require('../services/battle/combat');
 const B = require('../config/balance');
 
@@ -226,6 +227,9 @@ router.post('/endure', auth, async (req, res) => {
     if (won) {
       const v = gameTime.resolveTribulationVictory(character);
       if (!v.success) return res.status(409).json({ success: false, error: v.error });
+      // 轮67：应劫而生 = 一条服务端机缘（heaven_gate「渡劫不昧本心」的判据）。
+      // 必须在 resolveTribulationVictory 之后：只有真的续上命才算渡过来，v.success 为假时上面已经 return 掉了。
+      opportunity.record(character, opportunity.KEYS.TRIBULATION_SURVIVED, { realm: character.realm || null });
       saveDatabase(db);
       return res.json({
         success: true, won: true,

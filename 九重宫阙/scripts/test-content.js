@@ -2287,9 +2287,11 @@ t('隐藏技两扇白嫖门都关着：learnSkill 拒 is_hidden，/unlock-hidden
   assert.ok(/if \(skillDef\.is_hidden\)/.test(learn.slice(0, 2200)), 'learnSkill 不再校验 is_hidden —— 知道 id 就能用灵石买走仙阶大招');
   const rt = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'skill.js'), 'utf8');
   const uh = rt.slice(rt.indexOf("'/unlock-hidden'"));
-  assert.ok(!/req\.body\.condition/.test(uh.slice(0, 900)), '/unlock-hidden 又去读客户端自报的 condition 了（这是轮47 查出的实打实漏洞）');
+  const uhCode = uh.replace(/\/\/[^\n]*/g, '');   // 轮66 铁律：grep 型锁扫描前必须剥注释
+  assert.ok(!/body\.condition/.test(uhCode.slice(0, 1200)), '/unlock-hidden 又去读客户端自报的条件字段了（这是轮47 查出的实打实漏洞）');
   assert.ok(!/skillService\.unlockHiddenSkill\(/.test(rt), '/unlock-hidden 仍在调用无服务端判定的 unlockHiddenSkill');
-  assert.ok(/501/.test(uh.slice(0, 1200)), '解锁入口没有明确返回"尚未实装"，前端会以为成功');
+  assert.ok(/res\.status\(409\)/.test(uhCode), '解锁入口办不成时必须回 409（轮67 起取代一刀切 501：无判据与未达成要能被前端区分展示）');
+  assert.ok(/skillService\.learnSkill\(/.test(uhCode), '/unlock-hidden 达成后没委托 learnSkill ⇒ 又要变成只回话不写库的空转入口');
   const S = require('../src/services/skill').SKILLS_DATA || [];
   const hidden = S.filter((x) => x.is_hidden);
   assert.ok(hidden.length <= 19, `隐藏技从 19 涨到 ${hidden.length}：解锁判定未实装前不得新增拿不到的技能`);

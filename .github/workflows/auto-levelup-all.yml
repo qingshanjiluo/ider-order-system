@@ -1,8 +1,17 @@
-name: ⬆️ 全账号自动升级（每30min）
+name: ⬆️ 全账号自动升级
 
+# 频率从「每小时」降为「每 2 小时」：
+#   单轮实测耗时 12-17 分钟（主要开销是防封随机延迟），
+#   每小时触发会造成上一轮未结束就叠加下一轮，且账号遍历类端点
+#   （active-accounts / all-accounts）每次都要在 2.5 万行表上筛选排序，
+#   是 D1 免费日读额度（5M 行）被烧光的主要来源之一。
+#   降频后额度消耗减半，账号升级总吞吐不变（仍受 200/轮 限制）。
+#
+# 注意：不再传 WORKER_URL —— 该 secret 指向端点不全的遗留 Worker，
+#       脚本内部已固定使用 Pages API（可用 ORDER_API_URL 覆盖）。
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 jobs:
@@ -21,8 +30,6 @@ jobs:
         working-directory: 工单系统
         run: node gh-actions/auto_levelup_all.js
         env:
-          WORKER_URL: ${{ secrets.WORKER_URL }}
-          API_KEY: ${{ secrets.API_KEY }}
           API_BASE: ${{ secrets.API_BASE }}
           CLIENT_VERSION: ${{ secrets.CLIENT_VERSION }}
           SIGN_KEY: ${{ secrets.SIGN_KEY }}

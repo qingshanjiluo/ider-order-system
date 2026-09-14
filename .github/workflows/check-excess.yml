@@ -1,0 +1,19 @@
+name: 核对超额账号构成
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 安装 wrangler
+        run: npm install -g wrangler@4.114.0
+      - name: 核对
+        run: wrangler d1 execute ider-orders --file=maintenance_check_excess.sql --remote --json
+        working-directory: 工单系统
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

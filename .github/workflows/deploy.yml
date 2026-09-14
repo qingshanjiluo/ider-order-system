@@ -29,6 +29,14 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: D1 Migration - Indexes (降低读放大)
+        run: |
+          wrangler d1 execute ider-orders --file=migration_v19_indexes.sql --remote
+        working-directory: 工单系统
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - name: D1 Migration - New Tables
         run: |
           wrangler d1 execute ider-orders --file=migration_comprehensive_v17.sql --remote

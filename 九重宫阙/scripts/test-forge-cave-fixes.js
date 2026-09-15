@@ -374,6 +374,34 @@ const t = async (name, fn) => {
     assert.ok(invN >= 0, 'inventory 不可读');
   });
 
+  await t('功法升级（轮90 接 battle/skills/upgrade）：cost=level×100 真扣、重复升累价、缺钱 400 带 required', async () => {
+    const db = loadDatabase();
+    db.gongfa = db.gongfa || [];
+    db.gongfa.push({ id: 54321, character_id: A.id, name: '试升诀', level: 1 });
+    db.characters.find((c) => Number(c.id) === A.id).spirit_stone = 500;
+    saveDatabase(db);
+    const up = await call('POST', '/api/battle/skills/upgrade', { gongfaId: 54321 }, A.token);
+    assert.strictEqual(up.code, 200, '首升被拒：' + up.raw);
+    assert.strictEqual(up.body.level, 2);
+    assert.strictEqual(up.body.cost, 100, '一级功法价非 100：' + up.raw);
+    const db2 = loadDatabase();
+    assert.strictEqual(Number(db2.characters.find((c) => Number(c.id) === A.id).spirit_stone), 400, '升级费没真扣');
+    db2.characters.find((c) => Number(c.id) === A.id).spirit_stone = 50;
+    saveDatabase(db2);
+    const poor = await call('POST', '/api/battle/skills/upgrade', { gongfaId: 54321 }, A.token);
+    assert.strictEqual(poor.code, 400, '二级价 200，50 灵石竟能升：' + poor.raw);
+    assert.strictEqual(poor.body.required, 200, '缺钱回执未带 required（FE 要靠它提示）：' + poor.raw);
+    const ghost = await call('POST', '/api/battle/skills/upgrade', { gongfaId: 99999 }, A.token);
+    assert.strictEqual(ghost.code, 400, '他人/不存在功法竟可升：' + ghost.raw);
+  });
+
+  await t('阵法目录 formations/list（轮90）：200 且条目带 id/name 可渲染', async () => {
+    const ls = await g2('/api/formations/list');
+    const arr = ls.formations || ls.list || ls;
+    assert.ok(Array.isArray(arr) && arr.length > 0, 'formations/list 空或非数组：' + JSON.stringify(ls).slice(0, 100));
+    assert.ok(arr.every((f) => f.id !== undefined && f.name), '目录条目缺 id/name：' + JSON.stringify(arr[0]));
+  });
+
   async function g2(p) { const r = await call('GET', p, undefined, A.token); assert.strictEqual(r.code, 200, p + ' 非 200：' + r.raw); return r.body; }
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

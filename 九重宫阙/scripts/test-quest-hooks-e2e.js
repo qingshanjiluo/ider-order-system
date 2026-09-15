@@ -136,6 +136,34 @@ const t = async (name, fn) => {
     assert.ok(outsider.code === 400 || outsider.code === 404, '非同盟赠送竟放行：' + outsider.code);
   });
 
+  await t('仙盟令提交正扫 + 藏书阁未入宗负扫（轮90）：贡献/盟资落账、重复提交拒、无宗上传 400', async () => {
+    const uu = 'g8e' + Date.now().toString(36).slice(-6);
+    const er = await call('POST', '/api/auth/register', { username: uu, password: 'pw-dummy-123', nickname: uu, faction: 'martial' });
+    assert.ok(er.code === 200, '注册 E 失败');
+    const dbE = loadDatabase();
+    const EID = dbE.characters.find((c) => c.user_id === er.body.userId).id;
+    const jt = await call('POST', '/api/guild/join', { guildId: 424242 }, er.body.token);
+    assert.strictEqual(jt.code, 200, 'E 入假盟被拒：' + JSON.stringify(jt.body));
+    const cl = await call('POST', '/api/guild/token/claim', {}, er.body.token);
+    assert.strictEqual(cl.code, 200, 'E 首领令失败：' + JSON.stringify(cl.body));
+    const db2 = loadDatabase();
+    const tok = db2.inventory.find((i) => i.character_id === EID && [80, 81, 82, 83].includes(Number(i.item_id)));
+    assert.ok(tok, '领取后背包找不到仙盟令（字典 80-83 漂移？）');
+    const g0 = db2.guilds.find((g) => g.id === 424242).funds || 0;
+    const sub = await call('POST', '/api/guild/token/submit', { tokenItemId: tok.item_id }, er.body.token);
+    assert.strictEqual(sub.code, 200, '提交被拒：' + JSON.stringify(sub.body));
+    assert.ok(Number(sub.body.contribution) > 0, '贡献没入账：' + JSON.stringify(sub.body));
+    const db3 = loadDatabase();
+    assert.ok((db3.guilds.find((g) => g.id === 424242).funds || 0) > g0, '令牌贡献没进盟库（funds 直记断线）');
+    const again = await call('POST', '/api/guild/token/submit', { tokenItemId: tok.item_id }, er.body.token);
+    assert.strictEqual(again.code, 400, '重复提交竟再吃一笔贡献：' + JSON.stringify(again.body));
+    // 藏书阁：无宗门角色上传 → 400 语义拒（触达即退役，正路径留给有宗场景）
+    app.use('/api/sect', require('../src/routes/sect'));
+    const up = await call('POST', '/api/sect/library/upload', { itemId: 1 }, er.body.token);
+    assert.strictEqual(up.code, 400, '无宗上传竟被放行：' + up.code + ' ' + JSON.stringify(up.body));
+    assert.ok(up.body && up.body.error, '400 不带 error 文案');
+  });
+
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {
     if (!liveBefore) { assert.ok(!fs.existsSync(LIVE_DB), '本不该存在正式存档'); return; }
     const after = fs.statSync(LIVE_DB);

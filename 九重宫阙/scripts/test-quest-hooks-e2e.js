@@ -191,6 +191,34 @@ const t = async (name, fn) => {
     assert.ok(p.nonce, 'nonce 缺席——同对盟二修必吃旧稿');
   });
 
+  await t('殿匾题刻（轮95 sect_found 消费端）：三级门槛、盟主/长老闸、匾文进词池', async () => {
+    const uw = 'g8m' + Date.now().toString(36).slice(-6);
+    const wr = await call('POST', '/api/auth/register', { username: uw, password: 'pw-dummy-123', nickname: uw, faction: 'martial' });
+    assert.ok(wr.code === 200, '注册 M 失败');
+    const db0 = loadDatabase();
+    const mid = db0.characters.find((c) => c.user_id === wr.body.userId).id;
+    db0.guild_members.push({ id: 940001, guild_id: 424242, character_id: mid, role: '成员', joined_at: new Date().toISOString() });
+    saveDatabase(db0);
+    const low = await call('POST', '/api/guild/motto', {}, wr.body.token);
+    assert.strictEqual(low.code, 400, '一级盟竟可悬匾：' + JSON.stringify(low.body));
+    const db1 = loadDatabase();
+    db1.guilds.find((g) => g.id === 424242).level = 3;
+    saveDatabase(db1);
+    const noble = await call('POST', '/api/guild/motto', {}, wr.body.token);
+    assert.strictEqual(noble.code, 400, '普通成员竟可题匾：' + JSON.stringify(noble.body));
+    const db2 = loadDatabase();
+    db2.guild_members.find((m) => m.id === 940001).role = '长老';
+    saveDatabase(db2);
+    const ok = await call('POST', '/api/guild/motto', {}, wr.body.token);
+    assert.strictEqual(ok.code, 200, '长老题匾被拒：' + JSON.stringify(ok.body));
+    assert.strictEqual(ok.body.status, 'approved');
+    assert.ok(/^.+$/.test(ok.body.motto.title) && ok.body.motto.title.length <= 4, '匾名应短（X堂/X崖）：' + ok.body.motto.title);
+    assert.ok(!/诀$/.test(ok.body.motto.title), '匾名又借了配方词尾（"诀"上匾成何体统）：' + ok.body.motto.title);
+    const aiSvc = require('../src/services/ai');
+    const found = (aiSvc.listGenerations() || []).filter((x) => x.purpose === 'sect_found');
+    assert.ok(found.length >= 1 && /"kind":"motto"/.test(found[found.length - 1].prompt), 'sect_found 未落池或未带 kind 参数');
+  });
+
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {
     if (!liveBefore) { assert.ok(!fs.existsSync(LIVE_DB), '本不该存在正式存档'); return; }
     const after = fs.statSync(LIVE_DB);

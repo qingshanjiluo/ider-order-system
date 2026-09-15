@@ -2710,6 +2710,17 @@ t('轮93 影子并档：双擂台与 systems 变体已决，真擂台双闸在�
   const amN = (an.match(/combatService\.aftermath\(character, result, \{ arena: true \}\)/g) || []).length;
   assert.ok(amN === 2, `擂台伤况规则应双路对称，实测 ${amN}（challenge 不得裸奔）`);
 });
+t('轮95 sect_found 上匾 + 词池分家 + env 死键清剿', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const ai = rd('src/services/ai.js');
+  assert.ok(ai.includes("purpose === 'guild_content' || purpose === 'sect_found'"), '文案双用途词池分支被合回——"诀"又能上匾');
+  assert.ok(ai.includes("suffixWar: [") && ai.includes('mottoHeads: ['), '战帖/匾额专池消失，回落到配方借词');
+  assert.ok(ai.includes('localText(purpose, stats, params)'), 'localText 又收不到 params，kind 分支失明');
+  const gu = rd('src/routes/guild.js');
+  assert.ok(gu.includes("router.post('/motto'") && gu.includes("generate('sect_found'"), '题匾端点或 sect_found 调用被拆');
+  assert.ok(rd('src/routes/battle.js').includes('motto: (sect && sect.motto) || null'), 'war/info 匾额回显断线');
+  assert.ok(!rd('.env.example').includes('AI_PROVIDER'), '.env.example 死键 AI_PROVIDER 回流（全仓无读取者）');
+});
 t('轮94 AI 战书消费端：真盟名进词、门楣回写、死包装不回流', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
   const gu = rd('src/routes/guild.js');

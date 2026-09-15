@@ -233,7 +233,8 @@ router.get('/war/info', auth, (req, res) => {
       memberCount: sect ? db.guild_members.filter(m => m.guild_id === sect.id).length : 0,
       warStatus: sect && sect.warStatus ? sect.warStatus : 'idle',
       warResults: sect && sect.warResults ? sect.warResults.slice(-5) : [],
-      warPost: (sect && sect.warPost) || null // 轮94：门楣战书随战况一起回显（AI 内容进真世界状态的活样板）
+      warPost: (sect && sect.warPost) || null, // 轮94：门楣战书随战况一起回显（AI 内容进真世界状态的活样板）
+      motto: (sect && sect.motto) || null // 轮95：殿匾同理
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -175,12 +175,25 @@ const WORDBANK = {
   suffixPill: PILL_KINDS,
   descForge: ['灵光流转，隐有龙吟', '铭刻上古阵纹，寒气逼人', '温润如玉，灵气内蕴', '煞气凛然，非凡品可比', '锋刃未试，已有三尺青虹绕之不散', '器身暗纹如活物缓缓游动，似在择主', '出炉那刻窗外雷声隐隐，匠人言此器太傲', '寒潭铁魄锻成，触之生凉，心念却为之一正'],
   descPill: ['丹香扑鼻，药力浑厚', '丹纹三环，灵光内敛', '药香清冽，服用后灵台清明', '丹云覆顶，服之气血如潮，筋骨齐鸣', '九转凝露，入口化作一线暖流直抵丹田', '小温丹耳，胜在药性绵长，闭关三日不觉饿'],
-  descGeneric: ['蕴含大道至理', '气韵玄妙，难以言喻', '有前辈手泽，气象不凡', '藏着一段没讲完的因果', '见之忘俗，用之随缘', '不言自灵，久伴自知']
+  descGeneric: ['蕴含大道至理', '气韵玄妙，难以言喻', '有前辈手泽，气象不凡', '藏着一段没讲完的因果', '见之忘俗，用之随缘', '不言自灵，久伴自知'],
+  // 轮95：战帖/匾额专用词池——旧版 guild_content 借配方词池，门楣上挂出"青麟诀"很成问题
+  suffixWar: ['战帖', '战檄', '请战书', '挑战书', '下风帖'],
+  descWar: ['今奉本盟之名，指山岳为凭，直取云台——请君拔剑相迎。', '言语道断，剑锋便长。三日后，山门外恭候大驾。', '他日阵前认旗，今日壁上留名。', '墨未干而气已吞虹，此帖不求怜，只求一战。'],
+  mottoHeads: ['守拙', '抱一', '和光', '同尘', '剑胆', '琴心', '济危', '扶摇', '洗兵', '听松', '枕流', '叩玄'],
+  mottoTails: ['堂', '居', '轩', '崖', '台', '亭'],
+  descMotto: ['八字立骨，挂上匾就是一年功课', '祖师留训，能懂一句便受用一句', '字不必大，压得住山门即可']
 };
 
-function localText(purpose, stats) {
+function localText(purpose, stats, params) {
   // 轮88：旧代码把池长写死（*10/*4/*8）——扩池会变死字。一律改取 .length，池与取样同源。
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  if (purpose === 'guild_content' || purpose === 'sect_found') { // 轮95：两个文案用途都吃专用词池，禁"诀"上匾
+    const kind = (params && params.kind) || 'war_post';
+    if (kind === 'motto') {
+      return { name: pick(WORDBANK.mottoHeads) + pick(WORDBANK.mottoTails), desc: pick(WORDBANK.descMotto) };
+    }
+    return { name: pick(WORDBANK.prefix) + pick(WORDBANK.core) + pick(WORDBANK.suffixWar), desc: pick(WORDBANK.descWar) };
+  }
   const name = pick(WORDBANK.prefix) + pick(WORDBANK.core) +
     (purpose === 'recipe_alchemy' ? pick(WORDBANK.suffixPill) : purpose === 'recipe_forge' ? pick(WORDBANK.suffixForge) : '诀');
   const pool = purpose === 'recipe_alchemy' ? WORDBANK.descPill : purpose === 'recipe_forge' ? WORDBANK.descForge : WORDBANK.descGeneric;
@@ -301,7 +314,7 @@ async function generate(purpose, params = {}, opts = {}) {
       text = null;
     }
   }
-  if (!text) text = localText(purpose, stats);
+  if (!text) text = localText(purpose, stats, params); // 轮95：params 下传，词池按 kind 分支
 
   const content = { ...stats, name: text.name, desc: text.desc, source };
   const status = source === 'ai' || opts.forcePending ? 'pending' : 'approved';

@@ -1151,6 +1151,7 @@ async function loadArenaTab() {
           <button class="btn" onclick="handleWarPost()" style="flex:1;">修战书</button>
         </div>
         <div id="warpost-line" style="font-size:11px;color:var(--gold);margin-bottom:6px;">${warInfo && warInfo.warPost ? `门楣悬书：${warInfo.warPost.title} · 致${warInfo.warPost.target}` : '战书未悬（AI 修书，词稿过审才挂门楣）'}</div>
+        <div id="motto-line" style="font-size:11px;color:var(--text2);margin-bottom:6px;">${warInfo && warInfo.motto ? `殿匾高悬：「${warInfo.motto.title}」${warInfo.motto.sub}` : '堂前无匾（三级盟盟主/长老可题刻）'} <button class="btn small" onclick="handleMotto()">刻匾</button></div>
         ${(warInfo && warInfo.warResults && warInfo.warResults.length) ? `<div style="font-size:11px;color:var(--text2);">近战：${warInfo.warResults.map(w => `${w.enemy}·${w.won ? '胜' : '负'}`).join(' / ')}</div>` : ''}
       </div>
       <div class="char-panel">
@@ -1179,6 +1180,17 @@ window.handleWarPost = async function () {
     const line = document.getElementById('warpost-line');
     if (line) line.textContent = r.status === 'approved' && r.warPost ? `门楣悬书：${r.warPost.title} · 致${r.warPost.target}` : r.message;
     ui.showToast(r.message);
+  } catch (error) { ui.showToast(error.message); }
+};
+
+window.handleMotto = async function () {
+  try {
+    const r = await api.request('POST', '/guild/motto', {});
+    ui.showToast(r.message);
+    if (r.status === 'approved' && r.motto) {
+      const line = document.getElementById('motto-line');
+      if (line) line.firstChild.textContent = `殿匾高悬：「${r.motto.title}」${r.motto.sub} `;
+    }
   } catch (error) { ui.showToast(error.message); }
 };
 

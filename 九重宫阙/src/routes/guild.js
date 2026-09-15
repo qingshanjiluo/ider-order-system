@@ -752,4 +752,34 @@ router.post('/war-post', auth, async (req, res) => {
   }
 });
 
+// ---------- 轮95：殿匾题刻（sect_found 用途的消费端——匾在一堂，志在千秋） ----------
+router.post('/motto', auth, async (req, res) => {
+  try {
+    const aiService = require('../services/ai');
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const member = db.guild_members.find(m => m.character_id === character.id);
+    if (!member) return res.status(400).json({ error: '未加入仙盟' });
+    const guild = db.guilds.find(g => g.id === member.guild_id);
+    if ((guild.level || 1) < 3) return res.status(400).json({ error: '仙盟不足三级，堂前无匾可挂（先建盟升阶）' });
+    if (member.role !== '盟主' && member.role !== '长老') return res.status(400).json({ error: '只有盟主/长老可题匾' });
+
+    const gen = await aiService.generate('sect_found', {
+      kind: 'motto', guild: guild.name, by: character.name, nonce: Date.now()
+    }, {});
+    const approved = gen.status === 'approved' && gen.content;
+    if (approved) {
+      guild.motto = { title: gen.content.name, sub: gen.content.desc, by: character.name, at: Date.now(), generationId: gen.generationId };
+      saveDatabase(db);
+    }
+    res.json({
+      status: gen.status, generationId: gen.generationId, motto: guild.motto || null,
+      message: approved ? `匾已高悬：「${gen.content.name}」` : '墨已研好，词过审后即可悬匾'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

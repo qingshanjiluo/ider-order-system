@@ -2659,6 +2659,12 @@ t('轮82 G7 在册 + 复用不短路审核：ai.js 的 reuse-pending 分支是�
   // 反证：复用分支不得再无条件返回 approved
   assert.ok(!/if \(reused\) return \{ reused: true, generationId: reused\.id, status: 'approved'/.test(aiSvc),
     '复用在返回处又一行短路成 approved——传记二润静默丢失会复活');
+  // 轮88：WORDBANK 扩池到 20×20 字干，取样必须 .length 同源（写死池长=扩池变死字）
+  const wb = aiSvc.match(/prefix: \[[^\]]*\]/)[0];
+  const wc = aiSvc.match(/core: \[[^\]]*\]/)[0];
+  assert.ok((wb.match(/'.'/g) || []).length >= 20 && (wc.match(/'.'/g) || []).length >= 20,
+    `WORDBANK 池缩水：prefix=${(wb.match(/'.'/g) || []).length} core=${(wc.match(/'.'/g) || []).length}`);
+  assert.ok(!/Math\.random\(\) \* (10|4|8)\]/.test(aiSvc), 'localText 又出现写死的池长取样——本行红的当天就该改成 .length');
 });
 t('轮83 任务四钩子在册：level/checkin/craft/guild 进度源不得再断线', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');

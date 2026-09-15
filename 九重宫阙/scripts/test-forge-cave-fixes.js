@@ -45,6 +45,14 @@ const t = async (name, fn) => {
   app.use('/api/battle', require('../src/routes/battle'));
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const port = server.address().port;
+  // 轮88：轮87 的"种子缺口"实为套件假警报——真服务器 boot 时 materials.ensureAll 回填副本/货架
+  // （server.js:261-272），而进程内套件绕开 boot。补跑同一条富集链，让套件看见"boot 后的世界"，
+  // 否则测的是真实部署里根本不存在的空壳档（读实现不读名字的又一课）。
+  {
+    const db = loadDatabase();
+    require('../src/services/materials').ensureAll(db);
+    saveDatabase(db);
+  }
 
   const call = (method, p, body, token) => new Promise((resolve, reject) => {
     // 轮87 修：body 传 null 曾被 stringify 成 'null' 带 content-type 发出，express.json strict 拒收 400
@@ -339,8 +347,8 @@ const t = async (name, fn) => {
     const dg = await g('/api/dungeon');
     assert.ok(Array.isArray(dg.dungeons || dg), '/api/dungeon 形状漂移（角色副本列表）');
     const dgl = await g('/api/dungeon/list');
-    assert.ok(Array.isArray(dgl), '/api/dungeon/list 不是数组');
-    // 轮87 发现入账：新装镜像 db.dungeons 为空（正式档却有副本目录）——种子缺口，批6 补
+    assert.ok(Array.isArray(dgl) && dgl.length > 0, '/api/dungeon/list 空目录（boot 富集链在套件内没跑通）');
+    assert.ok(dgl.every((d) => d.name && d.minLevel !== undefined), '副本目录项缺字段：' + JSON.stringify(dgl[0]));
     const eq = await g('/api/equipment');
     assert.ok(Array.isArray(eq) || Array.isArray(eq.equipment), '装备列表形状漂移：' + JSON.stringify(eq).slice(0, 80));
     const dr = await g('/api/skill/drops');

@@ -168,20 +168,23 @@ function proceduralStats(purpose, params) {
 
 // ---------- 本地词库（降级保底） ----------
 const WORDBANK = {
-  prefix: ['青', '赤', '玄', '黄', '紫', '太', '混', '御', '凌', '镇'],
-  core: ['霄', '冥', '煌', '渊', '穹', '尘', '岚', '曦', '凰', '龙'],
+  // 轮88 扩池：前缀/核心各翻倍（100→400 字干组合），全部对齐世界观字感
+  prefix: ['青', '赤', '玄', '黄', '紫', '太', '混', '御', '凌', '镇', '苍', '曜', '坤', '离', '坎', '宸', '瀚', '岳', '溟', '煦'],
+  core: ['霄', '冥', '煌', '渊', '穹', '尘', '岚', '曦', '凰', '龙', '麟', '蛟', '梧', '镜', '阙', '澜', '崖', '烛', '斗', '枢'],
   suffixForge: FORGE_KINDS,
   suffixPill: PILL_KINDS,
-  descForge: ['灵光流转，隐有龙吟', '铭刻上古阵纹，寒气逼人', '温润如玉，灵气内蕴', '煞气凛然，非凡品可比'],
-  descPill: ['丹香扑鼻，药力浑厚', '丹纹三环，灵光内敛', '药香清冽，服用后灵台清明'],
-  descGeneric: ['蕴含大道至理', '气韵玄妙，难以言喻', '有前辈手泽，气象不凡']
+  descForge: ['灵光流转，隐有龙吟', '铭刻上古阵纹，寒气逼人', '温润如玉，灵气内蕴', '煞气凛然，非凡品可比', '锋刃未试，已有三尺青虹绕之不散', '器身暗纹如活物缓缓游动，似在择主', '出炉那刻窗外雷声隐隐，匠人言此器太傲', '寒潭铁魄锻成，触之生凉，心念却为之一正'],
+  descPill: ['丹香扑鼻，药力浑厚', '丹纹三环，灵光内敛', '药香清冽，服用后灵台清明', '丹云覆顶，服之气血如潮，筋骨齐鸣', '九转凝露，入口化作一线暖流直抵丹田', '小温丹耳，胜在药性绵长，闭关三日不觉饿'],
+  descGeneric: ['蕴含大道至理', '气韵玄妙，难以言喻', '有前辈手泽，气象不凡', '藏着一段没讲完的因果', '见之忘俗，用之随缘', '不言自灵，久伴自知']
 };
 
 function localText(purpose, stats) {
-  const name = WORDBANK.prefix[Math.floor(Math.random() * 10)] + WORDBANK.core[Math.floor(Math.random() * 10)] +
-    (purpose === 'recipe_alchemy' ? WORDBANK.suffixPill[Math.floor(Math.random() * 4)] : purpose === 'recipe_forge' ? WORDBANK.suffixForge[Math.floor(Math.random() * 8)] : '诀');
+  // 轮88：旧代码把池长写死（*10/*4/*8）——扩池会变死字。一律改取 .length，池与取样同源。
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const name = pick(WORDBANK.prefix) + pick(WORDBANK.core) +
+    (purpose === 'recipe_alchemy' ? pick(WORDBANK.suffixPill) : purpose === 'recipe_forge' ? pick(WORDBANK.suffixForge) : '诀');
   const pool = purpose === 'recipe_alchemy' ? WORDBANK.descPill : purpose === 'recipe_forge' ? WORDBANK.descForge : WORDBANK.descGeneric;
-  return { name, desc: pool[Math.floor(Math.random() * pool.length)] };
+  return { name, desc: pick(pool) };
 }
 
 // ---------- P6：世界观锚点（AI 文案引擎的"常识层"） ----------

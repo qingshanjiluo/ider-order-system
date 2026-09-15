@@ -283,6 +283,26 @@ try {
   }
   add('四类实例化型物品（材料/功法/功法书/灵宠）至少一条获取路径', noSource);
 
+  // 轮98 新边：有服务端判据的隐藏技，其前置链必须全链可达——判据门后挂散文门=死锁，
+  // 机缘达标也永远学不了（本轮 G11 首跑实锤 forbidden_seal←void_blast 即此形态）。
+  const oppSvcPre = require('../src/services/opportunity');
+  const hiddenIds = new Set(SK.filter((x) => x.is_hidden).map((x) => x.id));
+  const deadPre = [];
+  for (const h of SK.filter((x) => x.is_hidden && oppSvcPre.requiredOpportunityOf(x.id))) {
+    const seen = new Set();
+    const stack = (h.prerequisites || []).slice();
+    while (stack.length) {
+      const p = stack.shift();
+      if (seen.has(p)) continue;
+      seen.add(p);
+      if (hiddenIds.has(p) && !oppSvcPre.requiredOpportunityOf(p)) { deadPre.push(`${h.id} 的前置 ${p} 是散文门隐藏技`); continue; }
+      const pd = SK.find((x) => x.id === p);
+      if (pd) { for (const q of (pd.prerequisites || [])) if (!seen.has(q)) stack.push(q); }
+      else deadPre.push(`${h.id} 的前置 ${p} 不存在于技能库`);
+    }
+  }
+  add('判据隐藏技前置链全可达（禁死锁门）', deadPre);
+
   const srcCount = Object.keys(srcSets).reduce((a, k) => a + srcSets[k].size, 0);
 
   let total = 0;
@@ -302,9 +322,14 @@ try {
   console.log(`来源路径索引规模（去重名计数之和）= ${srcCount}：${Object.keys(srcSets).map((k) => k + '=' + srcSets[k].size).join(' ')}｜消耗方名字 ${consumedNames.size} 个`);
   // 轮46：按类型给出"实例化型物品"的获取覆盖率（功法/灵宠拿不到，对应集合就永远 0 行）
   console.log(`实例化型物品获取覆盖：${Object.keys(srcByType).map((t) => `${t} ${srcByType[t].ok}/${srcByType[t].total}`).join('｜')}`);
-  // 技能的"可得路径"口径与物品不同：GET /api/skill 列出全部非隐藏技能，learnSkill 只卡境界/前置/灵石，
-  // 所以非隐藏即"看得见也学得了"；隐藏技（解锁判定未实装）单独计数，由 test-content 的上限锁防增长。
-  console.log(`技能可得性：${SK.length} 条定义｜列表可学 ${SK.length - skHidden}｜隐藏未接线 ${skHidden}（learnSkill 与 /unlock-hidden 均已拒绝，待服务端机缘记录）`);
+  // 轮98 刷新：机缘服务（r67/r69）早已落地，旧文案"待服务端机缘记录"过时。
+  // 隐藏技拆两口径：有服务端判据（对账 opportunity.SKILL_REQUIREMENT）vs 纯散文挂账。
+  // 棘轮钉死：判据数下限 4（濒死/应劫/剑冢/建木四门不得退化），散文挂账上限 15（只降不升）。
+  const oppSvc = require('../src/services/opportunity');
+  const skJudged = SK.filter((x) => x.is_hidden && oppSvc.requiredOpportunityOf(x.id)).length;
+  console.log(`技能可得性：${SK.length} 条定义｜列表可学 ${SK.length - skHidden}｜隐藏技判据 ${skJudged}/${skHidden}（棘轮下限 4）｜纯散文挂账 ${skHidden - skJudged}（上限 15，只降不升）`);
+  if (skJudged < 4) { console.log('  ✗ 机缘判据棘轮：' + skJudged + ' < 4 —— 濒死/应劫/剑冢/建木四门判据在退化'); total++; }
+  if (skHidden - skJudged > 15) { console.log('  ✗ 新增隐藏技未经判据：散文挂账 ' + (skHidden - skJudged) + ' > 15'); total++; }
   console.log(`集合行数: items=${items.length} monsters=${monsters.length} maps=${(data.maps || []).length} dungeons=${(data.dungeons || []).length} recipes=${(data.recipes || []).length} forge=${(data.forge_recipes || []).length} blueprints=${(data.blueprints || []).length} player_skills=${(data.player_skills || []).length}`);
   if (total) {
     console.log(`\n🔴 内容引用完整性不合格：共 ${total} 条悬空引用`);

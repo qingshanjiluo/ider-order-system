@@ -2710,6 +2710,17 @@ t('轮93 影子并档：双擂台与 systems 变体已决，真擂台双闸在�
   const amN = (an.match(/combatService\.aftermath\(character, result, \{ arena: true \}\)/g) || []).length;
   assert.ok(amN === 2, `擂台伤况规则应双路对称，实测 ${amN}（challenge 不得裸奔）`);
 });
+t('轮98 机缘链死锁根治：判据门后禁挂散文门，审计新边在册', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const sk = rd('src/services/skill.js');
+  assert.ok(/forbidden_seal[\s\S]{0,400}prerequisites: \['shadow_strike'\]/.test(sk), '禁忌封印前置回流死锁门（void_blast 无判据）');
+  assert.ok(/judgment_spear[\s\S]{0,400}prerequisites: \['judgment'\]/.test(sk), '审判之枪前置回流死锁门（divine_judgment 无判据）');
+  const ri = rd('scripts/ref-integrity.js');
+  assert.ok(ri.includes("require('../src/services/opportunity')") && ri.includes('禁死锁门'), 'ref-integrity 的前置可达性审计边被拆——死锁会复发');
+  assert.ok(ri.includes('棘轮下限 4'), '机缘判据数棘轮（判据<4 即红）被拆');
+  assert.ok(ri.includes('上限 15'), '散文挂账上限棘轮被拆');
+  assert.ok(rd('scripts/run-all-tests.js').includes('test-opportunity-e2e.js'), 'G11 从名册消失');
+});
 t('轮97 交易行过期回仓三件套：服务/FE/套件在册', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
   const mk = rd('src/services/market.js');

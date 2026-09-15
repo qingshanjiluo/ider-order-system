@@ -294,7 +294,7 @@ let DISC_VALUE = 0;
   const charH = dbH.characters.find((c) => String(c.id) === String(CHAR));
   charH.realm = '元婴';   // 口径：角色身上的 realm 用 REALM_ORDER（不带期），技能定义的 required_realm 带期且只在要求侧去期（services/skill.js:151）
   charH.opportunities = [];   // 显式清空 ⇒ 此刻境界/前置/灵石全都够、只差机缘，㉑ 的第一条断言才是真敏感（轮67 负向对照校正）
-  dbH.player_skills.push({ id: 950001, character_id: Number(CHAR), skill_id: 'void_blast', level: 1, exp: 0, equipped_slot: null });
+  dbH.player_skills.push({ id: 950001, character_id: Number(CHAR), skill_id: 'shadow_strike', level: 1, exp: 0, equipped_slot: null }); // 轮98：forbidden_seal 前置改接可学暗影诀（旧 void_blast 是散文门死锁）
   dbApi.saveDatabase(dbH);
   const learnHidNoRecord = svc.learnSkill(Number(CHAR), 'forbidden_seal');
   const rec67 = OPP67.record(charH, OPP67.KEYS.NEAR_DEATH_VICTORY, { hp_left: 1, hp_max: 400 });

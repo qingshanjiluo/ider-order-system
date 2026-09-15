@@ -424,8 +424,13 @@ const t = async (name, fn) => {
     const db2 = loadDatabase();
     const eq = db2.equipments.find((e) => e.id === 888001);
     assert.strictEqual(eq.enchants.length, 1, '词条没落装备行');
-    // 已知欠账（批6四开刀，此处不锁行为防锚错方向）：enchant 同时把 stats 写回共享字典行
-    // forge.js:564-568 —— 全服同名装备互染，正解是战斗侧（combat.js:254/268/279）合并实例词条。
+    assert.strictEqual(db2.items.find((i) => i.id === 777001).stats, '{"attack":10}', '污染回潮：词条又写回共享字典行了');
+    // 轮92 实例语义闭环：词条进战斗面板数（getEntity 合并）
+    const cs = require('../src/services/battle/combat');
+    const atk0 = cs.getEntity(A.id, 'character').attack;
+    eq.enchants.push({ name: '烈焰', stats: { attack: 10 }, timestamp: Date.now() });
+    saveDatabase(db2);
+    assert.strictEqual(cs.getEntity(A.id, 'character').attack - atk0, 10, '实例词条未合并进战斗攻击（combat.js 轮92 断线）');
     const db3 = loadDatabase();
     db3.characters.find((c) => Number(c.id) === A.id).spirit_stone = 100;
     saveDatabase(db3);

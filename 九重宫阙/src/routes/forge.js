@@ -561,12 +561,9 @@ router.post('/enchant', auth, (req, res) => {
     if (!equip.enchants) equip.enchants = [];
     equip.enchants.push({ name: enchant.name, stats: enchant.stats, timestamp: Date.now() });
 
-    const stats = JSON.parse(item.stats || '{}');
-    for (const [k, v] of Object.entries(enchant.stats)) {
-      stats[k] = (stats[k] || 0) + v;
-    }
-    item.stats = JSON.stringify(stats);
-
+    // 轮92 手术：不再把词条写回共享字典行 item.stats——那会让一只"试灵剑"的附魔
+    // 传染全服所有同名装备（含未来掉落）。词条只活在这件装备的实例上，
+    // 战斗侧由 combat.getEntity 合并（combat.js 轮92 注释）。字典行只配当模板。
     saveDatabase(db);
     res.json({
       success: true,

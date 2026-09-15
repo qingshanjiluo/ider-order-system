@@ -2694,6 +2694,14 @@ t('轮85 洞府装饰/灵脉三接点：FE 面板与 action 分支三元组在�
   assert.ok(appSrc.includes('char-panel-title">装饰') && appSrc.includes('char-panel-title">灵脉'), '洞府两面板标题被删——接了 action 却没入口等于没接');
   assert.ok(appSrc.includes('一府一脉') && appSrc.includes('同款上限5'), '后端约束（一脉/上限5）的前端提示被删——玩家只会撞 400 才知道');
 });
+t('轮92 附魔污染手术：词条只活实例、字典行停写、战斗侧合并在线', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const forgeSrc = rd('src/routes/forge.js');
+  assert.ok(!/for \(const \[k, v\] of Object\.entries\(enchant\.stats\)\)/.test(forgeSrc),
+    'enchant 又在往共享字典行灌词条——全服同名装备互染复活');
+  const combatSrc = rd('src/services/battle/combat.js');
+  assert.ok(combatSrc.includes('for (const ench of (e.enchants || []))'), 'getEntity 的实例词条合并被拆——附魔变哑巴');
+});
 t('轮86 战斗批：影子榜单已死、war/modes 接 FE、war 修为归真源', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
   const battleSrc = rd('src/routes/battle.js');

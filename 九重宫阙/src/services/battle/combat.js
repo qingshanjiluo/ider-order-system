@@ -257,6 +257,16 @@ class CombatService {
           equipDefense += Math.floor((stats.defense || 0) * enhanceBonus);
           equipHp += Math.floor((stats.hp || 0) * enhanceBonus);
           equipSpeed += Math.floor((stats.speed || 0) * enhanceBonus);
+          // 轮92：附魔词条按装备实例合并。此前 enchant 把词条写回共享字典行 item.stats
+          // （全服同名装备互染的污染洞）；该路由在轮91 前从未接线、生产档零词条存量，
+          // 直接切实例语义无历史债。暴击类词条 getEntity 本就不聚合，如实留在词条册上。
+          for (const ench of (e.enchants || [])) {
+            const es = ench.stats || {};
+            equipAttack += es.attack || 0;
+            equipDefense += es.defense || 0;
+            equipHp += es.hp || 0;
+            equipSpeed += es.speed || 0;
+          }
         }
       }
 

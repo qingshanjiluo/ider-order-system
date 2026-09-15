@@ -41,6 +41,7 @@ const t = async (name, fn) => {
   app.use('/api/forge', require('../src/routes/forge'));
   app.use('/api/cave', require('../src/routes/cave'));
   app.use('/api/cultivation', require('../src/routes/cultivation'));
+  app.use('/api/formations', require('../src/routes/formations'));
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const port = server.address().port;
 
@@ -155,6 +156,49 @@ const t = async (name, fn) => {
     const ch2 = db2.characters.find((c) => c.id === A.id);
     assert.ok(Number(ch2.pending_offline_seconds) >= 3500, `登录没把一小时窗口入账（账本=${ch2.pending_offline_seconds}）`);
     assert.ok(Number(ch2.pending_offline_seconds) <= 7200, '入账超 2h 上限说明封顶没生效');
+  });
+
+  // ---- 4) formations id 错位（轮78）----
+  await t('formations：实例行 id 激活的就是那一行阵法（旧代码拿行 id 找定义，错位或"未知的阵法"）', async () => {
+    const db = loadDatabase();
+    if (!db.formations) db.formations = [];
+    // 先走正常目录激活一个定义（id=1），拿到实例行；再手工插一个"行 id 撞上别的定义号"的实例做锐利反证
+    const act1 = await call('POST', '/api/formations/activate', { formationId: 1 }, A.token);
+    assert.strictEqual(act1.code, 200, '定义 id 激活（目录路径）失败：' + act1.raw);
+    const lst = await call('GET', '/api/formations', undefined, A.token);
+    const inst = (lst.body.formations || [])[0];
+    assert.ok(inst, '激活后没有实例行');
+    await call('POST', '/api/formations/deactivate', {}, A.token);
+    // 插一行 id=777 的私有实例（任何定义表都不可能有这个 id），type 取 inst 同款
+    db.formations.push({ id: 777, character_id: A.id, name: inst.name, type: inst.type, bonus_attack: 0, active: false });
+    saveDatabase(db);
+    const act2 = await call('POST', '/api/formations/activate', { formationId: 777 }, A.token);
+    assert.strictEqual(act2.code, 200, '按实例行 id（777，定义表必无此 id）激活被拒——id 错位未修：' + act2.raw);
+    const lst2 = await call('GET', '/api/formations', undefined, A.token);
+    const active = (lst2.body.formations || []).find((f) => f.active);
+    assert.ok(active && Number(active.id) === 777, `激活的不是那一行实例（active.id=${active && active.id}≠777）——撞号激活错阵的风险`);
+  });
+
+  // ---- 5) forge 火焰 TDZ + 目录同源（轮78）----
+  await t('forge：带火焰类型不再 500（旧 TDZ 炸掉每一个锻造请求）；高阶无火源 400 拒', async () => {
+    const db = loadDatabase();
+    const main = { id: getNextId('items'), name: 'G5精铁', type: '材料', quality: '凡品', stats: '{}' };
+    db.items.push(main);
+    db.inventory.push({ id: getNextId('inventory'), character_id: A.id, item_id: main.id, quantity: 2 });
+    saveDatabase(db);
+    const f1 = await call('POST', '/api/forge/forge', { mainMaterialId: main.id, flameType: 'fire' }, A.token);
+    assert.strictEqual(f1.code, 200, `基础校验+普通火焰应 200 而不是 TDZ 500：${f1.code} ${f1.raw}`);
+    const f2 = await call('POST', '/api/forge/forge', { mainMaterialId: main.id, flameType: 'sunfire' }, A.token);
+    assert.strictEqual(f2.code, 400, '高阶火焰没火源竟放行/500：' + f2.code + ' ' + f2.raw);
+    assert.ok(/需持有/.test(f2.raw), '拒绝理由不是火源门槛：' + f2.raw);
+  });
+
+  await t('/flames 目录与锻造侧同一本字典：高阶款带 tier+source_item 全部可见', async () => {
+    const fl = await call('GET', '/api/forge/flames', undefined, A.token);
+    assert.strictEqual(fl.code, 200, '火焰目录读取失败：' + fl.raw);
+    const list = fl.body || [];
+    assert.ok(Array.isArray(list) && list.length >= 12, `目录缩水回手抄 8 款了（${Array.isArray(list) ? list.length : '?'}）`);
+    assert.ok(list.some((x) => x.tier === '高阶' && x.source_item), '高阶火焰没暴露 tier/source_item');
   });
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

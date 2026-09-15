@@ -2498,8 +2498,8 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
   assert.ok(!r.unwired.includes('/api/friend/search'),
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
-  // 轮74 批1a 5 条⇒42；轮75 批1b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5 三端点吃到 HTTP 断言⇒32
-  assert.ok(r.unwired.length <= 32, `未接线棘轮被抬高：${r.unwired.length}（基线 32，轮77 批3）`);
+  // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
+  assert.ok(r.unwired.length <= 31, `未接线棘轮被抬高：${r.unwired.length}（基线 31，轮78 批3下）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2613,6 +2613,28 @@ t('轮77 批3三修锚：G5 套件在册 + temper 先验后扣 + use-storage 键
   assert.ok(svc.includes('pending_offline_seconds = 0') && svc.includes('character.last_login = new Date(now).toISOString()'),
     '离线结算不再消费窗口——无限修为泉复发');
   assert.ok(authRt.includes('pending_offline_seconds'), '登录侧不再把离线窗口入账——正常路径会被踩成 0 收益废件');
+});
+t('轮78 批3(下)锚：formations 实例优先解析、forge TDZ 不复活、火焰字典单一真源', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const form = rd('src/routes/formations.js');
+  assert.ok(form.includes('f.id === formationId && f.character_id === character.id'),
+    'formations 激活又回到"拿实例行 id 找定义"的错位解析');
+  assert.ok(!/const existing = \(db\.formations \|\| \[\]\)\.find\(\s*f => f\.character_id/.test(form),
+    'existing 又只按 type 匹配——同类型多行时激活会 toggle 到别的行（G5 红过的现成证据）');
+  const forge = rd('src/routes/forge.js');
+  assert.ok(!forge.includes('if (flame && flame.source_item)'),
+    'TDZ 模式复活：const flame 声明之前就 if (flame…)——每个锻造请求都会 500');
+  assert.ok(forge.includes('Object.entries(FLAME_TYPES)'), '/flames 又回到手抄第二份火焰字典（与锻造侧漂移）');
+});
+t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
+  const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');
+  const ids = [...g.matchAll(/itemId:\s*(\d+)/g)].map((m) => Number(m[1]));
+  assert.deepStrictEqual(ids, [80, 81, 82, 83], '仙盟令 itemId 字典变了——改号必须同步核验正式档（本轮结论：80-83 在库即仙盟令，无撞号）');
+  const db = require('../src/database').loadDatabase();
+  for (const m of g.matchAll(/name:\s*'([^']*仙盟令)'[^\n]*itemId:\s*(\d+)/g)) {
+    const it = (db.items || []).find((i) => Number(i.id) === Number(m[2]));
+    assert.ok(it && it.name === m[1], `itemId ${m[2]} 在库不是「${m[1]}」——信物字典与货架脱节`);
+  }
 });
 t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
   const src = read21('public', 'js', 'api.js');

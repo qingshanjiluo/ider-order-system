@@ -47,14 +47,26 @@ router.post('/activate', auth, (req, res) => {
       return res.status(404).json({ error: '角色不存在' });
     }
 
-    const formationDef = FORMATION_TYPES.find(f => f.id === formationId);
+    // 轮78 修 id 错位：FE 的「激活」按钮传的是**玩家实例行 id**（app.js:2852 f.id），
+    // 旧代码直接拿去 FORMATION_TYPES 里找**定义 id**——两套 id 空间互不相干，
+    // 点自己已拥有的阵法回"未知的阵法"，撞上定义号还会激活错阵。
+    // 解析顺序：先按持有实例查（本角色行优先），再退化为目录定义 id（/formations/list 走这条）。
+    const instance = (db.formations || []).find(f => f.id === formationId && f.character_id === character.id);
+    const formationDef = instance
+      ? FORMATION_TYPES.find(f => f.type === instance.type)
+      : FORMATION_TYPES.find(f => f.id === formationId);
     if (!formationDef) {
       return res.status(400).json({ error: '未知的阵法' });
     }
 
-    const existing = (db.formations || []).find(
-      f => f.character_id === character.id && f.type === formationDef.type
-    );
+    // 轮78 二刀：旧版按 type 找"已拥有行"，同类型多行时命中哪行全凭插入顺序——
+    // 按实例 id 点激活却 toggle 到另一行（上面的红测试就是现成证据）。
+    // 先按 id 精确命中，再退 type（走定义 id 路径时沿用旧语义）。
+    const existing = instance
+      ? (db.formations || []).find(f => f.id === instance.id && f.character_id === character.id)
+      : (db.formations || []).find(
+          f => f.character_id === character.id && f.type === formationDef.type
+        );
 
     const currentActive = (db.formations || []).find(
       f => f.character_id === character.id && f.active

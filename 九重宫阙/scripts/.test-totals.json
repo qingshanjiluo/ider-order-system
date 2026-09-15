@@ -1,7 +1,7 @@
 {
   "suites": 26,
-  "failed": 0,
-  "green": true,
+  "failed": 1,
+  "green": false,
   "labels": [
     "内容完整性",
     "阶段2 回归",

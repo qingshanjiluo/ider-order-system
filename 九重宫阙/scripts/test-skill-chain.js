@@ -20,6 +20,7 @@ const http = require('http');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const net = require('net');
 const { spawn } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -80,6 +81,7 @@ const waitHealth = async () => {
 // 起不来就换端口重来（最多 4 次），并把 stderr 尾巴打出来 —— 不再出现无证据的"服务起不来"
 async function startServer(tag) {
   for (let attempt = 0; attempt < 4; attempt++) {
+    PORT = await freePort();   // 每次尝试都重新协商：重试时上一轮端口可能仍被 TIME_WAIT/僵尸占住
     const c = spawnServer();
     if (await waitHealth()) return c;
     let why = '(stderr 空)';
@@ -103,7 +105,19 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-chain-'));
 fs.copyFileSync(path.join(ROOT, 'data', 'game.db'), path.join(TMP, 'game.db'));
 process.env.DSH_DATA_DIR = TMP;   // 本进程后续走服务层，也必须落在副本上
 
-const PORT = 31700 + (process.pid % 250);
+// 轮72：端口从"31700+pid%250"改为 OS 协商空闲端口。固定 250 槽有撞车面：一次崩溃留下的
+// 僵尸服务会让本轮 startServer 的 waitHealth **探到僵尸的 200**，随后所有 HTTP 打在没夹具
+// 的旧镜像上，症状是"等级不足"这种业务假错（轮71 的红遍即此，查起来极误导）。
+// 协商法：listen(0) 拿端口→关闭→立刻起服务；重试时重新协商。
+const freePort = () => new Promise((resolve, reject) => {
+  const probe = net.createServer();
+  probe.on('error', reject);
+  probe.listen(0, '127.0.0.1', () => {
+    const p = probe.address().port;
+    probe.close(() => resolve(p));
+  });
+});
+let PORT = null;
 const USER = 'chain' + Date.now().toString(36).slice(-5) + Math.floor(Math.random() * 90 + 10);
 const PASSWD = 'chain-pw-123';
 
@@ -429,14 +443,18 @@ let DISC_VALUE = 0;
     { id: 960003, character_id: Number(CHAR), skill_id: 'wind_walk', level: 1, exp: 0, equipped_slot: null },
     { id: 960004, character_id: Number(CHAR), skill_id: 'greenwood_bind', level: 1, exp: 0, equipped_slot: null }
   );
-  dbApi.saveDatabase(dbD69);
   const swordTomb = dbD69.dungeons.find((d) => d.name === '剑冢深处');   // 键在名字：数字 id 种子时生成，跨环境不稳定
   const jianmuRuins = dbD69.dungeons.find((d) => d.name === '建木遗迹');
   // 跨进程事实（轮69 实测教训）：store.js 的 loadDatabase 返回常驻内存 mirror（:151-154），
   // 服务器进程启动后不再重读文件 ⇒ 套件进程直改 db 再 save，/enter（HTTP，读服务器 mirror）看不见；
   // 反过来 /enter 写的机缘也只在服务器 mirror ⇒ 本块断言全部走 HTTP，不再走套件内服务层。
   // invalidateCache 是空操作（store.js:199-201），重启服务器是唯一让两侧 mirror 一致的合法手段。
+  // 轮71 修竞态（轮70 绿是时序侥幸）：夹具的 saveDatabase 必须排在 killServer **之后**。
+  // 旧序 落盘→kill→重启：SIGTERM 处理器 close()→dirty 时 flushAll 把旧镜像（level=1）回写
+  // 覆盖夹具——只要"上次 HTTP 写 characters"距夹具不足一个 autosave 周期就必现。
+  // 新序 kill（含退出回写）→落盘→重启：夹具永远是最后一次写盘者，胜负与机器忙闲无关。
   await killServer(CHILD);
+  dbApi.saveDatabase(dbD69);
   const c69 = await startServer('轮69重启');
   const learnNoOpp = await req(PORT, 'POST', '/api/skill/learn', { skillId: 'ten_thousand_swords' }, TOK);
   const enterSword = await req(PORT, 'POST', '/api/dungeon/enter', { dungeonId: swordTomb && swordTomb.id }, TOK);

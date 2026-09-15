@@ -2489,6 +2489,59 @@ t('端点覆盖率测量可复现，且"幽灵调用"必须为零', () => {
   assert.ok(r.totals.test >= 78, `测试打过的端点数掉到 ${r.totals.test}（基线 78）：有 HTTP 断言被删`);
   assert.ok(r.rates.fe >= 60, `名义覆盖率 ${r.rates.fe}% 低于 60%：前端 api 层大面积失联`);
 });
+// ===== 轮71 · P6 批0：口径修正落账 + 两处实锤缺陷的回归锁 =====
+t('轮71 口径修正：两条"未接线"是测量假阳性，修好后棘轮收紧到 47', () => {
+  const { measure } = require('../scripts/endpoint-coverage.js');
+  const r = measure();
+  assert.ok(!r.unwired.includes('/api/chat/history'),
+    '/api/chat/history 明明已接通（api.js getChatHistory → chat.js 拉历史），还上榜说明口径又看不见模板查询了');
+  assert.ok(!r.unwired.includes('/api/friend/search'),
+    '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
+  // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
+  assert.ok(r.unwired.length <= 47, `未接线棘轮被抬高：${r.unwired.length}（基线 47）`);
+});
+t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
+  const fs2 = require('fs');
+  const path2 = require('path');
+  const dir = path2.join(__dirname, '..', 'src', 'routes');
+  let scanned = 0;
+  for (const f of fs2.readdirSync(dir)) {
+    if (!f.endsWith('.js')) continue;
+    const src = fs2.readFileSync(path2.join(dir, f), 'utf8');
+    // 解构名收集**全文件任意处**（函数体内联 require 也合法，如 chat.js:55 —— 丑但能用）
+    const destructs = [...src.matchAll(/const \{([^}]*)\} = require\('\.\.\/database'\)/g)];
+    if (!destructs.length) continue;
+    scanned++;
+    const imported = destructs.map((d) => d[1]).join(',');
+    for (const fn of ['loadDatabase', 'saveDatabase', 'getNextId']) {
+      const used = new RegExp(`[^.\\w$'"${'`'}]${fn}\\s*\\(`).test(src);
+      if (used) assert.ok(imported.includes(fn), `${f} 里用了 ${fn}() 却没解构导入 —— 该分支运行到就是 ReferenceError→500`);
+    }
+  }
+  assert.ok(scanned >= 30, `只扫了 ${scanned} 个路由文件就收工？多半是匹配模式漂移，锁已失真`);
+});
+t('轮71 P6：AI 文案管线带上世界观锚点（真源派生+装配接线+生产默认令牌封死）', () => {
+  const ai = require('../src/services/ai');
+  const a = ai.worldAnchorBrief();
+  assert.ok(a.realms.indexOf('筑基') >= 0 && a.realms.indexOf('渡劫') >= 0, '境界梯子不是 balance.REALM_ORDER 派生');
+  assert.ok(a.places.length >= 30, `地图锚点只剩 ${a.places.length} 条（在用库 32 图，派生链断了）`);
+  assert.ok(a.dungeons.length >= 50, `秘境锚点只剩 ${a.dungeons.length} 条（在用库 50 副本）`);
+  const p = ai.buildSystemPrompt('lore', { element: 'fire' });
+  assert.ok(p.includes('九重宫阙'), 'lore 提示词没锚定本作名');
+  assert.ok(/地名 /.test(p) && /秘境 /.test(p), '提示词缺地名/秘境段');
+  assert.ok(p.includes('飞升'), '境界梯子被截断（提示词里只剩半条）');
+  for (const purpose of ai.PURPOSES) {
+    const s = ai.buildSystemPrompt(purpose, { element: 'fire' });
+    assert.ok(s.length > 60 && !/undefined|NaN/.test(s), `${purpose} 的提示词形态异常：${s.slice(0, 90)}`);
+  }
+  assert.deepStrictEqual(ai.pickRotate(['甲', '乙', '丙', '丁', '戊', '己'], 'lore', 3),
+    ai.pickRotate(['甲', '乙', '丙', '丁', '戊', '己'], 'lore', 3), '同 purpose 两次切片不同 ⇒ 提示词不可复现');
+  const aiSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'services', 'ai.js'), 'utf8');
+  assert.ok(/callLLM\(\s*key\s*,\s*prompt\s*,\s*buildSystemPrompt\(/.test(aiSrc), 'buildSystemPrompt 无人消费（幽灵导出）');
+  const aiRouteSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'ai.js'), 'utf8');
+  assert.ok(/NODE_ENV\s*===\s*['"]production['"]/.test(aiRouteSrc) && /503/.test(aiRouteSrc),
+    'AI 管理端"生产禁默认令牌"分支不见了 —— dev-admin 是可猜的万能钥匙');
+});
 t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
   const src = read21('public', 'js', 'api.js');
   assert.ok(!/throw new Error\(result\.error \|\| `HTTP \$\{response\.status\}`\)/.test(src),

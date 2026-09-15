@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const adminAuth = require('../middleware/admin');
-const { loadDatabase, saveDatabase } = require('../database');
+// 轮71 修：:185 用 getNextId 却从没解构导入 —— "给角色发送**新**物品"必 ReferenceError→500
+// （旧背包行恰含该物品才走得通，26 套门禁从没有一条打这个端点的新建分支，所以从没炸过）。
+const { loadDatabase, saveDatabase, getNextId } = require('../database');
 
 router.get('/dashboard', adminAuth, (req, res) => {
   try {

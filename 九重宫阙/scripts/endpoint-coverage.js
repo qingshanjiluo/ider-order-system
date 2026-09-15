@@ -76,7 +76,11 @@ function frontendCalls() {
   const set = new Map();          // '/api/x' -> 首次出现的文件
   for (const f of PUBLIC_JS) {
     const src = read(f);
-    for (const m of src.matchAll(/['"`]\/([A-Za-z][A-Za-z0-9_\-/:.${}?]*)['"`]/g)) {
+    // 轮71（P6 批0）：口径盲区修复。旧字符类 [A-Za-z0-9_\-/:.${}?] 看不见带 `=` 或 `(` 的模板
+    // 查询（`/chat/history?channel=${x}`、`/friend/search?name=${encodeURIComponent(...)}`），
+    // 把**已接通**的端点误报成"未接线"。改成"到引号前的全部非空白"（与 :99 严格口径同族）；
+    // normPath 会剥掉 `?query` 并把 `${...}`/`:` 归一为 `*`，归一后仍逐条对真路由栈，幽灵判定不受影响。
+    for (const m of src.matchAll(/['"`]\/([A-Za-z][^'"`\s]*)['"`]/g)) {
       const raw = '/' + m[1];
       const p = normPath(raw.startsWith('/api') ? raw : '/api' + raw);
       if (p.split('/').filter(Boolean).length < 2) continue;      // 至少要有 /api/x

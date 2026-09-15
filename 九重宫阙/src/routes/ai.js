@@ -4,9 +4,17 @@ const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
 const aiService = require('../services/ai');
 
-/** 管理鉴权：X-Admin-Token 与 AI_ADMIN_TOKEN（默认 dev-admin）比对 */
+/**
+ * 管理鉴权：X-Admin-Token 与 AI_ADMIN_TOKEN 比对。
+ * 轮71（P6）：生产环境**禁用默认值**——原来 `|| 'dev-admin'` 让没配令牌的线上
+ * 密钥池/审核池端点等于一把人人可猜的万能钥匙（密钥池里存的是各家 LLM 的 API key）。
+ * 非生产仍回落 dev-admin（本机调试与既有测试的行为不变）。
+ */
 function adminAuth(req, res, next) {
   const token = req.headers['x-admin-token'];
+  if (!process.env.AI_ADMIN_TOKEN && process.env.NODE_ENV === 'production') {
+    return res.status(503).json({ error: 'AI 后台未配置 AI_ADMIN_TOKEN（生产环境禁止默认令牌）' });
+  }
   const expected = process.env.AI_ADMIN_TOKEN || 'dev-admin';
   if (token !== expected) return res.status(403).json({ error: '管理员令牌无效' });
   next();

@@ -10,6 +10,7 @@
 const store = require('../db/store');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
 const elements = require('./elements');
+const balance = require('../config/balance');
 
 const FAIL_DISABLE_THRESHOLD = 3;
 const PURPOSES = ['recipe_forge', 'recipe_alchemy', 'guild_content', 'lore', 'skill_invent', 'sect_found'];
@@ -183,6 +184,57 @@ function localText(purpose, stats) {
   return { name, desc: pool[Math.floor(Math.random() * pool.length)] };
 }
 
+// ---------- P6：世界观锚点（AI 文案引擎的"常识层"） ----------
+// 真源派生：境界梯子取 balance.REALM_ORDER（十六期锁定的单一真源），地名/秘境取在用存档的
+// maps/dungeons 目录——内容库每补一图，提示词自动跟进，不存在手抄词表漂移的可能。
+// 纪律不变（D4）：锚点只约束文风与世界自洽，数值与入库权威仍在服务器。
+function worldAnchorBrief() {
+  const realms = (balance.REALM_ORDER || []).slice();
+  let places = [], dungeons = [];
+  try {
+    const db = loadDatabase();
+    places = (db.maps || []).map((m) => m && String(m.name || '')).filter(Boolean);
+    dungeons = (db.dungeons || []).map((d) => d && String(d.name || '')).filter(Boolean);
+  } catch (e) { /* 库不可读时锚点降级为空，不阻断生成 */ }
+  return { realms, places, dungeons };
+}
+
+/** 按 purpose 字轮换的稳定切片：同 purpose 两次取值一致（可测），不同 purpose 少些雷同 */
+function pickRotate(list, purpose, n) {
+  if (!Array.isArray(list) || !list.length) return [];
+  let seed = 0;
+  for (const ch of String(purpose)) seed = (seed + ch.charCodeAt(0)) >>> 0;
+  const out = [];
+  for (let i = 0; i < Math.min(n, list.length); i++) out.push(list[(seed + i * 7) % list.length]);
+  return out;
+}
+
+const PURPOSE_STYLE = {
+  recipe_forge: '这是炼器配方文案：名如法器（剑/鼎/镜/印…），desc 呼应材质与灵性气质。',
+  recipe_alchemy: '这是丹方文案：名如丹药（丹/散/露/丸），desc 呼应药性与功效意象。',
+  skill_invent: '这是功法文案：名带诀/功/经/典，desc 贴合五行属性与境界气度。',
+  guild_content: '这是仙盟公告/福利文案：宗门礼律感，短促有力，不承诺具体数值。',
+  lore: '这是《九重宫阙》剧情片段：写宫阙遗踪、前辈手泽与秘境玄机，必须落在给定世界锚点之内。',
+  sect_found: '这是新宗门创立文案：给出山名与立派一言，气象要配得上开山祖师。'
+};
+
+/** 组装锚定后的 system prompt。导出供测试逐字判定（防"函数写了没人调"的幽灵实装）。 */
+function buildSystemPrompt(purpose, stats) {
+  const a = worldAnchorBrief();
+  const parts = ['你是《九重宫阙》（仙界帝君遗府，九重云阙）的文案引擎，只输出JSON：{"name":"...","desc":"..."}，name≤8字，desc≤40字。'];
+  if (a.realms.length) parts.push(`境界梯子（由低至高）：${a.realms.join('→')}。不得发明梯子之外的境界。`);
+  const places = pickRotate(a.places, purpose, 4);
+  const dungeons = pickRotate(a.dungeons, purpose, 3);
+  if (places.length || dungeons.length) {
+    parts.push(`世界锚点（可呼应其气韵，勿照抄成名件）：地名 ${places.join('、') || '（暂无）'}；秘境 ${dungeons.join('、') || '（暂无）'}。`);
+  }
+  if (PURPOSE_STYLE[purpose]) parts.push(PURPOSE_STYLE[purpose]);
+  const el = stats && stats.element != null ? elements.displayMeta(stats.element).name : null;
+  if (el) parts.push(`本件属性：${el}，措辞需与之相合。`);
+  parts.push('古风用语；不得出现现实品牌、真实宗教名、现代口语。');
+  return parts.join(' ');
+}
+
 // ---------- 复用配方库 ----------
 function hashParams(obj) {
   // djb2 全字符串哈希（base64 截断会丢尾部参数导致误复用）
@@ -221,7 +273,8 @@ async function generate(purpose, params = {}, opts = {}) {
   if (key) {
     try {
       const prompt = `为修仙游戏生成${stats.kind}：品质${stats.quality || '任意'}，元素${elements.displayMeta(stats.element).name}。要求古风、不出现现实品牌。`;
-      text = await callLLM(key, prompt);
+      // P6：带上世界观锚点的 system prompt（不传则 callLLM 只能退回无世界的通用模板）
+      text = await callLLM(key, prompt, buildSystemPrompt(purpose, stats));
       source = 'ai';
       keyUsed = { id: key.id, provider: key.provider, model: key.model };
       markKeyResult(key.id, true, text.latency);
@@ -267,5 +320,6 @@ function review(id, action, note) {
 module.exports = {
   PURPOSES, FAIL_DISABLE_THRESHOLD,
   listKeys, addKey, removeKey, updateKey, testKey, pickKey,
-  generate, listGenerations, review, hashParams, proceduralStats, localText
+  generate, listGenerations, review, hashParams, proceduralStats, localText,
+  worldAnchorBrief, buildSystemPrompt, pickRotate
 };

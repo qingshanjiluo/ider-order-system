@@ -56,8 +56,8 @@ on:
         required: false
         default: '天地一家大爱盟'
 
-  schedule:
-    - cron: '0 17 * * *'
+  # schedule: (暂停中)
+    # - cron: '0 17 * * *'
 
 jobs:
   alliance-daily:

@@ -9,11 +9,9 @@
 # 脚本内部默认使用 Pages API。
 name: 清理超额账号
 
-# ⏸ 定时已暂停（2026-09-15）：暂时不自动执行清理，改为按需手动触发。
-#    如需恢复自动清理，取消下面 schedule 两行的注释即可。
 on:
-  # schedule:
-  #   - cron: '30 0 * * *'
+  schedule:
+    - cron: '30 0 * * *'
   workflow_dispatch:
     inputs:
       order_id:

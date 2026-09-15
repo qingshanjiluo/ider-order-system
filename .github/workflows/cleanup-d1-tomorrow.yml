@@ -1,0 +1,79 @@
+# 明日自动清理 D1（软清理超额 + 真删垃圾行）
+#
+# 两步走：
+#   第 1 步：调用 /api/gh/cleanup-excess 软清理超额账号
+#            （每张工单保留 quantity+1，其余标记 cleaned）
+#   第 2 步：循环执行 maintenance_purge_junk_accounts.sql 真删
+#            （分批 2000，直到 cleaned/deleted 行清空）
+#
+# 排在 D1 免费额度每日重置（00:00 UTC）之后，确保有读额度可用。
+# 本工作流只在 2026-09-15 跑一次（cron 指定日期），跑完即失效；
+# 后续如需常规清理，用 cleanup-excess.yml（每天 00:30）即可。
+#
+# ⚠️ 真删不可恢复。已确认删除范围仅为
+#    health_status='cleaned' 或 status='deleted' 的账号（含其日志），
+#    有效账号（farming/completed 且未 cleaned）一律保留。
+name: 明日清理 D1
+
+on:
+  schedule:
+    # 2026-09-15 00:40 UTC（额度 00:00 重置后）
+    - cron: '40 0 15 9 *'
+  workflow_dispatch:
+    inputs:
+      skip_purge:
+        description: '只做软清理，不真删（填 true 跳过真删）'
+        required: false
+        default: ''
+
+jobs:
+  cleanup:
+    name: 清理 D1
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 安装 wrangler
+        run: npm install -g wrangler@4.114.0
+
+      # ── 第 1 步：软清理超额账号 ────────────────────────
+      - name: 软清理超额账号
+        working-directory: 工单系统
+        run: node gh-actions/cleanup_excess.js
+
+      # ── 第 2 步：真删垃圾行（分批循环）────────────────
+      - name: 真删垃圾账号行
+        if: ${{ github.event.inputs.skip_purge != 'true' }}
+        run: |
+          for i in $(seq 1 15); do
+            echo "──── 第 $i 轮真删 ────"
+            OUT=$(wrangler d1 execute ider-orders --file=maintenance_purge_junk_accounts.sql --remote 2>&1) || { echo "$OUT"; exit 1; }
+            echo "$OUT" | grep -E "JUNK_REMAINING|BATCH_SIZE|ACCOUNTS_LEFT|rows_written" || true
+            REMAIN=$(echo "$OUT" | grep -o 'JUNK_REMAINING=[0-9]*' | head -1 | cut -d= -f2)
+            if [ -z "$REMAIN" ] || [ "$REMAIN" = "0" ]; then
+              echo "✅ 垃圾行已清空"
+              break
+            fi
+            echo "剩余 $REMAIN 个，继续下一轮"
+          done
+        working-directory: 工单系统
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # ── 汇总 ──────────────────────────────────────────
+      - name: 清理后账号数
+        run: |
+          wrangler d1 execute ider-orders --remote --command "SELECT 'FINAL_ACCOUNTS=' || COUNT(*) AS report FROM game_accounts" 2>&1 | grep -E "FINAL_ACCOUNTS|rows_written" || true
+        working-directory: 工单系统
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

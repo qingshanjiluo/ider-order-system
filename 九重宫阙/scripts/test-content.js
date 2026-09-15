@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 31, `未接线棘轮被抬高：${r.unwired.length}（基线 31，轮78 批3下）`);
+  assert.ok(r.unwired.length <= 29, `未接线棘轮被抬高：${r.unwired.length}（基线 29，轮79 批4）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2629,6 +2629,16 @@ t('轮78 批3(下)锚：formations 实例优先解析、forge TDZ 不复活、�
   assert.ok(forge.includes('if (recipeId)'), '/forge 的配方分支被删——FE 锻造按钮（发 recipeId）会重新变成必 400 的死钮');
   assert.ok(forge.indexOf('flame.source_item') < forge.indexOf('const allNeeded'),
     '火焰门槛又挪回扣料之后——被 400 拒绝的请求会白吃玩家材料（镜像 diff 自动落盘救不回）');
+  // 轮79 批4：arena/duel 已接全仿真，骰子桩模式不得复活；war 双桩是登记在册的简化
+  const battleRt = rd('src/routes/battle.js');
+  assert.ok(!battleRt.includes('playerPower / (playerPower + opponentPower)') && !battleRt.includes('playerPower / (playerPower + targetPower)'),
+    '单人 PVP 又退回"战力比值×单骰"桩（G5 有仿真回合断言会一起红）');
+  assert.strictEqual((battleRt.match(/\{ noLoot: true \}/g) || []).length, 2, 'arena/duel 的 noLoot 闸门数不对——PVP 会混进 PVE 掉落线');
+  assert.ok(battleRt.includes('characterService.addExp(character.id, expReward)') && !/character\.exp = \(character\.exp \|\| 0\) \+ reward\.exp/.test(battleRt),
+    'arena/duel 修为又直写 character.exp（第二经验真源，轮54 清剿的漏网之鱼）');
+  assert.strictEqual((battleRt.match(/轮79 批4裁决/g) || []).length, 2, 'war 桩的"设计简化"登记注释被删——群战骰子必须保持显式可读');
+  const combatSvc = rd('src/services/battle/combat.js');
+  assert.ok(combatSvc.includes('opts.noLoot'), 'startBattle 的 noLoot 闸门消失');
 });
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');

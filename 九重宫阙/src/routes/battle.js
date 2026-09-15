@@ -180,11 +180,21 @@ router.post('/arena/battle', auth, async (req, res) => {
       opponent = eligible[Math.floor(Math.random() * eligible.length)];
     }
     if (!opponent) return res.status(400).json({ error: '对手不存在' });
+    if (opponent.id === character.id) return res.status(400).json({ error: '不能与自己比试' });
 
-    const playerPower = (character.attack || 0) + (character.defense || 0) + (character.hp || 0);
-    const opponentPower = (opponent.attack || 0) + (opponent.defense || 0) + (opponent.hp || 0);
-    const winChance = Math.min(0.9, Math.max(0.1, playerPower / (playerPower + opponentPower)));
-    const won = Math.random() < winChance;
+    // 轮79 批4：竞技场接全仿真（旧桩是"战力比值×一颗骰子"——无技能/伤害/回合，属性堆到
+    // 天际也只是概率微调，和 /battle 主链两套physic）。{noLoot:true} 保产出仍走 ARENA_REWARDS 表，
+    // 不混入 PVE 掉落线；双方各按 arena 档结算伤势（对局伤减半、不触发重伤，切磋不打残）。
+    const sim = await combatService.startBattle(character.id, opponent.id, 'character', 'character', null, { noLoot: true });
+    if (!sim || !sim.success) return res.status(400).json({ error: (sim && sim.error) || '竞技场开战失败' });
+    const won = sim.winner === 'attacker';
+    combatService.aftermath(character, sim, { arena: true });
+    combatService.aftermath(opponent, {
+      ...sim,
+      winner: won ? 'defender' : 'attacker',
+      attackerMaxHp: sim.defenderMaxHp,
+      attackerFinalHp: sim.defenderFinalHp
+    }, { arena: true });
 
     const streak = won ? (character.win_streak || 0) + 1 : 0;
     character.win_streak = streak;
@@ -197,17 +207,26 @@ router.post('/arena/battle', auth, async (req, res) => {
     else if (streak >= 10) bonusReward = ARENA_REWARDS.streak10;
 
     const reward = won ? ARENA_REWARDS.win : ARENA_REWARDS.lose;
-    character.exp = (character.exp || 0) + reward.exp + (bonusReward ? bonusReward.exp : 0);
+    // 轮79：修为不再直写 character.exp（/battle 轮54 清出的"第二经验真源"这里一直是漏网之鱼），
+    // 改走 characterService.addExp 唯一入口；灵石/积分仍按竞技场表发。
     character.spirit_stone = (character.spirit_stone || 0) + reward.spiritStone + (bonusReward ? bonusReward.spiritStone : 0);
     character.arena_points += bonusReward ? bonusReward.arenaPoints : 0;
     character.total_battles = (character.total_battles || 0) + 1;
     if (won) character.total_kills = (character.total_kills || 0) + 1;
 
     saveDatabase(db);
+    const expGain = reward.exp + (bonusReward ? bonusReward.exp : 0);
+    if (expGain > 0) characterService.addExp(character.id, expGain);
     res.json({
       won, opponent: { name: opponent.name, level: opponent.level, realm: opponent.realm },
       reward: { ...reward, ...(bonusReward || {}) },
       streak, arena_points: character.arena_points,
+      battle: {
+        rounds: sim.rounds,
+        yourHp: sim.attackerFinalHp, yourHpMax: sim.attackerMaxHp,
+        foeHp: sim.defenderFinalHp, foeHpMax: sim.defenderMaxHp,
+        log: (sim.battleLog || []).slice(-6)
+      },
       message: won ? `击败${opponent.name}！连胜${streak}场` : `败给${opponent.name}，连胜中断`
     });
   } catch (error) {
@@ -229,18 +248,26 @@ router.post('/duel/challenge', auth, async (req, res) => {
     if (betAmount && betAmount > 0) {
       if ((character.spirit_stone || 0) < betAmount) return res.status(400).json({ error: '灵石不足' });
       if ((target.spirit_stone || 0) < betAmount) return res.status(400).json({ error: '对手灵石不足' });
-      character.spirit_stone -= betAmount;
-      target.spirit_stone -= betAmount;
     }
 
-    const playerPower = (character.attack || 0) + (character.defense || 0) + (character.hp || 0);
-    const targetPower = (target.attack || 0) + (target.defense || 0) + (target.hp || 0);
-    const winChance = Math.min(0.9, Math.max(0.1, playerPower / (playerPower + targetPower)));
-    const won = Math.random() < winChance;
+    // 轮79 批4：切磋同 arena 接全仿真（旧桩一颗骰子定生死，装备/灵宠/心境/伤势全不参与）。
+    // 下注改为"先仿真后扣注"：开战失败不再白扣注金。伤势 arena 档减半、不打残。
+    const sim = await combatService.startBattle(character.id, target.id, 'character', 'character', null, { noLoot: true });
+    if (!sim || !sim.success) return res.status(400).json({ error: (sim && sim.error) || '切磋开战失败' });
+    const won = sim.winner === 'attacker';
+    combatService.aftermath(character, sim, { arena: true });
+    combatService.aftermath(target, {
+      ...sim,
+      winner: won ? 'defender' : 'attacker',
+      attackerMaxHp: sim.defenderMaxHp,
+      attackerFinalHp: sim.defenderFinalHp
+    }, { arena: true });
 
     const totalBet = (betAmount || 0) * 2;
-    if (won && totalBet > 0) {
-      character.spirit_stone += totalBet;
+    if (totalBet > 0) {
+      character.spirit_stone = (character.spirit_stone || 0) - (betAmount || 0);
+      target.spirit_stone = (target.spirit_stone || 0) - (betAmount || 0);
+      if (won) character.spirit_stone += totalBet;
     }
 
     character.total_battles = (character.total_battles || 0) + 1;
@@ -256,13 +283,20 @@ router.post('/duel/challenge', auth, async (req, res) => {
     }
 
     const expReward = won ? 150 : 30;
-    character.exp = (character.exp || 0) + expReward;
     saveDatabase(db);
+    // 轮79：修为走 addExp 唯一真源（旧直写绕开升级曲线，G3 锁的漏网之鱼）
+    characterService.addExp(character.id, expReward);
 
     res.json({
       won, opponent: { name: target.name, level: target.level, realm: target.realm },
       betWon: won ? totalBet : 0,
       expReward,
+      battle: {
+        rounds: sim.rounds,
+        yourHp: sim.attackerFinalHp, yourHpMax: sim.attackerMaxHp,
+        foeHp: sim.defenderFinalHp, foeHpMax: sim.defenderMaxHp,
+        log: (sim.battleLog || []).slice(-6)
+      },
       message: won ? `斗法胜利！${totalBet > 0 ? '赢得' + totalBet + '灵石' : ''}` : `斗法失败`
     });
   } catch (error) {
@@ -315,6 +349,9 @@ router.post('/war/sect-battle', auth, async (req, res) => {
       return sum + ((c?.attack || 0) + (c?.defense || 0) + (c?.hp || 0));
     }, 0);
 
+    // 轮79 批4裁决：宗务战维持"聚合战力×单骰"为**设计简化**（N 成员×全仿真成本不可控，
+    // 且群战代表对决语义未设计）——不假装它是战斗系统；test-content 轮79 锁钉桩口径，
+    // 若要升级成真仿真必须先改这条锁的断言。
     const winChance = Math.min(0.85, Math.max(0.15, myPower / (myPower + enemyPower)));
     const won = Math.random() < winChance;
 
@@ -373,6 +410,7 @@ router.post('/war/guild-war', auth, async (req, res) => {
       if (c) enemyTotalPower += (c.attack || 0) + (c.defense || 0) + (c.hp || 0);
     }
 
+    // 轮79 批4裁决：同 sect-battle，群战骰子桩为登记在册的设计简化（见该处内注）
     const winChance = Math.min(0.85, Math.max(0.15, myTotalPower / (myTotalPower + enemyTotalPower)));
     const won = Math.random() < winChance;
 

@@ -119,7 +119,11 @@ class CombatService {
     const battleLog = loop.battleLog;
     const round = loop.round;
     const winner = loop.winner;
-    const rewards = this.calculateRewards(winner, attacker, defender, db);
+    // 轮79：noLoot 闸门——竞技场/切磋用全仿真定胜负，但产出不走 PVE 掉落线
+    // （calculateRewards 会真实把装备推进背包，PVP 双轨发放会绕开经济守恒基线）
+    const rewards = (opts && opts.noLoot)
+      ? { exp: 0, spiritStone: 0, items: [] }
+      : this.calculateRewards(winner, attacker, defender, db);
 
     return {
       success: true,

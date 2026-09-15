@@ -42,6 +42,7 @@ const t = async (name, fn) => {
   app.use('/api/cave', require('../src/routes/cave'));
   app.use('/api/cultivation', require('../src/routes/cultivation'));
   app.use('/api/formations', require('../src/routes/formations'));
+  app.use('/api/battle', require('../src/routes/battle'));
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const port = server.address().port;
 
@@ -71,6 +72,7 @@ const t = async (name, fn) => {
   };
 
   const A = await reg('a');
+  const B = await reg('b');
 
   // ---- 1) temper 白嫖 ----
   await t('temper：未持有材料整单拒绝（旧的静默放行=零消耗白嫖）', async () => {
@@ -234,6 +236,43 @@ const t = async (name, fn) => {
     const less = await call('POST', '/api/forge/forge', { recipeId: 42 }, A.token);
     assert.strictEqual(less.code, 400, '零材料竟又锻成功：' + less.raw);
     assert.ok(/材料不足/.test(less.raw), '拒绝理由不是材料不足：' + less.raw);
+  });
+
+  // ---- 6) 批4：arena/duel 全仿真接通（轮79）----
+  await t('arena：接全仿真——回执带回合数与战报、积分结算（旧桩一颗骰子，无技能/伤害/回合）', async () => {
+    const lvDbg = loadDatabase().characters.map((c) => c.name + ':L' + c.level).join(' ');
+    console.log(`    [dbg ${lvDbg}]`);
+    const r = await call('POST', '/api/battle/arena/battle', { targetId: B.id }, A.token);
+    assert.strictEqual(r.code, 200, '竞技场失败：' + r.code + ' ' + r.raw);
+    assert.ok(typeof r.body.won === 'boolean', 'won 缺失：' + r.raw);
+    assert.ok(r.body.battle && Number.isFinite(r.body.battle.rounds) && r.body.battle.rounds >= 1,
+      '仿真回合数缺失——又是骰子桩？' + r.raw);
+    assert.ok(Array.isArray(r.body.battle.log) && r.body.battle.log.length > 0, 'battleLog 为空：' + r.raw);
+    const db2 = loadDatabase();
+    const ca = db2.characters.find((c) => Number(c.id) === A.id);
+    assert.ok(Number(ca.arena_points) > 0 || !r.body.won, 'arena_points 未结算');
+    assert.ok(Number(ca.spirit_stone) > 0, 'arena 奖励绕开灵石账本');
+    // noLoot 闸门：arena 不得把 PVE 装备掉落线带进来（items 行数不因对战膨胀）
+    const itemsN = (db2.items || []).length;
+    assert.ok(itemsN <= 700, `竞技场疑似触发 PVE 掉落，物品表膨胀到 ${itemsN}`);
+  });
+
+  await t('duel：先仿真后扣注、注金零和守恒；超限注金被拒且不消耗对局', async () => {
+    const db = loadDatabase();
+    const ca = db.characters.find((c) => Number(c.id) === A.id);
+    const cb = db.characters.find((c) => Number(c.id) === B.id);
+    ca.spirit_stone = 1000; cb.spirit_stone = 1000;
+    saveDatabase(db);
+    const r = await call('POST', '/api/battle/duel/challenge', { targetId: B.id, betAmount: 200 }, A.token);
+    assert.strictEqual(r.code, 200, '切磋失败：' + r.raw);
+    assert.ok(r.body.battle && Number.isFinite(r.body.battle.rounds), '仿真缺失：' + r.raw);
+    const db2 = loadDatabase();
+    const a = db2.characters.find((c) => Number(c.id) === A.id);
+    const b = db2.characters.find((c) => Number(c.id) === B.id);
+    assert.strictEqual(Number(a.spirit_stone) + Number(b.spirit_stone), 2000,
+      `注金不是零和（${a.spirit_stone}/${b.spirit_stone}，应共 2000）`);
+    const poor = await call('POST', '/api/battle/duel/challenge', { targetId: A.id, betAmount: 999999 }, B.token);
+    assert.strictEqual(poor.code, 400, '超额注金竟开赛：' + poor.raw);
   });
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

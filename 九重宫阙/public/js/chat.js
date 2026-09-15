@@ -47,43 +47,57 @@ function handleChatEvent(msg) {
   }
 }
 
+// 轮76 修实锤缺陷：本函数只写浮动面板 #chat-messages；聊天 tab 页的容器是
+// #chat-tab-messages（app.js:2893），**没有任何代码写过它** ⇒ 打开聊天 tab 消息区永远空。
+// 新做法：两处容器存在即各写一份。举报按钮只挂在有 id 的消息上（ws 中继无 id 时降级不显示）。
+function chatContainers() {
+  return ['chat-messages', 'chat-tab-messages'].map((id) => document.getElementById(id)).filter(Boolean);
+}
+
 function appendChatMessage(msg) {
-  const container = document.getElementById('chat-messages');
-  if (!container) return;
-  
+  const targets = chatContainers();
+  if (!targets.length) return;
+
   const isSystem = msg.type === 'system';
   const isMyMessage = msg.userId === gameState.character?.id;
-  
+
   const VIP_COLORS = {
     0: '', 1: '#8d6e63', 2: '#4fc3f7', 3: '#66bb6a',
     4: '#ffa726', 5: '#ef5350', 6: '#ab47bc', 7: '#ff7043',
     8: '#26c6da', 9: '#ffee58', 10: '#e040fb'
   };
-  
-  const div = document.createElement('div');
-  div.style.cssText = 'margin-bottom:6px;padding:4px 0;border-bottom:1px solid var(--border);';
-  
-  if (isSystem) {
-    div.innerHTML = `<span style="color:var(--gold);font-size:11px;">[系统] ${msg.content}</span>`;
-  } else {
-    const vipColor = VIP_COLORS[msg.vipLevel] || '';
-    const nameStyle = vipColor ? `color:${vipColor};text-shadow:0 0 4px ${vipColor}40;` : '';
-    div.innerHTML = `
+
+  const html = isSystem
+    ? `<span style="color:var(--gold);font-size:11px;">[系统] ${escapeHtml(String(msg.content == null ? '' : msg.content))}</span>`
+    : `
       <div style="display:flex;gap:4px;align-items:baseline;">
-        <span style="font-weight:600;font-size:11px;${nameStyle}">${msg.username}</span>
-        ${msg.vipLevel > 0 ? `<span style="font-size:9px;padding:1px 3px;background:${vipColor};color:#fff;border-radius:2px;">V${msg.vipLevel}</span>` : ''}
+        <span style="font-weight:600;font-size:11px;${VIP_COLORS[msg.vipLevel] ? `color:${VIP_COLORS[msg.vipLevel]};` : ''}">${escapeHtml(String(msg.username || '道友'))}</span>
+        ${msg.vipLevel > 0 ? `<span style="font-size:9px;padding:1px 3px;background:${VIP_COLORS[msg.vipLevel] || ''};color:#fff;border-radius:2px;">V${msg.vipLevel}</span>` : ''}
         <span style="font-size:10px;color:var(--text2);">${formatChatTime(msg.timestamp)}</span>
+        ${msg.id != null && !isMyMessage ? `<button class="btn small" style="font-size:9px;padding:0 4px;margin-left:auto;" onclick="handleReportChat(${msg.id})">举报</button>` : ''}
       </div>
       <div style="font-size:12px;color:var(--text);margin-top:2px;">${escapeHtml(msg.content)}</div>
     `;
+  for (const container of targets) {
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-bottom:6px;padding:4px 0;border-bottom:1px solid var(--border);';
+    div.innerHTML = html;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    while (container.children.length > 100) {
+      container.removeChild(container.firstChild);
+    }
   }
-  
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  
-  while (container.children.length > 100) {
-    container.removeChild(container.firstChild);
-  }
+}
+
+// P6 批2：举报走 POST /api/chat/report（服务端真落 db.chat_reports，admin 有读端）
+async function handleReportChat(messageId) {
+  const reason = prompt('举报理由（违规内容、谩骂、广告…）：');
+  if (!reason || !reason.trim()) return;
+  try {
+    await api.reportChatMessage(messageId, reason.trim());
+    alert('举报已提交，管理员将在后台「举报处理」中审核。');
+  } catch (e) { alert('举报失败：' + e.message); }
 }
 
 function updateOnlineCount(count, users) {
@@ -106,10 +120,9 @@ function switchChatChannel(channel, btn) {
 async function loadChatHistory(channel) {
   try {
     const data = await api.getChatHistory(channel);
-    const container = document.getElementById('chat-messages');
-    if (!container) return;
-    container.innerHTML = '';
     const messages = data.messages || data || [];
+    const targets = chatContainers();
+    for (const container of targets) container.innerHTML = '';
     messages.forEach(m => appendChatMessage(m));
   } catch (e) {}
 }

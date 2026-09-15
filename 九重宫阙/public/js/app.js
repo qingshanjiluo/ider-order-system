@@ -3618,6 +3618,9 @@ async function loadAdminTab() {
           <button class="btn small" onclick="loadAdminSub('recharges', this)">充值记录</button>
           <button class="btn small" onclick="loadAdminSub('broadcast', this)">系统广播</button>
           <button class="btn small" onclick="loadAdminSub('realms', this)">境界分布</button>
+          <button class="btn small" onclick="loadAdminSub('chatlogs', this)">聊天日志</button>
+          <button class="btn small" onclick="loadAdminSub('items', this)">物品总览</button>
+          <button class="btn small" onclick="loadAdminSub('reports', this)">举报处理</button>
         </div>
         <div id="admin-sub-content"></div>
       </div>
@@ -3689,6 +3692,56 @@ async function loadAdminSub(sub, btn) {
               <span style="padding:4px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;">${k}: ${v}人</span>
             `).join('')}
           </div>
+        `;
+      } catch (e) { container.innerHTML = '<p style="font-size:12px;color:var(--red);">加载失败</p>'; }
+      break;
+    }
+    // P6 批2：聊天日志 / 物品总览 / 举报处理。三个后端端点早就真实存在
+    // （/admin/chat-logs、/admin/items、举报写库），但管理面板没有入口 ⇒ 数据写了没人看得见。
+    case 'chatlogs': {
+      try {
+        const data = await api.getAdminChatLogs(100);
+        const msgs = (data && data.messages) || [];
+        container.innerHTML = `
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">最近 ${msgs.length} 条（全部 ${data.total || 0} 条）</div>
+          ${msgs.length === 0 ? '<p style="font-size:12px;color:var(--text2);">暂无聊天记录</p>' : msgs.slice().reverse().map(m => `
+            <div style="padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+              <span style="color:var(--text2);font-size:10px;">[${m.channel || 'world'}] ${new Date(m.timestamp || 0).toLocaleString()}</span>
+              <b>${m.username || ('UID:' + m.userId)}</b>：${m.content || ''}
+            </div>`).join('')}
+        `;
+      } catch (e) { container.innerHTML = '<p style="font-size:12px;color:var(--red);">加载失败</p>'; }
+      break;
+    }
+    case 'items': {
+      try {
+        const data = await api.getAdminItems('');
+        const items = (data && data.items) || [];
+        container.innerHTML = `
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">图鉴 ${data.total || items.length} 件（列表最多 100 条）</div>
+          ${items.length === 0 ? '<p style="font-size:12px;color:var(--text2);">物品表为空</p>' : `
+            <div style="max-height:420px;overflow-y:auto;">
+            ${items.map(i => `
+              <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px;">
+                <span>#${i.id} ${i.name}</span>
+                <span style="color:var(--text2);">${i.type || '—'} · ${i.quality || '—'}</span>
+              </div>`).join('')}
+            </div>`}
+        `;
+      } catch (e) { container.innerHTML = '<p style="font-size:12px;color:var(--red);">加载失败</p>'; }
+      break;
+    }
+    case 'reports': {
+      try {
+        const data = await api.getAdminChatReports('pending');
+        const reps = (data && data.reports) || [];
+        container.innerHTML = `
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">待处理举报 ${reps.length} 条（举报库共 ${data.total || 0} 条）</div>
+          ${reps.length === 0 ? '<p style="font-size:12px;color:var(--text2);">暂无待处理举报</p>' : reps.map(r => `
+            <div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">
+              <div><b>${r.reporter}</b> 举报消息 #${r.messageId}：「${r.reason || '无理由'}」<span style="color:var(--text2);font-size:10px;"> ${r.timestamp ? new Date(r.timestamp).toLocaleString() : ''}</span></div>
+              <div style="color:var(--text2);font-size:11px;">被举报内容：${r.messageContent == null ? '(原消息已滚出 500 条窗口)' : `[${r.channel || 'world'}] ${r.messageSender || '?'}：${r.messageContent}`}</div>
+            </div>`).join('')}
         `;
       } catch (e) { container.innerHTML = '<p style="font-size:12px;color:var(--red);">加载失败</p>'; }
       break;

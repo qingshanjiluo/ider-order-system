@@ -703,6 +703,10 @@ const api = {
   async getChatHistory(channel) {
     return this.request('GET', `/chat/history?channel=${channel}`);
   },
+  // P6 批2：举报聊天消息（服务端落 db.chat_reports；管理后台有"举报处理"读端）
+  async reportChatMessage(messageId, reason) {
+    return this.request('POST', '/chat/report', { messageId, reason });
+  },
   async getChatChannels() {
     return this.request('GET', '/chat/channels');
   },
@@ -896,6 +900,9 @@ const api = {
   },
   async getAdminChatLogs(limit) {
     return this.request('GET', `/admin/chat-logs?limit=${limit || 100}`);
+  },
+  async getAdminChatReports(status) {
+    return this.request('GET', `/admin/chat-reports?status=${status || 'pending'}`);
   },
   async broadcastMessage(content) {
     return this.request('POST', '/admin/broadcast', { content });

@@ -47,6 +47,9 @@ const t = async (name, fn) => {
   app.use('/api/market', require('../src/routes/market'));
   app.use('/api/friend', require('../src/routes/friend'));
   app.use('/api/achievement', require('../src/routes/achievement'));
+  // P6 批2：举报闭环要真端点（chat 写 + admin 读），顺手让三个 admin 读端第一次有 HTTP 断言
+  app.use('/api/chat', require('../src/routes/chat'));
+  app.use('/api/admin', require('../src/routes/admin'));
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const port = server.address().port;
 
@@ -242,6 +245,32 @@ const t = async (name, fn) => {
     const l4 = await call('POST', '/api/market/list', { inventoryId: inv.id, quantity: 1, price: storePrice }, A.token);
     assert.strictEqual(l4.code, 400, `第 ${market.LIST_MAX_PER_WINDOW + 1} 单没被限频拦住：` + l4.raw);
     assert.ok(/防刷单|最多挂/.test(l4.raw), '拒绝理由不是限频：' + l4.raw);
+  });
+
+  // P6 批2 · 聊天举报闭环：玩家 POST /chat/report → 管理读端看得见 → 非管理员硬拒。
+  // 此前举报写进 db.chat_reports 后没有任何出口（无 GET 端点）＝石沉大海；
+  // chat-logs/items/reports 三个 admin 读端在全部 27 套里也是零 HTTP 断言——"端点存在"≠"链路能用"。
+  await t('举报闭环：玩家举报入库、管理读端可见（含举报人与理由）、非管理员 403', async () => {
+    const db = loadDatabase();
+    const cha = db.characters.find((c) => Number(c.id) === A.id);
+    const au = db.users.find((x) => Number(x.id) === Number(cha.user_id));
+    assert.ok(au, '查不到 A 的 user 行');
+    au.is_admin = true;
+    saveDatabase(db);
+    const rep = await call('POST', '/api/chat/report', { messageId: 900001, reason: '广告消息（测试）' }, A.token);
+    assert.strictEqual(rep.code, 200, '举报提交失败：' + rep.raw);
+    const got = await call('GET', '/api/admin/chat-reports?status=pending', undefined, A.token);
+    assert.strictEqual(got.code, 200, '管理举报读端失败：' + got.raw);
+    const mine = (got.body.reports || []).find((r) => Number(r.messageId) === 900001);
+    assert.ok(mine, 'pending 列表里没有刚提交的举报：' + JSON.stringify(got.body).slice(0, 180));
+    assert.ok(/测试/.test(String(mine.reason)), '举报理由没送到管理端：' + JSON.stringify(mine));
+    assert.ok(mine.reporter && String(mine.reporter).length > 0, '读端没解析出举报人：' + JSON.stringify(mine));
+    const forb = await call('GET', '/api/admin/chat-reports', undefined, B.token);
+    assert.strictEqual(forb.code, 403, '非管理员竟然读到了举报箱：' + forb.raw);
+    const logs = await call('GET', '/api/admin/chat-logs?limit=5', undefined, A.token);
+    assert.strictEqual(logs.code, 200, '聊天日志读端失败：' + logs.raw);
+    const items = await call('GET', '/api/admin/items?search=' + encodeURIComponent('灵'), undefined, A.token);
+    assert.strictEqual(items.code, 200, '物品目录读端失败：' + items.raw);
   });
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

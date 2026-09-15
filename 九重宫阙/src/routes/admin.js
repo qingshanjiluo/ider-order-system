@@ -245,6 +245,40 @@ router.get('/chat-logs', adminAuth, (req, res) => {
   }
 });
 
+// P6 批2：举报处理读端。此前玩家举报写进 db.chat_reports 后**没有任何出口**——
+// 石沉大海的举报等于没有举报。附带被举报消息原文（从 chat_messages 反查 messageId）。
+router.get('/chat-reports', adminAuth, (req, res) => {
+  try {
+    const db = loadDatabase();
+    const status = req.query.status || 'pending';
+    const msgs = db.chat_messages || [];
+    const users = db.users || [];
+    const chars = db.characters || [];
+    const reports = (db.chat_reports || [])
+      .filter(r => (r.status || 'pending') === status)
+      .slice(-100)
+      .map(r => {
+        const msg = msgs.find(m => String(m.id) === String(r.messageId)) || null;
+        const u = users.find(x => x.id === r.reportedBy);
+        const ch = u ? chars.find(c => c.user_id === u.id) : null;
+        return {
+          id: r.id,
+          messageId: r.messageId,
+          reason: r.reason,
+          timestamp: r.timestamp,
+          reporter: (ch && ch.name) || (u && u.username) || `UID:${r.reportedBy}`,
+          messageContent: msg ? msg.content : null,
+          messageSender: msg ? msg.username : null,
+          channel: msg ? msg.channel : null
+        };
+      })
+      .reverse();
+    res.json({ reports, total: (db.chat_reports || []).length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 router.post('/broadcast', adminAuth, (req, res) => {
   try {
     const { content } = req.body;

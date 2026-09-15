@@ -2498,8 +2498,8 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
   assert.ok(!r.unwired.includes('/api/friend/search'),
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
-  // 轮74 批1a 真接线 5 条（放生/灵根×2/心境/advanced）⇒ 42；轮75 批1b 再 4 条（妖情/材料图鉴/特殊灵石/出战）⇒ 38
-  assert.ok(r.unwired.length <= 38, `未接线棘轮被抬高：${r.unwired.length}（基线 38，轮75 批1b）`);
+  // 轮74 批1a 5 条⇒42；轮75 批1b 4 条⇒38；轮76 批2 3 条（举报+两个 admin 子页）⇒35
+  assert.ok(r.unwired.length <= 35, `未接线棘轮被抬高：${r.unwired.length}（基线 35，轮76 批2）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2579,6 +2579,23 @@ t('轮75 P6批1b：妖情/材料图鉴/特殊灵石/出战横幅——四条从"
   for (const ui of ['toggleMapMonsters', 'toggleResourcesBook', 'loadSpecialStonesBox', 'handleUseStone', 'loadActivePetsBanner']) {
     assert.ok(appSrc.includes(ui), `界面入口 ${ui} 不见了（端点又变回点不到）`);
   }
+});
+t('轮76 P6批2：聊天日志/物品总览/举报处理三子页 + 玩家举报按钮（举报不再石沉大海）', () => {
+  const { measure } = require('../scripts/endpoint-coverage.js');
+  const r = measure();
+  for (const p of ['/api/chat/report', '/api/admin/chat-logs', '/api/admin/items']) {
+    assert.ok(!r.unwired.includes(p), `${p} 还挂在未接线清单（前端失联了）`);
+  }
+  assert.ok(!r.ghost.map((g) => g.call).includes('/api/admin/chat-reports'), '举报读端新路由没有前端消费者（幽灵）');
+  const appSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+  const chatSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'chat.js'), 'utf8');
+  assert.ok(appSrc.includes("loadAdminSub('chatlogs'") && appSrc.includes('api.getAdminChatLogs('), '聊天日志子页失联');
+  assert.ok(appSrc.includes("loadAdminSub('items'") && appSrc.includes('api.getAdminItems('), '物品总览子页失联');
+  assert.ok(appSrc.includes("loadAdminSub('reports'") && appSrc.includes('api.getAdminChatReports('), '举报处理子页失联');
+  assert.ok(chatSrc.includes('api.reportChatMessage(') && /举报/.test(chatSrc), '玩家侧举报按钮失联');
+  // 轮76 抓的实锤缺陷防复发：appendChatMessage 曾只写浮动面板 #chat-messages，
+  // 聊天 tab 页的 #chat-tab-messages 没有任何代码写 ⇒ 开 tab 永远空白。双容器缺一不可。
+  assert.ok(chatSrc.includes("'chat-tab-messages'"), 'chat.js 又只写浮动面板容器了——聊天 tab 页会永远空白');
 });
 t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
   const src = read21('public', 'js', 'api.js');

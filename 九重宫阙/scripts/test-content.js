@@ -2710,6 +2710,13 @@ t('轮93 影子并档：双擂台与 systems 变体已决，真擂台双闸在�
   const amN = (an.match(/combatService\.aftermath\(character, result, \{ arena: true \}\)/g) || []).length;
   assert.ok(amN === 2, `擂台伤况规则应双路对称，实测 ${amN}（challenge 不得裸奔）`);
 });
+t('轮97 交易行过期回仓三件套：服务/FE/套件在册', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const mk = rd('src/services/market.js');
+  assert.ok(mk.includes("['open', 'expired'].includes(listing.status)"), 'cancel 又只认 open——过期单货卡死硬伤复发');
+  assert.ok(rd('public/js/app.js').includes("l.status === 'expired'"), 'FE 取回按钮被拆（BE 能撤 UI 点不到）');
+  assert.ok(rd('scripts/run-all-tests.js').includes('test-market-econ.js'), 'G10 经济行为套件从名册消失');
+});
 t('轮96 聊天室四闸：旁听封死/限速在位/盟籍真源/私聊直达', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
   const srv = rd('server.js');

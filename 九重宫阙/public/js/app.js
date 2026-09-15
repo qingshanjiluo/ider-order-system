@@ -3322,7 +3322,7 @@ async function refreshMarket() {
     const mine = (my.listings || []).map(l => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid var(--border);font-size:11px;">
         <span>${l.item} ×${l.quantity} @${l.priceEach} <span style="color:var(--text2);">[${l.status}]</span></span>
-        ${l.status === 'open' ? `<button class="btn small danger" onclick="marketCancel(${l.id})">下架</button>` : ''}
+        ${l.status === 'open' ? `<button class="btn small danger" onclick="marketCancel(${l.id})">下架</button>` : ''}${l.status === 'expired' ? `<button class="btn small" onclick="marketCancel(${l.id})">取回</button>` : ''}
       </div>`).join('');
     document.getElementById('market-my').innerHTML = mine || '<div style="font-size:12px;color:var(--text2);">暂无挂单</div>';
   } catch (e) {

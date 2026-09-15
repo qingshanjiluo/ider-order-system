@@ -245,7 +245,9 @@ function buy(character, listingId, quantity) {
 function cancel(character, listingId) {
   const db = loadDatabase();
   const listing = store.queryRel('market_listings', { id: Number(listingId) })[0];
-  if (!listing || listing.status !== 'open') return { ok: false, error: '挂单不存在或已关闭' };
+  // 轮97 硬伤修复：旧版只许撤 open 单，而 72h 过期没人买时无人负责落状态——
+  // 过期单既买不掉也撤不回，货永久卡死。现允许到期单（含已标 expired 与惰性到期）撤单回仓，挂单费不退（服务已占位 72h）。
+  if (!listing || !['open', 'expired'].includes(listing.status)) return { ok: false, error: '挂单不存在或已关闭' };
   if (listing.seller_character_id !== character.id) return { ok: false, error: '非本人挂单' };
   // 退回物品
   const inv = db.inventory.find(i => i.character_id === character.id && i.item_id === listing.item_ref);

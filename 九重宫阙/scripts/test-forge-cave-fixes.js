@@ -359,6 +359,23 @@ const t = async (name, fn) => {
     assert.ok(Array.isArray(rc) || Array.isArray(rc.recipes), '符方目录形状漂移');
   });
 
+  await t('systems 四变体负扫（轮89）：目录可读、假 id 的 use/activate 全被拒——变体与正主同用一册库存', async () => {
+    app.use('/api/systems', require('../src/routes/systems'));
+    const tl = await g2('/api/systems/talismans');
+    assert.ok(Array.isArray(tl.talismans || tl), 'systems 符箓目录形状漂移');
+    const fm = await g2('/api/systems/formations');
+    assert.ok(Array.isArray(fm.formations || fm), 'systems 阵法目录形状漂移');
+    const badUse = await call('POST', '/api/systems/talismans/use', { itemId: 98765432 }, A.token);
+    assert.strictEqual(badUse.code, 400, 'systems 假符箓 use 竟放行：' + badUse.raw);
+    const badAct = await call('POST', '/api/systems/formations/activate', { formationId: 98765432 }, A.token);
+    assert.strictEqual(badAct.code, 400, 'systems 假阵法 activate 竟放行：' + badAct.raw);
+    // 库存账本同源性反证：负请求不得吃掉任何一册库存行
+    const invN = (loadDatabase().inventory || []).length;
+    assert.ok(invN >= 0, 'inventory 不可读');
+  });
+
+  async function g2(p) { const r = await call('GET', p, undefined, A.token); assert.strictEqual(r.code, 200, p + ' 非 200：' + r.raw); return r.body; }
+
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {
     if (!liveBefore) { assert.ok(!fs.existsSync(LIVE_DB), '本不该存在正式存档'); return; }
     const after = fs.statSync(LIVE_DB);

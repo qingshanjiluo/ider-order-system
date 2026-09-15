@@ -6,6 +6,9 @@
  */
 const TIERS = [
   { prefix: '/api/ai/', max: 6, windowMs: 60000, label: 'AI 生成' },
+  // 轮80：传记润色直调 aiService.generate('lore')（chronicle.js:64），此前只有全局 100/分兜底
+  // ——一个脚本就能把外部 LLM 额度打满。pick() 先列先中，精确条目须排在任何父前缀之前。
+  { prefix: '/api/chronicle/biography/enhance', max: 6, windowMs: 60000, label: 'AI 传记润色' },
   { prefix: '/api/dungeon/', max: 15, windowMs: 60000, label: '副本结算' },
   { prefix: '/api/battle/', max: 25, windowMs: 60000, label: '战斗' },
   { prefix: '/api/auth/', max: 12, windowMs: 60000, label: '认证' },

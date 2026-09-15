@@ -68,6 +68,23 @@ const t = async (name, fn) => {
     assert.strictEqual(Number(b.remaining), shop.max - 2);
   });
 
+  // 轮80：AI 传记润色的专属限流（直调外部 LLM，只靠全局 100/分兜底会被脚本打爆额度）
+  app.post('/api/chronicle/biography/enhance', (req, res) => res.json({ ok: 1 }));
+  const hitPost = (path) => new Promise((resolve, reject) => {
+    const r = http.request({ host: '127.0.0.1', port, path, method: 'POST' }, (rs) => { rs.resume(); resolve(rs.statusCode); });
+    r.on('error', reject);
+    r.end();
+  });
+  await t('chronicle 传记润色有专属档：越界 429，且不连带编年史读端', async () => {
+    tierLimit.reset();
+    const ch = tierLimit._tiers.find((x) => x.prefix === '/api/chronicle/biography/enhance');
+    assert.ok(ch && ch.max <= 8, '专属限流条目不见了（AI 额度裸奔）');
+    const codes = [];
+    for (let i = 0; i < ch.max + 2; i++) codes.push(await hitPost('/api/chronicle/biography/enhance'));
+    assert.ok(codes.slice(0, ch.max).every((c) => c === 200), '阈值内被误限：' + codes.join(','));
+    assert.ok(codes.slice(ch.max).every((c) => c === 429), '超限未拦截：' + codes.join(','));
+  });
+
   server.close();
   console.log(`\nE2 限流测试: ${pass} 通过, ${fail} 失败`);
   process.exit(fail ? 1 : 0);

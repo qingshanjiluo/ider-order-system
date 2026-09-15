@@ -31,6 +31,8 @@ const SUITES = [
   ['G5 批3修复回归', 'scripts/test-forge-cave-fixes.js'],
   // 轮81：AI 密钥池/降级/复用/审核/生成点（由孤儿 test-phase8-integration.js 进程内改造，旧档案依赖已死）
   ['G6 AI密钥池', 'scripts/test-ai-keys-e2e.js'],
+  // 轮82：传记/编年史/AI 润色审核闭环（由孤儿 test-phase9-integration.js 进程内改造）
+  ['G7 传记编年史', 'scripts/test-chronicle-e2e.js'],
   ['S1 入口 boot 探针', 'scripts/probe-server.js'],
   ['S2 P3 可见性', 'scripts/test-p3-visibility-e2e.js'],
   ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js'],

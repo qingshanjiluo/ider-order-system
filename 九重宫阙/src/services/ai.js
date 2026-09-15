@@ -264,7 +264,22 @@ async function generate(purpose, params = {}, opts = {}) {
   if (!PURPOSES.includes(purpose)) throw new Error(`未知生成类型: ${purpose}`);
   const hash = hashParams({ purpose, ...params });
   const reused = findReused(purpose, hash);
-  if (reused) return { reused: true, generationId: reused.id, status: 'approved', source: reused.result.source, content: reused.result };
+  if (reused) {
+    // 轮82：复用命中原本一律返回 approved，会短路调用方的 forcePending——传记二润因此
+    // 静默丢失（chronicle 只认 pending 写指针，approved 回执它不消费，玩家点了润色没反应）。
+    // 复用改变的是"是否烧 LLM"，不该改变"要不要过审"：文案类复用时改挂新行入审核池。
+    if (opts.forcePending && reused.result.status !== 'pending') {
+      const nid = store.insertRel('ai_generations', {
+        purpose,
+        prompt: `#${hash}# ${JSON.stringify(params)} (reuse-pending)`,
+        provider: 'reuse', model: 'reuse', status: 'pending',
+        result: reused.result.result || JSON.stringify(reused.result),
+        created_at: new Date().toISOString()
+      });
+      return { reused: true, generationId: nid, status: 'pending', source: reused.result.source, content: reused.result };
+    }
+    return { reused: true, generationId: reused.id, status: 'approved', source: reused.result.source, content: reused.result };
+  }
 
   const stats = proceduralStats(purpose, params); // 数值：程序化权威
   let text = null, source = 'local', keyUsed = null;

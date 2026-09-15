@@ -2650,6 +2650,16 @@ t('轮81 G6 在册：AI 密钥池覆盖不得再靠"预先起服打真档"的孤
   // （只认 SUITES 条目的引号形态；注释里提名字不算在册）
   assert.ok(!/['"]scripts\/test-phase8-integration\.js['"]/.test(rd('scripts/run-all-tests.js')), 'phase8 孤儿档案回流 runner（它打的是 3224 固定端口的活服务器）');
 });
+t('轮82 G7 在册 + 复用不短路审核：ai.js 的 reuse-pending 分支是唯一防线', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  assert.ok(rd('scripts/run-all-tests.js').includes('test-chronicle-e2e.js'), 'G7 被开出 runner——传记/编年史回到零门禁');
+  assert.ok(!/['"]scripts\/test-phase9-integration\.js['"]/.test(rd('scripts/run-all-tests.js')), 'phase9 孤儿回流（预起服+直删正式档的老设计）');
+  const aiSvc = rd('src/services/ai.js');
+  assert.ok(aiSvc.includes('opts.forcePending &&') && aiSvc.includes('insertRel'), '复用短路审核的产品级 bug 修复被回滚：forcePending 调用方会静默丢失二润');
+  // 反证：复用分支不得再无条件返回 approved
+  assert.ok(!/if \(reused\) return \{ reused: true, generationId: reused\.id, status: 'approved'/.test(aiSvc),
+    '复用在返回处又一行短路成 approved——传记二润静默丢失会复活');
+});
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');
   const ids = [...g.matchAll(/itemId:\s*(\d+)/g)].map((m) => Number(m[1]));

@@ -2480,7 +2480,9 @@ t('端点覆盖率测量可复现，且"幽灵调用"必须为零', () => {
   const r = measure();
   // 基线 276→275：轮59 有意删除 src/routes/battle.js 的 /skills/learn —— 它只 res.json({success:true,'功法已领悟'}) 却从不写库，
   // 是个会对玩家谎称成功的空转端点（学功法的真路径是 /gongfa/equip，由 G1 套件端到端锁住）。删除是刻意的，故显式降基线而不是把锁改松。
-  assert.ok(r.totals.be >= 275, `后端端点总数只剩 ${r.totals.be}（基线 275，轮59 删空转端点 /skills/learn），路由可能被删或 router 未被展开`);
+  // 基线 276→275（轮59 删空转 /skills/learn）→ 268（轮93 批6(六) 影子并档：battle/arena/battle×1 + systems 变体×6 合法切除，
+  // 复活封禁另有专锁；此下限防的是"未被记账的路由消失"）
+  assert.ok(r.totals.be >= 268, `后端端点总数只剩 ${r.totals.be}（基线 268，轮93 影子并档），路由可能被删或 router 未被展开`);
   assert.strictEqual(r.totals.skippedLayers, 0, '有 router 层没被展开，覆盖率口径不可信');
   // 前端调了后端没有的路径 = 玩家一点就 404/500，这是最要命的一类，绝不允许出现
   assert.deepStrictEqual(r.ghost.map((g) => g.call), [], `前端存在幽灵调用（后端无此端点）：${r.ghost.map((g) => `${g.call}@${g.in}`).join(', ')}`);
@@ -2633,7 +2635,9 @@ t('轮78 批3(下)锚：formations 实例优先解析、forge TDZ 不复活、�
   const battleRt = rd('src/routes/battle.js');
   assert.ok(!battleRt.includes('playerPower / (playerPower + opponentPower)') && !battleRt.includes('playerPower / (playerPower + targetPower)'),
     '单人 PVP 又退回"战力比值×单骰"桩（G5 有仿真回合断言会一起红）');
-  assert.strictEqual((battleRt.match(/\{ noLoot: true \}/g) || []).length, 2, 'arena/duel 的 noLoot 闸门数不对——PVP 会混进 PVE 掉落线');
+  assert.strictEqual((battleRt.match(/\{ noLoot: true \}/g) || []).length
+    + (require('fs').readFileSync(require('path').join(__dirname, '..', 'src/routes/arena.js'), 'utf8').match(/\{ noLoot: true \}/g) || []).length,
+    3, 'PVP noLoot 闸门总数不对（duel=1 + 真擂台 challenge/match=2，轮93 并档后口径）——PVP 会混进 PVE 掉落线');
   assert.ok(battleRt.includes('characterService.addExp(character.id, expReward)') && !/character\.exp = \(character\.exp \|\| 0\) \+ reward\.exp/.test(battleRt),
     'arena/duel 修为又直写 character.exp（第二经验真源，轮54 清剿的漏网之鱼）');
   assert.strictEqual((battleRt.match(/轮79 批4裁决/g) || []).length, 2, 'war 桩的"设计简化"登记注释被删——群战骰子必须保持显式可读');
@@ -2693,6 +2697,18 @@ t('轮85 洞府装饰/灵脉三接点：FE 面板与 action 分支三元组在�
   }
   assert.ok(appSrc.includes('char-panel-title">装饰') && appSrc.includes('char-panel-title">灵脉'), '洞府两面板标题被删——接了 action 却没入口等于没接');
   assert.ok(appSrc.includes('一府一脉') && appSrc.includes('同款上限5'), '后端约束（一脉/上限5）的前端提示被删——玩家只会撞 400 才知道');
+});
+t('轮93 影子并档：双擂台与 systems 变体已决，真擂台双闸在位', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const b = rd('src/routes/battle.js');
+  assert.ok(!b.includes("router.post('/arena/battle'"), '影子擂台 POST /arena/battle 复活（双账本必打架，真擂台在 /api/arena/*）');
+  const sy = rd('src/routes/systems.js');
+  assert.ok(!sy.includes("'/talismans") && !sy.includes("'/formations"), 'systems 符箓/阵法变体回流（正主是 /api/talismans|formations）');
+  const an = rd('src/routes/arena.js');
+  const noLootN = (an.match(/\{ noLoot: true \}/g) || []).length;
+  assert.ok(noLootN === 2, `真擂台 noLoot 闸应双处在位，实测 ${noLootN}（challenge/match 各一）`);
+  const amN = (an.match(/combatService\.aftermath\(character, result, \{ arena: true \}\)/g) || []).length;
+  assert.ok(amN === 2, `擂台伤况规则应双路对称，实测 ${amN}（challenge 不得裸奔）`);
 });
 t('轮92 附魔污染手术：词条只活实例、字典行停写、战斗侧合并在线', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');

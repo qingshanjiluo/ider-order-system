@@ -146,75 +146,8 @@ const ARENA_REWARDS = {
 // 同族的 battle/arena/battle 暂留——轮79 已接全仿真且 G5 有行为断言，去留与 arena.js 合并为
 // 一处是下一批战斗工程的题（记入规划批6，不许无裁决地一直拖着）。
 
-router.post('/arena/battle', auth, async (req, res) => {
-  try {
-    const { targetId } = req.body;
-    const db = loadDatabase();
-    const character = db.characters.find(c => c.user_id === req.userId);
-    if (!character) return res.status(404).json({ error: '角色不存在' });
-
-    let opponent;
-    if (targetId) {
-      opponent = db.characters.find(c => c.id === targetId);
-    } else {
-      const eligible = db.characters.filter(c => c.id !== character.id && Math.abs((c.level || 1) - (character.level || 1)) <= 10);
-      if (eligible.length === 0) return res.status(400).json({ error: '无合适对手' });
-      opponent = eligible[Math.floor(Math.random() * eligible.length)];
-    }
-    if (!opponent) return res.status(400).json({ error: '对手不存在' });
-    if (opponent.id === character.id) return res.status(400).json({ error: '不能与自己比试' });
-
-    // 轮79 批4：竞技场接全仿真（旧桩是"战力比值×一颗骰子"——无技能/伤害/回合，属性堆到
-    // 天际也只是概率微调，和 /battle 主链两套physic）。{noLoot:true} 保产出仍走 ARENA_REWARDS 表，
-    // 不混入 PVE 掉落线；双方各按 arena 档结算伤势（对局伤减半、不触发重伤，切磋不打残）。
-    const sim = await combatService.startBattle(character.id, opponent.id, 'character', 'character', null, { noLoot: true });
-    if (!sim || !sim.success) return res.status(400).json({ error: (sim && sim.error) || '竞技场开战失败' });
-    const won = sim.winner === 'attacker';
-    combatService.aftermath(character, sim, { arena: true });
-    combatService.aftermath(opponent, {
-      ...sim,
-      winner: won ? 'defender' : 'attacker',
-      attackerMaxHp: sim.defenderMaxHp,
-      attackerFinalHp: sim.defenderFinalHp
-    }, { arena: true });
-
-    const streak = won ? (character.win_streak || 0) + 1 : 0;
-    character.win_streak = streak;
-    character.arena_points = (character.arena_points || 0) + (won ? ARENA_REWARDS.win.arenaPoints : ARENA_REWARDS.lose.arenaPoints);
-    character.arena_points = Math.max(0, character.arena_points - (opponent.arena_points || 0) * 0.1);
-
-    let bonusReward = null;
-    if (streak === 3) bonusReward = ARENA_REWARDS.streak3;
-    else if (streak === 5) bonusReward = ARENA_REWARDS.streak5;
-    else if (streak >= 10) bonusReward = ARENA_REWARDS.streak10;
-
-    const reward = won ? ARENA_REWARDS.win : ARENA_REWARDS.lose;
-    // 轮79：修为不再直写 character.exp（/battle 轮54 清出的"第二经验真源"这里一直是漏网之鱼），
-    // 改走 characterService.addExp 唯一入口；灵石/积分仍按竞技场表发。
-    character.spirit_stone = (character.spirit_stone || 0) + reward.spiritStone + (bonusReward ? bonusReward.spiritStone : 0);
-    character.arena_points += bonusReward ? bonusReward.arenaPoints : 0;
-    character.total_battles = (character.total_battles || 0) + 1;
-    if (won) character.total_kills = (character.total_kills || 0) + 1;
-
-    saveDatabase(db);
-    const expGain = reward.exp + (bonusReward ? bonusReward.exp : 0);
-    if (expGain > 0) characterService.addExp(character.id, expGain);
-    res.json({
-      won, opponent: { name: opponent.name, level: opponent.level, realm: opponent.realm },
-      reward: { ...reward, ...(bonusReward || {}) },
-      streak, arena_points: character.arena_points,
-      battle: {
-        rounds: sim.rounds,
-        yourHp: sim.attackerFinalHp, yourHpMax: sim.attackerMaxHp,
-        foeHp: sim.defenderFinalHp, foeHpMax: sim.defenderMaxHp,
-        log: (sim.battleLog || []).slice(-6)
-      },
-      message: won ? `击败${opponent.name}！连胜${streak}场` : `败给${opponent.name}，连胜中断`
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// 轮93：影子擂台 POST /arena/battle 已处决并档至 /api/arena/challenge（真引擎+真账本，
+//   轮93 补齐 noLoot 与 challenge 侧 aftermath）。battle.js 不再另起炉灶。
 
 router.post('/duel/challenge', auth, async (req, res) => {
   try {

@@ -95,10 +95,13 @@ router.post('/challenge', auth, async (req, res) => {
     if (!target) {
       return res.status(400).json({ error: '目标不存在' });
     }
-    const result = await combatService.startBattle(character.id, target.id, 'character', 'character');
+    // 轮93 并档：擂台是切磋不是刷装——noLoot 封掉落线（轮79 在 battle/arena/battle 的同款闸门）
+    const result = await combatService.startBattle(character.id, target.id, 'character', 'character', undefined, { noLoot: true });
     if (!result.success) {
       return res.status(500).json({ error: '战斗失败' });
     }
+    // 轮93：点名的约战同样吃擂台伤况规则（旧版只 match 调 aftermath，challenge 赢输无痛——同文件双标）
+    combatService.aftermath(character, result, { arena: true });
     if (result.winner === 'attacker') {
       const rewards = { exp: 50, spiritStone: 20 };
       characterService.addExp(character.id, rewards.exp);
@@ -140,7 +143,7 @@ router.post('/match', auth, async (req, res) => {
     if ((character.guild_build_until || 0) > Date.now()) {
       return res.status(400).json({ error: '参与仙盟建设中，无法战斗' });
     }
-    const result = await combatService.startBattle(character.id, opponent.id, 'character', 'character');
+    const result = await combatService.startBattle(character.id, opponent.id, 'character', 'character', undefined, { noLoot: true }); // 轮93 同闸
     if (!result.success) {
       return res.status(500).json({ error: '战斗失败' });
     }

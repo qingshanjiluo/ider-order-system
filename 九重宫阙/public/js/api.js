@@ -705,14 +705,6 @@ const api = {
     return this.request('POST', '/shop/use-item', { itemName });
   },
 
-  async getMyTalismans() {
-    return this.request('GET', '/systems/talismans/my');
-  },
-
-  async getMyFormations() {
-    return this.request('GET', '/systems/formations/my');
-  },
-
   async getSets() {
     return this.request('GET', '/systems/sets');
   },

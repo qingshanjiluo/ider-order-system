@@ -43,6 +43,7 @@ const t = async (name, fn) => {
   app.use('/api/cultivation', require('../src/routes/cultivation'));
   app.use('/api/formations', require('../src/routes/formations'));
   app.use('/api/battle', require('../src/routes/battle'));
+  app.use('/api/arena', require('../src/routes/arena')); // 轮93 并档：真擂台挂载
   const server = await new Promise((r) => { const s = app.listen(0, '127.0.0.1', () => r(s)); });
   const port = server.address().port;
   // 轮88：轮87 的"种子缺口"实为套件假警报——真服务器 boot 时 materials.ensureAll 回填副本/货架
@@ -248,23 +249,22 @@ const t = async (name, fn) => {
     assert.ok(/材料不足/.test(less.raw), '拒绝理由不是材料不足：' + less.raw);
   });
 
-  // ---- 6) 批4：arena/duel 全仿真接通（轮79）----
-  await t('arena：接全仿真——回执带回合数与战报、积分结算（旧桩一颗骰子，无技能/伤害/回合）', async () => {
-    const lvDbg = loadDatabase().characters.map((c) => c.name + ':L' + c.level).join(' ');
-    console.log(`    [dbg ${lvDbg}]`);
-    const r = await call('POST', '/api/battle/arena/battle', { targetId: B.id }, A.token);
-    assert.strictEqual(r.code, 200, '竞技场失败：' + r.code + ' ' + r.raw);
-    assert.ok(typeof r.body.won === 'boolean', 'won 缺失：' + r.raw);
-    assert.ok(r.body.battle && Number.isFinite(r.body.battle.rounds) && r.body.battle.rounds >= 1,
-      '仿真回合数缺失——又是骰子桩？' + r.raw);
-    assert.ok(Array.isArray(r.body.battle.log) && r.body.battle.log.length > 0, 'battleLog 为空：' + r.raw);
+  // ---- 6) 批4：arena 全仿真（轮79）→ 轮93 并档：影子擂台处决，断言改打真擂台 ----
+  await t('arena 真擂台（/api/arena/challenge）：全仿真回执、noLoot 封掉落、擂台伤况规则在位', async () => {
+    const db0 = loadDatabase();
+    const inv0 = (db0.inventory || []).filter((i) => Number(i.character_id) === Number(A.id)).length;
+    const r = await call('POST', '/api/arena/challenge', { targetId: B.id }, A.token);
+    assert.strictEqual(r.code, 200, '擂台约战失败：' + r.code + ' ' + r.raw);
+    assert.ok(r.body.success && (r.body.winner === 'attacker' || r.body.winner === 'defender'), 'sim 回执形状漂移：' + r.raw);
+    assert.ok(Number.isFinite(r.body.rounds) && r.body.rounds >= 1, '仿真回合数缺失——又是骰子桩？' + r.raw);
+    assert.ok(Array.isArray(r.body.battleLog) && r.body.battleLog.length > 0, 'battleLog 为空：' + r.raw);
     const db2 = loadDatabase();
     const ca = db2.characters.find((c) => Number(c.id) === A.id);
-    assert.ok(Number(ca.arena_points) > 0 || !r.body.won, 'arena_points 未结算');
-    assert.ok(Number(ca.spirit_stone) > 0, 'arena 奖励绕开灵石账本');
-    // noLoot 闸门：arena 不得把 PVE 装备掉落线带进来（items 行数不因对战膨胀）
-    const itemsN = (db2.items || []).length;
-    assert.ok(itemsN <= 700, `竞技场疑似触发 PVE 掉落，物品表膨胀到 ${itemsN}`);
+    assert.strictEqual(Number(ca.total_battles), 1, 'total_battles 没记账：' + ca.total_battles);
+    const inv1 = (db2.inventory || []).filter((i) => Number(i.character_id) === Number(A.id)).length;
+    assert.strictEqual(inv1, inv0, '擂台还在吃 PVE 掉落（noLoot 闸断线）');
+    assert.ok(Number(ca.injury) >= 0 && Number(ca.injury) <= 100, 'injury 越出擂台量程：' + ca.injury);
+    if (r.body.winner === 'attacker') assert.ok(Number(ca.arena_points) >= 10, '胜场酬积分未结算：' + ca.arena_points);
   });
 
   await t('duel：先仿真后扣注、注金零和守恒；超限注金被拒且不消耗对局', async () => {
@@ -357,21 +357,6 @@ const t = async (name, fn) => {
     assert.ok(Array.isArray(inv) || Array.isArray(inv.inventory), '背包形状漂移');
     const rc = await g('/api/talismans/recipes');
     assert.ok(Array.isArray(rc) || Array.isArray(rc.recipes), '符方目录形状漂移');
-  });
-
-  await t('systems 四变体负扫（轮89）：目录可读、假 id 的 use/activate 全被拒——变体与正主同用一册库存', async () => {
-    app.use('/api/systems', require('../src/routes/systems'));
-    const tl = await g2('/api/systems/talismans');
-    assert.ok(Array.isArray(tl.talismans || tl), 'systems 符箓目录形状漂移');
-    const fm = await g2('/api/systems/formations');
-    assert.ok(Array.isArray(fm.formations || fm), 'systems 阵法目录形状漂移');
-    const badUse = await call('POST', '/api/systems/talismans/use', { itemId: 98765432 }, A.token);
-    assert.strictEqual(badUse.code, 400, 'systems 假符箓 use 竟放行：' + badUse.raw);
-    const badAct = await call('POST', '/api/systems/formations/activate', { formationId: 98765432 }, A.token);
-    assert.strictEqual(badAct.code, 400, 'systems 假阵法 activate 竟放行：' + badAct.raw);
-    // 库存账本同源性反证：负请求不得吃掉任何一册库存行
-    const invN = (loadDatabase().inventory || []).length;
-    assert.ok(invN >= 0, 'inventory 不可读');
   });
 
   await t('功法升级（轮90 接 battle/skills/upgrade）：cost=level×100 真扣、重复升累价、缺钱 400 带 required', async () => {

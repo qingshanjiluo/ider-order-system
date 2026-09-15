@@ -2490,7 +2490,7 @@ t('端点覆盖率测量可复现，且"幽灵调用"必须为零', () => {
   assert.ok(r.rates.fe >= 60, `名义覆盖率 ${r.rates.fe}% 低于 60%：前端 api 层大面积失联`);
 });
 // ===== 轮71 · P6 批0：口径修正落账 + 两处实锤缺陷的回归锁 =====
-t('轮71 口径修正：两条"未接线"是测量假阳性，修好后棘轮收紧到 47', () => {
+t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许接线压低（现 42，见内注）', () => {
   const { measure } = require('../scripts/endpoint-coverage.js');
   const r = measure();
   assert.ok(!r.unwired.includes('/api/chat/history'),
@@ -2498,7 +2498,8 @@ t('轮71 口径修正：两条"未接线"是测量假阳性，修好后棘轮收
   assert.ok(!r.unwired.includes('/api/friend/search'),
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
-  assert.ok(r.unwired.length <= 47, `未接线棘轮被抬高：${r.unwired.length}（基线 47）`);
+  // 轮74 批1 真接线 5 条（放生/灵根×2/心境/advanced）⇒ 再收紧 47→42
+  assert.ok(r.unwired.length <= 42, `未接线棘轮被抬高：${r.unwired.length}（基线 42，轮74）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2541,6 +2542,26 @@ t('轮71 P6：AI 文案管线带上世界观锚点（真源派生+装配接线+�
   const aiRouteSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'ai.js'), 'utf8');
   assert.ok(/NODE_ENV\s*===\s*['"]production['"]/.test(aiRouteSrc) && /503/.test(aiRouteSrc),
     'AI 管理端"生产禁默认令牌"分支不见了 —— dev-admin 是可猜的万能钥匙');
+});
+t('轮74 P6批1：放生/灵根/心境/advanced 五条从"存在但点不到"变成"界面点得到"', () => {
+  const { measure } = require('../scripts/endpoint-coverage.js');
+  const r = measure();
+  for (const p of ['/api/pet/release', '/api/character/spirit-roots', '/api/character/spirit-roots/cultivate',
+    '/api/character/mood', '/api/character/advanced']) {
+    assert.ok(!r.unwired.includes(p), `${p} 还挂在未接线清单（前端失联了）`);
+  }
+  // "可点"必须凑齐 包装 + 调用点 + 按钮 三件，只加个 api 包装不算数（历史上"写好了没人调"堆积过 31 条）
+  const apiSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'api.js'), 'utf8');
+  const appSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+  for (const m of ['releasePet', 'getSpiritRoots', 'cultivateSpiritRoot', 'setMood', 'getCharacterAdvanced']) {
+    assert.ok(apiSrc.includes(`async ${m}(`), `api.js 缺 ${m} 包装`);
+    assert.ok(new RegExp(`api\\.${m}\\s*\\(`).test(appSrc), `app.js 没调 ${m}（死方法）`);
+  }
+  assert.ok(/放生/.test(appSrc) && appSrc.includes('handleReleasePet'), '放生按钮或处理函数不见了');
+  const rel = appSrc.slice(appSrc.indexOf('async function handleReleasePet'), appSrc.indexOf('async function handleReleasePet') + 380);
+  assert.ok(/confirm\s*\(/.test(rel), '放生是不可逆操作却没有二次确认');
+  assert.ok(appSrc.includes('loadRootsMoodPanel') && appSrc.includes('handleCultivateRoot') && appSrc.includes('handleMoodAction'),
+    '灵根·心境面板（渲染/培养/动作）三件套缺件');
 });
 t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
   const src = read21('public', 'js', 'api.js');

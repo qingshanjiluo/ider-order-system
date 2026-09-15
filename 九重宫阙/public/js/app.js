@@ -301,6 +301,13 @@ async function loadCharacterTab() {
 
       <div class="char-panel">
         <div class="char-panel-header">
+          <div class="char-panel-title">灵根·心境</div>
+        </div>
+        <div id="roots-mood-panel"><p style="font-size:11px;color:var(--text2);">加载中…</p></div>
+      </div>
+
+      <div class="char-panel">
+        <div class="char-panel-header">
           <div class="char-panel-title">装备</div>
         </div>
         <div class="equip-slots" id="equip-grid" style="grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, auto); gap: 8px;"></div>
@@ -348,9 +355,54 @@ async function loadCharacterTab() {
       ui.updateInventory(inventory);
     } catch (e) {}
 
+    loadRootsMoodPanel();
+
   } catch (error) {
     content.innerHTML = '<div class="char-panel"><p>加载失败</p></div>';
   }
+}
+
+// P6 批1：灵根·心境面板。数据只从 /character/spirit-roots 与 /character/advanced 真端点取；
+// 按钮文案不复制后端价格表（meditate/wine… 的灵石价由服务端回执报出），防两处真源漂移。
+async function loadRootsMoodPanel() {
+  const el = document.getElementById('roots-mood-panel');
+  if (!el) return;
+  try {
+    const [rootsInfo, adv] = await Promise.all([api.getSpiritRoots(), api.getCharacterAdvanced()]);
+    const roots = (rootsInfo && rootsInfo.roots) || [];
+    const mood = ((adv && adv.special) || {}).mood;
+    const rootRows = roots.length === 0
+      ? '<div style="font-size:11px;color:var(--text2);">尚未觉醒灵根。</div>'
+      : roots.map((r) => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;">
+          <span>${r.type} 灵根 · 纯度 ${r.purity == null ? 0 : r.purity}</span>
+          <button class="btn small" onclick="handleCultivateRoot('${r.type}')">培养</button>
+        </div>`).join('');
+    const moodBtns = [['meditate', '冥想'], ['tea', '品茶'], ['paint', '作画'], ['wine', '饮酒'], ['travel', '游历']]
+      .map((a) => `<button class="btn small" onclick="handleMoodAction('${a[0]}')">${a[1]}</button>`).join(' ');
+    el.innerHTML = `${rootRows}
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">心境：<span id="mood-value">${mood == null ? '—' : mood}</span>/100</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">${moodBtns}</div>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text2);">灵根数据加载失败</div>';
+  }
+}
+
+async function handleCultivateRoot(rootType) {
+  try {
+    const r = await api.cultivateSpiritRoot(rootType);
+    ui.showToast(`${rootType}灵根纯度 +${r.purity_gain}（现 ${r.new_purity}，费 ${r.cost} 灵石）`);
+    loadRootsMoodPanel();
+  } catch (error) { ui.showToast(error.message); }
+}
+
+async function handleMoodAction(action) {
+  try {
+    const r = await api.setMood(action);
+    ui.showToast(`${r.action}后心境 ${r.mood}（费 ${r.cost} 灵石）`);
+    loadRootsMoodPanel();
+  } catch (error) { ui.showToast(error.message); }
 }
 
 // P3（轮50）：突破概率构成与失败代价。数据全部来自服务端同一份实现
@@ -1468,6 +1520,7 @@ async function loadPetTab() {
                   ${p.is_active ? '<span style="font-size:11px;color:var(--green);">出战中</span>' : `<button class="btn small primary" onclick="handleEquipPet(${p.id})">出战</button>`}
                   <button class="btn small" onclick="handleFeedPet(${p.id})">喂养</button>
                   <button class="btn small danger" onclick="handleUnequipPet(${p.id})">收回</button>
+                  <button class="btn small danger" onclick="handleReleasePet(${p.id})">放生</button>
                 </div>
               </div>
             `}).join('')}
@@ -1504,6 +1557,16 @@ async function handleUnequipPet(petId) {
     await api.unequipPet(petId);
     ui.showToast('灵宠已收回');
     await loadCharacter();
+    loadTabContent('pet');
+  } catch (error) { ui.showToast(error.message); }
+}
+
+// P6 批1：放生是**不可逆**操作（服务端直接 splice 掉 pets 行），必须 confirm 二次确认
+async function handleReleasePet(petId) {
+  if (!confirm('放生后灵宠永久离去，无法找回。确定放生？')) return;
+  try {
+    await api.releasePet(petId);
+    ui.showToast('灵宠已放归天地');
     loadTabContent('pet');
   } catch (error) { ui.showToast(error.message); }
 }

@@ -335,6 +335,27 @@ const api = {
     return this.request('POST', '/pet/feed', { petId, foodType, quantity });
   },
 
+  // P6 批1：灵宠放生（服务端真删行，不可逆 ⇒ 界面上必须二次确认）
+  async releasePet(petId) {
+    return this.request('POST', '/pet/release', { petId });
+  },
+
+  async getSpiritRoots() {
+    return this.request('GET', '/character/spirit-roots');
+  },
+
+  async cultivateSpiritRoot(rootType) {
+    return this.request('POST', '/character/spirit-roots/cultivate', { root_type: rootType });
+  },
+
+  async setMood(action) {
+    return this.request('POST', '/character/mood', { action });
+  },
+
+  async getCharacterAdvanced() {
+    return this.request('GET', '/character/advanced');
+  },
+
   async getForgeRecipes() {
     return this.request('GET', '/forge/recipes');
   },

@@ -275,6 +275,28 @@ const t = async (name, fn) => {
     assert.strictEqual(poor.code, 400, '超额注金竟开赛：' + poor.raw);
   });
 
+  await t('cave 装饰/灵脉三条接线（轮85）：放置入档、一府一脉、拆除后可重开', async () => {
+    const db = loadDatabase();
+    db.characters.find((c) => Number(c.id) === A.id).spirit_stone = 5000;
+    saveDatabase(db);
+    const d = await call('POST', '/api/cave/decoration', { decorationId: 'jade_lamp' }, A.token);
+    assert.strictEqual(d.code, 200, '放装饰失败：' + d.raw);
+    assert.ok((d.body.cave.decorations || []).includes('jade_lamp'), '装饰未入档：' + d.raw);
+    const badDeco = await call('POST', '/api/cave/decoration', { decorationId: 'not_a_thing' }, A.token);
+    assert.strictEqual(badDeco.code, 400, '不存在的装饰竟通过（404 键义漂移）：' + badDeco.raw);
+    const v1 = await call('POST', '/api/cave/vein', { veinId: 'low' }, A.token);
+    assert.strictEqual(v1.code, 200, '开脉失败：' + v1.raw);
+    const v2 = await call('POST', '/api/cave/vein', { veinId: 'mid' }, A.token);
+    assert.strictEqual(v2.code, 400, '二脉竟可同开（一府一脉失守）：' + v2.raw);
+    const rm = await call('POST', '/api/cave/remove-vein', {}, A.token);
+    assert.strictEqual(rm.code, 200, '拆除失败：' + rm.raw);
+    const rm2 = await call('POST', '/api/cave/remove-vein', {}, A.token);
+    assert.strictEqual(rm2.code, 400, '无脉可拆应 400：' + rm2.raw);
+    const v3 = await call('POST', '/api/cave/vein', { veinId: 'mid' }, A.token);
+    assert.strictEqual(v3.code, 200, '拆后不能重开：' + v3.raw);
+    assert.ok(v3.body.cave.vein === 'mid' || String(v3.body.cave.vein).includes('mid'), '新脉未落档：' + v3.raw);
+  });
+
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {
     if (!liveBefore) { assert.ok(!fs.existsSync(LIVE_DB), '本不该存在正式存档'); return; }
     const after = fs.statSync(LIVE_DB);

@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 27, `未接线棘轮被抬高：${r.unwired.length}（基线 27，轮83 G8）`);
+  assert.ok(r.unwired.length <= 24, `未接线棘轮被抬高：${r.unwired.length}（基线 24，轮85 cave 三条）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2677,6 +2677,16 @@ t('轮83 任务四钩子在册：level/checkin/craft/guild 进度源不得再断
   const makeupPos = ckSrc.indexOf("router.post('/makeup'");
   assert.ok(hookPos !== -1 && makeupPos !== -1 && hookPos < makeupPos,
     `checkin 钩子与补签路由的先后关系变了（hook=${hookPos} makeup=${makeupPos}）——补签会顶掉当日任务的诚实性`);
+});
+t('轮85 洞府装饰/灵脉三接点：FE 面板与 action 分支三元组在册', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const appSrc = rd('public/js/app.js');
+  for (const [pth, fn] of [['/cave/decoration', 'decorationId'], ['/cave/vein', 'veinId'], ['/cave/remove-vein', 'removeVein']]) {
+    assert.ok(appSrc.includes(`'POST', '${pth}'`), `FE 调用点消失：${pth}（G5 有 HTTP 断言，FE 断线由本锁盯）`);
+    assert.ok(appSrc.includes(fn), `FE 载荷/分支锚缺失：${fn}`);
+  }
+  assert.ok(appSrc.includes('char-panel-title">装饰') && appSrc.includes('char-panel-title">灵脉'), '洞府两面板标题被删——接了 action 却没入口等于没接');
+  assert.ok(appSrc.includes('一府一脉') && appSrc.includes('同款上限5'), '后端约束（一脉/上限5）的前端提示被删——玩家只会撞 400 才知道');
 });
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');

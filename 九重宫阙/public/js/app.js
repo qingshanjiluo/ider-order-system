@@ -714,6 +714,39 @@ async function loadCaveTab() {
         </div>
       </div>
       <div class="char-panel">
+        <div class="char-panel-header"><div class="char-panel-title">装饰</div></div>
+        <div style="font-size:12px;margin-bottom:8px;">已放置: ${(cave.decorations||[]).length > 0 ? cave.decorations.join(', ') : '无'}</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          ${(data.availableDecorations||[]).map(d => `
+            <div class="shop-item" style="padding:6px;flex:1;min-width:120px;">
+              <div class="shop-item-info">
+                <div class="shop-item-name" style="font-size:12px;">${d.name}</div>
+                <div class="shop-item-desc" style="font-size:11px;">${d.description}（同款上限5）</div>
+              </div>
+              <button class="btn small" onclick="caveAction('decoration','${d.id}')">${d.cost}灵石</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="char-panel">
+        <div class="char-panel-header">
+          <div class="char-panel-title">灵脉</div>
+          ${cave.vein ? '<button class="btn small" onclick="caveAction(\'removeVein\')">拆除当前灵脉</button>' : ''}
+        </div>
+        <div style="font-size:12px;margin-bottom:8px;">当前: ${cave.vein || '未开辟'}（一府一脉，先拆后开）</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          ${(data.availableVeins||[]).map(v => `
+            <div class="shop-item" style="padding:6px;flex:1;min-width:120px;">
+              <div class="shop-item-info">
+                <div class="shop-item-name" style="font-size:12px;">${v.name}</div>
+                <div class="shop-item-desc" style="font-size:11px;">${v.description}</div>
+              </div>
+              <button class="btn small" onclick="caveAction('vein','${v.id}')" ${cave.vein ? 'disabled' : ''}>${v.cost}灵石</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div class="char-panel">
         <div class="char-panel-header"><div class="char-panel-title">符箓</div></div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;">
           ${(data.availableTalismans||[]).map(t => `
@@ -752,6 +785,18 @@ window.caveAction = async function(action, id) {
       await loadCaveTab();
     } else if (action === 'talisman') {
       const r = await api.request('POST', '/cave/talisman', { talismanId: id });
+      ui.showToast(r.message);
+      await loadCaveTab();
+    } else if (action === 'decoration') {
+      const r = await api.request('POST', '/cave/decoration', { decorationId: id });
+      ui.showToast(r.message);
+      await loadCaveTab();
+    } else if (action === 'vein') {
+      const r = await api.request('POST', '/cave/vein', { veinId: id });
+      ui.showToast(r.message);
+      await loadCaveTab();
+    } else if (action === 'removeVein') {
+      const r = await api.request('POST', '/cave/remove-vein');
       ui.showToast(r.message);
       await loadCaveTab();
     }

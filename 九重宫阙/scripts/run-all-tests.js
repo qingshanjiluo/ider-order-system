@@ -35,6 +35,7 @@ const SUITES = [
   ['G7 传记编年史', 'scripts/test-chronicle-e2e.js'],
   // 轮83：任务进度钩子（level/checkin/guild 三类此前无进度源，4/8 任务永不可完成）
   ['G8 任务钩子', 'scripts/test-quest-hooks-e2e.js'],
+  ['G9 聊天WS', 'scripts/test-chat-ws-e2e.js'], // 轮96：真 socket 打拒登/广播/限速/盟籍隔离/私聊
   ['S1 入口 boot 探针', 'scripts/probe-server.js'],
   ['S2 P3 可见性', 'scripts/test-p3-visibility-e2e.js'],
   ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js'],

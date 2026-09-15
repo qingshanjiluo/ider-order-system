@@ -44,7 +44,22 @@ function handleChatEvent(msg) {
       break;
     case 'pong':
       break;
+    case 'whisper':
+      // 轮96：他人来信渲染成"私聊@我"；本人回声只报送达状态（不进公共流样式）
+      if (msg.fromUserId !== gameState.character?.user_id && msg.from) {
+        appendChatMessage({ username: `${msg.from}（私聊）`, content: msg.content, timestamp: msg.timestamp, type: 'chat' });
+      } else if (msg.fromUserId === gameState.character?.user_id || msg.delivered !== undefined) {
+        if (typeof ui !== 'undefined') ui.showToast(msg.delivered ? '私聊已送达' : '对方不在线');
+      }
+      break;
   }
+}
+
+function whisperUser(userId, name) {
+  if (!chatWs || chatWs.readyState !== WebSocket.OPEN) { ui.showToast('聊天未连接'); return; }
+  const txt = prompt(`传话给 ${name}`);
+  if (!txt || !txt.trim()) return;
+  chatWs.send(JSON.stringify({ type: 'whisper', to: userId, content: txt.trim() }));
 }
 
 // 轮76 修实锤缺陷：本函数只写浮动面板 #chat-messages；聊天 tab 页的容器是
@@ -102,7 +117,11 @@ async function handleReportChat(messageId) {
 
 function updateOnlineCount(count, users) {
   const el = document.getElementById('chat-online-count');
-  if (el) el.textContent = `在线: ${count}`;
+  if (!el) return;
+  // 轮96：名单可点——点谁就给谁传话（whisper）
+  const list = (users || []).slice(0, 12).map((u) =>
+    `<span style="cursor:pointer;color:var(--accent);" title="点击传话" onclick="whisperUser(${Number(u.userId)},'${String(u.username || '').replace(/'/g, '')}')">${escapeHtml(String(u.username || '?'))}</span>`).join('、');
+  el.innerHTML = `在线: ${count}${list ? `<div style="font-size:10px;color:var(--text2);margin-top:2px;">${list}</div>` : ''}`;
 }
 
 function switchChatChannel(channel, btn) {

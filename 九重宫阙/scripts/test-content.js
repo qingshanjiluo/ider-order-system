@@ -2710,6 +2710,18 @@ t('轮93 影子并档：双擂台与 systems 变体已决，真擂台双闸在�
   const amN = (an.match(/combatService\.aftermath\(character, result, \{ arena: true \}\)/g) || []).length;
   assert.ok(amN === 2, `擂台伤况规则应双路对称，实测 ${amN}（challenge 不得裸奔）`);
 });
+t('轮96 聊天室四闸：旁听封死/限速在位/盟籍真源/私聊直达', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const srv = rd('server.js');
+  assert.ok(!srv.includes('|| !client.currentChannel'), '默认用户旁听全频道的旧广播条件复活（仙盟密谈外泄洞）');
+  assert.ok(srv.includes('function resolveChannel') && srv.includes("case 'whisper'") && srv.includes("type: 'rate'"),
+    '频道解析/私聊/限速三件套有拆');
+  assert.ok(srv.includes('db.guild_members') && srv.includes('msgTimes'), 'WS 盟籍真源或限速表断线');
+  const chatBe = rd('src/routes/chat.js');
+  assert.ok(!chatBe.includes('character.guild_id'), 'chat 的 hasAccess 又读死列 guild_id（仙盟频道对所有人恒锁）');
+  const chatFe = rd('public/js/chat.js');
+  assert.ok(chatFe.includes('whisperUser') && chatFe.includes("type: 'whisper'"), 'FE 私聊入口被拆——WS 通道成暗房');
+});
 t('轮95 sect_found 上匾 + 词池分家 + env 死键清剿', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
   const ai = rd('src/services/ai.js');

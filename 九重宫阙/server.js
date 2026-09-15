@@ -140,7 +140,9 @@ function broadcastToChannel(channel, message) {
   const data = JSON.stringify(message);
   clients.forEach((client) => {
     if (client.ws.readyState === WebSocket.OPEN) {
-      if (channel === 'system' || client.currentChannel === channel || !client.currentChannel) {
+      // 轮96 隐私洞修复：旧版兜底"未 join 者收一切"让默认用户收到**所有频道**广播
+      // （仙盟密谋被全场旁听）。默认位是 world，system 人人可得。负锁盯死该兜底复活。
+      if (channel === 'system' || client.currentChannel === channel) {
         client.ws.send(data);
       }
     }
@@ -150,6 +152,7 @@ function broadcastToChannel(channel, message) {
 function broadcastOnlineCount() {
   const count = clients.size;
   const users = Array.from(clients.values()).map(c => ({
+    userId: c.userId, // 轮96：私聊按 userId 定向，名单必须带身份
     username: c.username,
     vipLevel: c.vipLevel,
     realm: c.realm
@@ -188,9 +191,13 @@ wss.on('connection', (ws, req) => {
       userId: decoded.userId,
       username: character.name,
       characterId: character.id,
-      guildId: character.guild_id || null,
+      // 轮96：旧版读 character.guild_id（建盟写的是 guild_members，此列常年为空）——
+      // 仙盟频道因此对所有人不可用 yet 又因旁听洞被旁听。改接真源。
+      guildId: ((db.guild_members || []).find((m) => m.character_id === character.id) || {}).guild_id || null,
       vipLevel: character.vip_level || 0,
-      realm: character.realm || '炼气'
+      realm: character.realm || '炼气',
+      currentChannel: 'world', // 轮96：默认只待世界频道（旧版 undefined=旁听全频道）
+      msgTimes: [] // 轮96：WS 限速表（tierLimit 只盖 HTTP，聊天洪水此前无人管）
     };
 
     clients.set(decoded.userId, clientInfo);
@@ -224,18 +231,38 @@ wss.on('connection', (ws, req) => {
   }
 });
 
+function resolveChannel(client, ch) {
+  // 轮96：FE 的世界观是 channel='guild'；内部真键是 guild:<id>——不同盟的"guild"必须落到不同键，
+  // 否则仙盟频道就是全盟串音的公共走廊。返回 null = 无权使用该频道。
+  if (ch === 'guild' || (ch && String(ch).startsWith('guild:'))) {
+    if (client.guildId == null) return null;
+    return `guild:${client.guildId}`;
+  }
+  return ch || 'world';
+}
+
 function handleChatMessage(client, msg) {
   const db = loadDatabase();
 
   switch (msg.type) {
     case 'chat': {
+      const channel = resolveChannel(client, msg.channel || 'world');
+      if (!channel) return; // 无盟籍插话仙盟频道：静默丢弃
+      // 轮96 限速：滚动 5 秒窗口超 8 条即回 rate 通知（不入库不广播）
+      const now = Date.now();
+      client.msgTimes = (client.msgTimes || []).filter((t) => now - t < 5000);
+      if (client.msgTimes.length >= 8) {
+        client.ws.send(JSON.stringify({ type: 'rate', error: '语速太快，稍候再叙', timestamp: now }));
+        return;
+      }
+      client.msgTimes.push(now);
       const chatMsg = {
         id: getNextId('chat_messages'),
-        channel: msg.channel || 'world',
+        channel,
         userId: client.userId,
         username: client.username,
-        content: msg.content.substring(0, 200),
-        timestamp: Date.now(),
+        content: String(msg.content || '').substring(0, 200),
+        timestamp: now,
         type: 'text',
         vipLevel: client.vipLevel
       };
@@ -248,9 +275,24 @@ function handleChatMessage(client, msg) {
       broadcastToChannel(chatMsg.channel, chatMsg);
       break;
     }
-    case 'join_channel':
-      client.currentChannel = msg.channel;
+    case 'whisper': {
+      // 轮96 私聊：只投递给目标与本人（不进公共广播、不落后端历史——私信非公共档案）
+      const to = Number(msg.to);
+      const content = String(msg.content || '').trim().substring(0, 200);
+      if (!to || !content) return;
+      const payload = { type: 'whisper', from: client.username, fromUserId: client.userId, to, content, timestamp: Date.now() };
+      const target = clients.get(to);
+      if (target && target.ws.readyState === WebSocket.OPEN) {
+        target.ws.send(JSON.stringify(payload));
+      }
+      client.ws.send(JSON.stringify({ ...payload, delivered: !!(target && target.ws && target.ws.readyState === WebSocket.OPEN) }));
       break;
+    }
+    case 'join_channel': {
+      const target = resolveChannel(client, msg.channel);
+      if (target) client.currentChannel = target;
+      break;
+    }
     case 'ping':
       client.ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
       break;

@@ -99,6 +99,43 @@ const t = async (name, fn) => {
     assert.strictEqual(acc.code, 400, '同任务可重复接取：' + JSON.stringify(acc.body));
   });
 
+  await t('建盟真链条（轮84 接管 phase11 独有意）：claim→create 耗令→create 钩子推任务→入盟→赠送零和', async () => {
+    const mk = async (tag) => {
+      const uu = tag + Date.now().toString(36).slice(-6);
+      const rr = await call('POST', '/api/auth/register', { username: uu, password: 'pw-dummy-123', nickname: uu, faction: 'martial' });
+      assert.ok(rr.code === 200 && rr.body.token, '注册失败：' + uu);
+      const dbc = loadDatabase();
+      return { token: rr.body.token, id: dbc.characters.find((c) => c.user_id === rr.body.userId).id };
+    };
+    const C = await mk('g8c'); const D = await mk('g8d');
+    // C 接任务 8 → 领仙盟令（首次免费）→ 建盟必须真消耗令牌并推进 create 档钩子
+    assert.strictEqual((await call('POST', '/api/quests/accept', { questId: 8 }, C.token)).code, 200);
+    const cl = await call('POST', '/api/guild/token/claim', {}, C.token);
+    assert.strictEqual(cl.code, 200, 'claim 首领失败：' + JSON.stringify(cl.body));
+    assert.strictEqual((await call('POST', '/api/guild/token/claim', {}, C.token)).code, 400, '邀请奖励可重领！');
+    const gc = await call('POST', '/api/guild/create', { name: '钩子盟_' + Date.now().toString(36).slice(-6) }, C.token);
+    assert.strictEqual(gc.code, 200, '持令建盟被拒：' + JSON.stringify(gc.body));
+    const qC = loadDatabase().quests.find((q) => q.character_id === C.id && q.quest_id === 8);
+    assert.strictEqual(qC.objectives[0].current, 1, 'create 档钩子没推任务（令牌建盟也是入盟！）');
+    // 令牌必须真扣（一次性凭证，不得建完退仓）
+    const db1 = loadDatabase();
+    const tokRow = db1.inventory.filter((i) => i.character_id === C.id && [80, 81, 82, 83].includes(Number(i.item_id)));
+    assert.strictEqual(tokRow.length, 0, '建盟后仙盟令仍留在背包（凭证未消耗）：' + JSON.stringify(tokRow));
+    // D 入盟 → C 赠 100 灵石：盟内零和 + 异盟/未盟拒绝的边界
+    const db2 = loadDatabase(); const stone0 = db2.characters.find((c) => c.id === C.id).spirit_stone;
+    assert.strictEqual(stone0 >= 100, true, '注入前灵石不足，测不到账');
+    const stD0 = db2.characters.find((c) => c.id === D.id).spirit_stone;
+    const jj = await call('POST', '/api/guild/join', { guildId: gc.body.guildId }, D.token);
+    assert.strictEqual(jj.code, 200, 'D 入盟被拒：' + JSON.stringify(jj.body));
+    const g1 = await call('POST', '/api/guild/gift', { targetCharacterId: D.id, amount: 100 }, C.token);
+    assert.strictEqual(g1.code, 200, '盟内赠送被拒：' + JSON.stringify(g1.body));
+    const db3 = loadDatabase();
+    const cN = db3.characters.find((c) => c.id === C.id), dN = db3.characters.find((c) => c.id === D.id);
+    assert.strictEqual(Number(cN.spirit_stone) + Number(dN.spirit_stone), Number(stone0) + Number(stD0), '赠送不是零和——灵石凭空增减');
+    const outsider = await call('POST', '/api/guild/gift', { targetCharacterId: D.id, amount: 1 }, TOKEN);
+    assert.ok(outsider.code === 400 || outsider.code === 404, '非同盟赠送竟放行：' + outsider.code);
+  });
+
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {
     if (!liveBefore) { assert.ok(!fs.existsSync(LIVE_DB), '本不该存在正式存档'); return; }
     const after = fs.statSync(LIVE_DB);

@@ -471,9 +471,23 @@ t('丹药入库且低阶上架坊市', () => {
   assert.ok(!shopNames.includes('道韵丹'), '道品丹药不应直接出售');
 });
 t(`副本图鉴 ≥ 32（当前含新增 ${dungeonLib.DUNGEONS.length} 个）`, () => {
-  assert.ok(dungeonLib.DUNGEONS.length >= 17, `仅 ${dungeonLib.DUNGEONS.length}`);
+  assert.ok(dungeonLib.DUNGEONS.length >= 25, `仅 ${dungeonLib.DUNGEONS.length}`); // 轮99 棘轮 17→25（库 43 条，只准更肥）
   const types = new Set(dungeonLib.DUNGEONS.map(d => d.type));
   assert.ok(types.size >= 4, `副本类型仅 ${[...types].join('/')}`);
+});
+t('轮99 批7(二) 八新本自洽：命名纯净、等级带不空转、实物引用只用已验证 id', () => {
+  const R99 = ['浮空圣殿', '龙吟峡', '鬼哭狼嚎坡', '金乌栖梧', '深渊落星', '黄泉摆渡', '流火关外关', '太初望境'];
+  const GOOD_IDS = new Set([14, 15, 30, 31, 32, 38, 59, 64, 69]); // 轮45 已验证存在于存档的物品
+  const byName = new Map(dungeonLib.DUNGEONS.map(d => [d.name, d]));
+  for (const n of R99) {
+    const d = byName.get(n);
+    assert.ok(d, `轮99 新本 ${n} 蒸发`);
+    assert.ok(!/[a-zA-Z]/.test(d.name + d.desc), `${n} 混入英文夹生词（数据卫生）`);
+    assert.ok(d.min_level < d.max_level && d.difficulty >= 1.2, `${n} 等级带或难度不自洽`);
+    for (const it of d.items || []) assert.ok(GOOD_IDS.has(it), `${n} 引用未验证物品 id ${it}`);
+  }
+  const names = dungeonLib.DUNGEONS.map(d => d.name);
+  assert.strictEqual(new Set(names).size, names.length, '副本重名（幂等播种会静默吞条目）');
 });
 t('副本奖励随难度阶梯递增', () => {
   const sorted = [...dungeonLib.DUNGEONS].sort((a, b) => a.difficulty - b.difficulty);

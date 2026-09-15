@@ -44,7 +44,17 @@ const DUNGEONS = [
   { name: '星槎渡红尘', type: '秘境', min_level: 60, max_level: 70, difficulty: 3.1, desc: '坠落星槎化出的红尘幻境，历情劫方得渡' },
   { name: '雷泽渊底', type: '天劫', min_level: 70, max_level: 82, difficulty: 4.2, desc: '万雷归渊，渊底雷君以形炼神' },
   { name: '无相心劫', type: '天劫', min_level: 86, max_level: 96, difficulty: 4.8, desc: '心魔化作自身模样，胜己方能胜天' },
-  { name: '大罗天试炼', type: '飞升副本', min_level: 92, max_level: 100, difficulty: 5.4, items: [69], desc: '大罗天门外最后一试，过后即可飞升' }
+  { name: '大罗天试炼', type: '飞升副本', min_level: 92, max_level: 100, difficulty: 5.4, items: [69], desc: '大罗天门外最后一试，过后即可飞升' },
+  // ---- 轮99 批7(二) · 副本 50 -> 58：补中段等级带空隙（33-37/47-51/61-64/73-77 四段此前无新本），
+  //      并给 late-game 两扇天劫门。items 只用轮45 已验证存在的存档物品 id，副本奖励边不引新悬空。----
+  { name: '浮空圣殿', type: '公共副本', min_level: 8, max_level: 18, difficulty: 1.3, desc: '坠落的祭殿悬在山腰，守殿石人认礼不认剑' },
+  { name: '龙吟峡', type: '公共副本', min_level: 20, max_level: 32, difficulty: 1.7, items: [30], desc: '峡风过如龙吟，风鳞兽借声匿形' },
+  { name: '鬼哭狼嚎坡', type: '秘境', min_level: 34, max_level: 46, difficulty: 2.2, desc: '阴风坡上亡声如啸，炼魂材料散落崖间' },
+  { name: '金乌栖梧', type: '秘境', min_level: 38, max_level: 50, difficulty: 2.35, desc: '传说金乌曾栖此梧，叶落皆带三日余温' },
+  { name: '深渊落星', type: '秘境', min_level: 63, max_level: 76, difficulty: 3.1, items: [59], desc: '坠星砸出的深渊，星骸与噬星虫共生' },
+  { name: '黄泉摆渡', type: '天劫', min_level: 76, max_level: 88, difficulty: 3.9, items: [14], desc: '摆渡人把你送到河对岸，收的是生前未了之债' },
+  { name: '流火关外关', type: '天劫', min_level: 84, max_level: 96, difficulty: 4.4, desc: '火海尽处尚有一关，守关者是自己前世的影子' },
+  { name: '太初望境', type: '飞升副本', min_level: 96, max_level: 100, difficulty: 5.6, items: [69], desc: '太初之景一眼万年，望见即筑基圆满之外的另一种可能' }
 ];
 
 function rewardsFor(d) {

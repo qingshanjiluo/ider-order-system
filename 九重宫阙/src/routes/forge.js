@@ -356,12 +356,29 @@ router.post('/temper', auth, (req, res) => {
     const mats = (materialIds || []).map(id => db.items.find(i => i.id === id)).filter(Boolean);
     if (mats.length === 0) return res.status(400).json({ error: '需要淬炼材料' });
 
-    for (const id of (materialIds || [])) {
-      const idx = inventory.findIndex(i => i.item_id === id);
-      if (idx !== -1) {
-        inventory[idx].quantity = (inventory[idx].quantity || 1) - 1;
-        if (inventory[idx].quantity <= 0) {
-          const dbIdx = db.inventory.findIndex(x => x.id === inventory[idx].id);
+    // 轮77 修白嫖：旧循环对"玩家根本没有这件材料"静默跳过——传真实存在但未持有的
+    // itemId 零消耗照样淬炼，还白拿 :373 按 mats.length 加成的重洗概率。
+    // 新规则：按 item 聚合需求量，持有量不足任一种即整单拒绝（先验后扣，不扣一半）。
+    const need = {};
+    for (const m of mats) need[m.id] = (need[m.id] || 0) + 1;
+    const owned = {};
+    for (const row of inventory) owned[row.item_id] = (owned[row.item_id] || 0) + (row.quantity || 0);
+    for (const mid of Object.keys(need)) {
+      if ((owned[mid] || 0) < need[mid]) {
+        const nm = (db.items.find(i => i.id === Number(mid)) || {}).name || ('#' + mid);
+        return res.status(400).json({ error: `材料不足：${nm} 需 ${need[mid]}，持有 ${owned[mid] || 0}` });
+      }
+    }
+    for (const mid of Object.keys(need)) {
+      let left = need[mid];
+      for (const row of inventory) {
+        if (left <= 0) break;
+        if (row.item_id !== Number(mid)) continue;
+        const take = Math.min(left, row.quantity || 0);
+        row.quantity = (row.quantity || 0) - take;
+        left -= take;
+        if (row.quantity <= 0) {
+          const dbIdx = db.inventory.findIndex(x => x.id === row.id);
           if (dbIdx !== -1) db.inventory.splice(dbIdx, 1);
         }
       }
@@ -374,7 +391,8 @@ router.post('/temper', auth, (req, res) => {
 
     const roll = Math.random();
     if (roll < destroyChance) {
-      const eqIdx = db.equipments.findIndex(e => e.id === equipmentId);
+      // 轮77：销毁也带 character_id——id 跨角色撞号时不误炸别人的装备
+      const eqIdx = db.equipments.findIndex(e => e.id === equipmentId && e.character_id === character.id);
       if (eqIdx !== -1) db.equipments.splice(eqIdx, 1);
       saveDatabase(db);
       return res.json({ success: false, result: 'destroyed', message: '淬炼失败，法器报废' });

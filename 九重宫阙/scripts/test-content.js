@@ -2498,8 +2498,8 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
   assert.ok(!r.unwired.includes('/api/friend/search'),
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
-  // 轮74 批1a 5 条⇒42；轮75 批1b 4 条⇒38；轮76 批2 3 条（举报+两个 admin 子页）⇒35
-  assert.ok(r.unwired.length <= 35, `未接线棘轮被抬高：${r.unwired.length}（基线 35，轮76 批2）`);
+  // 轮74 批1a 5 条⇒42；轮75 批1b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5 三端点吃到 HTTP 断言⇒32
+  assert.ok(r.unwired.length <= 32, `未接线棘轮被抬高：${r.unwired.length}（基线 32，轮77 批3）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2596,6 +2596,23 @@ t('轮76 P6批2：聊天日志/物品总览/举报处理三子页 + 玩家举报
   // 轮76 抓的实锤缺陷防复发：appendChatMessage 曾只写浮动面板 #chat-messages，
   // 聊天 tab 页的 #chat-tab-messages 没有任何代码写 ⇒ 开 tab 永远空白。双容器缺一不可。
   assert.ok(chatSrc.includes("'chat-tab-messages'"), 'chat.js 又只写浮动面板容器了——聊天 tab 页会永远空白');
+});
+t('轮77 批3三修锚：G5 套件在册 + temper 先验后扣 + use-storage 键义统一 + 离线窗口双向记账', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const runner = rd('scripts/run-all-tests.js');
+  assert.ok(runner.includes('test-forge-cave-fixes.js'), 'G5 修复回归套件被开除了 runner（三桩修复从此裸奔）');
+  const forge = rd('src/routes/forge.js');
+  assert.ok(/owned\[mid\][\s\S]{0,200}材料不足/.test(forge), 'temper 的"先验总量再扣"被回退——白嫖洞会重新打开');
+  assert.ok(!/for \(const id of \(materialIds \|\| \[\]\)\) \{\s*const idx = inventory\.findIndex/.test(forge),
+    'temper 又出现"找不到就静默跳过"的旧扣料循环');
+  const cave = rd('src/routes/cave.js');
+  assert.ok(cave.includes('i.item_id === iid'), 'use-storage 的 store 侧不再按物品 id 找行——键义分裂会复发');
+  assert.ok(!cave.includes('i.id === itemId && i.character_id'), 'store 又按背包行 id 当存储键了');
+  const svc = rd('src/services/cultivation.js');
+  const authRt = rd('src/routes/auth.js');
+  assert.ok(svc.includes('pending_offline_seconds = 0') && svc.includes('character.last_login = new Date(now).toISOString()'),
+    '离线结算不再消费窗口——无限修为泉复发');
+  assert.ok(authRt.includes('pending_offline_seconds'), '登录侧不再把离线窗口入账——正常路径会被踩成 0 收益废件');
 });
 t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
   const src = read21('public', 'js', 'api.js');

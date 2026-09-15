@@ -1,11 +1,11 @@
 {
   "ran": true,
   "kernel": "edge 153.0.4234.32",
-  "url": "http://127.0.0.1:31820/",
+  "url": "http://127.0.0.1:31832/",
   "raw_bytes": 14831,
   "dom_bytes": 15326,
   "inputs_raw": 6,
   "inputs_js_on": 8,
   "inputs_js_off": 0,
-  "at": "2026-09-15T15:58:25.320Z"
+  "at": "2026-09-15T16:19:24.581Z"
 }

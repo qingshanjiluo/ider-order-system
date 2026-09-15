@@ -114,6 +114,14 @@ router.post('/login', validateRequest({ username: VALIDATION_RULES.username, pas
     }
     const char = db.characters.find(c => c.user_id === user.id);
     if (char) {
+      // 轮77：登录直接把指针推到当下会把离线窗口踩死——offline-cultivate 永远算出
+      // ≈0 秒（废件），而绕过登录手调该接口反而能无限重领（泉水）。先把窗口落进
+      // pending_offline_seconds，再推指针；两端现在都由该账本消费，无第二条取数路径。
+      const prevLogin = char.last_login ? new Date(char.last_login).getTime() : 0;
+      if (prevLogin > 0) {
+        const windowSec = Math.max(0, Math.floor((Date.now() - prevLogin) / 1000));
+        char.pending_offline_seconds = Math.min(250 * 60 * 60, (char.pending_offline_seconds || 0) + windowSec);
+      }
       char.last_login = new Date().toISOString();
     }
     saveDatabase(db);

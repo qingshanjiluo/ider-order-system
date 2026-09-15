@@ -110,11 +110,14 @@ class CultivationService {
     const character = db.characters.find(c => c.id === characterId);
     if (!character) return null;
 
-    const lastLogin = new Date(character.last_login).getTime();
+    const lastLogin = character.last_login ? new Date(character.last_login).getTime() : 0;
     const now = Date.now();
-    const offlineSeconds = Math.floor((now - lastLogin) / 1000);
+    // 轮77：窗口有两个来源——登录时存进 pending_offline_seconds 的账本（主路径），
+    // 以及"注册后没再登录直接调本接口"的裸窗口（兜底，防老号漏算）。总账封顶 250h。
+    const elapsed = lastLogin > 0 ? Math.floor((now - lastLogin) / 1000) : 0;
+    const banked = Math.max(0, Math.floor(character.pending_offline_seconds || 0));
     const maxOffline = 250 * 60 * 60;
-    const actualOffline = Math.min(offlineSeconds, maxOffline);
+    const actualOffline = Math.min(elapsed + banked, maxOffline);
 
     if (actualOffline <= 0) return null;
 
@@ -126,6 +129,14 @@ class CultivationService {
     const totalExp = blocked ? 0 : detail.rate * actualOffline;
 
     const result = totalExp > 0 ? characterService.addExp(characterId, totalExp) : { character, leveledUp: false };
+
+    // 轮77 修"无限修为泉"：last_login 只在登录时写（auth.js:117），本函数读它却
+    // 不消费——连点 offline-cultivate 每次都能按同一段离线时长再领一遍收益。
+    // 口径：调用即结算——只要窗口 >0 就把 last_login 推到当下（blocked 档也消费窗口，
+    // 离线时间真实流逝，不因收益为 0 而可反复白领）。ISO 格式与 auth.js 写侧一致。
+    character.last_login = new Date(now).toISOString();
+    character.pending_offline_seconds = 0;
+    saveDatabase(db);
 
     const expPerHour = Math.floor(detail.rate * 3600);
     const hours = Math.floor(actualOffline / 3600);

@@ -27,6 +27,8 @@ const SUITES = [
   ['G3 经验真源', 'scripts/test-exp-curve-e2e.js'],
   // 轮55：延寿通道端到端（铁律(2) 的执行手段，后端+货架+前端三段一起锁）
   ['G4 延寿通道', 'scripts/test-longevity-e2e.js'],
+  // 轮77：批3 修复回归（temper 白嫖 / use-storage 键义 / offline 窗口消费，三桩各有 HTTP 级锁）
+  ['G5 批3修复回归', 'scripts/test-forge-cave-fixes.js'],
   ['S1 入口 boot 探针', 'scripts/probe-server.js'],
   ['S2 P3 可见性', 'scripts/test-p3-visibility-e2e.js'],
   ['S3 前端渲染冒烟', 'scripts/test-fe-render-smoke.js'],

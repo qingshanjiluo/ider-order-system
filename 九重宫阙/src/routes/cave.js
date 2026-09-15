@@ -408,18 +408,31 @@ router.post('/use-storage', auth, (req, res) => {
     if (!cave.storage) cave.storage = {};
 
     if (action === 'store') {
-      const inventoryItem = db.inventory.find(i => i.id === itemId && i.character_id === character.id);
-      if (!inventoryItem) return res.status(400).json({ error: '物品不存在' });
-      const qty = Math.min(quantity || 1, inventoryItem.quantity || 1);
+      // 轮77 修键义分裂：旧 store 按**背包行 id** 找行并按行 id 记 storage 键，
+      // retrieve 却按**物品 id** 入账（:431 item_id === Number(itemId)）——
+      // 同名不同义 ⇒ 存进去的东西取出来会变成另一件物品（或永远"物品不足"）。
+      // 统一口径：itemId 一律指物品表 id；同物品多行合并存入。
+      const iid = Number(itemId);
+      if (!Number.isFinite(iid) || !db.items.find(i => i.id === iid)) return res.status(400).json({ error: '物品不存在' });
+      const rows = db.inventory.filter(i => i.character_id === character.id && i.item_id === iid && (i.quantity || 0) > 0);
+      const have = rows.reduce((s, r) => s + (r.quantity || 0), 0);
+      if (have <= 0) return res.status(400).json({ error: '物品不存在' });
+      const qty = Math.min(quantity || 1, have);
       const storageUsed = Object.values(cave.storage).reduce((s, v) => s + v, 0);
       if (storageUsed + qty > stats.storageLimit) return res.status(400).json({ error: '储物空间不足' });
 
-      inventoryItem.quantity = (inventoryItem.quantity || 1) - qty;
-      if (inventoryItem.quantity <= 0) {
-        const idx = db.inventory.findIndex(i => i.id === inventoryItem.id);
-        if (idx !== -1) db.inventory.splice(idx, 1);
+      let left = qty;
+      for (const row of rows) {
+        if (left <= 0) break;
+        const take = Math.min(left, row.quantity || 0);
+        row.quantity = (row.quantity || 0) - take;
+        left -= take;
+        if (row.quantity <= 0) {
+          const idx = db.inventory.findIndex(i => i.id === row.id);
+          if (idx !== -1) db.inventory.splice(idx, 1);
+        }
       }
-      cave.storage[itemId] = (cave.storage[itemId] || 0) + qty;
+      cave.storage[iid] = (cave.storage[iid] || 0) + qty;
       saveDatabase(db);
       res.json({ success: true, message: `存入${qty}个物品` });
     } else if (action === 'retrieve') {

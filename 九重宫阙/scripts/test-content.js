@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 29, `未接线棘轮被抬高：${r.unwired.length}（基线 29，轮79 批4）`);
+  assert.ok(r.unwired.length <= 28, `未接线棘轮被抬高：${r.unwired.length}（基线 28，轮81 G6）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2639,6 +2639,16 @@ t('轮78 批3(下)锚：formations 实例优先解析、forge TDZ 不复活、�
   assert.strictEqual((battleRt.match(/轮79 批4裁决/g) || []).length, 2, 'war 桩的"设计简化"登记注释被删——群战骰子必须保持显式可读');
   const combatSvc = rd('src/services/battle/combat.js');
   assert.ok(combatSvc.includes('opts.noLoot'), 'startBattle 的 noLoot 闸门消失');
+});
+t('轮81 G6 在册：AI 密钥池覆盖不得再靠"预先起服打真档"的孤儿档案', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  assert.ok(rd('scripts/run-all-tests.js').includes('test-ai-keys-e2e.js'), 'G6 被开出 runner——/api/ai/admin/* 回到零测试裸奔');
+  const g6 = rd('scripts/test-ai-keys-e2e.js');
+  assert.ok(g6.includes("DSH_DATA_DIR") && g6.includes('mkdtempSync'), 'G6 丢了临时目录隔离（会写正式档）');
+  assert.ok(g6.includes('sk-test-abcdef') && g6.includes("includes('***')"), 'G6 的脱敏反证被删——明文密钥出接口将无人值守');
+  // 旧孤儿档案要求跑着的服务器并直删 data/game.db——G6 已全量接管其断言，不得回流 runner
+  // （只认 SUITES 条目的引号形态；注释里提名字不算在册）
+  assert.ok(!/['"]scripts\/test-phase8-integration\.js['"]/.test(rd('scripts/run-all-tests.js')), 'phase8 孤儿档案回流 runner（它打的是 3224 固定端口的活服务器）');
 });
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');

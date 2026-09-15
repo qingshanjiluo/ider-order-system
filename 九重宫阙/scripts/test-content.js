@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 19, `未接线棘轮被抬高：${r.unwired.length}（基线 19，轮86 战斗批）`);
+  assert.ok(r.unwired.length <= 14, `未接线棘轮被抬高：${r.unwired.length}（基线 14，轮87 war+巡查）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');

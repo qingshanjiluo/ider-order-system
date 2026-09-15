@@ -47,8 +47,10 @@ const t = async (name, fn) => {
   const port = server.address().port;
 
   const call = (method, p, body, token) => new Promise((resolve, reject) => {
-    const data = body === undefined ? null : JSON.stringify(body);
-    const headers = { 'content-type': 'application/json' };
+    // 轮87 修：body 传 null 曾被 stringify 成 'null' 带 content-type 发出，express.json strict 拒收 400
+    const data = (body === undefined || body === null) ? null : JSON.stringify(body);
+    const headers = {};
+    if (data) headers['content-type'] = 'application/json';
     if (token) headers.authorization = 'Bearer ' + token;
     if (data) headers['content-length'] = Buffer.byteLength(data);
     const r = http.request({ host: '127.0.0.1', port, path: p, method, headers }, (rs) => {
@@ -295,6 +297,58 @@ const t = async (name, fn) => {
     const v3 = await call('POST', '/api/cave/vein', { veinId: 'mid' }, A.token);
     assert.strictEqual(v3.code, 200, '拆后不能重开：' + v3.raw);
     assert.ok(v3.body.cave.vein === 'mid' || String(v3.body.cave.vein).includes('mid'), '新脉未落档：' + v3.raw);
+  });
+
+  await t('war 三连（轮86 欠账补）：聚合骰有回合回执、成员修为走 addExp 真源、warResults 入册', async () => {
+    const db = loadDatabase();
+    db.guilds = db.guilds || [];
+    const iso = new Date().toISOString();
+    db.guilds.push({ id: 501, name: '甲字盟', leader_id: A.id, level: 1, exp: 0, created_at: iso });
+    db.guilds.push({ id: 502, name: '乙字盟', leader_id: B.id, level: 1, exp: 0, created_at: iso });
+    db.guild_members = db.guild_members || [];
+    db.guild_members.push({ id: 9001, guild_id: 501, character_id: A.id, role: '盟主', joined_at: iso });
+    db.guild_members.push({ id: 9002, guild_id: 502, character_id: B.id, role: '成员', joined_at: iso });
+    saveDatabase(db);
+    const info = await call('GET', '/api/battle/war/info', null, A.token);
+    assert.strictEqual(info.code, 200, 'war/info 失败 code=' + info.code + '：' + String(info.raw).slice(0, 200));
+    assert.strictEqual(info.body.sect.name, '甲字盟', '战议会看不到自家盟：' + info.raw);
+    const exp0 = loadDatabase().characters.find((c) => Number(c.id) === A.id).exp || 0;
+    const w = await call('POST', '/api/battle/war/sect-battle', {}, A.token);
+    assert.strictEqual(w.code, 200, '宗门战失败：' + w.raw);
+    assert.ok(typeof w.body.won === 'boolean' && w.body.enemyGuild.name === '乙字盟', '战报形状不对：' + w.raw);
+    const db2 = loadDatabase();
+    const a2 = db2.characters.find((c) => Number(c.id) === A.id);
+    assert.ok((a2.exp || 0) > exp0 || (a2.level || 1) > 1, 'war 奖励修为没到账（addExp 真源断线）：exp=' + a2.exp + '/' + exp0);
+    const g501 = db2.guilds.find((g) => g.id === 501);
+    assert.strictEqual((g501.warResults || []).length, 1, '战果未入盟史：' + JSON.stringify(g501.warResults));
+    // 仙盟远征同链（gwIds 档）：arena_points 直记 + 第二笔战史
+    const gw = await call('POST', '/api/battle/war/guild-war', {}, A.token);
+    assert.strictEqual(gw.code, 200, '仙盟远征失败：' + gw.raw);
+    const db3 = loadDatabase();
+    assert.ok(Number(db3.characters.find((c) => Number(c.id) === A.id).arena_points) >= 10, '远征积分未记：' + gw.raw);
+    assert.strictEqual(db3.guilds.find((g) => g.id === 501).warResults.length, 2, '远征未入战史');
+  });
+
+  await t('五条只读巡查（轮87）：副本/装备/技能掉落/背包/符方目录在临时档上有真数据且形状对', async () => {
+    app.use('/api/dungeon', require('../src/routes/dungeon'));
+    app.use('/api/equipment', require('../src/routes/equipment'));
+    app.use('/api/skill', require('../src/routes/skill'));
+    app.use('/api/shop', require('../src/routes/shop'));
+    app.use('/api/talismans', require('../src/routes/talismans'));
+    const g = async (p) => { const r = await call('GET', p, null, A.token); assert.strictEqual(r.code, 200, p + ' 非 200：' + r.raw); return r.body; };
+    const dg = await g('/api/dungeon');
+    assert.ok(Array.isArray(dg.dungeons || dg), '/api/dungeon 形状漂移（角色副本列表）');
+    const dgl = await g('/api/dungeon/list');
+    assert.ok(Array.isArray(dgl), '/api/dungeon/list 不是数组');
+    // 轮87 发现入账：新装镜像 db.dungeons 为空（正式档却有副本目录）——种子缺口，批6 补
+    const eq = await g('/api/equipment');
+    assert.ok(Array.isArray(eq) || Array.isArray(eq.equipment), '装备列表形状漂移：' + JSON.stringify(eq).slice(0, 80));
+    const dr = await g('/api/skill/drops');
+    assert.ok(dr && typeof dr === 'object', '技能掉落端点不是对象');
+    const inv = await g('/api/shop/inventory');
+    assert.ok(Array.isArray(inv) || Array.isArray(inv.inventory), '背包形状漂移');
+    const rc = await g('/api/talismans/recipes');
+    assert.ok(Array.isArray(rc) || Array.isArray(rc.recipes), '符方目录形状漂移');
   });
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

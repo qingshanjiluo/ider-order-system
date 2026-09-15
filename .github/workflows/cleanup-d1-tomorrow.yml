@@ -17,8 +17,8 @@ name: 明日清理 D1
 
 on:
   schedule:
-    # 2026-09-15 00:40 UTC（额度 00:00 重置后）
-    - cron: '40 0 15 9 *'
+    # 2026-09-16 00:40 UTC（D1 额度 00:00 重置后）
+    - cron: '40 0 16 9 *'
   workflow_dispatch:
     inputs:
       skip_purge:

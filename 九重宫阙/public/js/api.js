@@ -539,6 +539,27 @@ const api = {
     return r.modes || [];
   },
 
+  // 轮91：AI 管理后台（JWT is_admin 合流通道，浏览器不经手 AI_ADMIN_TOKEN）
+  async getAiKeys() {
+    return this.request('GET', '/ai/admin/keys');
+  },
+
+  async deleteAiKey(id) {
+    return this.request('DELETE', `/ai/admin/keys/${id}`);
+  },
+
+  async testAiKey(id) {
+    return this.request('POST', `/ai/admin/keys/${id}/test`);
+  },
+
+  async getAiGenerations(status) {
+    return this.request('GET', '/ai/admin/generations' + (status ? '?status=' + encodeURIComponent(status) : ''));
+  },
+
+  async reviewAiGeneration(id, action) {
+    return this.request('POST', `/ai/admin/generations/${id}/review`, { action });
+  },
+
   async getWarInfo() {
     return this.request('GET', '/battle/war/info');
   },

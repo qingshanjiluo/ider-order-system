@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 6, `未接线棘轮被抬高：${r.unwired.length}（基线 6，轮90 令牌/升级/目录批）`);
+  assert.ok(r.unwired.length <= 0, `未接线棘轮被抬高：${r.unwired.length}（基线 0，轮91 S4 清单清零——只许为零，不许回弹）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2701,6 +2701,14 @@ t('轮86 战斗批：影子榜单已死、war/modes 接 FE、war 修为归真源
   assert.ok(!/c\.exp = \(c\.exp \|\| 0\) \+ \(won \?/.test(battleSrc), 'war 又直写 character.exp（轮54 同型违规，addExp 双档在位却被绕开）');
   assert.ok(battleSrc.includes("characterService.addExp(mid, warExp)") && battleSrc.includes('characterService.addExp(mid, won ? 500 : 100)'),
     'war 两档 addExp 结算消失');
+  // 轮91 AI 管理面合流：头通道语义原样 + 无头回落游戏后台闸；FE 管理页有 AI 子页且模板路径与 BE 通配同型
+  const aiSrc91 = rd('src/routes/ai.js');
+  assert.ok(aiSrc91.includes('return gameAdminAuth(req, res, next)') && aiSrc91.includes('if (token !== expected) return res.status(403'),
+    'AI 管理闸合流被拆——要么浏览器又碰万能钥匙，要么运维头通道语义漂移');
+  const app91 = rd('public/js/app.js');
+  assert.ok(app91.includes("loadAdminSub('ai'") && app91.includes('handleAiReviewAction') && app91.includes('handleAiKeyAction'),
+    '后台 AI 子页/审核处理器被拆——四个端点又回零入口');
+  assert.ok(rd('public/js/api.js').includes('/ai/admin/keys/${id}'), 'api 层 id 路径必须是模板字面量（拼接串会被幽灵扫描误伤）');
   const appSrc = rd('public/js/app.js');
   const apiSrc0 = rd('public/js/api.js');
   for (const p of ['/battle/modes', '/battle/war/info', '/battle/war/sect-battle', '/battle/war/guild-war']) {

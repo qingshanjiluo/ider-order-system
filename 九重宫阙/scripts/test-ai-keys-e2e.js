@@ -66,9 +66,32 @@ const t = async (name, fn) => {
 
   let keyId = null, genId = null;
 
-  await t('管理员鉴权：无令牌 403（读密钥列表必 admin）', async () => {
-    const r = await api('GET', '/api/ai/admin/keys', null, TOKEN);
-    assert.strictEqual(r.status, 403, '无令牌竟然读到密钥池：' + r.status);
+  await t('管理员鉴权（轮91 合流三面）：裸 401 / 错头 403 / 平权 JWT 403', async () => {
+    const bare = await fetch(BASE + '/api/ai/admin/keys');
+    assert.strictEqual(bare.status, 401, '裸请求应被 JWT 闸以未登录拒：' + bare.status);
+    const wrong = await fetch(BASE + '/api/ai/admin/keys', { headers: { 'X-Admin-Token': 'wrong' } });
+    assert.strictEqual(wrong.status, 403, '错头仍须 403（头通道语义不变）：' + wrong.status);
+    const r = await api('GET', '/api/ai/admin/keys', null, TOKEN); // 平权用户 JWT 走新回落闸
+    assert.strictEqual(r.status, 403, '平权 JWT 竟然读到密钥池：' + r.status);
+  });
+
+  await t('轮91 合流正门：is_admin JWT 直读密钥池与审核池（FE 后台通道）', async () => {
+    const uu = 'aiadmin' + Date.now().toString(36).slice(-6);
+    let r = await fetch(BASE + '/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: uu, password: 'pw-dummy-123', nickname: '甲执事', faction: 'martial' }) });
+    const j = await r.json();
+    const db = loadDatabase();
+    db.users.find((x) => x.id === j.userId).is_admin = 1;
+    saveDatabase(db);
+    const kh = { Authorization: 'Bearer ' + j.token };
+    r = await fetch(BASE + '/api/ai/admin/keys', { headers: kh });
+    assert.strictEqual(r.status, 200, 'is_admin JWT 进不了 AI 后台：' + r.status);
+    const kb = await r.json();
+    assert.ok(Array.isArray(kb.keys) && kb.keys.every((k) => {
+      const s = JSON.stringify(k);
+      return !s.includes('sk-test-abcdef') && (k.api_key === undefined || String(k.api_key).includes('*'));
+    }), 'JWT 通道泄漏 api_key 明文/脱敏漂移');
+    r = await fetch(BASE + '/api/ai/admin/generations', { headers: kh });
+    assert.strictEqual(r.status, 200, '审核池同理要通：' + r.status);
   });
 
   await t('添加密钥 + 列表脱敏（api_key 明文不得出接口）', async () => {

@@ -3695,6 +3695,7 @@ async function loadAdminTab() {
           <button class="btn small" onclick="loadAdminSub('chatlogs', this)">聊天日志</button>
           <button class="btn small" onclick="loadAdminSub('items', this)">物品总览</button>
           <button class="btn small" onclick="loadAdminSub('reports', this)">举报处理</button>
+      <button class="btn small" onclick="loadAdminSub('ai', this)">AI 后台</button>
         </div>
         <div id="admin-sub-content"></div>
       </div>
@@ -3705,6 +3706,25 @@ async function loadAdminTab() {
   }
 }
 
+window.handleAiKeyAction = async function (id, act) {
+  try {
+    if (act === 'delete') { await api.deleteAiKey(id); ui.showToast('密钥已摘除'); }
+    else {
+      const r = await api.testAiKey(id);
+      ui.showToast(r.ok === false || r.error ? ('不通：' + (r.error || r.message || '')) : ('连通 ✓ ' + (r.latency || '?') + 'ms'));
+    }
+    await loadAdminSub('ai');
+  } catch (e) { ui.showToast(e.message); }
+};
+
+window.handleAiReviewAction = async function (id, act) {
+  try {
+    await api.reviewAiGeneration(id, act);
+    ui.showToast(act === 'approve' ? '已放行入库' : '已驳回');
+    await loadAdminSub('ai');
+  } catch (e) { ui.showToast(e.message); }
+};
+
 async function loadAdminSub(sub, btn) {
   if (btn) {
     btn.parentElement.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
@@ -3714,6 +3734,37 @@ async function loadAdminSub(sub, btn) {
   if (!container) return;
 
   switch (sub) {
+    case 'ai': {
+      try {
+        const [k, g] = await Promise.all([api.getAiKeys(), api.getAiGenerations('pending')]);
+        const keys = k.keys || [];
+        const gens = g.generations || [];
+        container.innerHTML = `
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">密钥池 ${keys.length} 把（失败${k.failDisableThreshold || '?'}次自动停用）</div>
+          ${keys.length === 0 ? '<p style="font-size:12px;color:var(--text2);">池空——本地词库兜底中，贴一把真密钥进来试试</p>' : keys.map(x => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid var(--border);font-size:12px;">
+              <span><b>${x.name || x.id}</b> · ${x.provider}/${x.model || '-'} · 失败${x.fail_count || 0}</span>
+              <span style="display:flex;gap:6px;">
+                <button class="btn small" onclick="handleAiKeyAction('${x.id}','test')">连通测试</button>
+                <button class="btn small danger" onclick="handleAiKeyAction('${x.id}','delete')">摘除</button>
+              </span>
+            </div>`).join('')}
+          <div style="font-size:12px;color:var(--text2);margin:12px 0 6px;">待审生成 ${gens.length} 条</div>
+          ${gens.length === 0 ? '<p style="font-size:12px;color:var(--text2);">审核池干净</p>' : gens.map(x => `
+            <div style="padding:6px;border-bottom:1px solid var(--border);font-size:12px;">
+              <div style="display:flex;justify-content:space-between;">
+                <span><b>${x.purpose}</b> · ${x.status} · #${x.id}</span>
+                <span style="display:flex;gap:6px;">
+                  <button class="btn small" onclick="handleAiReviewAction('${x.id}','approve')">通过</button>
+                  <button class="btn small danger" onclick="handleAiReviewAction('${x.id}','reject')">驳回</button>
+                </span>
+              </div>
+              <div style="color:var(--text2);margin-top:4px;max-height:60px;overflow:hidden;">${String(x.result || '').slice(0, 160)}</div>
+            </div>`).join('')}
+        `;
+      } catch (e) { container.innerHTML = '<p style="font-size:12px;color:var(--red);">加载失败（需管理员身份）</p>'; }
+      break;
+    }
     case 'users': {
       try {
         const data = await api.getAdminUsers(1);

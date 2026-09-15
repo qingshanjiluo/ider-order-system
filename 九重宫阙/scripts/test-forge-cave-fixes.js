@@ -402,6 +402,38 @@ const t = async (name, fn) => {
     assert.ok(arr.every((f) => f.id !== undefined && f.name), '目录条目缺 id/name：' + JSON.stringify(arr[0]));
   });
 
+  await t('附魔/韵灵双术（轮90-91 接线）：品质门槛、真扣灵石、affinity/enchants 落装备账', async () => {
+    const db = loadDatabase();
+    db.items.push({ id: 777001, name: '试灵剑', type: '武器', quality: '灵器', stats: '{"attack":10}' });
+    db.items.push({ id: 777002, name: '柴刀', type: '武器', quality: '凡器', stats: '{"attack":2}' });
+    db.equipments = db.equipments || [];
+    db.equipments.push({ id: 888001, character_id: A.id, item_id: 777001, slot: '武器' });
+    db.equipments.push({ id: 888002, character_id: A.id, item_id: 777002, slot: '副武器' });
+    db.characters.find((c) => Number(c.id) === A.id).spirit_stone = 500;
+    saveDatabase(db);
+    const lame = await call('POST', '/api/forge/spirit-infuse', { equipmentId: 888002 }, A.token);
+    assert.strictEqual(lame.code, 400, '凡器竟可韵灵：' + lame.raw);
+    assert.ok(/灵器/.test(lame.raw), '门槛文案未点名品质：' + lame.raw);
+    const si = await call('POST', '/api/forge/spirit-infuse', { equipmentId: 888001 }, A.token);
+    assert.strictEqual(si.code, 200, '灵器韵灵被拒：' + si.raw);
+    assert.strictEqual(si.body.spirit_affinity, 1);
+    const en = await call('POST', '/api/forge/enchant', { equipmentId: 888001, enchantType: '紫雷' }, A.token);
+    assert.strictEqual(en.code, 200, '附魔被拒：' + en.raw);
+    assert.strictEqual(en.body.enchant.name, '紫雷', '指定词条没吃到：' + en.raw);
+    assert.strictEqual(en.body.spirit_stone, 350, '灵器档附魔价应 150：' + en.raw);
+    const db2 = loadDatabase();
+    const eq = db2.equipments.find((e) => e.id === 888001);
+    assert.strictEqual(eq.enchants.length, 1, '词条没落装备行');
+    // 已知欠账（批6四开刀，此处不锁行为防锚错方向）：enchant 同时把 stats 写回共享字典行
+    // forge.js:564-568 —— 全服同名装备互染，正解是战斗侧（combat.js:254/268/279）合并实例词条。
+    const db3 = loadDatabase();
+    db3.characters.find((c) => Number(c.id) === A.id).spirit_stone = 100;
+    saveDatabase(db3);
+    const poor = await call('POST', '/api/forge/enchant', { equipmentId: 888001, enchantType: '烈焰' }, A.token);
+    assert.strictEqual(poor.code, 400, '100 灵石竟付得起 150 的附魔：' + poor.raw);
+    assert.strictEqual(poor.body.need, 150);
+  });
+
   async function g2(p) { const r = await call('GET', p, undefined, A.token); assert.strictEqual(r.code, 200, p + ' 非 200：' + r.raw); return r.body; }
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

@@ -2625,6 +2625,10 @@ t('轮78 批3(下)锚：formations 实例优先解析、forge TDZ 不复活、�
   assert.ok(!forge.includes('if (flame && flame.source_item)'),
     'TDZ 模式复活：const flame 声明之前就 if (flame…)——每个锻造请求都会 500');
   assert.ok(forge.includes('Object.entries(FLAME_TYPES)'), '/flames 又回到手抄第二份火焰字典（与锻造侧漂移）');
+  // 轮78b：FE 发 {recipeId}（api.js:377）——BE 若删掉 recipeId 分支，锻造按钮回到"必 400"时代
+  assert.ok(forge.includes('if (recipeId)'), '/forge 的配方分支被删——FE 锻造按钮（发 recipeId）会重新变成必 400 的死钮');
+  assert.ok(forge.indexOf('flame.source_item') < forge.indexOf('const allNeeded'),
+    '火焰门槛又挪回扣料之后——被 400 拒绝的请求会白吃玩家材料（镜像 diff 自动落盘救不回）');
 });
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');

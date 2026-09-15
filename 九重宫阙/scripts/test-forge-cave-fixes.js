@@ -191,6 +191,10 @@ const t = async (name, fn) => {
     const f2 = await call('POST', '/api/forge/forge', { mainMaterialId: main.id, flameType: 'sunfire' }, A.token);
     assert.strictEqual(f2.code, 400, '高阶火焰没火源竟放行/500：' + f2.code + ' ' + f2.raw);
     assert.ok(/需持有/.test(f2.raw), '拒绝理由不是火源门槛：' + f2.raw);
+    // 轮78：门槛前移到扣料之前——被拒的请求不得吃掉玩家材料（旧顺序先扣后验）
+    const db2 = loadDatabase();
+    const left = db2.inventory.filter(i => i.character_id === A.id && i.item_id === main.id).reduce((s, i) => s + (i.quantity || 0), 0);
+    assert.strictEqual(left, 1, `被 400 拒绝竟还丢了材料（剩 ${left}，应 1）`);
   });
 
   await t('/flames 目录与锻造侧同一本字典：高阶款带 tier+source_item 全部可见', async () => {
@@ -199,6 +203,37 @@ const t = async (name, fn) => {
     const list = fl.body || [];
     assert.ok(Array.isArray(list) && list.length >= 12, `目录缩水回手抄 8 款了（${Array.isArray(list) ? list.length : '?'}）`);
     assert.ok(list.some((x) => x.tier === '高阶' && x.source_item), '高阶火焰没暴露 tier/source_item');
+  });
+
+  await t('forge(recipeId)：配方锻造端到端打通且按配方量扣料（修前 FE 按钮必 400）', async () => {
+    const db = loadDatabase();
+    if (!db.forge_recipes) db.forge_recipes = [];
+    const m1 = db.items.find((i) => i.name === 'G5精铁');
+    const out = { id: getNextId('items'), name: 'G5玄铁甲', type: '装备', quality: '凡品', stats: '{}' };
+    db.items.push(out);
+    db.forge_recipes.push({ id: 42, name: 'G5甲谱', materials: [{ item_id: m1.id, quantity: 2 }], result: out.id });
+    db.inventory.push({ id: getNextId('inventory'), character_id: A.id, item_id: m1.id, quantity: 3 });
+    saveDatabase(db);
+    const inv0 = loadDatabase();
+    const before = inv0.inventory.filter(i => i.character_id === A.id && i.item_id === m1.id).reduce((s, i) => s + (i.quantity || 0), 0);
+    const r = await call('POST', '/api/forge/forge', { recipeId: 42 }, A.token);
+    assert.strictEqual(r.code, 200, `FE 同款 recipeId 载荷应能锻：${r.code} ${r.raw}`);
+    assert.ok(r.body.success && r.body.item && r.body.item.name === 'G5玄铁甲', '回执缺 item（toast 又会显示占位"装备"）：' + r.raw);
+    const db2 = loadDatabase();
+    const mLeft = db2.inventory.filter(i => i.character_id === A.id && i.item_id === m1.id).reduce((s, i) => s + (i.quantity || 0), 0);
+    assert.strictEqual(mLeft, before - 2, `配方要 2 件却扣了 ${before - mLeft} 件`);
+    const got = db2.inventory.filter(i => i.character_id === A.id && i.item_id === out.id).reduce((s, i) => s + (i.quantity || 0), 0);
+    assert.ok(got >= 1, '产物没有进背包');
+    // 反证"缺料必拒"：清掉所有尾料（前一测试留下的量会让"剩1件"假设失真）
+    const db3 = loadDatabase();
+    for (let i = db3.inventory.length - 1; i >= 0; i--) {
+      const row = db3.inventory[i];
+      if (Number(row.character_id) === A.id && Number(row.item_id) === Number(m1.id)) db3.inventory.splice(i, 1);
+    }
+    saveDatabase(db3);
+    const less = await call('POST', '/api/forge/forge', { recipeId: 42 }, A.token);
+    assert.strictEqual(less.code, 400, '零材料竟又锻成功：' + less.raw);
+    assert.ok(/材料不足/.test(less.raw), '拒绝理由不是材料不足：' + less.raw);
   });
 
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {

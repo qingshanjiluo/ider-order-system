@@ -266,10 +266,56 @@ res.json(recipes);
 
 router.post('/forge', auth, (req, res) => {
   try {
-    const { mainMaterialId, auxMaterialIds, catalystIds, flameType } = req.body;
+    const { mainMaterialId, auxMaterialIds, catalystIds, flameType, recipeId } = req.body;
     const db = loadDatabase();
     const character = db.characters.find(c => c.user_id === req.userId);
     if (!character) return res.status(404).json({ error: '角色不存在' });
+
+    // 轮78 · 配方锻造主链接通：FE 锻造按钮一直发 {recipeId}（app.js:2253 → api.js:377），
+    // 旧 BE 只认自由式主材参数 ⇒ 每次点击必 400"请指定主材"，前后端从未通过一次。
+    // 语义：配方=已研透的谱录，产出确定性（不掷骰）；自由式锻造（下方）保留概率与火焰加成。
+    if (recipeId) {
+      const recipe = (db.forge_recipes || []).find(r => r.id === recipeId);
+      if (!recipe) return res.status(400).json({ error: '锻造配方不存在' });
+      const out = db.items.find(i => Number(i.id) === Number(recipe.result));
+      if (!out) return res.status(400).json({ error: '配方产物不在物品表' });
+      const needed = (recipe.materials || []).map((m) => {
+        const iid = Number(m && m.item_id != null ? m.item_id : (m && m.id != null ? m.id : m));
+        return { item_id: iid, qty: Math.max(1, Number(m && m.quantity) || 1), item: db.items.find(i => Number(i.id) === iid) };
+      });
+      if (needed.length === 0) return res.status(400).json({ error: '配方未定义材料' });
+      const bad = needed.find(n => !Number.isFinite(n.item_id) || !n.item);
+      if (bad) return res.status(400).json({ error: '配方材料定义异常：#' + (bad.item_id || '?') });
+      const inv = db.inventory.filter(i => i.character_id === character.id);
+      const owned = {};
+      for (const row of inv) owned[Number(row.item_id)] = (owned[Number(row.item_id)] || 0) + (row.quantity || 0);
+      for (const n of needed) {
+        if ((owned[n.item_id] || 0) < n.qty)
+          return res.status(400).json({ error: `材料不足：${n.item.name} 需 ${n.qty}，持有 ${owned[n.item_id] || 0}` });
+      }
+      for (const n of needed) {
+        let left = n.qty;
+        for (const row of inv) {
+          if (left <= 0) break;
+          if (Number(row.item_id) !== n.item_id) continue;
+          const take = Math.min(left, row.quantity || 0);
+          row.quantity = (row.quantity || 0) - take;
+          left -= take;
+          if (row.quantity <= 0) {
+            const di = db.inventory.findIndex(x => x.id === row.id);
+            if (di !== -1) db.inventory.splice(di, 1);
+          }
+        }
+      }
+      const ex = db.inventory.find(i => i.character_id === character.id && Number(i.item_id) === Number(out.id));
+      if (ex) ex.quantity = (ex.quantity || 0) + 1;
+      else db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: out.id, quantity: 1 });
+      proficiencyService.addExp(character, 'crafting', 10);
+      saveDatabase(db);
+      res.json({ success: true, result: 'forged', item: { id: out.id, name: out.name, quality: out.quality }, message: `锻造${out.name}成功` });
+      return;
+    }
+
     if (!mainMaterialId) return res.status(400).json({ error: '请指定主材' });
 
     const mainItem = db.items.find(i => i.id === mainMaterialId);
@@ -289,6 +335,19 @@ router.post('/forge', auth, (req, res) => {
     const auxItems = (auxMaterialIds || []).map(id => db.items.find(i => i.id === id)).filter(Boolean);
     const catItems = (catalystIds || []).map(id => db.items.find(i => i.id === id)).filter(Boolean);
 
+    // 轮78：火焰门槛必须在**扣料之前**判——旧顺序先扣后验，被 400 拒了材料照丢
+    // （镜像 diff 式自动保存连"没调 saveDatabase"都救不回来，轮70 就栽过这机制）。
+    const flame = FLAME_TYPES[flameType] || FLAME_TYPES['basic'];
+    if (flame.source_item) {
+      const hasSource = inventory.some(i => {
+        const it = db.items.find(x => x.id === i.item_id);
+        return it && it.name === flame.source_item;
+      });
+      if (!hasSource) {
+        return res.status(400).json({ error: `需持有「${flame.source_item}」方可驾驭${flame.name}` });
+      }
+    }
+
     const allNeeded = [mainMaterialId, ...(auxMaterialIds || []), ...(catalystIds || [])];
     const hasAll = allNeeded.every(id => inventory.some(i => i.item_id === id && (i.quantity || 1) >= 1));
     if (!hasAll) return res.status(400).json({ error: '材料不足' });
@@ -304,21 +363,9 @@ router.post('/forge', auth, (req, res) => {
       }
     }
 
-    // 轮78 修 TDZ+双真源：旧代码在 `const flame` 声明**之前**就 if (flame…)——
-    // 每个锻造请求都在 :306 ReferenceError→500（/forge 在零覆盖清单里，从没被抓过）；
-    // 且 /flames 目录是另一份手抄字典（只列 8 基础款，高阶四款玩家看不见）。
-    // 现在：字典提升到模块级 FLAME_TYPES 单一真源，/flames 从它渲染。
-    const flame = FLAME_TYPES[flameType] || FLAME_TYPES['basic'];
-    // 高阶火焰门槛：持有对应火源
-    if (flame.source_item) {
-      const hasSource = inventory.some(i => {
-        const it = db.items.find(x => x.id === i.item_id);
-        return it && it.name === flame.source_item;
-      });
-      if (!hasSource) {
-        return res.status(400).json({ error: `需持有「${flame.source_item}」方可驾驭${flame.name}` });
-      }
-    }
+    // 轮78：火焰解析与火源门槛已整体前移到扣料之前（防"被拒还丢料"）；
+    // 旧代码在此处 `const flame` 声明之前 if (flame…)——TDZ 让每个锻造请求都 500，
+    // 且锻造字典曾是 /flames 之外的第二份手抄真源，已提升为模块级 FLAME_TYPES。
 
     const charStats = character.stats || {};
     const prof = proficiencyService.get(character, 'crafting');

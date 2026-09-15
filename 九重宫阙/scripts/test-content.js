@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 28, `未接线棘轮被抬高：${r.unwired.length}（基线 28，轮81 G6）`);
+  assert.ok(r.unwired.length <= 27, `未接线棘轮被抬高：${r.unwired.length}（基线 27，轮83 G8）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2659,6 +2659,24 @@ t('轮82 G7 在册 + 复用不短路审核：ai.js 的 reuse-pending 分支是�
   // 反证：复用分支不得再无条件返回 approved
   assert.ok(!/if \(reused\) return \{ reused: true, generationId: reused\.id, status: 'approved'/.test(aiSvc),
     '复用在返回处又一行短路成 approved——传记二润静默丢失会复活');
+});
+t('轮83 任务四钩子在册：level/checkin/craft/guild 进度源不得再断线', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  assert.ok(rd('scripts/run-all-tests.js').includes('test-quest-hooks-e2e.js'), 'G8 被开出 runner');
+  assert.ok(rd('src/services/character.js').includes("updateQuestProgress(character.id, 'level', gainedLevels)")
+    && rd('src/services/character.js').includes('const gainedLevels = (character.level || 1) - startLevel'),
+    '升级钩子断线——任务3「境界突破」又变永不可完成');
+  assert.ok(rd('src/routes/checkin.js').includes("updateQuestProgress(character.id, 'checkin', 1)"), '签到钩子断线（任务4）');
+  assert.strictEqual((rd('src/routes/guild.js').match(/updateQuestProgress\(character\.id, 'guild', 1\)/g) || []).length, 2,
+    '仙盟 create/join 两档钩子数不对（任务8）');
+  assert.strictEqual((rd('src/routes/forge.js').match(/updateQuestProgress\(character\.id, 'craft', 1\)/g) || []).length, 2,
+    '锻造两档（随机+按方）craft 钩子数不对（任务7）');
+  // 补签不得推每日签到任务（补的是过去，不是今天的勤）——钩子必须位于 makeup 路由之前
+  const ckSrc = rd('src/routes/checkin.js');
+  const hookPos = ckSrc.indexOf("updateQuestProgress(character.id, 'checkin', 1)");
+  const makeupPos = ckSrc.indexOf("router.post('/makeup'");
+  assert.ok(hookPos !== -1 && makeupPos !== -1 && hookPos < makeupPos,
+    `checkin 钩子与补签路由的先后关系变了（hook=${hookPos} makeup=${makeupPos}）——补签会顶掉当日任务的诚实性`);
 });
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');

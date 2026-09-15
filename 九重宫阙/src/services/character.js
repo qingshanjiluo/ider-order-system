@@ -40,6 +40,7 @@ class CharacterService {
     const finalAmount = Math.floor(amount * vipBonus.expBonus);
 
     character.exp = (character.exp || 0) + finalAmount;
+    const startLevel = character.level || 1; // 轮83 任务钩子：按"真实升了几级"计数，一次连升多计多级
     let leveledUp = false;
     let bottleneck = false;
 
@@ -73,6 +74,13 @@ class CharacterService {
       if (RLC.pinExpAtFull) {
         character.exp = Math.min(character.exp, character.exp_to_next || character.exp);
       }
+    }
+
+    // 轮83 批5任务钩子：任务 3「境界突破」此前永不可完成（type:'level' 全库无进度源）。
+    // 挂在唯一升级真源的收尾处；懒 require 防服务→路由的加载环，钩子失败绝不阻断升级主流程。
+    const gainedLevels = (character.level || 1) - startLevel;
+    if (gainedLevels > 0) {
+      try { require('../routes/quests').updateQuestProgress(character.id, 'level', gainedLevels); } catch (e) { /* 任务不抢主流程的锅 */ }
     }
 
     saveDatabase(db);

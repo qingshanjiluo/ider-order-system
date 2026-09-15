@@ -104,6 +104,8 @@ router.post('/', auth, (req, res) => {
     });
 
     saveDatabase(db);
+    // 轮83 批5任务钩子：任务 4「每日签到」的进度源（此前无）；补签档刻意不计——补的是过去，不是今天的勤
+    require('./quests').updateQuestProgress(character.id, 'checkin', 1);
 
     res.json({
       success: true,

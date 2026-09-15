@@ -58,6 +58,8 @@ router.post('/create', auth, (req, res) => {
     tokenInv.quantity = (tokenInv.quantity || 1) - 1;
     if (tokenInv.quantity <= 0) db.inventory.splice(tokenIdx, 1);
     saveDatabase(db);
+    // 轮83 批5任务钩子：任务 8「宗门贡献」——创立与加入都算入盟（type:'guild' 此前全库无进度源）
+    require('./quests').updateQuestProgress(character.id, 'guild', 1);
     res.json({ success: true, guildId, message: '仙盟令已消耗，仙盟创立' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -85,6 +87,7 @@ router.post('/join', auth, (req, res) => {
       role: '成员', joined_at: new Date().toISOString()
     });
     saveDatabase(db);
+    require('./quests').updateQuestProgress(character.id, 'guild', 1); // 轮83 批5任务钩子（同 create 档）
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

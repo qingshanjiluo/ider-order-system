@@ -1148,7 +1148,9 @@ async function loadArenaTab() {
         <div style="display:flex;gap:8px;margin-bottom:10px;">
           <button class="btn" onclick="handleWarAction('sect')" style="flex:1;">宗门战出征</button>
           <button class="btn" onclick="handleWarAction('guild')" style="flex:1;">仙盟远征</button>
+          <button class="btn" onclick="handleWarPost()" style="flex:1;">修战书</button>
         </div>
+        <div id="warpost-line" style="font-size:11px;color:var(--gold);margin-bottom:6px;">${warInfo && warInfo.warPost ? `门楣悬书：${warInfo.warPost.title} · 致${warInfo.warPost.target}` : '战书未悬（AI 修书，词稿过审才挂门楣）'}</div>
         ${(warInfo && warInfo.warResults && warInfo.warResults.length) ? `<div style="font-size:11px;color:var(--text2);">近战：${warInfo.warResults.map(w => `${w.enemy}·${w.won ? '胜' : '负'}`).join(' / ')}</div>` : ''}
       </div>
       <div class="char-panel">
@@ -1168,6 +1170,15 @@ window.handleWarAction = async function (kind) {
     const r = kind === 'sect' ? await api.fightSectWar() : await api.fightGuildWar();
     ui.showToast(r.message || (r.won ? '胜' : '负'));
     await loadArenaTab();
+  } catch (error) { ui.showToast(error.message); }
+};
+
+window.handleWarPost = async function () {
+  try {
+    const r = await api.request('POST', '/guild/war-post', {});
+    const line = document.getElementById('warpost-line');
+    if (line) line.textContent = r.status === 'approved' && r.warPost ? `门楣悬书：${r.warPost.title} · 致${r.warPost.target}` : r.message;
+    ui.showToast(r.message);
   } catch (error) { ui.showToast(error.message); }
 };
 

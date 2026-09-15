@@ -714,4 +714,42 @@ router.post('/activities/join', auth, (req, res) => {
   }
 });
 
+// ---------- 轮94：AI 战书（guild_content 用途的消费端——宣纸挂门楣） ----------
+router.post('/war-post', auth, async (req, res) => {
+  try {
+    const aiService = require('../services/ai'); // 懒require防环（quests钩子同法）
+    const db = loadDatabase();
+    const character = db.characters.find(c => c.user_id === req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const member = db.guild_members.find(m => m.character_id === character.id);
+    if (!member) return res.status(400).json({ error: '未加入仙盟' });
+    const guild = db.guilds.find(g => g.id === member.guild_id);
+    // 轮94 松绑：不给 guildId 就自动撮合一家他盟（宣战也需要缘分，FE 免下拉）
+    const target = req.body.guildId
+      ? db.guilds.find(g => g.id === Number(req.body.guildId) && g.id !== member.guild_id)
+      : (db.guilds || []).find(g => g.id !== member.guild_id);
+    if (!target) return res.status(400).json({ error: '江湖上只剩自家一盟，无处修书' });
+
+    // nonce 进参数散列：同一对盟反复修书不会命中旧稿（传记二润教训的反向用法）
+    const gen = await aiService.generate('guild_content', {
+      kind: 'war_post', from: guild.name, to: target.name, by: character.name, nonce: Date.now()
+    }, {});
+    const approved = gen.status === 'approved' && gen.content; // 服务契约是 content（ai.js:317），非 result
+    if (approved) {
+      guild.warPost = {
+        title: gen.content.name, body: gen.content.desc,
+        target: target.name, at: Date.now(), generationId: gen.generationId
+      };
+      saveDatabase(db);
+    }
+    res.json({
+      status: gen.status, generationId: gen.generationId,
+      warPost: guild.warPost || null,
+      message: approved ? '战书已悬于门楣' : '词稿已入审核池，通过后自动生效'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

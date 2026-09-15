@@ -2710,6 +2710,16 @@ t('轮93 影子并档：双擂台与 systems 变体已决，真擂台双闸在�
   const amN = (an.match(/combatService\.aftermath\(character, result, \{ arena: true \}\)/g) || []).length;
   assert.ok(amN === 2, `擂台伤况规则应双路对称，实测 ${amN}（challenge 不得裸奔）`);
 });
+t('轮94 AI 战书消费端：真盟名进词、门楣回写、死包装不回流', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const gu = rd('src/routes/guild.js');
+  assert.ok(gu.includes("router.post('/war-post'") && gu.includes('gen.status === \'approved\' && gen.content') && gu.includes('nonce: Date.now()'),
+    '战书端点三要件（路由/content契约/nonce防旧稿）有拆');
+  assert.ok(rd('src/routes/battle.js').includes('warPost: (sect && sect.warPost) || null'), 'war/info 的门楣回显断线——刷新后战书隐身');
+  const app = rd('public/js/app.js');
+  assert.ok(app.includes('/guild/war-post') && app.includes('handleWarPost') && app.includes('warpost-line'), 'FE 修战书三件套被拆');
+  assert.ok(!rd('public/js/api.js').includes('getMyTalismans'), 'systems /my 死包装回流（轮93 已判零调用）');
+});
 t('轮92 附魔污染手术：词条只活实例、字典行停写、战斗侧合并在线', () => {
   const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
   const forgeSrc = rd('src/routes/forge.js');

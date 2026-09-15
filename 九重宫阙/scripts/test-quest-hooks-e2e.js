@@ -164,6 +164,33 @@ const t = async (name, fn) => {
     assert.ok(up.body && up.body.error, '400 不带 error 文案');
   });
 
+  await t('AI 战书（轮94 guild_content 消费端）：真盟名进词、approved 挂门楣、审核池落痕', async () => {
+    const uw = 'g8w' + Date.now().toString(36).slice(-6);
+    const wr = await call('POST', '/api/auth/register', { username: uw, password: 'pw-dummy-123', nickname: uw, faction: 'martial' });
+    assert.ok(wr.code === 200, '注册 W 失败');
+    const db0 = loadDatabase();
+    const wid = db0.characters.find((c) => c.user_id === wr.body.userId).id;
+    const dbG = loadDatabase();
+    dbG.guild_members.push({ id: 930001, guild_id: 424242, character_id: wid, role: '成员', joined_at: new Date().toISOString() });
+    saveDatabase(dbG);
+    const lone = await call('POST', '/api/guild/war-post', { guildId: 424242 }, wr.body.token); // 目标=自家应拒
+    assert.strictEqual(lone.code, 400, '向自家宣战竟放行：' + JSON.stringify(lone.body));
+    const wp = await call('POST', '/api/guild/war-post', {}, wr.body.token);
+    assert.strictEqual(wp.code, 200, '修书失败：' + JSON.stringify(wp.body));
+    assert.strictEqual(wp.body.status, 'approved', '无密钥环境应走本地词库直批：' + JSON.stringify(wp.body));
+    assert.ok(wp.body.warPost && wp.body.warPost.title && wp.body.warPost.target, '门楣战书缺题或缺收书人：' + JSON.stringify(wp.body));
+    const db2 = loadDatabase();
+    const g424 = db2.guilds.find((g) => g.id === 424242);
+    assert.ok(g424.warPost && g424.warPost.generationId === wp.body.generationId, '战书没写进盟档（世界状态断线）');
+    const aiSvc = require('../src/services/ai');
+    const gens = (aiSvc.listGenerations() || []).filter((x) => x.purpose === 'guild_content');
+    assert.ok(gens.length >= 1, '审核池没有 guild_content 痕迹');
+    const gRow = gens[gens.length - 1];
+    const p = JSON.parse(gRow.prompt.slice(gRow.prompt.indexOf('{'))); // 参数以 JSON 埋在 prompt 头部之后
+    assert.strictEqual(p.to, g424.warPost.target, 'AI 参数里收书人不是真盟名——世界状态没进提示词');
+    assert.ok(p.nonce, 'nonce 缺席——同对盟二修必吃旧稿');
+  });
+
   await t('正式存档 data/game.db 未被本套件写动（只写临时目录）', () => {
     if (!liveBefore) { assert.ok(!fs.existsSync(LIVE_DB), '本不该存在正式存档'); return; }
     const after = fs.statSync(LIVE_DB);

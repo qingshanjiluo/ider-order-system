@@ -53,6 +53,7 @@
 
     <div class="game-body">
       <nav class="sidebar-nav" id="sidebar-nav">
+        <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar()" title="折叠侧边栏">◀</button>
         <!-- 阶段10：12 主导航 + 二级菜单（面板导航设计 12 收敛 27 平铺） -->
         <div class="nav-group open">
           <div class="nav-group-title"><span class="nav-icon">图</span>地图</div>
@@ -193,6 +194,12 @@
       <div class="modal-body" id="modal-body"></div>
       <div class="modal-footer" id="modal-footer"></div>
     </div>
+  </div>
+
+  <!-- 全局 Loading 遮罩 -->
+  <div id="global-loading" class="global-loading">
+    <div class="global-loading-spinner"></div>
+    <span class="global-loading-text">加载中...</span>
   </div>
 
   <div id="toast" class="toast hidden"></div>

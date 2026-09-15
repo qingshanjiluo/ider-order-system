@@ -36,8 +36,9 @@ const ui = {
     if (expText) expText.textContent = `${char.exp || 0}/${char.expToNext || 100}`;
     if (expBar) expBar.style.width = `${((char.exp || 0) / (char.expToNext || 100)) * 100}%`;
 
-    this.updateResource('spirit-stone', char.spirit_stone);
-    this.updateResource('jade', char.jade || 0);
+    // 使用 CountUp 动画更新资源
+    this.updateResourceWithAnimation('spirit-stone', char.spirit_stone || 0);
+    this.updateResourceWithAnimation('jade', char.jade || 0);
   },
 
   updateEquipGrid(equips) {
@@ -119,19 +120,22 @@ const ui = {
     }
   },
 
-  updateInventory(inventory) {
+  updateInventory(inventory, page = 1, perPage = 12) {
     const el = document.getElementById('inventory-list');
     if (!el) return;
     if (!inventory || inventory.length === 0) {
-      el.innerHTML = '<div class="empty-state"><p>背包为空</p></div>';
+      el.innerHTML = '<div class="empty-state"><span class="icon">📦</span><div class="title">背包为空</div><div class="desc">去冒险收集物品吧</div></div>';
       return;
     }
-    // 轮55 修一个真可见性 bug：接口返回的是 `{...背包行, item: 物品定义}`，name/type/quality 都在 `item` 里，
-    // 而这里一直读的是背包行本身 ⇒ 实测 10/10 行 name===undefined ⇒ 背包面板永远显示"未知物品"。
-    // 顺带：本面板是 innerHTML 直插，新增的按钮一律走 esc()，不再扩大注入面（既有债另计）。
+    
+    const totalPages = Math.ceil(inventory.length / perPage);
+    const startIndex = (page - 1) * perPage;
+    const pageItems = inventory.slice(startIndex, startIndex + perPage);
+    
     const esc = (s) => String(s === undefined || s === null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    el.innerHTML = inventory.slice(0, 12).map(row => {
+    
+    let html = pageItems.map(row => {
       const def = row.item || {};
       const name = def.name || '未知物品';
       const lg = row.longevity;
@@ -153,6 +157,20 @@ const ui = {
         ${action}
       </div>`;
     }).join('');
+    
+    // 添加分页
+    if (totalPages > 1) {
+      html += `<div class="pagination">`;
+      html += `<button class="pagination-btn" ${page <= 1 ? 'disabled' : ''} onclick="ui.updateInventory(window._inventoryCache, ${page - 1})">‹</button>`;
+      for (let i = 1; i <= totalPages; i++) {
+        html += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="ui.updateInventory(window._inventoryCache, ${i})">${i}</button>`;
+      }
+      html += `<button class="pagination-btn" ${page >= totalPages ? 'disabled' : ''} onclick="ui.updateInventory(window._inventoryCache, ${page + 1})">›</button>`;
+      html += `<span class="pagination-info">${page} / ${totalPages}</span>`;
+      html += `</div>`;
+    }
+    
+    el.innerHTML = html;
   },
 
   showConfirm(title, text, onConfirm) {
@@ -326,5 +344,142 @@ const ui = {
 
   hideSkeleton(container) {
     if (container) container.classList.remove('skeleton-loading');
+  },
+
+  // ===== 全局 Loading 遮罩 =====
+  showGlobalLoading(text = '加载中...') {
+    const overlay = document.getElementById('global-loading');
+    if (overlay) {
+      overlay.querySelector('.global-loading-text').textContent = text;
+      overlay.classList.add('active');
+    }
+  },
+
+  hideGlobalLoading() {
+    const overlay = document.getElementById('global-loading');
+    if (overlay) overlay.classList.remove('active');
+  },
+
+  // ===== 资源数字滚动 CountUp 效果 =====
+  updateResourceWithAnimation(resource, newValue) {
+    const el = document.getElementById(`res-${resource}`);
+    if (!el) return;
+    
+    const oldValue = parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
+    const diff = newValue - oldValue;
+    
+    if (diff === 0) return;
+    
+    el.classList.add('updating');
+    setTimeout(() => el.classList.remove('updating'), 500);
+    
+    // 动态更新数字
+    const duration = 300;
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      const current = Math.floor(oldValue + diff * eased);
+      el.textContent = this.formatNumber(current);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        el.textContent = this.formatNumber(newValue);
+      }
+    };
+    requestAnimationFrame(animate);
+  },
+
+  // ===== 搜索/筛选组件 =====
+  createSearchFilter(container, options = {}) {
+    const { placeholder = '搜索...', filters = [], onSearch, onFilter } = options;
+    
+    const html = `
+      <div class="search-filter">
+        <input type="text" class="search-input" placeholder="${placeholder}" id="search-input">
+        ${filters.length > 0 ? `
+          <div class="filter-group">
+            ${filters.map(f => `
+              <button class="filter-btn ${f.active ? 'active' : ''}" data-filter="${f.value}">${f.label}</button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    container.insertAdjacentHTML('afterbegin', html);
+    
+    const searchInput = container.querySelector('#search-input');
+    const filterBtns = container.querySelectorAll('.filter-btn');
+    
+    if (searchInput && onSearch) {
+      let debounceTimer;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => onSearch(searchInput.value), 300);
+      });
+    }
+    
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (onFilter) onFilter(btn.dataset.filter);
+      });
+    });
+    
+    return { searchInput, filterBtns };
+  },
+
+  // ===== 分页组件 =====
+  createPagination(container, options = {}) {
+    const { currentPage = 1, totalPages = 1, onPageChange } = options;
+    
+    if (totalPages <= 1) return;
+    
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    let html = '<div class="pagination">';
+    
+    // 上一页
+    html += `<button class="pagination-btn" ${currentPage <= 1 ? 'disabled' : ''} data-page="${currentPage - 1}">‹</button>`;
+    
+    // 页码
+    for (let i = startPage; i <= endPage; i++) {
+      html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    
+    // 下一页
+    html += `<button class="pagination-btn" ${currentPage >= totalPages ? 'disabled' : ''} data-page="${currentPage + 1}">›</button>`;
+    
+    html += `<span class="pagination-info">${currentPage} / ${totalPages}</span>`;
+    html += '</div>';
+    
+    container.insertAdjacentHTML('beforeend', html);
+    
+    const paginationBtns = container.querySelectorAll('.pagination-btn');
+    paginationBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const page = parseInt(btn.dataset.page);
+        if (page && onPageChange && !btn.disabled) {
+          onPageChange(page);
+        }
+      });
+    });
+  },
+
+  // ===== 退出二次确认 =====
+  showLogoutConfirm() {
+    this.showConfirm(
+      '退出登录',
+      '确定退出游戏吗？退出后需要重新登录。',
+      () => {
+        localStorage.removeItem('token');
+        window.location.reload();
+      }
+    );
   }
 };

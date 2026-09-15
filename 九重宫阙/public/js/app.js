@@ -18,6 +18,18 @@ window.addEventListener('unhandledrejection', function(e) {
   }
 });
 
+// 侧边栏折叠切换
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar-nav');
+  const btn = document.getElementById('sidebar-collapse-btn');
+  if (sidebar) {
+    sidebar.classList.toggle('collapsed');
+    if (btn) {
+      btn.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
+    }
+  }
+}
+
 async function init() {
   const token = localStorage.getItem('token');
   if (token) {
@@ -78,8 +90,7 @@ async function init() {
   };
 
   document.getElementById('logout-btn').onclick = () => {
-    localStorage.removeItem('token');
-    ui.showView('login-view');
+    ui.showLogoutConfirm();
   };
 
   document.querySelectorAll('.nav-item').forEach(item => {
@@ -352,6 +363,7 @@ async function loadCharacterTab() {
 
     try {
       const inventory = await api.getInventory();
+      window._inventoryCache = inventory;
       ui.updateInventory(inventory);
     } catch (e) {}
 

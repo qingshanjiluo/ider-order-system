@@ -340,6 +340,11 @@ const api = {
     return this.request('POST', '/pet/release', { petId });
   },
 
+  // P6 批1b：出战灵宠（含物品与面板派生属性；灵宠页横幅展示用）
+  async getActivePets() {
+    return this.request('GET', '/pet/active');
+  },
+
   async getSpiritRoots() {
     return this.request('GET', '/character/spirit-roots');
   },
@@ -689,6 +694,11 @@ const api = {
     return this.request('GET', `/gathering/monsters?mapId=${mapId || ''}`);
   },
 
+  // P6 批1b：材料图鉴（后端返回全部可采材料/灵兽粮，界面此前从不展示）
+  async getGatheringResources() {
+    return this.request('GET', '/gathering/resources');
+  },
+
   // Chat
   async getChatHistory(channel) {
     return this.request('GET', `/chat/history?channel=${channel}`);
@@ -784,6 +794,15 @@ const api = {
   },
   async exchange(fromTier, toTier, amount) {
     return this.request('POST', '/economy/exchange', { fromTier, toTier, amount });
+  },
+
+  // P6 批1b：特殊灵石目录与使用（六条里 implementable 的才能用，后端权威拒绝）
+  async getSpecialStones() {
+    return this.request('GET', '/economy/stones');
+  },
+
+  async useSpecialStone(name) {
+    return this.request('POST', '/economy/stones/use', { name });
   },
   async getSectList() {
     return this.request('GET', '/sect/list');

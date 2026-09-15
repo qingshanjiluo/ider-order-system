@@ -1500,6 +1500,7 @@ async function loadPetTab() {
         <div class="char-panel-header">
           <div class="char-panel-title">灵宠</div>
         </div>
+        <div id="active-pets-box" style="font-size:11px;color:var(--text2);margin-bottom:8px;"></div>
         ${pets.length === 0 ? '<div class="empty-state"><p>暂无灵宠</p></div>' : `
           <div id="pet-list">
             ${pets.map(p => {
@@ -1528,8 +1529,25 @@ async function loadPetTab() {
         `}
       </div>
     `;
+    loadActivePetsBanner();
   } catch (error) {
     content.innerHTML = '<div class="char-panel"><p>加载失败</p></div>';
+  }
+}
+
+// P6 批1b：出战横幅。数据走 /pet/active（含物品派生属性），不靠 pets 列表自己 filter——
+// 那是第二份"谁在出战"的口径，服务端 is_active 才是真源。
+async function loadActivePetsBanner() {
+  const el = document.getElementById('active-pets-box');
+  if (!el) return;
+  try {
+    const act = await api.getActivePets();
+    const list = act || [];
+    el.textContent = list.length
+      ? '出战中：' + list.map((p) => `${p.name || (p.item && p.item.name) || '灵宠'} Lv${p.level || 1}`).join('、')
+      : '当前无出战灵宠';
+  } catch (e) {
+    el.textContent = '';
   }
 }
 
@@ -2531,7 +2549,10 @@ async function loadGatheringTab() {
         <div class="char-panel-header">
           <div class="char-panel-title">采集</div>
         </div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">在不同地图采集材料或狩猎怪物</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">在不同地图采集材料或狩猎怪物
+          <button class="btn small" style="margin-left:8px;" onclick="toggleResourcesBook()">材料图鉴</button>
+        </p>
+        <div id="resources-book" style="display:none;"></div>
         <div id="gathering-list">
           ${maps.map(m => `
             <div class="shop-item" style="padding:12px;margin-bottom:8px;">
@@ -2543,7 +2564,9 @@ async function loadGatheringTab() {
               <div style="display:flex;gap:6px;">
                 <button class="btn small primary" onclick="handleGather(${m.id})">采集</button>
                 <button class="btn small" onclick="handleHunt(${m.id})">狩猎</button>
+                <button class="btn small" onclick="toggleMapMonsters(${m.id})">妖情</button>
               </div>
+              <div id="monsters-${m.id}" style="display:none;flex-basis:100%;"></div>
             </div>
           `).join('')}
         </div>
@@ -2572,6 +2595,46 @@ async function handleHunt(mapId) {
       await loadCharacter();
     } catch (error) { ui.showToast(error.message); }
   });
+}
+
+// P6 批1b：妖情展开。level_range 在存档里可能是数组或字符串，两种都要能画（S3 泄漏 undefined 即红）。
+async function toggleMapMonsters(mapId) {
+  const box = document.getElementById('monsters-' + mapId);
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  box.style.display = '';
+  if (box.dataset.loaded === '1') return;
+  try {
+    const ms = await api.getMonsters(mapId);
+    const fmtLv = (lr) => Array.isArray(lr) ? lr.join('-') : (lr == null ? '?' : String(lr));
+    box.innerHTML = (ms && ms.length)
+      ? ms.map((mm) => `<div style="font-size:11px;color:var(--text2);padding:2px 0;">${mm.name} · 等级 ${fmtLv(mm.levelRange)} · ${mm.element || '无属性'}</div>`).join('')
+      : '<div style="font-size:11px;color:var(--text2);">该图暂无魔物记录</div>';
+    box.dataset.loaded = '1';
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:11px;color:var(--text2);">魔物数据加载失败</div>';
+  }
+}
+
+// P6 批1b：全图材料一览（真源 = /gathering/resources，与采集结算读同一份 items）
+async function toggleResourcesBook() {
+  const box = document.getElementById('resources-book');
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  box.style.display = '';
+  if (box.dataset.loaded === '1') return;
+  box.innerHTML = '<div style="font-size:11px;color:var(--text2);">加载中…</div>';
+  try {
+    const rs = await api.getGatheringResources();
+    const list = rs || [];
+    box.innerHTML = (list.length
+      ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">' + list.map((r) =>
+          `<span style="font-size:11px;padding:2px 8px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);">${r.name}<span style="color:var(--text2);">·${r.quality || '—'}</span></span>`).join('') + '</div>'
+      : '<div style="font-size:11px;color:var(--text2);">暂无材料目录</div>');
+    box.dataset.loaded = '1';
+  } catch (e) {
+    box.innerHTML = '<div style="font-size:11px;color:var(--text2);">材料目录加载失败</div>';
+  }
 }
 
 async function loadWeaponsTab() {
@@ -3196,8 +3259,45 @@ async function loadEconomyTab() {
         <button class="btn small" onclick="doExchange()">兑换</button>
       </div>
       <div id="ex-msg" style="font-size:11px;color:var(--text2);margin-top:6px;"></div>
+    </div>
+    <div class="char-panel" style="margin-top:12px;">
+      <div class="char-panel-header"><div class="char-panel-title">特殊灵石</div></div>
+      <div id="stones-box">加载中…</div>
     </div>`;
   await refreshWallet();
+  loadSpecialStonesBox();
+}
+
+// P6 批1b：特殊灵石目录。可否使用由后端 implementable 判定并在 400 里给出理由，
+// 前端只如实标注"待功能"，不自己维护第二份可用性表（防漂移）。
+async function loadSpecialStonesBox() {
+  const el = document.getElementById('stones-box');
+  if (!el) return;
+  try {
+    const r = await api.getSpecialStones();
+    const stones = (r && r.stones) || [];
+    el.innerHTML = (stones.length
+      ? stones.map((s) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:12px;font-weight:600;">${s.name}${s.implementable ? '' : ' <span style="font-size:10px;color:var(--text2);">(待功能)</span>'}</div>
+          <div style="font-size:11px;color:var(--text2);">${s.desc || ''} · ${s.effect || ''}</div>
+        </div>
+        <button class="btn small" onclick="handleUseStone('${s.name}')">使用</button>
+      </div>`).join('')
+      : '<div style="font-size:11px;color:var(--text2);">目录为空</div>');
+  } catch (e) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text2);">灵石目录加载失败</div>';
+  }
+}
+
+async function handleUseStone(name) {
+  try {
+    const r = await api.useSpecialStone(name);
+    ui.showToast(`${r.stone || name}：${r.effect || '已使用'}`);
+    await loadCharacter();
+    refreshWallet();
+  } catch (e) { ui.showToast(e.message); }
 }
 
 async function refreshWallet() {

@@ -2490,7 +2490,7 @@ t('端点覆盖率测量可复现，且"幽灵调用"必须为零', () => {
   assert.ok(r.rates.fe >= 60, `名义覆盖率 ${r.rates.fe}% 低于 60%：前端 api 层大面积失联`);
 });
 // ===== 轮71 · P6 批0：口径修正落账 + 两处实锤缺陷的回归锁 =====
-t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许接线压低（现 42，见内注）', () => {
+t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许接线压低（现 38，见内注）', () => {
   const { measure } = require('../scripts/endpoint-coverage.js');
   const r = measure();
   assert.ok(!r.unwired.includes('/api/chat/history'),
@@ -2498,8 +2498,8 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
   assert.ok(!r.unwired.includes('/api/friend/search'),
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
-  // 轮74 批1 真接线 5 条（放生/灵根×2/心境/advanced）⇒ 再收紧 47→42
-  assert.ok(r.unwired.length <= 42, `未接线棘轮被抬高：${r.unwired.length}（基线 42，轮74）`);
+  // 轮74 批1a 真接线 5 条（放生/灵根×2/心境/advanced）⇒ 42；轮75 批1b 再 4 条（妖情/材料图鉴/特殊灵石/出战）⇒ 38
+  assert.ok(r.unwired.length <= 38, `未接线棘轮被抬高：${r.unwired.length}（基线 38，轮75 批1b）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2562,6 +2562,23 @@ t('轮74 P6批1：放生/灵根/心境/advanced 五条从"存在但点不到"变
   assert.ok(/confirm\s*\(/.test(rel), '放生是不可逆操作却没有二次确认');
   assert.ok(appSrc.includes('loadRootsMoodPanel') && appSrc.includes('handleCultivateRoot') && appSrc.includes('handleMoodAction'),
     '灵根·心境面板（渲染/培养/动作）三件套缺件');
+});
+t('轮75 P6批1b：妖情/材料图鉴/特殊灵石/出战横幅——四条从"存在但点不到"变成"界面点得到"', () => {
+  const { measure } = require('../scripts/endpoint-coverage.js');
+  const r = measure();
+  for (const p of ['/api/gathering/monsters', '/api/gathering/resources', '/api/economy/stones', '/api/pet/active']) {
+    assert.ok(!r.unwired.includes(p), `${p} 还挂在未接线清单（前端失联了）`);
+  }
+  const apiSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'api.js'), 'utf8');
+  const appSrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'js', 'app.js'), 'utf8');
+  // getMonsters 的包装早就存在却零调用——"包装在货架上吃灰"正是本轮要消灭的形态，调用点必须逐条点名
+  for (const m of ['getMonsters', 'getGatheringResources', 'getSpecialStones', 'useSpecialStone', 'getActivePets']) {
+    assert.ok(apiSrc.includes(`async ${m}(`), `api.js 缺 ${m} 包装`);
+    assert.ok(new RegExp(`api\\.${m}\\s*\\(`).test(appSrc), `app.js 没调 ${m}（包装吃灰）`);
+  }
+  for (const ui of ['toggleMapMonsters', 'toggleResourcesBook', 'loadSpecialStonesBox', 'handleUseStone', 'loadActivePetsBanner']) {
+    assert.ok(appSrc.includes(ui), `界面入口 ${ui} 不见了（端点又变回点不到）`);
+  }
 });
 t('传输层必须把状态码语义送到调用方（423/429/501 不许再退化成一坨文本）', () => {
   const src = read21('public', 'js', 'api.js');

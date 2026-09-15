@@ -2499,7 +2499,7 @@ t('轮71 口径修正：两条"未接线"是测量假阳性；棘轮随后只许
     '/api/friend/search 同上（api.js:115 → app.js handleFriendSearch 的"搜索"按钮）');
   // 49→47 是"口径变准"不是"功能变多"；此后只许接线把它压低，口径游戏不许把它抬高
   // 轮74a 5 条⇒42；轮75b 4 条⇒38；轮76 批2 3 条⇒35；轮77 G5⇒32；轮78 G5 触达锻造火焰目录⇒31
-  assert.ok(r.unwired.length <= 24, `未接线棘轮被抬高：${r.unwired.length}（基线 24，轮85 cave 三条）`);
+  assert.ok(r.unwired.length <= 19, `未接线棘轮被抬高：${r.unwired.length}（基线 19，轮86 战斗批）`);
 });
 t('轮71 路由文件用了 database 解构函数就必须导入（admin.js 发新物品必 500 的实锤兑现成锁）', () => {
   const fs2 = require('fs');
@@ -2687,6 +2687,24 @@ t('轮85 洞府装饰/灵脉三接点：FE 面板与 action 分支三元组在�
   }
   assert.ok(appSrc.includes('char-panel-title">装饰') && appSrc.includes('char-panel-title">灵脉'), '洞府两面板标题被删——接了 action 却没入口等于没接');
   assert.ok(appSrc.includes('一府一脉') && appSrc.includes('同款上限5'), '后端约束（一脉/上限5）的前端提示被删——玩家只会撞 400 才知道');
+});
+t('轮86 战斗批：影子榜单已死、war/modes 接 FE、war 修为归真源', () => {
+  const rd = (p) => require('fs').readFileSync(require('path').join(__dirname, '..', p), 'utf8');
+  const battleSrc = rd('src/routes/battle.js');
+  assert.ok(!battleSrc.includes("router.get('/arena/rankings'"), '影子擂台榜单回流（真榜在 /api/arena/*，双账本必打架）');
+  assert.ok(!/c\.exp = \(c\.exp \|\| 0\) \+ \(won \?/.test(battleSrc), 'war 又直写 character.exp（轮54 同型违规，addExp 双档在位却被绕开）');
+  assert.ok(battleSrc.includes("characterService.addExp(mid, warExp)") && battleSrc.includes('characterService.addExp(mid, won ? 500 : 100)'),
+    'war 两档 addExp 结算消失');
+  const appSrc = rd('public/js/app.js');
+  const apiSrc0 = rd('public/js/api.js');
+  for (const p of ['/battle/modes', '/battle/war/info', '/battle/war/sect-battle', '/battle/war/guild-war']) {
+    assert.ok(apiSrc0.includes(`'${p}'`), `api 层调用点消失：${p}`);
+  }
+  assert.ok(appSrc.includes('char-panel-title">战议会') && appSrc.includes('handleWarAction'), '战议会面板/处理器被拆——端点又回零入口');
+  const apiSrc = rd('public/js/api.js');
+  for (const fn of ['getBattleModes', 'getWarInfo', 'fightSectWar', 'fightGuildWar']) {
+    assert.ok(apiSrc.includes(`async ${fn}(`), `api 包装层缺 ${fn}`);
+  }
 });
 t('轮78 guild 信物核验（审计"80-83 撞号"判为假警报，但要把口径钉死）', () => {
   const g = require('fs').readFileSync(require('path').join(__dirname, '..', 'src', 'routes', 'guild.js'), 'utf8');

@@ -141,28 +141,10 @@ const ARENA_REWARDS = {
   streak10: { exp: 800, spiritStone: 300, arenaPoints: 200 }
 };
 
-router.get('/arena/rankings', auth, (req, res) => {
-  try {
-    const db = loadDatabase();
-    const characters = db.characters
-      .filter(c => c.arena_points || c.win_streak)
-      .sort((a, b) => (b.arena_points || 0) - (a.arena_points || 0))
-      .slice(0, 20)
-      .map((c, idx) => ({
-        rank: idx + 1,
-        id: c.id,
-        name: c.name,
-        level: c.level,
-        realm: c.realm,
-        arena_points: c.arena_points || 0,
-        win_streak: c.win_streak || 0,
-        combat_power: (c.attack || 0) + (c.defense || 0) + (c.hp || 0)
-      }));
-    res.json(characters);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+// 轮86：影子榜单退役删除。真擂台在 /api/arena/*（arena.js，三分榜+赛季+FE 全接通），
+// 此端点与其同键异算（纯 arena_points top20），双账本语义误导；FE 从未调用，测试零依赖。
+// 同族的 battle/arena/battle 暂留——轮79 已接全仿真且 G5 有行为断言，去留与 arena.js 合并为
+// 一处是下一批战斗工程的题（记入规划批6，不许无裁决地一直拖着）。
 
 router.post('/arena/battle', auth, async (req, res) => {
   try {
@@ -356,11 +338,14 @@ router.post('/war/sect-battle', auth, async (req, res) => {
     const won = Math.random() < winChance;
 
     const myMembers = db.guild_members.filter(m => m.guild_id === myGuild.id);
+    const warExp = won ? 200 : 50;
+    const memberIds = [];
     for (const m of myMembers) {
       const c = db.characters.find(ch => ch.id === m.character_id);
       if (c) {
-        c.exp = (c.exp || 0) + (won ? 200 : 50);
+        // 轮86：war 的修为也归 addExp 唯一真源（旧直写 character.exp 是轮54 清剿的同型漏网）；灵石直记合法
         c.spirit_stone = (c.spirit_stone || 0) + (won ? 100 : 20);
+        memberIds.push(c.id);
       }
     }
 
@@ -369,6 +354,7 @@ router.post('/war/sect-battle', auth, async (req, res) => {
     if (myGuild.warResults.length > 20) myGuild.warResults = myGuild.warResults.slice(-20);
 
     saveDatabase(db);
+    for (const mid of memberIds) characterService.addExp(mid, warExp); // 轮86 修为真源
     res.json({
       won, myGuild: { name: myGuild.name, power: myPower },
       enemyGuild: { name: enemy.name, power: enemyPower },
@@ -414,12 +400,14 @@ router.post('/war/guild-war', auth, async (req, res) => {
     const winChance = Math.min(0.85, Math.max(0.15, myTotalPower / (myTotalPower + enemyTotalPower)));
     const won = Math.random() < winChance;
 
+    const gwIds = [];
     for (const m of myMembers) {
       const c = db.characters.find(ch => ch.id === m.character_id);
       if (c) {
-        c.exp = (c.exp || 0) + (won ? 500 : 100);
+        // 轮86：同 sect-battle，修为归 addExp（500/100 档经升级曲线真源结算），灵石/积分直记
         c.spirit_stone = (c.spirit_stone || 0) + (won ? 250 : 50);
         c.arena_points = (c.arena_points || 0) + (won ? 50 : 10);
+        gwIds.push(c.id);
       }
     }
 
@@ -427,6 +415,7 @@ router.post('/war/guild-war', auth, async (req, res) => {
     myGuild.warResults.push({ enemy: enemy.name, won, type: 'guild_war', time: Date.now() });
 
     saveDatabase(db);
+    for (const mid of gwIds) characterService.addExp(mid, won ? 500 : 100); // 轮86 修为真源
     res.json({
       won, myGuild: { name: myGuild.name, power: myTotalPower, members: myMembers.length },
       enemyGuild: { name: enemy.name, power: enemyTotalPower, members: enemyMembers.length },

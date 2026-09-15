@@ -1113,6 +1113,10 @@ async function loadArenaTab() {
   const content = document.getElementById('tab-content');
   try {
     const opponents = await api.getArenaOpponents();
+    const [modes, warInfo] = await Promise.all([
+      api.getBattleModes().catch(() => []),
+      api.getWarInfo().catch(() => null)
+    ]);
     content.innerHTML = `
       <div class="char-panel">
         <div class="char-panel-header">
@@ -1136,11 +1140,36 @@ async function loadArenaTab() {
           `).join('')}
         </div>
       </div>
+      <div class="char-panel">
+        <div class="char-panel-header"><div class="char-panel-title">战议会</div></div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">
+          ${warInfo && warInfo.sect ? `代表「${warInfo.sect.name}」（${warInfo.memberCount}人）· 状态：${warInfo.warStatus || 'idle'}` : '未加入仙盟者，出征会被拒（这正是入盟的理由）'}
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button class="btn" onclick="handleWarAction('sect')" style="flex:1;">宗门战出征</button>
+          <button class="btn" onclick="handleWarAction('guild')" style="flex:1;">仙盟远征</button>
+        </div>
+        ${(warInfo && warInfo.warResults && warInfo.warResults.length) ? `<div style="font-size:11px;color:var(--text2);">近战：${warInfo.warResults.map(w => `${w.enemy}·${w.won ? '胜' : '负'}`).join(' / ')}</div>` : ''}
+      </div>
+      <div class="char-panel">
+        <div class="char-panel-header"><div class="char-panel-title">战斗模式</div></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          ${modes.map(m => `<div class="shop-item" style="padding:6px;flex:1;min-width:150px;"><div class="shop-item-info"><div class="shop-item-name" style="font-size:12px;">${m.name}</div><div class="shop-item-desc" style="font-size:11px;">${m.description}</div></div></div>`).join('')}
+        </div>
+      </div>
     `;
   } catch (error) {
     content.innerHTML = '<div class="char-panel"><p>加载失败</p></div>';
   }
 }
+
+window.handleWarAction = async function (kind) {
+  try {
+    const r = kind === 'sect' ? await api.fightSectWar() : await api.fightGuildWar();
+    ui.showToast(r.message || (r.won ? '胜' : '负'));
+    await loadArenaTab();
+  } catch (error) { ui.showToast(error.message); }
+};
 
 async function handleArenaMatch() {
   try {

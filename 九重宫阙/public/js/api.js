@@ -533,6 +533,24 @@ const api = {
     return this.request('GET', '/arena/opponents');
   },
 
+  // 轮86 战斗批：模式目录 + 战议会（宗门战/仙盟战）
+  async getBattleModes() {
+    const r = await this.request('GET', '/battle/modes');
+    return r.modes || [];
+  },
+
+  async getWarInfo() {
+    return this.request('GET', '/battle/war/info');
+  },
+
+  async fightSectWar() {
+    return this.request('POST', '/battle/war/sect-battle');
+  },
+
+  async fightGuildWar() {
+    return this.request('POST', '/battle/war/guild-war');
+  },
+
   async getArenaRankings() {
     return this.request('GET', '/arena/rankings');
   },

@@ -38,65 +38,14 @@ function midLevel(realm) {
   return Math.floor(((Number(r.min_level) || 1) + (Number(r.max_level) || 1)) / 2);
 }
 
-function buildPlayer(realm, level) {
-  return {
-    name: `${realm}·${level}级`,
-    type: 'character',
-    level, realm,
-    maxHp: characterService.calculateHpMax(level, realm),
-    hp: characterService.calculateHpMax(level, realm),
-    maxMp: characterService.calculateMpMax(level, realm),
-    mp: characterService.calculateMpMax(level, realm),
-    attack: characterService.calculateAttack(level, realm),
-    defense: characterService.calculateDefense(level, realm),
-    speed: characterService.calculateSpeed(level, realm),
-    element: 'fire',
-    critChance: 0.05,
-    skills: [],
-    cooldowns: {},
-    statusEffects: []
-  };
-}
+// 建卡 / 取池 / 回合这三件事统一由 sim-battle-lib 提供（唯一真源）。
+// 轮103 教训：calibrate-bands 曾「照着本文件抄一份」，抄错 element/暴击字段，
+// 标定值与验收值差 20 个点、白折腾 8 轮。抽出 lib 后两边共用，这类漂移不可能再发生。
+const simLib = require('./sim-battle-lib');
+const buildPlayer = simLib.buildPlayer;
+const monstersFor = (realm) => simLib.monstersFor(db, realm);
+const fight = simLib.fight;
 
-/** 怪物模板 stats 是 JSON 字符串（本仓约定），全量解析，解析失败的模板单独计数 */
-function monstersFor(realm) {
-  const r = realmRow(realm);
-  const lo = Number(r && r.min_level) || 1;
-  const hi = Number(r && r.max_level) || 10;
-  const target = (lo + hi) / 2;
-  const pool = [];
-  let broken = 0;
-  for (const tpl of db.monsters || []) {
-    let range = tpl.level_range;
-    if (typeof range === 'string') { try { range = JSON.parse(range); } catch (e) { range = null; } }
-    if (!Array.isArray(range) || range.length < 2) { broken++; continue; }
-    const mid = (Number(range[0]) + Number(range[1])) / 2;
-    if (mid < lo - 2 || mid > hi + 2) continue;
-    let stats = {};
-    try { stats = JSON.parse(tpl.stats || '{}'); } catch (e) { broken++; continue; }
-    if (!Number.isFinite(Number(stats.hp))) { broken++; continue; }
-    pool.push({
-      name: tpl.name, level: mid,
-      maxHp: Number(stats.hp), hp: Number(stats.hp),
-      maxMp: 0, mp: 0,
-      attack: Number(stats.attack) || 0,
-      defense: Number(stats.defense) || 0,
-      speed: Number(stats.speed) || 0,
-      element: tpl.element || 'none',
-      critChance: Number(stats.crit) || 0,
-      skills: [], cooldowns: {}, statusEffects: []
-    });
-  }
-  return { pool, broken };
-}
-
-/** 回合结构照抄 startBattle 的主循环（去掉 DB 与奖励结算） */
-function fight(player, mob) {
-  const a = Object.assign({}, player, { hp: player.maxHp, cooldowns: {}, statusEffects: [] });
-  const d = Object.assign({}, mob, { hp: mob.maxHp, cooldowns: {}, statusEffects: [] });
-  const r = combat.runBattleLoop(a, d, {});   // 与线上 startBattle 同一份回合数学
-  return { win: r.winner === 'attacker', timeout: r.timedOut, rounds: r.round };
-}
 
 console.log('E3 四等级段胜率模拟（只读，不写库）');
 console.log(`口径：每对组合 ${RUNS_PER_MATCHUP} 场（executeRound 内含暴击/克制随机）\n`);

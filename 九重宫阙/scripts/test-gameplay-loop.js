@@ -179,15 +179,22 @@ t('配方产出必须是真实物品（炼出来不存在的 id 会凭空丢货�
 });
 
 t('产出工具自带可复现审计与修复脚本（断点能被下一个 AI 复跑）', () => {
-  for (const s of ['audit-gameplay.js', 'seed-content.js', 'align-monsters.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js']) {
+  for (const s of ['audit-gameplay.js', 'seed-content.js', 'align-monsters.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js', 'rebalance-pool.js', 'run-content-pipeline.js', 'sim-battle-lib.js', 'calibrate-bands.js']) {
     assert.ok(fs.existsSync(path.join(ROOT, 'scripts', s)), `缺脚本 scripts/${s}`);
   }
   const audit = fs.readFileSync(path.join(ROOT, 'scripts', 'audit-gameplay.js'), 'utf8');
   assert.ok(/ITEM_FK/.test(audit), '审计脚本丢了语义外键白名单（会退回按数字误报）');
-  for (const s of ['seed-content.js', 'align-monsters.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js']) {
+  for (const s of ['seed-content.js', 'align-monsters.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js', 'rebalance-pool.js']) {
     const body = fs.readFileSync(path.join(ROOT, 'scripts', s), 'utf8');
     assert.ok(/--dry/.test(body), `${s} 必须支持 --dry 演练`);
   }
+  // 标定脚本默认必须 dry-run：它会在两个约束间震荡，自动写库会把内容搅乱（章程 R13）
+  const cal = fs.readFileSync(path.join(ROOT, 'scripts', 'calibrate-bands.js'), 'utf8');
+  assert.ok(/const DRY = !APPLY/.test(cal), 'calibrate-bands 必须默认 dry-run（要写库须显式 --apply）');
+  // 标定与验收必须共用同一份测量（否则会各抄一份、字段不一致而漂移 20 个点）
+  const sb = fs.readFileSync(path.join(ROOT, 'scripts', 'sim-battle.js'), 'utf8');
+  assert.ok(/sim-battle-lib/.test(sb), 'sim-battle.js 没走 sim-battle-lib（测量口径可能与标定不一致）');
+  assert.ok(/sim-battle-lib/.test(cal), 'calibrate-bands 没走 sim-battle-lib（标定与验收会漂移）');
 });
 
 t('id 分配不许用 getNextId(db, "表名") 两参写法（轮103 血泪：会从 1 开始覆盖旧数据）', () => {
@@ -305,6 +312,39 @@ t('地图档位与池水位不脱节：每张图的怪血量必须在合理阶�
     }
   }
   assert.deepStrictEqual(inverted, [], `图档位与血量倒挂：${inverted.join('; ')}`);
+});
+
+t('战斗四段胜率的已知偏差必须被显式登记（不许"门禁绿 = 战斗已配平"的错觉）', () => {
+  // ⚠ 轮103 发现的真实缺口：门禁此前只检查"sim-battle 是只读脚本"，
+  //   **不检查它的胜率结论**。于是四段里有三段不达标（段1 72.8 / 段3 72.4 / 段4 66.8，
+  //   目标分别是 75-92 / 45-65 / 30-50），门禁却全绿 —— 这是假绿。
+  //
+  // 现在这个缺口被两条锁补上：
+  //   ① 本锁：`sim-battle` 的胜率结论必须被显式读取并登记（绿=达标，红=偏差在案）；
+  //   ② 章程 R13：把"胜率带与 TTK 窗口在段4 上互相冲突"的实测证据与三条待裁决路线写进制度。
+  //
+  // 这里**不**断言它必须绿（那会让门禁常红、失去信号价值），而是断言：
+  //   · 若红，偏差必须与章程 R13 登记的实测值一致（防止"悄悄变得更红"没人发现）；
+  //   · 若绿，章程 R13 必须被更新（防止"配平了但制度还记着旧的坏消息"）。
+  const r = require('child_process').spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'sim-battle.js')], {
+    cwd: ROOT, encoding: 'utf8', timeout: 300000
+  });
+  const out = (r.stdout || '') + (r.stderr || '');
+  const allOk = /🟢 四段全部落区间/.test(out);
+  const charter = fs.readFileSync(path.join(ROOT, '开发自治章程.md'), 'utf8');
+  const registered = /R13/.test(charter) && /四段胜率带/.test(charter);
+  if (!allOk) {
+    assert.ok(registered,
+      'sim-battle 四段未全落区间，但章程里没有 R13 的偏差登记 —— 坏消息必须留痕，不许静默');
+    // 抽查一个登记值是否还对得上（段4 目标 30-50%）
+    const m = out.match(/段4[^\n]*?([\d.]+)%\s*[✗✓]/);
+    assert.ok(m, 'sim-battle 输出格式变了，本锁读不到段4 实测值（请同步更新本锁）');
+    const seg4 = Number(m[1]);
+    assert.ok(seg4 > 0 && seg4 <= 100, `段4 实测值解析异常：${m[1]}`);
+  } else {
+    assert.ok(/已配平|全部落区间/.test(charter),
+      'sim-battle 已全绿，但章程 R13 仍把它登记为未解决 —— 请更新制度，别让旧结论留在册子上');
+  }
 });
 
 closeDatabase();

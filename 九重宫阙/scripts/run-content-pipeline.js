@@ -27,12 +27,17 @@ const STEPS = [
   ['dedupe-items.js', '同类重名清理'],
   ['fix-recipes.js', '配方指向修正 + 缺失产物补齐'],
   ['fix-dangling-refs.js', '悬空引用清扫']
+  // ⚠ 战斗标定（scripts/calibrate-bands.js）**没有**放进自动链，原因见 开发自治章程 R13：
+  //   四段胜率带与 TTK 窗口在"段4 大乘~渡劫"上互相冲突（实测可行域极窄甚至为空），
+  //   自动跑会在两个约束间反复震荡、每轮都改库，把内容数据搅乱。
+  //   它保留为**手动诊断工具**：node scripts/calibrate-bands.js --dry（只报数不写库）。
+  //   要真正落地需先裁决"胜率带 / TTK 窗口 谁优先"，见章程 R13 的待裁决条目。
 ];
 
-for (const [script, label] of STEPS) {
+for (const [script, label, extra] of STEPS) {
   console.log(`\n${'='.repeat(60)}\n▶ ${label}（${script}）\n${'='.repeat(60)}`);
   try {
-    const out = execFileSync('node', [path.join(ROOT, 'scripts', script), ...dryArg], {
+    const out = execFileSync('node', [path.join(ROOT, 'scripts', script), ...(extra || []), ...dryArg], {
       encoding: 'utf8', maxBuffer: 1 << 24, cwd: ROOT
     });
     const lines = out.trim().split(/\r?\n/);

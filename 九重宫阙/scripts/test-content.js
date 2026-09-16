@@ -1762,9 +1762,13 @@ t('runBattleLoop 是唯一的回合循环：线上与两个 sim 共用，禁止�
   assert.ok(/this\.runBattleLoop\(attacker, defender,/.test(cs), 'startBattle 已不再走 runBattleLoop（会被悄悄改回内联循环）');
   for (const sim of ['sim-battle.js', 'sim-tribulation.js']) {
     const s = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', sim), 'utf8');
-    assert.ok(/combat\.runBattleLoop/.test(s), `${sim} 没复用 runBattleLoop`);
+    // 轮103：回合循环可以「直接用 combat.runBattleLoop」或「经 sim-battle-lib 复用」——
+    // 两者等价，且后者更好（建卡/取池/回合只有一份实现，标定与验收不会各抄一份而漂移）。
+    assert.ok(/combat\.runBattleLoop/.test(s) || /sim-battle-lib/.test(s), `${sim} 没复用 runBattleLoop（也没走 sim-battle-lib）`);
     assert.ok(!/while \((a|attacker)\.hp > 0/.test(s), `${sim} 又手抄了一遍回合循环`);
   }
+  const libSrc = fs21.readFileSync(path21.join(__dirname, '..', 'scripts', 'sim-battle-lib.js'), 'utf8');
+  assert.ok(/combat\.runBattleLoop/.test(libSrc), 'sim-battle-lib 自己没复用 runBattleLoop（那就不是复用而是抄）');
 });
 t('扛劫(survive)口径必须由 TRIBULATION.mode 显式开关，默认 kill（未配平的机制不得上线）', () => {
   const bal26 = require('../src/config/balance');

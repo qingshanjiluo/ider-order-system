@@ -14,20 +14,27 @@ const rd = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const DEST = '覆盖率待核清单.md';
 const NEED = 20;
 
-/* 端点来源：实测报告《前端可见性与覆盖率测量.md》。轮61 首版要求「方法+路径」，
- * 而报告里的清单只有路径（形如 `- /api/pet/capture`），结果一条都没匹到。
- * 同时要剔掉两类噪声：/api 根常量（不是端点）、报告里的示例占位 /api/x。 */
-/* 端点来源：实测报告《前端可见性与覆盖率测量.md》。轮61 首版要求「方法+路径」，
- * 而报告里的清单只有路径（形如 `- /api/pet/capture`），一条都没匹到；
- * 轮62 又试过用路由源码过滤，结果全被筛掉 —— 路由注册的是挂载后的子路径（`/capture`），
- * 拼不上 `/api/pet/capture`。改回只按形态过滤噪声：/api 根常量、以及文档里的占位 /api/x。 */
-const rep = rd('前端可见性与覆盖率测量.md');
+/* 端点来源：**直接调测量器**，不再从《前端可见性与覆盖率测量.md》里正则抽路径。
+ *
+ * 轮104 修：旧实现 grep 报告的 `/api/...` 字面量，而报告正文只列「未接线端点」与「幽灵调用」
+ * 两类**异常**清单。当项目健康度提上来（未接线 0 条、幽灵 0 条）后，报告里就没有端点可抽了，
+ * 于是 `review:gen` 直接抛「可核端点不足 20 条，只有 0」——**越健康越生成不出来**，是个反向激励。
+ * 现在改为 import 测量器拿真实的 BE 路由表，健康度再高也拿得到端点。
+ */
+const { measure } = require('./endpoint-coverage.js');
+const measured = measure();
+const rep = rd('前端可见性与覆盖率测量.md');   // 仅用于页脚注明来源时间
 const PLACEHOLDER = /^\/api\/(x|\.\.\.|\*|:id|\w+:\w*)$/;
-const eps = [...new Set((rep.match(/\/api\/[A-Za-z0-9_\-.:]+/g) || [])
-  .map((p) => p.replace(/[.,;:]+$/, ''))
+/** 全部真实后端端点（形如 `/api/pet/capture`），剔除占位与根常量 */
+const eps = [...measured.routes.keys()]
+  // routes 的 key 是 `GET /api/achievement`（方法 + 空格 + 路径）；待核清单只要路径本身
+  .map((k) => String(k).replace(/^[A-Z]+\s+/, '').trim())
+  .filter((p) => p.startsWith('/api/'))
   .filter((p) => p.split('/').filter(Boolean).length >= 2)
-  .filter((p) => !PLACEHOLDER.test(p) && p !== '/api'))].sort();
-if (eps.length < NEED) throw new Error('报告里可核端点不足 ' + NEED + ' 条，只有 ' + eps.length);
+  .filter((p) => !PLACEHOLDER.test(p) && p !== '/api')
+  .filter((p, i, a) => a.indexOf(p) === i)   // 去重（同一路径可能注册多个方法）
+  .sort();
+if (eps.length < NEED) throw new Error('路由表里可核端点不足 ' + NEED + ' 条，只有 ' + eps.length);
 
 const feBlobs = fs.readdirSync(path.join(ROOT, 'public', 'js')).filter((f) => f.endsWith('.js'))
   .map((f) => ({ f, lines: rd('public/js/' + f).split('\n') }));

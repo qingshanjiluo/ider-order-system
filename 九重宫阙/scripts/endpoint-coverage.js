@@ -230,6 +230,11 @@ function measure() {
     ghost: ghost.sort((a, b) => a.call.localeCompare(b.call)),
     feNotCovered: feOnly.sort(),
     unwired: unwired.sort(),
+    // 轮104：把真实路由表导出去 —— `gen-review-sheet.js` 需要"全部端点"来抽人工待核清单。
+    // 此前它去 grep 报告正文，而报告只列异常清单（未接线/幽灵），项目一健康就抽不到端点，
+    // review:gen 直接抛错（越健康越生成不出来）。导出路由表让下游拿到稳定数据源。
+    // key 形如 `GET /api/achievement`（与 sample 同形）。
+    routes: new Map([...be.routes.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0])))),
     sample: [...be.routes.keys()].sort().slice(0, 8)
   };
 }

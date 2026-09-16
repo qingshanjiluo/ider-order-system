@@ -86,17 +86,26 @@ for (const r of realms) {
   const t = targetAtk(r.name);
   const list = (db.monsters || []).filter((m) => realmOfMonster(m) === r);
   if (!list.length) { console.log(`  ${r.name.padEnd(4)} ${String(midLevel(r)).padStart(3)}  ${String(playerAtk).padStart(7)}  ${String(Math.round(t.atk)).padStart(9)}  ${t.pressure.toFixed(2).padStart(8)}  —（无怪）`); continue; }
-  const cur = list.map((m) => { try { return Number(JSON.parse(m.stats || '{}').attack) || 0; } catch (e) { return 0; } }).sort((a, b) => a - b);
-  const curMed = cur[Math.floor(cur.length / 2)];
-  // 按"该怪的相对强度"分配：保持池内相对关系（以当前中位为锚，整体等比缩放到目标中位）
-  const ratio = curMed > 0 ? t.atk / curMed : 1;
+  // ⚠ 幂等要点（踩过）：目标值必须是**由怪自身稳定属性算出的绝对值**。
+  //   若写成"当前攻击值 × 比例"，每跑一次都会再乘一遍 —— 实测跑两次存档哈希就变，
+  //   投产链失去幂等（章程 R12.3 要求的"复跑逐字节一致"）。
+  //
+  //   本脚本改的是 attack，所以**不能用 attack 当锚**。改用 **hp 的相对分位**：
+  //   血量由 rebalance-pool 定稿（本脚本不动它），是稳定且语义正确的强度代理 ——
+  //   "血厚的怪攻击也高"正是我们想要的池内形态。
+  const hpOf = (m) => { try { return Number(JSON.parse(m.stats || '{}').hp) || 0; } catch (e) { return 0; } };
+  const hps = list.map(hpOf).filter((x) => x > 0).sort((a, b) => a - b);
+  const hpMed = hps.length ? hps[Math.floor(hps.length / 2)] : 0;
   for (const m of list) {
-    let st; try { st = JSON.parse(m.stats || '{}'); } catch (e) { continue; }
-    const oldAtk = Number(st.attack) || 0;
-    if (!oldAtk) continue;
-    const newAtk = Math.max(1, Math.round(oldAtk * ratio));
+    const hp = hpOf(m);
+    if (!hp) continue;
+    // 相对强度 = 本池血量分位（中位为 1）；夹在 [0.5, 1.6] 内，避免极端怪被拉飞
+    const rel = hpMed > 0 ? Math.min(1.6, Math.max(0.5, hp / hpMed)) : 1;
+    const newAtk = Math.max(1, Math.round(t.atk * rel));
     plan.push({ m, newAtk, realm: r.name });
   }
+  // 表里"当前中位"用**改前的攻击中位**（便于人眼对比），改后中位由 plan 统计
+  const curMed = list.map((m) => { try { return Number(JSON.parse(m.stats || '{}').attack) || 0; } catch (e) { return 0; } }).sort((a, b) => a - b)[Math.floor(list.length / 2)];
   const after = plan.filter((p) => p.realm === r.name).map((p) => p.newAtk).sort((a, b) => a - b);
   console.log(`  ${r.name.padEnd(4)} ${String(midLevel(r)).padStart(3)}  ${String(playerAtk).padStart(7)}  ${String(Math.round(t.atk)).padStart(9)}  ${t.pressure.toFixed(2).padStart(8)}  ${String(curMed).padStart(8)}  ${String(after[Math.floor(after.length / 2)]).padStart(10)}  ${String(list.length).padStart(4)}`);
 }

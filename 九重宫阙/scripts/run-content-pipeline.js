@@ -5,10 +5,14 @@
  *   1. seed-content     新增 48 只怪 + 坊市上架（id 安全追加，不覆盖）
  *   2. align-monsters   把越出地图区间的怪拉回区间，并按"新等级所属池中位"配血
  *   3. rebalance-pool   池水位回调 + 池内补血 + 图内补血（循环迭代到收敛）
- *   4. dedupe-items     清同类重名（合并冗余件 + 改名区分同名不同物）
- *   5. fix-recipes      修"名字与产物对不上"的配方 + 补缺失产物 + 接新材料
- *   6. fix-dangling-refs 扫掉去重后残留的悬空引用
- *   7. content:export   把存档导出成定义台账（存档是真源）
+ *   4. align-monster-attack 怪攻击对齐玩家曲线（R13；必须在血量定稿之后）
+ *   5. dedupe-items     清同类重名（合并冗余件 + 改名区分同名不同物）
+ *   6. fix-recipes      修"名字与产物对不上"的配方 + 补缺失产物 + 接新材料
+ *   7. fix-dangling-refs 扫掉去重后残留的悬空引用
+ *   8. content:export   把存档导出成定义台账（存档是真源）
+ *
+ * 为什么 attack 排在血量之后：pressure 的目标值是"该境界玩家攻击 × 系数"，
+ * 与怪自身血量无关；但脚本内置的 TTK 护栏要用血量算"几回合打死玩家"，血量没定稿就会算错。
  *
  * 幂等：全部脚本可重复跑（第二次为 0 改动）。
  * 用法：node scripts/run-content-pipeline.js [--dry]
@@ -24,14 +28,14 @@ const STEPS = [
   ['seed-content.js', '新增内容（怪 + 坊市）'],
   ['align-monsters.js', '怪等级对齐地图区间 + 按池中位配血'],
   ['rebalance-pool.js', '池水位回调 / 池内补血 / 图内补血（迭代收敛）'],
+  ['align-monster-attack.js', '怪攻击对齐玩家曲线（TTK 护栏内置）', DRY ? ['--dry'] : ['--apply']],
   ['dedupe-items.js', '同类重名清理'],
   ['fix-recipes.js', '配方指向修正 + 缺失产物补齐'],
   ['fix-dangling-refs.js', '悬空引用清扫']
-  // ⚠ 战斗标定（scripts/calibrate-bands.js）**没有**放进自动链，原因见 开发自治章程 R13：
-  //   四段胜率带与 TTK 窗口在"段4 大乘~渡劫"上互相冲突（实测可行域极窄甚至为空），
-  //   自动跑会在两个约束间反复震荡、每轮都改库，把内容数据搅乱。
-  //   它保留为**手动诊断工具**：node scripts/calibrate-bands.js --dry（只报数不写库）。
-  //   要真正落地需先裁决"胜率带 / TTK 窗口 谁优先"，见章程 R13 的待裁决条目。
+  // ⚠ 战斗分段标定（scripts/calibrate-bands.js）**没有**放进自动链：
+  //   它是"在给定曲线上微调胜率带"的手动诊断工具，会在胜率带与 TTK 窗口间反复试探、
+  //   每轮都改库。曲线本身已由 align-monster-attack 修正（R13），标定不再需要进链。
+  //   仍可手动跑：node scripts/calibrate-bands.js（默认 dry-run，只报数）。
 ];
 
 for (const [script, label, extra] of STEPS) {

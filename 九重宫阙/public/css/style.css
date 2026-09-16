@@ -1743,3 +1743,118 @@ select.input-field {
   font-size: 10px;
   font-weight: 600;
 }
+
+/* ===== P7 剧情记年（世界锚点展示）===== */
+.lore-panel {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg2);
+}
+
+.lore-anchors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.lore-chip {
+  display: inline-block;
+  padding: 2px 9px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--red2);
+  background: rgba(196,30,58,0.07);
+  border: 1px solid rgba(196,30,58,0.22);
+  border-radius: 11px;
+  cursor: default;
+}
+
+.lore-para {
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--text);
+  margin: 0 0 8px;
+  text-indent: 2em;   /* 中文段落首行缩进，读起来像书 */
+}
+
+.lore-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+
+.lore-note {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.7;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  background: rgba(201,169,110,0.08);
+  border-left: 2px solid var(--gold);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.lore-timeline {
+  border-left: 2px solid var(--border);
+  padding-left: 14px;
+  position: relative;
+}
+
+.lore-event {
+  margin-bottom: 14px;
+  position: relative;
+}
+
+/* 时间轴节点：小圆点压在竖线上 */
+.lore-event::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.lore-event-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 2px;
+}
+
+.lore-age { font-weight: 600; color: var(--text); }
+.lore-era {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: rgba(201,169,110,0.16);
+  color: #8a6a2a;
+  font-size: 10px;
+}
+.lore-type { color: var(--text2); }
+
+.lore-event-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.lore-event-body {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+[data-theme="dark"] .lore-panel { background: #16213e; border-color: #333355; }
+[data-theme="dark"] .lore-note { background: rgba(201,169,110,0.12); }
+[data-theme="dark"] .lore-chip { color: #e8a0a8; background: rgba(196,30,58,0.18); border-color: rgba(196,30,58,0.4); }

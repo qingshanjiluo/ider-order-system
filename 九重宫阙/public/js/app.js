@@ -3271,8 +3271,14 @@ async function loadChronicleSub(sub, btn) {
     if (sub === 'biography') {
       const bio = await api.getBiography();
       const paras = [...(bio.paragraphs || []), ...(bio.aiParagraphs || [])];
+      // P7 批2：世界锚点条（纪元 / 宗门 / 本境风物）
+      const anchors = [];
+      if (bio.era) anchors.push(`<span class="lore-chip">纪元 · ${bio.era}</span>`);
+      if (bio.sect) anchors.push(`<span class="lore-chip">宗门 · ${bio.sect}</span>`);
+      if (bio.realmLore) anchors.push(`<span class="lore-chip" title="${bio.realmLore.danger || ''}">天时 · ${bio.realmLore.air || ''}</span>`);
       box.innerHTML = `
-        <div style="padding:12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">
+        <div class="lore-panel">
+          <div class="lore-anchors">${anchors.join('')}</div>
           <div style="font-size:13px;font-weight:600;margin-bottom:8px;">${bio.origin} ${bio.constitution ? `<span style="color:#c9a227;font-size:11px;">【${bio.constitution}】</span>` : ''}</div>
           ${paras.map(p => `<p style="font-size:12px;line-height:1.8;color:var(--text);margin:0 0 8px;">${p}</p>`).join('')}
           <button class="btn small" onclick="enhanceBiography(this)">AI 润色传记</button>
@@ -3281,14 +3287,23 @@ async function loadChronicleSub(sub, btn) {
     } else {
       const data = await api.getChronicle();
       box.innerHTML = `
-        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">当前 ${data.character.reincarnationCount} 世 · 现龄 ${data.currentAge} 岁</div>
-        <div style="border-left:2px solid var(--border);padding-left:12px;">
+        <div class="lore-header">
+          <span>当前 ${data.character.reincarnationCount} 世 · 现龄 ${data.currentAge} 岁</span>
+          ${data.currentEra ? `<span class="lore-chip">${data.currentEra}</span>` : ''}
+        </div>
+        ${data.eraNote ? `<div class="lore-note">${data.eraNote}</div>` : ''}
+        ${data.realmLore ? `<div class="lore-note">此境天时：${data.realmLore.air}；${data.realmLore.body}。</div>` : ''}
+        <div class="lore-timeline">
           ${(data.events || []).map(e => `
-            <div style="margin-bottom:10px;">
-              <div style="font-size:11px;color:var(--text2);">${e.age} 岁 · ${e.typeTitle}</div>
-              <div style="font-size:12px;font-weight:600;">${e.title || ''}</div>
-              <div style="font-size:12px;color:var(--text);line-height:1.6;">${e.content || ''}</div>
-            </div>`).join('') || '<div style="font-size:12px;color:var(--text2);">尚无记年事件</div>'}
+            <div class="lore-event">
+              <div class="lore-event-head">
+                <span class="lore-age">${e.age} 岁</span>
+                ${e.era ? `<span class="lore-era">${e.era}</span>` : ''}
+                <span class="lore-type">${e.typeTitle}</span>
+              </div>
+              <div class="lore-event-title">${e.title || ''}</div>
+              <div class="lore-event-body">${e.content || ''}</div>
+            </div>`).join('') || ui.emptyState('list', '尚未留下记年', '修行尚浅，待有突破、机缘或劫数时自会落笔')}
         </div>`;
     }
   } catch (e) {

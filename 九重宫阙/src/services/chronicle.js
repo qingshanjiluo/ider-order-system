@@ -3,10 +3,14 @@
  *  - 编年史：lifespan_events 按游戏年排序，年龄换算（24h=10年 → 事件时年龄）
  *  - 开局传记：程序化 name 传（出身词库 × 灵根体质，按 character_id 确定性播种）
  *  - AI 增强：purpose='lore' 生成，approve 后落到 character.biography_ai
+ *
+ * P7 批2：接入 src/data/world-lore.js 的世界观锚点 ——
+ *   传记补「入门宗门/所在之地/纪元」，编年史每条事件带纪元，并附该境界的风物注。
  */
 const store = require('../db/store');
 const { loadDatabase } = require('../database');
 const gameTime = require('./gameTime');
+const lore = require('../data/world-lore');
 
 const EVENT_TITLES = {
   birth: '降世', breakthrough: '突破', heavy_injury: '重伤', pass_away: '坐化',
@@ -41,7 +45,7 @@ function seededRandom(seed) {
   };
 }
 
-/** 开局传记（name 传）：程序化生成，特殊灵根 → 特殊体质 */
+/** 开局传记（name 传）：程序化生成，特殊灵根 → 特殊体质；P7 批2 补世界锚点 */
 function getBiography(character) {
   const rnd = seededRandom(Number(character.id) || 1);
   const origin = ORIGINS[Math.floor(rnd() * ORIGINS.length)];
@@ -54,40 +58,81 @@ function getBiography(character) {
   const constitution = special
     ? `更兼天生异禀——【${SPECIAL_CONSTITUTIONS[special.type].name}】：${SPECIAL_CONSTITUTIONS[special.type].text}`
     : '';
+
+  // P7：世界锚点 —— 出生年代落纪元，境界给风物，宗门（若已入）给门规与试炼
+  const gameYear = Number(character.age_years || 0);
+  const era = lore.eraForYear(gameYear);
+  const realmName = character.realm || '凡人';
+  const realmLore = lore.loreForRealm(realmName);
+  const sect = lookupSect(character);
+  const sectLore = sect ? lore.loreForSect(sect.name) : null;
+
   const paragraphs = [
-    `${character.name}，${origin.name}也。`,
+    `${character.name}，${origin.name}也。当其时，${era.name}——${era.note}。`,
     origin.text,
     `灵根品鉴：${rootText}。${constitution}`,
+    sect
+      ? `后入${sect.name}，山门在${sectLore.land}，${sectLore.era}，门规曰「${sectLore.creed}」。入门那一关是：${sectLore.trial}。`
+      : `尚无宗门可依，只身行于${realmLore.air}的天地间。`,
+    `${realmLore.body}。然${realmLore.danger}。`,
     `年方十六，初入修行界。此后种种，皆由记年如实录之。`
   ];
   return {
     origin: origin.name,
     paragraphs,
     constitution: special ? SPECIAL_CONSTITUTIONS[special.type].name : null,
+    era: era.name,
+    sect: sect ? sect.name : null,
+    realmLore: realmLore,
     aiEnhanced: Boolean(character.biography_ai)
   };
 }
 
-/** 编年史：按游戏年排序 + 年龄显示 */
+/** 找角色所属宗门（member 表 → sect 表；无则 null，不抛错） */
+function lookupSect(character) {
+  try {
+    const members = store.queryRel('sect_members', { character_id: character.id }, 'rowid') || [];
+    if (!members.length) return null;
+    const db = loadDatabase();
+    const sectId = Number(members[0].sect_id);
+    const sect = (db.sect || []).find((s) => Number(s.id) === sectId);
+    return sect ? { id: sect.id, name: sect.name } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** 编年史：按游戏年排序 + 年龄显示；P7 批2 每条带纪元 */
 function getChronicle(character) {
   const rows = store.queryRel('lifespan_events', { character_id: character.id }, 'rowid');
   const events = rows
-    .map(r => ({
-      id: r.id,
-      gameYear: Number((r.game_year || 0).toFixed(2)),
-      age: Math.floor(gameTime.STARTING_AGE + (r.game_year || 0)),
-      type: r.type,
-      typeTitle: EVENT_TITLES[r.type] || '记事',
-      title: r.title,
-      content: r.content,
-      at: r.created_at
-    }))
+    .map(r => {
+      const gy = Number((r.game_year || 0).toFixed(2));
+      return {
+        id: r.id,
+        gameYear: gy,
+        era: lore.eraForYear(gy).name,
+        age: Math.floor(gameTime.STARTING_AGE + (r.game_year || 0)),
+        type: r.type,
+        typeTitle: EVENT_TITLES[r.type] || '记事',
+        title: r.title,
+        content: r.content,
+        at: r.created_at
+      };
+    })
     .sort((a, b) => a.gameYear - b.gameYear || a.id - b.id);
+  const curEra = lore.eraForYear(character.age_years || 0);
   return {
     character: { id: character.id, name: character.name, reincarnationCount: character.reincarnation_count || 0 },
     currentAge: Math.floor(gameTime.STARTING_AGE + (character.age_years || 0)),
+    currentEra: curEra.name,
+    eraNote: curEra.note,
+    realmLore: lore.loreForRealm(character.realm || '凡人'),
     events
   };
 }
 
-module.exports = { getChronicle, getBiography, EVENT_TITLES, ORIGINS, SPECIAL_CONSTITUTIONS };
+module.exports = {
+  getChronicle, getBiography, EVENT_TITLES, ORIGINS, SPECIAL_CONSTITUTIONS,
+  loreForRealm: lore.loreForRealm, eraForYear: lore.eraForYear
+};

@@ -58,6 +58,8 @@ const SUITES = [
   ['S5 存档快照与恢复', 'scripts/test-db-snapshot.js'],
   // 轮101 P7：美术资产完整性（磁盘↔界面↔manifest 三向对账 + 体积/尺寸/接线锁）
   ['P7 美术资产', 'scripts/test-assets.js'],
+  // 轮102 P7：世界观锚点（纪元/九境风物/宗门史/世界事件 + 传记确定性 + 前端接线）
+  ['P7 世界观锚点', 'scripts/test-world-lore.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

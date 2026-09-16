@@ -230,6 +230,29 @@ t('具名目标：杀错怪不推进，杀对怪才推进', () => {
   assert.strictEqual(inst.stages[0].objectives[0].current, 3, '杀对怪没推进/未封顶');
 });
 
+t('increment 只加到命中的目标上（不许"总件数 × 多物品名"式误加）', () => {
+  // 这条锁防的是采集钩子的一个真实坑：
+  //   「凑齐 镜心砂 3 件」当玩家一次采到「灵草 + 灵草」时，
+  //   若调用方写成 updateQuestProgress(cid,'collect', 2, {item:['灵草','灵草']})，
+  //   increment=2 会加到每个命中目标上 —— 灵草不是镜心砂，本不该推进，却按 2 加了。
+  //   正确写法是按物品名聚合：每件物品一次调用、increment = 该件数。
+  const obj = { type: 'collect', target: '镜心砂', current: 0, required: 3 };
+  assert.ok(!Q.objectiveMatches(obj, 'collect', { item: '灵草' }), '采到别的物品却命中镜心砂目标');
+  assert.ok(Q.objectiveMatches(obj, 'collect', { item: '镜心砂' }), '采到镜心砂却没命中');
+});
+
+t('采集与炼丹的 collect 调用点按物品名聚合（源码锁）', () => {
+  const gsrc = fs.readFileSync(path.join(ROOT, 'src', 'routes', 'gathering.js'), 'utf8');
+  assert.ok(/byName\.set\(nm, \(byName\.get\(nm\) \|\| 0\) \+ 1\)/.test(gsrc),
+    'gathering 的 collect 未按物品名聚合件数');
+  // 反证：不许再出现"一次调用传总件数 + 物品数组"的写法
+  assert.ok(!/updateQuestProgress\(character\.id, 'collect', gatherCtx\.item\.length/.test(gsrc),
+    'gathering 又变回"总件数 + 物品数组"（会把增量加到无关目标上）');
+  const asrc = fs.readFileSync(path.join(ROOT, 'src', 'routes', 'alchemy.js'), 'utf8');
+  assert.ok(/updateQuestProgress\(character\.id, 'collect', quantity, \{ item: result \? result\.name/.test(asrc),
+    'alchemy 的 collect 增量语义不是"该物品的数量"');
+});
+
 t('日常差事的 objectives 与 stages[0].objectives 同引用（接任务落库路径）', () => {
   // 路由 accept 里日常走另一条构造路径（不经 instantiate），同样要守这个不变量。
   const src = fs.readFileSync(path.join(ROOT, 'src', 'routes', 'quests.js'), 'utf8');

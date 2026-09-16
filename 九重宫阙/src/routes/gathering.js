@@ -137,7 +137,17 @@ router.post('/gather', auth, (req, res) => {
         : undefined
     };
     updateQuestProgress(character.id, 'gather', 1, gatherCtx);
-    if (gatherCtx.item) for (const nm of gatherCtx.item) updateQuestProgress(character.id, 'collect', 1, { item: nm });
+    // collect：**按物品名聚合件数**再一次报上去。
+    // 为什么不是 for 循环逐个调用：updateQuestProgress 内部 loadDatabase+saveDatabase，
+    // 循环 N 次就是 N 次全量读写存档（慢且无意义）。
+    // 为什么不是"一次带总件数 + 全部物品名"：increment 会加到**每个**命中的目标上，
+    // 那样「凑齐 镜心砂 3 件」会被采到 2 件别的东西时误加 2。聚合到"每件物品一次调用"才精确。
+    // （同种物品采到多件时 gatheredItems 有多个同名元素，聚合后 increment = 该件数，正确。）
+    if (gatherCtx.item && gatherCtx.item.length) {
+      const byName = new Map();
+      for (const nm of gatherCtx.item) byName.set(nm, (byName.get(nm) || 0) + 1);
+      for (const [nm, cnt] of byName) updateQuestProgress(character.id, 'collect', cnt, { item: nm });
+    }
 
     saveDatabase(db);
 

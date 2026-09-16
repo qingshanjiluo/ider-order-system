@@ -66,6 +66,8 @@ const SUITES = [
   ['P7 剧情故事层', 'scripts/test-quest-lore.js'],
   // 轮105 P7：剧情可完成性（剧情用到的每个目标类型都必须有进度源，否则接了永远完不成）
   ['P7 剧情可完成性', 'scripts/audit-quest-completability.js', ['--gate']],
+  // 轮106 P7：剧情奖励与经济曲线对齐（不许一条委托白送一级、不许同期报酬与工作量脱钩、不许硬通货超发）
+  ['P7 剧情奖励对齐', 'scripts/audit-quest-rewards.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

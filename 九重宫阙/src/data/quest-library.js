@@ -86,7 +86,7 @@ const QUESTS = [
     ],
     closing: '老人捻起草叶下那点黑土，嗅了嗅，脸色变了：「这是尸气。山麓底下压着一座旧墓，怕是松动了。」',
     epilogue: '青云山麓的动物渐渐回巢，但老人每日多绕山走一圈。他说：得看着点。',
-    rewards: { exp: 120, spirit_stone: 30, items: [{ name: '回灵丹', count: 3 }] },
+    rewards: { exp: 100, spirit_stone: 30, items: [{ name: '回灵丹', count: 3 }] },
     loreHooks: { era: true, realm: '炼气' }
   },
   {
@@ -104,7 +104,7 @@ const QUESTS = [
     ],
     closing: '沈砚收剑入鞘：「三剑你只接了两剑——第三剑，等你哪天想明白为何执剑，再来。」',
     epilogue: '你成了青云宗外门弟子。名册上添了一行，墨迹未干。',
-    rewards: { exp: 400, spirit_stone: 80, items: [{ name: '疗伤丹', count: 5 }] },
+    rewards: { exp: 400, spirit_stone: 100, items: [{ name: '疗伤丹', count: 5 }] },
     loreHooks: { sect: '青云宗', era: true }
   },
   {
@@ -122,7 +122,7 @@ const QUESTS = [
     ],
     closing: '阿芷数着丹药，忽然抬头：「你手上有茧，是拿剑的。可你肯蹲下来采药——师父说，这种人能走远。」',
     epilogue: '药王谷的药圃重新围上了篱笆。阿芷在篱边种了一株不知名的花。',
-    rewards: { exp: 260, spirit_stone: 60, items: [{ name: '培元丹', count: 3 }] },
+    rewards: { exp: 300, spirit_stone: 80, items: [{ name: '培元丹', count: 3 }] },
     loreHooks: { realm: '炼气' }
   },
   {
@@ -140,7 +140,7 @@ const QUESTS = [
     ],
     closing: '石老三把新锻的器往水里一淬，白气蒸腾：「成了。记住了——器是死的，握器的手是活的。别学那些只认宝贝的。」',
     epilogue: '黄土坡多了个铁匠炉。路过的人都说，那炉火比别处旺。',
-    rewards: { exp: 300, spirit_stone: 90, items: [{ name: '回灵丹', count: 5 }] },
+    rewards: { exp: 300, spirit_stone: 80, items: [{ name: '回灵丹', count: 5 }] },
     loreHooks: { era: true }
   },
   {
@@ -158,7 +158,7 @@ const QUESTS = [
     ],
     closing: '鬼差沉默很久：「原来是有人在下头立了门。多谢你——我记着你的脚步声了，来日你走这条道时，我放你过去。」',
     epilogue: '幽冥旧道的风小了些。偶有夜行人说，见过一个没有脸的人在道口站着，像在等谁。',
-    rewards: { exp: 420, spirit_stone: 110, items: [{ name: '传音符', count: 2 }] },
+    rewards: { exp: 300, spirit_stone: 80, items: [{ name: '传音符', count: 2 }] },
     loreHooks: { era: true, realm: '筑基' }
   },
 
@@ -178,7 +178,7 @@ const QUESTS = [
     ],
     closing: '韩七捧着断剑看了半炷香，忽然跪了下去：「是太虚剑派上一代掌门的剑。他三百年前入虚空，再没回来——如今剑回来了，人没有。」',
     epilogue: '无字碑上多了一行小字：太虚剑派掌门之剑，未知其人。',
-    rewards: { exp: 1200, spirit_stone: 320, items: [{ name: '青钢剑', count: 1 }] },
+    rewards: { exp: 1000, spirit_stone: 300, items: [{ name: '青钢剑', count: 1 }] },
     loreHooks: { sect: '太虚剑派', era: true }
   },
   {
@@ -196,7 +196,7 @@ const QUESTS = [
     ],
     closing: '炉火转青的那一夜，苏九没睡。他说：「镜心砂照的是人心。你能从潭底上来，说明心里还没结冰。」',
     epilogue: '丹霞谷的炉火自此常年不熄。谷口立了块新碑，刻着历代取砂者的名字——第十一行是你。',
-    rewards: { exp: 1800, spirit_stone: 450, items: [{ name: '大疗伤丹', count: 2 }] },
+    rewards: { exp: 700, spirit_stone: 200, items: [{ name: '大疗伤丹', count: 2 }] },
     loreHooks: { sect: '丹霞谷', era: true }
   },
   {
@@ -214,7 +214,7 @@ const QUESTS = [
     ],
     closing: '幼崽在你手边睡着了。乌娅说：「它记住你了。万兽门的人不叫这个『契约』——我们叫『认得』。」',
     epilogue: '神兽平原的猎套被清了个干净。那年冬天，有人在岭上看见一头青龙盘旋。',
-    rewards: { exp: 1500, spirit_stone: 380, items: [{ name: '妖兽内丹', count: 2 }] },
+    rewards: { exp: 1000, spirit_stone: 300, items: [{ name: '妖兽内丹', count: 2 }] },
     loreHooks: { sect: '万兽门' }
   },
   {
@@ -232,7 +232,7 @@ const QUESTS = [
     ],
     closing: '老麦把账合上：「是内部人做的。我不报官——散修盟没有官。我把他的盟石收了，让他自己走。」',
     epilogue: '坊市的秤重新校了一遍。老麦在门口挂了块木牌：散修盟，不欺散修。',
-    rewards: { exp: 1400, spirit_stone: 520, items: [{ name: '五行灵石', count: 3 }] },
+    rewards: { exp: 1000, spirit_stone: 300, items: [{ name: '五行灵石', count: 3 }] },
     loreHooks: { sect: '散修盟', era: true }
   },
   {
@@ -250,7 +250,7 @@ const QUESTS = [
     ],
     closing: '柳无咎听完，把龟甲收了：「你听到的是『末法』两个字。三百年来，阁里推演过七次，七次都是这两个字。」他顿了顿，「此事你不必再问。」',
     epilogue: '时空裂缝被天机阁以三座镇石封住。封石上无名，只有一道刻痕。',
-    rewards: { exp: 2200, spirit_stone: 600, items: [{ name: '传音符', count: 3 }] },
+    rewards: { exp: 2000, spirit_stone: 600, items: [{ name: '传音符', count: 3 }] },
     loreHooks: { sect: '天机阁', era: true }
   },
 
@@ -269,7 +269,7 @@ const QUESTS = [
     ],
     closing: '顾长宁把酒喝干：「我记下了。往后你若有难处，在旧道上喊我一声。」',
     epilogue: '旧道上多了一间草屋。屋前挂着块木牌，写着一个「顾」字。',
-    rewards: { exp: 1600, spirit_stone: 400, items: [{ name: '五行灵石', count: 2 }] },
+    rewards: { exp: 700, spirit_stone: 200, items: [{ name: '五行灵石', count: 2 }] },
     loreHooks: { sect: '散修盟', era: true }
   },
 
@@ -289,7 +289,7 @@ const QUESTS = [
     ],
     closing: '陈无涯听完你带回的话，笑了：「原来那棵松树还在。」当晚他坐化了，身周没有雷，只有一层薄薄的光。',
     epilogue: '雷鸣泽渊的雷暴歇了七日。有人说那是天地替一个人送行。',
-    rewards: { exp: 4000, spirit_stone: 1000, items: [{ name: '五行灵石', count: 5 }] },
+    rewards: { exp: 3000, spirit_stone: 800, items: [{ name: '五行灵石', count: 5 }] },
     loreHooks: { realm: '化神', era: true }
   },
   {
@@ -307,7 +307,7 @@ const QUESTS = [
     ],
     closing: '无名的声音最后一次响起：「你出来了。上一次有人出来，是四百年前。」',
     epilogue: '无相幻境依旧开着。境边多了一行不知谁刻的字：进来的人，请对自己诚实。',
-    rewards: { exp: 6000, spirit_stone: 1500, items: [{ name: '星陨砂', count: 3 }] },
+    rewards: { exp: 11000, spirit_stone: 3000, items: [{ name: '星陨砂', count: 3 }] },
     loreHooks: { era: true }
   },
   {
@@ -325,7 +325,7 @@ const QUESTS = [
     ],
     closing: '玄鸦递来一盏冷茶：「七日里你睁了几次眼，我都记着。三次——比上一代执事少两次。」',
     epilogue: '幽冥殿的名册上添了一行。殿后石台上，多了一个坐痕。',
-    rewards: { exp: 5500, spirit_stone: 1400, items: [{ name: '回城符', count: 5 }] },
+    rewards: { exp: 6000, spirit_stone: 2000, items: [{ name: '回城符', count: 5 }] },
     loreHooks: { sect: '幽冥殿', era: true }
   },
   {
@@ -343,7 +343,7 @@ const QUESTS = [
     ],
     closing: '阵眼合上的那一刻，轮台五色齐亮。桑无衣长出一口气：「四百年了。我师父没做成，我师父的师父也没做成。」',
     epilogue: '五行轮台重新流转。周围百里草木，那年格外茂盛。',
-    rewards: { exp: 8000, spirit_stone: 2000, items: [{ name: '紫晶砂', count: 5 }] },
+    rewards: { exp: 10000, spirit_stone: 3000, items: [{ name: '紫晶砂', count: 5 }] },
     loreHooks: { era: true }
   },
   {
@@ -361,7 +361,7 @@ const QUESTS = [
     ],
     closing: '丹成九枚。苏未晞把其中一枚放进祖父的旧炉里：「这一枚不给人吃。留着，让后来的人知道，火没灭过。」',
     epilogue: '丹霞谷的火换了三代人守，仍未熄。谷志上记着：某年某月，炉火转赤，成丹九。',
-    rewards: { exp: 9000, spirit_stone: 2400, items: [{ name: '洗髓丹', count: 5 }] },
+    rewards: { exp: 6000, spirit_stone: 2000, items: [{ name: '洗髓丹', count: 5 }] },
     loreHooks: { sect: '丹霞谷', era: true }
   },
 
@@ -381,7 +381,7 @@ const QUESTS = [
     ],
     closing: '郑九看着你带回来的拓片，一个字一个字念：「太初纪，天门守宫，坠。」他搓了搓手，「太初纪的东西……那得是多少年前了？」',
     epilogue: '星宫遗墟被宗门接管。郑九得了块地，在废墟边上盖了间屋，不再拾荒。',
-    rewards: { exp: 15000, spirit_stone: 4000, items: [{ name: '星陨砂', count: 5 }] },
+    rewards: { exp: 28000, spirit_stone: 8000, items: [{ name: '星陨砂', count: 5 }] },
     loreHooks: { era: true, realm: '大乘' }
   },
   {
@@ -399,7 +399,7 @@ const QUESTS = [
     ],
     closing: '裴烈听完，把刀收了：「你的意思是，那底下的东西不是在涨，是在『醒』。」他转身往营里走，「我得把这三万人撤回来。」',
     epilogue: '镇魔军撤了七成。深渊外立起九座镇石，铭文只有四个字：不得擅入。',
-    rewards: { exp: 20000, spirit_stone: 5500, items: [{ name: '紫晶砂', count: 8 }] },
+    rewards: { exp: 20000, spirit_stone: 6000, items: [{ name: '紫晶砂', count: 8 }] },
     loreHooks: { era: true }
   },
   {
@@ -417,7 +417,7 @@ const QUESTS = [
     ],
     closing: '柳听雪看完记录，把龟甲一枚枚收进匣子里：「最薄的那一处，在仙界入口。也就是说，末法是从上头开始的。」她合上匣子，「此事不可外传。」',
     epilogue: '天机阁的推演台封了。封台那日，柳听雪独自在台上坐到天亮。',
-    rewards: { exp: 28000, spirit_stone: 7000, items: [{ name: '五雷符', count: 8 }] },
+    rewards: { exp: 29000, spirit_stone: 8000, items: [{ name: '五雷符', count: 8 }] },
     loreHooks: { sect: '天机阁', era: true }
   },
   {
@@ -435,7 +435,7 @@ const QUESTS = [
     ],
     closing: '秦无咎一页一页翻那册子，翻了整整一夜。天亮时他说：「三千七百个名字。够我刻到死了。」',
     epilogue: '远古战场东头立起一片碑林。碑上有名，碑前有花。',
-    rewards: { exp: 30000, spirit_stone: 8000, items: [{ name: '造化灵石', count: 3 }] },
+    rewards: { exp: 33000, spirit_stone: 9000, items: [{ name: '造化灵石', count: 3 }] },
     loreHooks: { era: true }
   },
   {
@@ -453,7 +453,7 @@ const QUESTS = [
     ],
     closing: '那人站起来，朝涧对岸看了一眼：「你比他们多一样东西——你身后的那些人，你都记得。」他退开一步，「去吧。」',
     epilogue: '仙人跳涧的水声依旧。有人说看见一道身影过去了，也有人说没有。涧边多了一行字：来过，未过。',
-    rewards: { exp: 50000, spirit_stone: 15000, items: [{ name: '造化灵石', count: 6 }] },
+    rewards: { exp: 36000, spirit_stone: 10000, items: [{ name: '造化灵石', count: 6 }] },
     loreHooks: { era: true, realm: '渡劫' }
   }
 ];

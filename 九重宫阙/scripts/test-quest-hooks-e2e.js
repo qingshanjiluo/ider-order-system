@@ -1,6 +1,11 @@
 /**
- * G8 · 任务进度钩子（轮83 批5）——8 条任务里 level/checkin/guild 三类此前全库无进度源，
+ * G8 · 任务进度钩子（轮83 批5；轮104 改接剧情委托）——level/checkin/guild 三类此前全库无进度源，
  * 接了也"永不可完成"；本套把三钩子钉成 HTTP 级行为断言（craft 两档由轮83 源码锁盯）。
+ *
+ * 轮104 变更：任务定义从"硬编码 8 条数字 id"迁到 `src/data/quest-library.js` 的剧情委托
+ * （字符串 id，如 `v1_02_sect_gate`）。本套不再写死旧数字 id，而是**从剧情库里按目标类型反查**：
+ * 这样以后再增删剧情条目，本套不会因为"id 对不上"而假红 —— 它测的是**钩子机制**，
+ * 不是"某条特定委托还在不在"。
  * 隔离：临时 DSH_DATA_DIR，进程内挂载，正式档只读比对。
  */
 const assert = require('assert');
@@ -13,6 +18,21 @@ process.env.DSH_DATA_DIR = TMP;
 
 const LIVE_DB = path.join(__dirname, '..', 'data', 'game.db');
 const liveBefore = fs.existsSync(LIVE_DB) ? fs.statSync(LIVE_DB) : null;
+
+/**
+ * 按目标类型反查一条**新号接得到**的委托 id。
+ *
+ * 优先日常差事：日常没有境界闸（剧情委托有，炼气期新号接不到金丹委托），
+ * 本套要测的是钩子机制，不该被境界门槛挡住；找不到才退到剧情委托。
+ */
+function questIdWithObjective(type) {
+  const QL = require('../src/data/quest-library');
+  const daily = QL.DAILY_CHORES.find((d) => d.objectives.some((o) => o.type === type));
+  if (daily) return daily.id;
+  const hit = QL.allQuests().find((q) => q.stages.some((s) => s.objectives.some((o) => o.type === type)));
+  if (hit) return hit.id;
+  throw new Error('剧情库与日常里都没有带 ' + type + ' 目标的委托 —— 本套的钩子断言失去覆盖，请补内容');
+}
 
 const express = require('express');
 const { loadDatabase, saveDatabase, closeDatabase } = require('../src/database');
@@ -55,48 +75,53 @@ const t = async (name, fn) => {
 
   const questRow = (qid) => loadDatabase().quests.find((q) => q.character_id === CID && q.quest_id === qid);
 
-  await t('签到钩子：accept 任务4 → POST 签到 → checkin 目标 0→1 达成', async () => {
-    const acc = await call('POST', '/api/quests/accept', { questId: 4 }, TOKEN);
-    assert.strictEqual(acc.code, 200, '接受任务失败：' + JSON.stringify(acc.body));
+  await t('签到钩子：接一条带 checkin 目标的委托 → POST 签到 → checkin 目标 0→1 达成', async () => {
+    const QID = questIdWithObjective('checkin');
+    const acc = await call('POST', '/api/quests/accept', { questId: QID }, TOKEN);
+    assert.strictEqual(acc.code, 200, '接受委托失败：' + JSON.stringify(acc.body));
     const ck = await call('POST', '/api/checkin', {}, TOKEN);
     assert.strictEqual(ck.code, 200, '签到失败：' + ck.code + ' ' + JSON.stringify(ck.body));
-    const q = questRow(4);
-    assert.strictEqual(q.objectives[0].current, 1, '签到未推进任务（钩子断线）：' + JSON.stringify(q.objectives));
+    const q = questRow(QID);
+    assert.ok(q, '委托实例没落库：' + QID);
+    assert.strictEqual(q.objectives[0].current, 1, '签到未推进委托（钩子断线）：' + JSON.stringify(q.objectives));
   });
 
   await t('升级钩子：连升 N 级记 N 次（一次大经验包多级如实计数，非恒 1）', async () => {
-    const acc = await call('POST', '/api/quests/accept', { questId: 3 }, TOKEN);
-    assert.strictEqual(acc.code, 200);
-    // 临时把 required 降到 2（原 10 级要灌巨量经验，行为等价且确定性更强）
+    const QID = questIdWithObjective('level');
+    const acc = await call('POST', '/api/quests/accept', { questId: QID }, TOKEN);
+    assert.strictEqual(acc.code, 200, '接受委托失败：' + JSON.stringify(acc.body));
+    // 临时把 required 降到 2（剧情里可能要几十级，行为等价且确定性更强）
     const db = loadDatabase();
-    questRow(3).objectives[0].required = 2;
+    questRow(QID).objectives[0].required = 2;
     saveDatabase(db);
     const lv0 = loadDatabase().characters.find((c) => c.id === CID).level;
     require('../src/services/character').addExp(CID, 60000);
     const lv1 = loadDatabase().characters.find((c) => c.id === CID).level;
     assert.ok(lv1 - lv0 >= 2, `注入没换来升级（${lv0}->${lv1}），断言前提不成立`);
-    const cur = questRow(3).objectives[0].current;
+    const cur = questRow(QID).objectives[0].current;
     assert.ok(cur >= 2 && cur <= Math.min(lv1 - lv0, 2), `进度应=min(升级数,2)：cur=${cur} 升=${lv1 - lv0}`);
   });
 
-  await t('入盟钩子：accept 任务8 → join → guild 目标 0→1 达成', async () => {
+  await t('入盟钩子：接一条带 guild 目标的委托 → join → guild 目标 0→1 达成', async () => {
+    const QID = questIdWithObjective('guild');
     const db = loadDatabase();
     if (!db.guilds) db.guilds = [];
     db.guilds.push({ id: 424242, name: '钩子测试盟', leader_id: -1, level: 1, exp: 0, created_at: new Date().toISOString() });
     saveDatabase(db);
-    const acc = await call('POST', '/api/quests/accept', { questId: 8 }, TOKEN);
-    assert.strictEqual(acc.code, 200);
+    const acc = await call('POST', '/api/quests/accept', { questId: QID }, TOKEN);
+    assert.strictEqual(acc.code, 200, '接受委托失败：' + JSON.stringify(acc.body));
     const j = await call('POST', '/api/guild/join', { guildId: 424242 }, TOKEN);
     assert.strictEqual(j.code, 200, '入盟失败：' + JSON.stringify(j.body));
-    const q = questRow(8);
-    assert.strictEqual(q.objectives[0].current, 1, '入盟未推进任务（钩子断线）：' + JSON.stringify(q.objectives));
+    const q = questRow(QID);
+    assert.strictEqual(q.objectives[0].current, 1, '入盟未推进委托（钩子断线）：' + JSON.stringify(q.objectives));
   });
 
-  await t('反证：重复签到不再推（封顶语义）；未接任务的活动不落进度', async () => {
-    const q = questRow(4);
+  await t('反证：重复签到不再推（封顶语义）；未接委托的活动不落进度', async () => {
+    const QID = questIdWithObjective('checkin');
+    const q = questRow(QID);
     assert.strictEqual(q.objectives[0].current, 1, 'current 越过 required——封顶失效');
-    const acc = await call('POST', '/api/quests/accept', { questId: 4 }, TOKEN);
-    assert.strictEqual(acc.code, 400, '同任务可重复接取：' + JSON.stringify(acc.body));
+    const acc = await call('POST', '/api/quests/accept', { questId: QID }, TOKEN);
+    assert.strictEqual(acc.code, 400, '同委托可重复接取：' + JSON.stringify(acc.body));
   });
 
   await t('建盟真链条（轮84 接管 phase11 独有意）：claim→create 耗令→create 钩子推任务→入盟→赠送零和', async () => {
@@ -108,15 +133,17 @@ const t = async (name, fn) => {
       return { token: rr.body.token, id: dbc.characters.find((c) => c.user_id === rr.body.userId).id };
     };
     const C = await mk('g8c'); const D = await mk('g8d');
-    // C 接任务 8 → 领仙盟令（首次免费）→ 建盟必须真消耗令牌并推进 create 档钩子
-    assert.strictEqual((await call('POST', '/api/quests/accept', { questId: 8 }, C.token)).code, 200);
+    // C 接一条带 guild 目标的委托 → 领仙盟令（首次免费）→ 建盟必须真消耗令牌并推进 create 档钩子
+    const GQID = questIdWithObjective('guild');
+    const accC = await call('POST', '/api/quests/accept', { questId: GQID }, C.token);
+    assert.strictEqual(accC.code, 200, '接委托失败（' + GQID + '）：' + JSON.stringify(accC.body));
     const cl = await call('POST', '/api/guild/token/claim', {}, C.token);
     assert.strictEqual(cl.code, 200, 'claim 首领失败：' + JSON.stringify(cl.body));
     assert.strictEqual((await call('POST', '/api/guild/token/claim', {}, C.token)).code, 400, '邀请奖励可重领！');
     const gc = await call('POST', '/api/guild/create', { name: '钩子盟_' + Date.now().toString(36).slice(-6) }, C.token);
     assert.strictEqual(gc.code, 200, '持令建盟被拒：' + JSON.stringify(gc.body));
-    const qC = loadDatabase().quests.find((q) => q.character_id === C.id && q.quest_id === 8);
-    assert.strictEqual(qC.objectives[0].current, 1, 'create 档钩子没推任务（令牌建盟也是入盟！）');
+    const qC = loadDatabase().quests.find((q) => q.character_id === C.id && q.quest_id === GQID);
+    assert.strictEqual(qC.objectives[0].current, 1, 'create 档钩子没推委托（令牌建盟也是入盟！）');
     // 令牌必须真扣（一次性凭证，不得建完退仓）
     const db1 = loadDatabase();
     const tokRow = db1.inventory.filter((i) => i.character_id === C.id && [80, 81, 82, 83].includes(Number(i.item_id)));

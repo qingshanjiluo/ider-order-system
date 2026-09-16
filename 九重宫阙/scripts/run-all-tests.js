@@ -62,6 +62,8 @@ const SUITES = [
   ['P7 世界观锚点', 'scripts/test-world-lore.js'],
   // 轮103 P7：玩法闭环（地图有怪/等级对齐/材料无死物/物品无重名/配方引用有效）
   ['P7 玩法闭环', 'scripts/test-gameplay-loop.js'],
+  // 轮104 P7：剧情故事层（四卷 20 条委托；引用实体必须真实存在；阶段推进不许跨阶段刷满）
+  ['P7 剧情故事层', 'scripts/test-quest-lore.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

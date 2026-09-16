@@ -3489,17 +3489,80 @@ async function loadQuestsTab() {
   content.innerHTML = `
     <div class="char-panel">
       <div class="char-panel-header">
-        <div class="char-panel-title">任务</div>
+        <div class="char-panel-title">委托</div>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:16px;">
-        <button class="btn small active" onclick="loadQuestSub('active', this)">进行中</button>
-        <button class="btn small" onclick="loadQuestSub('available', this)">可接取</button>
-        <button class="btn small" onclick="loadQuestSub('completed', this)">已完成</button>
+        <button class="btn small active" onclick="loadQuestSub('active', this)">在身</button>
+        <button class="btn small" onclick="loadQuestSub('available', this)">可承接</button>
+        <button class="btn small" onclick="loadQuestSub('completed', this)">已了结</button>
+        <button class="btn small" onclick="loadQuestSub('chapters', this)">卷目</button>
       </div>
       <div id="quest-content"></div>
     </div>
   `;
   await loadQuestSub('active');
+}
+
+/* —— 委托界面的渲染工具（剧情化）—————————————————————————————
+ * 旧界面把任务显示成「kill: 3/10」这种字段名，玩家读到的是调试信息。
+ * 现在统一走这里：章节徽记 + 委托人 + 原话引用 + 阶段进度点 + 人话目标。
+ * 所有字段都可能缺（旧存档只有平铺 objectives），一律走兜底，不出现 undefined。
+ */
+function questTypeBadge(type) {
+  const m = { main: ['主线', 'var(--gold)'], side: ['支线', 'var(--text2)'], daily: ['日常', 'var(--text2)'] };
+  const [txt, color] = m[type] || [type || '委托', 'var(--text2)'];
+  return `<span style="font-size:10px;padding:2px 6px;border-radius:3px;border:1px solid ${color};color:${color};">${txt}</span>`;
+}
+
+/** 阶段进度点：●●○○○ —— 一眼看出走完几节 */
+function questStageDots(cur, total) {
+  if (!total || total <= 1) return '';
+  let s = '';
+  for (let i = 0; i < total; i++) s += i < cur ? '●' : '○';
+  return `<span style="font-size:10px;letter-spacing:2px;color:var(--gold);">${s}</span>`;
+}
+
+/** 目标一行（人话 + 进度）；label 由后端 renderObjective 给，缺了就用类型兜底 */
+function questObjectiveRow(o) {
+  const done = o.current >= o.required;
+  const label = o.label || `${o.type} ${o.current}/${o.required}`;
+  const pct = o.required > 0 ? Math.min(100, Math.round((o.current / o.required) * 100)) : 0;
+  return `
+    <div style="margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
+        <span style="color:${done ? 'var(--green)' : 'var(--text1)'};">${done ? '✓' : '○'} ${label}</span>
+        <span style="color:var(--text2);">${o.current}/${o.required}</span>
+      </div>
+      <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${done ? 'var(--green)' : 'var(--gold)'};"></div>
+      </div>
+    </div>`;
+}
+
+/** 章节标题行（卷一 · 问道 · 第二节） */
+function questChapterLine(q) {
+  if (!q.chapter || !q.volume) return '';
+  const order = q.order ? ` · 第${['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][q.order - 1] || q.order}节` : '';
+  return `<div style="font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:4px;">${q.chapter}${order}</div>`;
+}
+
+/** 委托辞（NPC 原话，带左侧引线） */
+function questBriefBlock(text) {
+  if (!text) return '';
+  return `
+    <div style="font-size:11px;color:var(--text2);line-height:1.7;padding:8px 10px;margin:6px 0 8px;
+                border-left:2px solid var(--gold);background:rgba(255,255,255,0.02);border-radius:0 4px 4px 0;">
+      ${text}
+    </div>`;
+}
+
+/** 奖励行（物品也列出来，别只给数字） */
+function questRewardLine(r) {
+  const rw = r || {};
+  const items = (rw.items || []).map((i) => `${i.name}×${i.count}`).join('、');
+  return `<div style="font-size:10px;color:var(--gold);margin-top:6px;">
+    酬谢：${rw.exp || 0} 修为、${rw.spirit_stone || 0} 灵石${items ? '、' + items : ''}
+  </div>`;
 }
 
 async function loadQuestSub(sub, btn) {
@@ -3511,51 +3574,118 @@ async function loadQuestSub(sub, btn) {
   if (!container) return;
 
   const typeNames = { main: '主线', daily: '日常', side: '支线' };
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
   try {
+    if (sub === 'chapters') {
+      // 卷目：按卷分组展示全部剧情委托（含未解锁的，让玩家看见"故事还有多长"）
+      const data = await api.request('GET', '/quests/library');
+      const vols = data.volumes || [];
+      const all = data.quests || [];
+      container.innerHTML = `
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;">卷目 · 共 ${all.length} 桩委托</div>
+        ${vols.map(v => {
+          const list = all.filter(q => q.chapter && q.chapter.volume === v.volume);
+          return `
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                <span style="font-size:12px;font-weight:600;color:var(--gold);">${esc(v.title)}</span>
+                <span style="font-size:10px;color:var(--text2);">${(v.realmRange || []).join(' · ')}</span>
+              </div>
+              <div style="font-size:10px;color:var(--text2);margin-bottom:8px;">${esc(v.note || '')}</div>
+              ${list.map(q => `
+                <div style="padding:8px 10px;margin-bottom:6px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:11px;font-weight:600;">${esc(q.name)}</span>
+                    ${questTypeBadge(q.type)}
+                  </div>
+                  <div style="font-size:10px;color:var(--text2);margin-top:3px;">${esc(q.giverLine || '')}　共 ${q.stageCount || 1} 节</div>
+                </div>`).join('')}
+            </div>`;
+        }).join('')}
+      `;
+      return;
+    }
+
     if (sub === 'available') {
       const data = await api.request('GET', '/quests/available');
       const quests = data.quests || [];
+      const dailies = data.dailies || [];
       container.innerHTML = `
-        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">可接取的任务</div>
-        ${quests.length === 0 ? '<p style="font-size:12px;color:var(--text2);">暂无可用任务</p>' : quests.map(q => `
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">可承接的委托</div>
+        ${quests.length === 0 ? `<p style="font-size:12px;color:var(--text2);">此境暂无新的委托。修行进境后，自有人来寻你。</p>` : quests.map(q => `
           <div style="padding:10px;margin-bottom:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-weight:600;">${q.name}</span>
-              <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--border);">${typeNames[q.type] || q.type}</span>
+            ${questChapterLine(q)}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-weight:600;">${esc(q.name)}</span>
+              ${questTypeBadge(q.type)}
             </div>
-            <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${q.description}</div>
-            <div style="font-size:10px;color:var(--gold);margin-bottom:6px;">奖励: ${q.rewards?.exp || 0}经验, ${q.rewards?.spirit_stone || 0}灵石</div>
-            <button class="btn small primary" onclick="handleAcceptQuest(${q.id})">接取</button>
+            <div style="font-size:10px;color:var(--text2);margin-bottom:2px;">${esc(q.giverLine || '')}</div>
+            ${questBriefBlock(esc(q.brief || ''))}
+            <div style="font-size:10px;color:var(--text2);margin-bottom:4px;">凡 ${q.stageCount || 1} 节</div>
+            ${(q.stages || []).map((s, i) => `
+              <div style="font-size:10px;color:var(--text2);margin-bottom:3px;">其${['一', '二', '三', '四', '五'][i] || (i + 1)}　${esc(s.text)}</div>
+            `).join('')}
+            ${questRewardLine(q.rewards)}
+            <button class="btn small primary" style="margin-top:8px;" onclick="handleAcceptQuest('${q.id}')">承接</button>
           </div>
         `).join('')}
+        ${dailies.length ? `
+          <div style="font-size:12px;font-weight:600;margin:16px 0 8px;">日常差事（可反复做）</div>
+          ${dailies.map(d => `
+            <div style="padding:10px;margin-bottom:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-weight:600;">${esc(d.name)}</span>
+                ${questTypeBadge('daily')}
+              </div>
+              <div style="font-size:11px;color:var(--text2);margin:4px 0;">${esc(d.description)}</div>
+              ${(d.objectives || []).map(o => `<div style="font-size:10px;color:var(--text2);">· ${esc(o.label || o.type)}</div>`).join('')}
+              ${questRewardLine(d.rewards)}
+              <button class="btn small" style="margin-top:8px;" onclick="handleAcceptQuest('${d.id}')">接下</button>
+            </div>`).join('')}
+        ` : ''}
       `;
     } else {
       const data = await api.request('GET', '/quests');
       const allQuests = data.quests || [];
       const filtered = allQuests.filter(q => q.status === (sub === 'active' ? 'active' : 'completed'));
+      const emptyWord = sub === 'active' ? '眼下无委托在身。' : '尚未了结任何委托。';
       container.innerHTML = `
-        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">${sub === 'active' ? '进行中的任务' : '已完成的任务'}</div>
-        ${filtered.length === 0 ? `<p style="font-size:12px;color:var(--text2);">暂无${sub === 'active' ? '进行中' : '已完成'}的任务</p>` : filtered.map(q => `
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;">${sub === 'active' ? '在身的委托' : '已了结的委托'}</div>
+        ${filtered.length === 0 ? `<p style="font-size:12px;color:var(--text2);">${emptyWord}</p>` : filtered.map(q => {
+          const objs = (q.objectives || []);
+          const allDone = objs.length > 0 && objs.every(o => o.current >= o.required);
+          return `
           <div style="padding:10px;margin-bottom:8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-              <span style="font-weight:600;">${q.name}</span>
-              <span style="font-size:10px;padding:2px 6px;border-radius:3px;background:var(--border);">${typeNames[q.type] || q.type}</span>
+            ${questChapterLine(q)}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-weight:600;">${esc(q.name)}</span>
+              ${questTypeBadge(q.type)}
             </div>
-            <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">${q.description}</div>
-            ${(q.objectives || []).map(obj => `
-              <div style="font-size:11px;margin-bottom:4px;">
-                <span style="color:${obj.current >= obj.required ? 'var(--green)' : 'var(--text2)'};">
-                  ${obj.current >= obj.required ? '✓' : '○'} ${obj.type}: ${obj.current}/${obj.required}
-                </span>
+            ${q.giver ? `<div style="font-size:10px;color:var(--text2);margin-bottom:4px;">委托人：${esc(q.giver)}</div>` : ''}
+            ${sub === 'active' && q.currentStage ? `
+              <div style="display:flex;justify-content:space-between;align-items:center;margin:6px 0 4px;">
+                <span style="font-size:11px;color:var(--gold);">第 ${(q.stageIndex || 0) + 1} / ${q.stageTotal || 1} 节</span>
+                ${questStageDots(q.stageIndex || 0, q.stageTotal || 1)}
               </div>
-            `).join('')}
-            <div style="font-size:10px;color:var(--gold);margin-top:6px;">奖励: ${q.rewards?.exp || 0}经验, ${q.rewards?.spirit_stone || 0}灵石</div>
-            ${sub === 'active' && (q.objectives || []).every(o => o.current >= o.required) ? `
-              <button class="btn small primary" onclick="handleCompleteQuest(${q.id})" style="margin-top:6px;">完成任务</button>
+              <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px;">${esc(q.currentStage.text || '')}</div>
+            ` : (q.brief ? questBriefBlock(esc(q.brief)) : '')}
+            ${objs.map(questObjectiveRow).join('')}
+            ${questRewardLine(q.rewards)}
+            ${sub === 'active' && allDone ? `
+              <button class="btn small primary" style="margin-top:8px;" onclick="handleCompleteQuest('${q.id}')">回禀交差</button>
+            ` : (sub === 'active' && q.stageTotal > 1 ? `
+              <div style="font-size:10px;color:var(--text2);margin-top:6px;">此节了结后，自有下一节。</div>
+            ` : '')}
+            ${sub === 'active' ? `
+              <button class="btn small" style="margin-top:8px;opacity:.7;" onclick="handleAbandonQuest('${q.id}', '${esc(q.name)}')">放下</button>
             ` : ''}
-          </div>
-        `).join('')}
+            ${sub === 'completed' && q.epilogue ? `
+              <div style="font-size:10px;color:var(--text2);line-height:1.6;margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);">
+                后记：${esc(q.epilogue)}
+              </div>` : ''}
+          </div>`;
+        }).join('')}
       `;
     }
   } catch (error) {
@@ -3563,26 +3693,122 @@ async function loadQuestSub(sub, btn) {
   }
 }
 
+/** 承接委托的叙事弹层：委托人、原话、分节目标、酬谢，一次看清再决定 */
+function showQuestBriefPopup(def, onAccept) {
+  const old = document.getElementById('quest-brief-popup');
+  if (old) old.remove();
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const rw = def.rewards || {};
+  const items = (rw.items || []).map((i) => `${i.name}×${i.count}`).join('、');
+  const stages = def.stages || (def.objectives ? [{ text: def.description || '', objectives: def.objectives }] : []);
+  const div = document.createElement('div');
+  div.id = 'quest-brief-popup';
+  div.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);padding:20px;';
+  div.innerHTML = `
+    <div style="max-width:460px;width:100%;max-height:82vh;overflow-y:auto;background:var(--bg1);border:1px solid var(--gold);border-radius:var(--radius);padding:18px;">
+      <div style="font-size:10px;color:var(--text2);letter-spacing:1px;margin-bottom:6px;">${esc(def.chapter && def.chapter.title ? def.chapter.title : '委托')}</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px;">${esc(def.name)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:12px;">${esc(def.giverLine || def.giver || '')}</div>
+      <div style="font-size:12px;line-height:1.9;color:var(--text1);padding:10px 12px;border-left:2px solid var(--gold);background:rgba(255,255,255,0.02);border-radius:0 4px 4px 0;margin-bottom:14px;">
+        ${esc(def.brief || def.description || '')}
+      </div>
+      ${stages.length ? `
+        <div style="font-size:11px;color:var(--gold);margin-bottom:8px;">此事分 ${stages.length} 节</div>
+        ${stages.map((s, i) => {
+          const objs = s.objectives || [];
+          return `
+          <div style="margin-bottom:10px;padding-left:10px;border-left:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text2);line-height:1.7;margin-bottom:4px;">其${['一', '二', '三', '四', '五'][i] || (i + 1)}　${esc(s.text || '')}</div>
+            ${objs.map((o) => `<div style="font-size:10px;color:var(--text2);">· ${esc(o.label || (o.type + ' ' + o.required))}</div>`).join('')}
+          </div>`;
+        }).join('')}
+      ` : ''}
+      <div style="font-size:11px;color:var(--gold);padding-top:10px;border-top:1px dashed var(--border);">
+        酬谢：${rw.exp || 0} 修为、${rw.spirit_stone || 0} 灵石${items ? '、' + esc(items) : ''}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn small" style="flex:1;" onclick="document.getElementById('quest-brief-popup').remove()">再想想</button>
+        <button class="btn small primary" style="flex:1;" id="quest-accept-btn">承接</button>
+      </div>
+    </div>`;
+  document.body.appendChild(div);
+  document.getElementById('quest-accept-btn').onclick = () => {
+    div.remove();
+    onAccept();
+  };
+}
+
 async function handleAcceptQuest(questId) {
-  ui.showConfirm('接取任务', '确定要接取该任务吗？', async () => {
+  // 先取委托详情，把 NPC 的原话与分节目标摆在弹层里 —— 承接是一次叙事选择，不是一个确认框
+  let def = null;
+  try {
+    const data = await api.request('GET', '/quests/available');
+    def = (data.quests || []).find(q => String(q.id) === String(questId))
+       || (data.dailies || []).find(d => String(d.id) === String(questId)) || null;
+  } catch (e) { /* 取不到就退化成简短确认 */ }
+
+  const doAccept = async () => {
     try {
       await api.request('POST', '/quests/accept', { questId });
-      ui.showToast('任务已接取');
+      ui.showToast('已承接');
+      loadQuestSub('active');
+    } catch (error) { ui.showToast(error.message); }
+  };
+
+  if (def) showQuestBriefPopup(def, doAccept);
+  else ui.showConfirm('承接委托', '确定要承接这桩委托吗？', doAccept);
+}
+
+async function handleCompleteQuest(questId) {
+  ui.showConfirm('回禀交差', '此间事了，前去回禀？', async () => {
+    try {
+      const result = await api.request('POST', '/quests/complete', { questId });
+      const rw = result.rewards || {};
+      const items = (rw.items || []).map(i => `${i.name}×${i.count}`).join('、');
+      ui.showToast(`「${result.message || '委托已了结'}」`);
+      ui.showToast(`得 ${rw.exp || 0} 修为、${rw.spirit_stone || 0} 灵石${items ? '、' + items : ''}`);
+      if (result.levelUp) ui.showToast('修为精进，境界有动。');
+      // 交差辞 + 落幕后记：让完成有叙事收束
+      if (result.closing) {
+        setTimeout(() => showQuestClosingPopup(result), 400);
+      }
+      await loadCharacter();
+      loadQuestSub('completed');
+    } catch (error) { ui.showToast(error.message); }
+  });
+}
+
+/** 放下委托（放弃；进度作废，可再承接） */
+async function handleAbandonQuest(questId, name) {
+  ui.showConfirm('放下委托', `「${name}」尚未了结，就此放下？（进度作废，日后可再接）`, async () => {
+    try {
+      const r = await api.request('POST', '/quests/abandon', { questId });
+      ui.showToast(r.message || '已放下');
       loadQuestSub('active');
     } catch (error) { ui.showToast(error.message); }
   });
 }
 
-async function handleCompleteQuest(questId) {
-  ui.showConfirm('完成任务', '确定要完成该任务并领取奖励吗？', async () => {
-    try {
-      const result = await api.request('POST', '/quests/complete', { questId });
-      ui.showToast(`任务完成！获得${result.rewards?.exp || 0}经验，${result.rewards?.spirit_stone || 0}灵石`);
-      if (result.levelUp) ui.showToast('恭喜升级！');
-      await loadCharacter();
-      loadQuestSub('completed');
-    } catch (error) { ui.showToast(error.message); }
-  });
+/** 交差后的叙事弹层（NPC 反应 + 世界后记） */
+function showQuestClosingPopup(result) {
+  const old = document.getElementById('quest-closing-popup');
+  if (old) old.remove();
+  const div = document.createElement('div');
+  div.id = 'quest-closing-popup';
+  div.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);padding:20px;';
+  div.innerHTML = `
+    <div style="max-width:420px;width:100%;background:var(--bg1);border:1px solid var(--gold);border-radius:var(--radius);padding:18px;">
+      <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:10px;">${String(result.message || '此间事了').replace(/[&<>]/g, '')}</div>
+      <div style="font-size:12px;line-height:1.9;color:var(--text1);padding-left:10px;border-left:2px solid var(--gold);margin-bottom:12px;">
+        ${String(result.closing || '').replace(/[&<>]/g, '')}
+      </div>
+      ${result.epilogue ? `
+        <div style="font-size:11px;line-height:1.8;color:var(--text2);padding-top:10px;border-top:1px dashed var(--border);">
+          ${String(result.epilogue).replace(/[&<>]/g, '')}
+        </div>` : ''}
+      <button class="btn small primary" style="margin-top:14px;width:100%;" onclick="document.getElementById('quest-closing-popup').remove()">知道了</button>
+    </div>`;
+  document.body.appendChild(div);
 }
 
 // ========== Announcements System ==========

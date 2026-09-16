@@ -2,123 +2,215 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { loadDatabase, saveDatabase, getNextId } = require('../database');
+const QL = require('../data/quest-library');
 
-const AVAILABLE_QUESTS = [
-  { id: 1, name: '斩妖除魔', type: 'main', description: '击杀10只妖兽', objectives: [{ type: 'kill', target: 'monster', current: 0, required: 10 }], rewards: { exp: 500, spirit_stone: 100, items: [] } },
-  { id: 2, name: '秘境探宝', type: 'main', description: '通关3次副本', objectives: [{ type: 'dungeon', target: 'dungeon', current: 0, required: 3 }], rewards: { exp: 800, spirit_stone: 200, items: [] } },
-  { id: 3, name: '境界突破', type: 'main', description: '达到指定等级', objectives: [{ type: 'level', target: 'level', current: 0, required: 10 }], rewards: { exp: 1000, spirit_stone: 300, items: [] } },
-  { id: 4, name: '每日签到', type: 'daily', description: '完成每日签到', objectives: [{ type: 'checkin', target: 'checkin', current: 0, required: 1 }], rewards: { exp: 50, spirit_stone: 20, items: [] } },
-  { id: 5, name: '勤修苦练', type: 'daily', description: '战斗5次', objectives: [{ type: 'battle', target: 'battle', current: 0, required: 5 }], rewards: { exp: 100, spirit_stone: 30, items: [] } },
-  { id: 6, name: '采集资源', type: 'daily', description: '采集3次资源', objectives: [{ type: 'gather', target: 'gather', current: 0, required: 3 }], rewards: { exp: 80, spirit_stone: 25, items: [] } },
-  { id: 7, name: '炼器入门', type: 'side', description: '制作2件装备', objectives: [{ type: 'craft', target: 'equipment', current: 0, required: 2 }], rewards: { exp: 200, spirit_stone: 50, items: [] } },
-  { id: 8, name: '宗门贡献', type: 'side', description: '加入仙盟', objectives: [{ type: 'guild', target: 'guild', current: 0, required: 1 }], rewards: { exp: 300, spirit_stone: 80, items: [] } }
-];
+/**
+ * 剧情任务路由（P7 批4 真源化）
+ *
+ * ## 改了什么
+ *
+ * 此前本文件顶部硬编码 8 条任务，文案是机器模板（「击杀10只妖兽」），
+ * 描述里没有世界、没有人物、没有过程。现在定义全部来自 `src/data/quest-library.js`：
+ * 四卷 20 条剧情任务（每条带委托人、委托辞、多阶段过场、交差辞、落幕后记），
+ * 外加 6 条日常差事。本路由只负责「把定义与玩家存档状态拼起来」。
+ *
+ * ## 阶段化（本次的行为变化）
+ *
+ * 旧实现把 objectives 拍成一条平列表，任何进度上报都会同时累加到所有匹配目标上。
+ * 新实现按 `stageIndex` **只推进当前阶段** —— 否则玩家在推图时会顺手把后续阶段的
+ * 计数提前刷满（例如「清 8 只怪 → 通关 1 次副本 → 修至 10 级」这条链，
+ * 玩家在清怪阶段打副本，副本计数就自己满了，第三阶段白送）。
+ * 具体推进逻辑在 quest-library 的 `applyProgress`，有专门的测试锁。
+ */
 
+/** 把定义整理成前端可直接渲染的形态（含阶段与委托人行） */
+function presentDef(q) {
+  return {
+    id: q.id,
+    name: q.name,
+    type: q.type,
+    chapter: q.chapter,
+    realmRange: [q.realmFrom, q.realmTo],
+    giver: q.giver,
+    giverLine: QL.giverLine(q),
+    brief: q.brief,
+    stageCount: q.stages.length,
+    stages: q.stages.map((s) => ({ text: s.text, objectives: s.objectives.map((o) => ({ ...o, label: QL.renderObjective(o) })) })),
+    rewards: q.rewards,
+    epilogue: q.epilogue
+  };
+}
+
+/** 取当前角色（所有路由共用） */
+function findCharacter(db, userId) {
+  return (db.characters || []).find((c) => c.user_id === userId) || null;
+}
+
+/** 已接（active/completed）的任务 id 集合 —— 用于过滤"还能接什么" */
+function takenIds(db, characterId) {
+  return new Set((db.quests || [])
+    .filter((q) => q.character_id === characterId && (q.status === 'active' || q.status === 'completed'))
+    .map((q) => q.quest_id));
+}
+
+/** GET /api/quests —— 我的任务（含阶段进度） */
 router.get('/', auth, (req, res) => {
   try {
     const db = loadDatabase();
-    const character = db.characters.find(c => c.user_id === req.userId);
-    if (!character) {
-      return res.status(404).json({ error: '角色不存在' });
-    }
-    const quests = (db.quests || []).filter(q => q.character_id === character.id);
-    res.json({ quests });
+    const character = findCharacter(db, req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const mine = (db.quests || []).filter((q) => q.character_id === character.id);
+    // 补上"当前阶段目标"的可读标签（旧存档没有 label 字段）
+    const quests = mine.map((q) => {
+      const st = q.stages && q.stages[q.stageIndex];
+      return {
+        ...q,
+        stageTotal: q.stages ? q.stages.length : 1,
+        currentStage: st || null,
+        objectives: (st ? st.objectives : q.objectives || []).map((o) => ({ ...o, label: QL.renderObjective(o) }))
+      };
+    });
+    res.json({ quests, volumes: QL.VOLUMES });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+/** GET /api/quests/available —— 可接的剧情委托（按角色境界筛 + 去掉已接的） */
 router.get('/available', auth, (req, res) => {
   try {
     const db = loadDatabase();
-    const character = db.characters.find(c => c.user_id === req.userId);
-    if (!character) {
-      return res.status(404).json({ error: '角色不存在' });
-    }
+    const character = findCharacter(db, req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
 
-    const activeQuestIds = (db.quests || [])
-      .filter(q => q.character_id === character.id && (q.status === 'active' || q.status === 'completed'))
-      .map(q => q.quest_id);
-
-    const available = AVAILABLE_QUESTS.filter(q => !activeQuestIds.includes(q.id));
-    res.json({ quests: available });
+    const taken = takenIds(db, character.id);
+    // 境界顺序一律取 balance.REALM_ORDER 真源（本仓禁多份副本）
+    const forRealm = QL.questsForRealm(character.realm, QL.realmOrder());
+    const quests = forRealm.filter((q) => !taken.has(q.id)).map(presentDef);
+    res.json({
+      quests,
+      volumes: QL.volumesWithRealms(),
+      dailies: QL.DAILY_CHORES.map((d) => ({ ...d, objectives: d.objectives.map((o) => ({ ...o, label: QL.renderObjective(o) })) })),
+      realm: character.realm
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+/** GET /api/quests/library —— 全量剧情一览（图鉴用；不含玩家状态） */
+router.get('/library', auth, (req, res) => {
+  try {
+    res.json({
+      volumes: QL.VOLUMES,
+      quests: QL.allQuests().map(presentDef)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/** POST /api/quests/accept —— 接委托（校验境界范围） */
 router.post('/accept', auth, (req, res) => {
   try {
     const { questId } = req.body;
-    if (!questId) {
-      return res.status(400).json({ error: '请指定要接受的任务' });
-    }
+    if (!questId) return res.status(400).json({ error: '请指定要接受的委托' });
 
     const db = loadDatabase();
-    const character = db.characters.find(c => c.user_id === req.userId);
-    if (!character) {
-      return res.status(404).json({ error: '角色不存在' });
-    }
+    const character = findCharacter(db, req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
 
-    const questDef = AVAILABLE_QUESTS.find(q => q.id === questId);
-    if (!questDef) {
-      return res.status(400).json({ error: '未知的任务' });
+    // 委托可以来自剧情库（字符串 id）或日常差事（d_ 前缀）
+    const isDaily = String(questId).startsWith('d_');
+    const def = isDaily
+      ? QL.DAILY_CHORES.find((d) => d.id === questId)
+      : QL.questById(questId);
+    if (!def) return res.status(400).json({ error: '未知的委托' });
+
+    if (!isDaily) {
+      const realmOrder = QL.realmOrder();
+      const idx = realmOrder.indexOf(character.realm);
+      const a = realmOrder.indexOf(def.realmFrom);
+      const b = realmOrder.indexOf(def.realmTo);
+      if (idx >= 0 && a >= 0 && b >= 0 && (idx < Math.min(a, b) || idx > Math.max(a, b))) {
+        return res.status(400).json({ error: `此委托须 ${def.realmFrom}~${def.realmTo} 境界方可承接` });
+      }
     }
 
     const existing = (db.quests || []).find(
-      q => q.character_id === character.id && q.quest_id === questId && (q.status === 'active' || q.status === 'completed')
+      (q) => q.character_id === character.id && q.quest_id === questId && (q.status === 'active' || q.status === 'completed')
     );
-    if (existing) {
-      return res.status(400).json({ error: '已接受或已完成该任务' });
-    }
+    if (existing) return res.status(400).json({ error: '已承接或已完成此委托' });
 
-    const quest = {
-      id: getNextId('quests'),
-      character_id: character.id,
-      quest_id: questId,
-      name: questDef.name,
-      type: questDef.type,
-      description: questDef.description,
-      objectives: JSON.parse(JSON.stringify(questDef.objectives)),
-      rewards: { ...questDef.rewards },
-      status: 'active',
-      accepted_at: Date.now(),
-      completed_at: null
-    };
+    // 剧情任务用 instantiate（带阶段），日常差事走平铺形态
+    let quest;
+    if (isDaily) {
+      // ⚠ 关键：objectives 与 stages[0].objectives 必须**指向同一个数组**。
+      // 此前各 map 一份，导致"改 objectives 不改 stage"或反之，进度推进读一处、完成判定读另一处，
+      // 出现"改了 required 也不生效 / 判完成用的是旧值"这类幽灵 bug。
+      const objs = def.objectives.map((o) => ({ ...o }));
+      quest = {
+        id: getNextId('quests'),
+        character_id: character.id,
+        quest_id: def.id,
+        name: def.name,
+        type: 'daily',
+        description: def.description,
+        chapter: '日常差事',
+        volume: 0,
+        order: 0,
+        giver: '',
+        brief: def.description,
+        closing: '',
+        epilogue: '',
+        stages: [{ index: 0, text: def.description, objectives: objs }],
+        stageIndex: 0,
+        objectives: objs,
+        rewards: { ...def.rewards },
+        status: 'active',
+        accepted_at: Date.now(),
+        completed_at: null
+      };
+    } else {
+      quest = QL.instantiate(def, character.id, getNextId('quests'));
+    }
 
     if (!db.quests) db.quests = [];
     db.quests.push(quest);
-
     saveDatabase(db);
-    res.json({ success: true, message: `已接受任务：${questDef.name}`, quest });
+    res.json({ success: true, message: `已承接：${def.name}`, quest });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
+/** POST /api/quests/complete —— 交差（全部阶段完成后才可） */
 router.post('/complete', auth, (req, res) => {
   try {
-    const { questId } = req.body;
-    if (!questId) {
-      return res.status(400).json({ error: '请指定要完成的任务' });
-    }
+    const body = req.body || {};
+    // 兼容两种调用：按实例 id（questId 传 db.quests.id）或按定义 id（questId 传 quest_id）
+    const raw = body.questId !== undefined ? body.questId : body.id;
+    if (raw === undefined || raw === null) return res.status(400).json({ error: '请指定要交差的委托' });
 
     const db = loadDatabase();
-    const character = db.characters.find(c => c.user_id === req.userId);
-    if (!character) {
-      return res.status(404).json({ error: '角色不存在' });
-    }
+    const character = findCharacter(db, req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
 
-    const quest = (db.quests || []).find(
-      q => q.id === questId && q.character_id === character.id && q.status === 'active'
-    );
-    if (!quest) {
-      return res.status(400).json({ error: '任务不存在或未激活' });
-    }
+    const active = (db.quests || []).filter((q) => q.character_id === character.id && q.status === 'active');
+    const quest = active.find((q) => String(q.id) === String(raw))
+      || active.find((q) => String(q.quest_id) === String(raw));
+    if (!quest) return res.status(400).json({ error: '委托不存在或未激活' });
 
-    const allComplete = quest.objectives.every(obj => obj.current >= obj.required);
-    if (!allComplete) {
-      return res.status(400).json({ error: '任务目标未全部完成' });
+    // 阶段化完成判定：所有阶段的所有目标都要满足
+    const done = quest.stages && quest.stages.length
+      ? quest.stages.every((st) => st.objectives.every((o) => o.current >= o.required))
+      : (quest.objectives || []).every((o) => o.current >= o.required);
+    if (!done) {
+      const st = quest.stages && quest.stages[quest.stageIndex];
+      const left = (st ? st.objectives : quest.objectives || [])
+        .filter((o) => o.current < o.required)
+        .map((o) => `${QL.renderObjective(o)}（${o.current}/${o.required}）`);
+      return res.status(400).json({ error: '此委托尚未了结：' + (left.join('、') || '尚有未竟之事') });
     }
 
     quest.status = 'completed';
@@ -127,12 +219,23 @@ router.post('/complete', auth, (req, res) => {
     const rewards = quest.rewards || {};
     const expGain = rewards.exp || 0;
     const spiritStoneGain = rewards.spirit_stone || 0;
-
     character.spirit_stone = (character.spirit_stone || 0) + spiritStoneGain;
 
-    // 轮54：这里原本自带一套私有升级循环（`exp_to_next *= 1.5`、`max_hp += 10`、且**没有境界等级封顶**），
-    // 于是交任务可以一路刷过 max_level、绕开突破判定，并且等级/属性与真源分叉 —— 直接违反 T0-2 铁律。
-    // 现在只加修为，升级全部交给唯一入口 characterService.addExp（内含等级封顶、圆满钉值、寿元成长、属性重算）。
+    // 奖励物品真的发到背包（此前只回一个数字，玩家拿不到东西）
+    const granted = [];
+    for (const it of (rewards.items || [])) {
+      const item = (db.items || []).find((x) => x.name === it.name);
+      if (!item) continue;
+      const row = (db.inventory || []).find((v) => v.character_id === character.id && v.item_id === item.id);
+      if (row) row.quantity = (row.quantity || 0) + (it.count || 1);
+      else {
+        if (!db.inventory) db.inventory = [];
+        db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: item.id, quantity: it.count || 1 });
+      }
+      granted.push({ name: it.name, count: it.count || 1 });
+    }
+
+    // 轮54 铁律：只加修为，升级全部交给唯一入口（含境界封顶、圆满钉值、寿元成长、属性重算）
     let levelUp = false;
     if (expGain > 0) {
       const r = require('../services/character').addExp(character.id, expGain);
@@ -142,8 +245,11 @@ router.post('/complete', auth, (req, res) => {
     saveDatabase(db);
     res.json({
       success: true,
-      message: `任务"${quest.name}"完成`,
-      rewards: { exp: expGain, spirit_stone: spiritStoneGain },
+      message: `「${quest.name}」已了结`,
+      // 交差辞与落幕后记：让"完成任务"有叙事收束，而不是只弹一个数字
+      closing: quest.closing || '',
+      epilogue: quest.epilogue || '',
+      rewards: { exp: expGain, spirit_stone: spiritStoneGain, items: granted },
       levelUp,
       newLevel: character.level
     });
@@ -152,26 +258,58 @@ router.post('/complete', auth, (req, res) => {
   }
 });
 
+/** POST /api/quests/abandon —— 放弃委托（可再接） */
+router.post('/abandon', auth, (req, res) => {
+  try {
+    const raw = (req.body || {}).questId;
+    if (raw === undefined || raw === null) return res.status(400).json({ error: '请指定要放弃的委托' });
+    const db = loadDatabase();
+    const character = findCharacter(db, req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const quest = (db.quests || []).find(
+      (q) => q.character_id === character.id && q.status === 'active'
+        && (String(q.id) === String(raw) || String(q.quest_id) === String(raw))
+    );
+    if (!quest) return res.status(400).json({ error: '没有这条进行中的委托' });
+    quest.status = 'abandoned';
+    quest.abandoned_at = Date.now();
+    saveDatabase(db);
+    res.json({ success: true, message: `已放下「${quest.name}」` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
 
+/**
+ * 进度上报（供战斗/采集/炼器等路由调用）。
+ *
+ * 轮104：改为按 `stageIndex` 只推进当前阶段（详见文件头注释）。
+ * 返回"刚刚因本次上报而推进到新阶段的委托"，供调用方决定是否提示玩家。
+ */
 module.exports.updateQuestProgress = function updateQuestProgress(characterId, objectiveType, increment) {
   try {
     const db = loadDatabase();
-    if (!db.quests) return;
-    const activeQuests = db.quests.filter(q => q.character_id === characterId && q.status === 'active');
-    const completedQuests = [];
-    activeQuests.forEach(quest => {
-      quest.objectives.forEach(obj => {
-        if (obj.type === objectiveType && obj.current < obj.required) {
-          obj.current = Math.min(obj.current + increment, obj.required);
+    if (!db.quests) return [];
+    const active = db.quests.filter((q) => q.character_id === characterId && q.status === 'active');
+    const advanced = [];
+    for (const quest of active) {
+      if (!quest.stages || !quest.stages.length) {
+        // 旧存档（平铺 objectives）：保持原行为
+        for (const o of quest.objectives || []) {
+          if (o.type === objectiveType && o.current < o.required) o.current = Math.min(o.current + increment, o.required);
         }
-      });
-      if (quest.objectives.every(obj => obj.current >= obj.required)) {
-        completedQuests.push(quest);
+        if ((quest.objectives || []).every((o) => o.current >= o.required)) advanced.push(quest);
+        continue;
       }
-    });
+      const before = quest.stageIndex;
+      const r = QL.applyProgress(quest, objectiveType, increment);
+      if (r.stageIndex !== before) advanced.push(quest);
+      if (r.finished) advanced.push(quest);
+    }
     saveDatabase(db);
-    return completedQuests;
+    return advanced;
   } catch (e) {
     return [];
   }

@@ -280,15 +280,80 @@ router.post('/abandon', auth, (req, res) => {
   }
 });
 
+/** POST /api/quests/revisit —— 回访委托人（推进 talk 目标） */
+router.post('/revisit', auth, (req, res) => {
+  try {
+    const raw = (req.body || {}).questId;
+    if (raw === undefined || raw === null) return res.status(400).json({ error: '请指定要回访的委托' });
+    const db = loadDatabase();
+    const character = findCharacter(db, req.userId);
+    if (!character) return res.status(404).json({ error: '角色不存在' });
+    const quest = (db.quests || []).find(
+      (q) => q.character_id === character.id && q.status === 'active'
+        && (String(q.id) === String(raw) || String(q.quest_id) === String(raw))
+    );
+    if (!quest) return res.status(400).json({ error: '没有这条进行中的委托' });
+
+    // 回访 = 与委托人当面说话。这是 `talk` 目标的**唯一真实来源**：
+    // 本游戏没有独立的 NPC 行走系统，委托里的"回来把所见告诉鬼差"就是这一次回访。
+    // 只推当前阶段，且只推 target 与委托人名字相符的 talk 目标（由 objectiveMatches 保证：
+    // 剧情库里 talk 的 target 一律写作委托人姓名，测试有锁）。
+    const before = quest.stageIndex;
+    const r = QL.applyProgress(quest, 'talk', 1, { npc: quest.giverName || undefined });
+    // giverName 没存过（旧档）：退化为"任何 talk 目标都算"，让老玩家不至于卡死
+    if (r.gained === 0 && !quest.giverName) {
+      const st = quest.stages && quest.stages[quest.stageIndex];
+      if (st) {
+        for (const o of st.objectives) {
+          if (o.type === 'talk' && o.current < o.required) o.current = o.required;
+        }
+        QL.applyProgress(quest, 'talk', 0, undefined);   // 触发阶段推进判定
+      }
+    }
+    saveDatabase(db);
+    const st = quest.stages && quest.stages[quest.stageIndex];
+    res.json({
+      success: true,
+      message: `${quest.giver || '委托人'}听你说完，点了点头。`,
+      stageIndex: quest.stageIndex,
+      advanced: quest.stageIndex !== before,
+      objective: st ? st.objectives.map((o) => ({ label: QL.renderObjective(o), current: o.current, required: o.required })) : []
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
 
 /**
- * 进度上报（供战斗/采集/炼器等路由调用）。
+ * 进度上报（供战斗/采集/炼器/炼丹/渡劫/探索/交付等路由调用）。
  *
- * 轮104：改为按 `stageIndex` 只推进当前阶段（详见文件头注释）。
- * 返回"刚刚因本次上报而推进到新阶段的委托"，供调用方决定是否提示玩家。
+ * ## 为什么要带 context（轮105）
+ *
+ * 剧情委托的目标是**具体的**：「讨伐 灵兔 3 头」「探明 无相幻境」「凑齐 镜心砂 3 件」。
+ * 如果钩子只报类型（"我杀了一只怪"），那"讨伐灵兔"和"讨伐旱魃幼体"就分不开，
+ * 玩家杀别的怪也能刷满灵兔委托。所以第三参之后的 `context` 要带**实体的名字**，
+ * 由这里与目标的 `target` 做匹配。
+ *
+ * 匹配规则（三种，覆盖全部写法）：
+ *   1. `target` 为空 / `'monster'` / `'battle'` / 与类型同名 → 通配（任何该类型都算）
+ *   2. `target` 在 context 里出现（怪名、地图名、物品名任一命中）→ 算
+ *   3. 同上都不满足 → 不算（这正是我们要的严格性）
+ *
+ * ## 向后兼容
+ *
+ * 旧调用 `updateQuestProgress(cid, 'kill', 1)` 不带 context：只匹配通配目标，
+ * 具体命名的目标不会被推进 —— 这是**故意**的：宁可少推（玩家看得见进度没动、
+ * 会去查），也不要错推（静默把别的怪算进灵兔委托）。
+ *
+ * @param {number} characterId
+ * @param {string} objectiveType  kill/battle/dungeon/checkin/gather/craft/forge/guild/level/alchemy/tribulation/explore/collect/talk
+ * @param {number} increment      增量
+ * @param {object} [context]      { monster, map, item, dungeon, npc, realm } 任意字段
+ * @returns {Array} 因本次上报而推进阶段的委托实例
  */
-module.exports.updateQuestProgress = function updateQuestProgress(characterId, objectiveType, increment) {
+module.exports.updateQuestProgress = function updateQuestProgress(characterId, objectiveType, increment, context) {
   try {
     const db = loadDatabase();
     if (!db.quests) return [];
@@ -296,7 +361,7 @@ module.exports.updateQuestProgress = function updateQuestProgress(characterId, o
     const advanced = [];
     for (const quest of active) {
       if (!quest.stages || !quest.stages.length) {
-        // 旧存档（平铺 objectives）：保持原行为
+        // 旧存档（平铺 objectives）：保持原行为（不带 context 匹配，避免误伤老档）
         for (const o of quest.objectives || []) {
           if (o.type === objectiveType && o.current < o.required) o.current = Math.min(o.current + increment, o.required);
         }
@@ -304,7 +369,7 @@ module.exports.updateQuestProgress = function updateQuestProgress(characterId, o
         continue;
       }
       const before = quest.stageIndex;
-      const r = QL.applyProgress(quest, objectiveType, increment);
+      const r = QL.applyProgress(quest, objectiveType, increment, context);
       if (r.stageIndex !== before) advanced.push(quest);
       if (r.finished) advanced.push(quest);
     }
@@ -314,3 +379,8 @@ module.exports.updateQuestProgress = function updateQuestProgress(characterId, o
     return [];
   }
 };
+
+/**
+ * 目标的 target 是否与本次上报的 context 匹配（导出供测试单独验证匹配规则）。
+ */
+module.exports.objectiveMatches = QL.objectiveMatches;

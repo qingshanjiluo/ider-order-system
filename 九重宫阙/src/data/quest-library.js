@@ -448,7 +448,7 @@ const QUESTS = [
     brief: '涧边坐着一个人，看不出年岁。他说：「一涧之隔便是仙界。九百年来，从这跳过去的人，我见过十一个——回来过一个。」他侧过脸，「那个回来的告诉我：上头空了。你要过去，我不拦；你要留下，我也不劝。」',
     stages: [
       { text: '涧壁石缝里的仙料，是过涧的唯一凭借，先取足。', objectives: [{ type: 'gather', target: '仙人跳涧', current: 0, required: 30 }] },
-      { text: '渡劫九重，一重不可省。', objectives: [{ type: 'tribulation', target: 'tribulation', current: 0, required: 9 }] },
+      { text: '过涧之前须应一场天劫——应得过，才谈得上过去。', objectives: [{ type: 'tribulation', target: 'tribulation', current: 0, required: 1 }] },
       { text: '过涧之前，先与涧边那人把话说完。', objectives: [{ type: 'talk', target: '仙人跳涧的过客', current: 0, required: 1 }] }
     ],
     closing: '那人站起来，朝涧对岸看了一眼：「你比他们多一样东西——你身后的那些人，你都记得。」他退开一步，「去吧。」',
@@ -572,6 +572,7 @@ function instantiate(quest, characterId, id) {
     volume: quest.chapter.volume,
     order: quest.chapter.order,
     giver: giverLine(quest),
+    giverName: quest.giver && quest.giver.name ? quest.giver.name : '',   // talk 目标靠它匹配（见 objectiveMatches）
     brief: quest.brief,
     closing: quest.closing,
     epilogue: quest.epilogue,
@@ -598,21 +599,58 @@ function allStagesDone(quest) {
   return quest.stages.every((st) => st.objectives.every((o) => o.current >= o.required));
 }
 
+/** 通配 target：这些写法表示"任何该类型的行为都算" */
+const WILDCARD_TARGETS = new Set(['', 'monster', 'battle', 'gather', 'dungeon', 'checkin', 'forge', 'craft', 'level', 'guild', 'alchemy', 'tribulation', 'explore', 'collect', 'talk', 'any']);
+
 /**
- * 上报进度 —— 只推进**当前阶段**（防止玩家一路推图时把后续阶段的计数也提前刷满）。
- * @returns {{advanced:boolean, finished:boolean, stageIndex:number}}
+ * 目标的 `target` 是否与本次上报的 context 匹配。
+ *
+ * 三种情况（见 `src/routes/quests.js` 的 updateQuestProgress 文档）：
+ *   1. target 是通配词 → 命中
+ *   2. context 里任一声明的名字等于 target → 命中
+ *   3. context 缺失 → 只命中通配（**故意严格**：宁可少推也不要错推，
+ *      否则"讨伐灵兔"会被杀旱魃刷满）
+ *
+ * @param {{type:string,target:string}} obj
+ * @param {string} objectiveType 本次上报的类型
+ * @param {object} [context] { monster, map, item, dungeon, npc, realm }
  */
-function applyProgress(quest, objectiveType, increment) {
+function objectiveMatches(obj, objectiveType, context) {
+  if (!obj || obj.type !== objectiveType) return false;
+  const tg = String(obj.target == null ? '' : obj.target).trim();
+  // 1) 通配：空、类型同名、或显式通配词
+  if (WILDCARD_TARGETS.has(tg) || tg === objectiveType) return true;
+  // 3) 没有 context：不猜
+  if (!context || typeof context !== 'object') return false;
+  // 2) 与 context 里声明的任一实体名比对
+  for (const k of ['monster', 'map', 'item', 'dungeon', 'npc', 'realm']) {
+    const v = context[k];
+    if (v == null) continue;
+    if (Array.isArray(v)) { if (v.some((x) => String(x) === tg)) return true; }
+    else if (String(v) === tg) return true;
+  }
+  return false;
+}
+
+/**
+ * 上报进度 —— 只推进**当前阶段**（防止玩家一路推图时把后续阶段的计数也提前刷满），
+ * 且只推进与 context 匹配的目标（防止"讨伐灵兔"被别的怪刷满）。
+ *
+ * @returns {{advanced:boolean, finished:boolean, stageIndex:number, gained:number}}
+ */
+function applyProgress(quest, objectiveType, increment, context) {
   const before = quest.stageIndex;
   let advanced = false;
+  let gained = 0;
   let guard = 0;
   while (guard++ < 20) {
     const st = quest.stages && quest.stages[quest.stageIndex];
     if (!st) break;
     for (const o of st.objectives) {
-      if (o.type === objectiveType && o.current < o.required) {
-        o.current = Math.min(o.current + increment, o.required);
-      }
+      if (o.current >= o.required) continue;
+      if (!objectiveMatches(o, objectiveType, context)) continue;
+      const add = Math.min(o.current + increment, o.required) - o.current;
+      if (add > 0) { o.current += add; gained += add; }
     }
     if (st.objectives.every((o) => o.current >= o.required)) {
       if (quest.stageIndex < quest.stages.length - 1) {
@@ -621,13 +659,14 @@ function applyProgress(quest, objectiveType, increment) {
       } else break;
     } else break;
   }
+  // 保持不变量：objectives 始终与当前阶段同引用
   quest.objectives = (quest.stages && quest.stages[quest.stageIndex]) ? quest.stages[quest.stageIndex].objectives : quest.objectives;
-  return { advanced: advanced || quest.stageIndex !== before, finished: allStagesDone(quest), stageIndex: quest.stageIndex };
+  return { advanced: advanced || quest.stageIndex !== before, finished: allStagesDone(quest), stageIndex: quest.stageIndex, gained };
 }
 
 module.exports = {
   QUESTS, DAILY_CHORES, VOLUMES, volumesWithRealms, volumeRealmRange, realmOrder,
   OBJECTIVE_UNITS, OBJECTIVE_VERBS,
   allQuests, questById, questsForRealm, giverLine, renderObjective,
-  instantiate, stageDone, allStagesDone, applyProgress
+  instantiate, stageDone, allStagesDone, applyProgress, objectiveMatches, WILDCARD_TARGETS,
 };

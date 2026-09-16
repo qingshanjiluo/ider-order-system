@@ -306,6 +306,12 @@ router.post('/craft', auth, (req, res) => {
     saveDatabase(db);
     const result = db.items.find(i => i.id === recipe.resultId);
     const critMsg = isCrit ? '【暴击！】' : '';
+    // 轮105 剧情钩子：开炉成丹推进 alchemy 目标（此前该类型全库无进度源）
+    // collect 同源：炼出的丹也算"凑齐某物"（剧情里"凑齐赤霞洞的材料"这类目标靠它推）
+    try {
+      require('./quests').updateQuestProgress(character.id, 'alchemy', 1, { item: result ? result.name : undefined });
+      require('./quests').updateQuestProgress(character.id, 'collect', quantity, { item: result ? result.name : undefined });
+    } catch (e) { /* 委托不抢炼丹主流程的锅 */ }
     res.json({
       success: true,
       item: result ? { id: result.id, name: result.name } : { id: recipe.resultId },

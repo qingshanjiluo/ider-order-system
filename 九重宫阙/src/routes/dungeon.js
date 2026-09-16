@@ -205,7 +205,8 @@ router.post('/enter', auth, async (req, res) => {
       character.dungeon_stars[dungeon.id] = Math.max(Number(character.dungeon_stars[dungeon.id]) || 0, rating);
       rewards.grantedItems = grantDungeonItems(character, rewards.items, db);
       const { updateQuestProgress } = require('./quests');
-      updateQuestProgress(character.id, 'dungeon', 1);
+      // 轮105：带上**副本名**（剧情写的是「入穴探一次（妖兽洞穴）」「探一处秘境」）
+      updateQuestProgress(character.id, 'dungeon', 1, { dungeon: dungeon && dungeon.name ? dungeon.name : undefined });
       // 轮69：通关对应副本 ⇒ 写一条服务端机缘（ten_thousand_swords/jianmu_sky 的判据）。
       // 必须在 winner === 'attacker' 分支内（败战不记）；saveDatabase 在下面负责落库。
       const dungeonOpp = opportunity.opportunityFromDungeonClear(dungeon);
@@ -260,7 +261,8 @@ router.post('/sweep', auth, (req, res) => {
     character.dungeon_count = (character.dungeon_count || 0) + sweepTimes;
     totalRewards.grantedItems = grantDungeonItems(character, totalRewards.items, db);
     const { updateQuestProgress } = require('./quests');
-    updateQuestProgress(character.id, 'dungeon', sweepTimes);
+    // 轮105：扫荡同样带副本名（剧情目标是具名的）
+    updateQuestProgress(character.id, 'dungeon', sweepTimes, { dungeon: dungeon && dungeon.name ? dungeon.name : undefined });
     saveDatabase(db);
     res.json({ success: true, rewards: totalRewards, sweepTimes });
   } catch (error) {

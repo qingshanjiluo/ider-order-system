@@ -241,7 +241,8 @@ router.post('/craft', auth, (req, res) => {
     }
 
     saveDatabase(db);
-    require('./quests').updateQuestProgress(character.id, 'craft', 1); // 轮83 批5任务钩子：任务 7「炼器入门」（此前 type:'craft' 无进度源）
+    require('./quests').updateQuestProgress(character.id, 'craft', 1);
+    require('./quests').updateQuestProgress(character.id, 'forge', 1, { item: resultItem ? resultItem.name : undefined }); // 轮83 批5任务钩子：任务 7「炼器入门」（此前 type:'craft' 无进度源）
     res.json({ success: true, item: resultItem ? { id: resultItem.id, name: resultItem.name, quality: resultItem.quality } : null });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -313,7 +314,9 @@ router.post('/forge', auth, (req, res) => {
       else db.inventory.push({ id: getNextId('inventory'), character_id: character.id, item_id: out.id, quantity: 1 });
       proficiencyService.addExp(character, 'crafting', 10);
       saveDatabase(db);
-      require('./quests').updateQuestProgress(character.id, 'craft', 1); // 轮83 批5任务钩子（按方锻造同样记 craft）
+      require('./quests').updateQuestProgress(character.id, 'craft', 1);
+      // 轮105：产物是 out（不是 resultItem —— 那是另一条分支的变量），带上名字供剧情目标匹配
+      require('./quests').updateQuestProgress(character.id, 'forge', 1, { item: out && out.name ? out.name : undefined });
       res.json({ success: true, result: 'forged', item: { id: out.id, name: out.name, quality: out.quality }, message: `锻造${out.name}成功` });
       return;
     }

@@ -139,6 +139,14 @@ class CombatService {
       ? { exp: 0, spiritStone: 0, items: [] }
       : this.calculateRewards(winner, attacker, defender, db);
 
+    // 轮105：把双方的名字与所在地图带出来。剧情委托的目标是具体的
+    // （「讨伐 灵兔」「清妖兽森林」），钩子需要怪名/地图名才能对上目标；
+    // 前端展示战报也用得上。
+    // ⚠ 地图不能从 "mapId" 参数取 —— startBattle 的签名是 (attackerId, defenderId,…)，
+    //    作用域里根本没有 mapId。怪的所在图要从 defender.map_id 反查（generateMonster 会带上）。
+    const defMap = defender.map_id != null && db.maps
+      ? db.maps.find((m) => Number(m.id) === Number(defender.map_id))
+      : null;
     return {
       success: true,
       winner,
@@ -148,7 +156,9 @@ class CombatService {
       attackerMaxHp: attacker.maxHp,
       attackerFinalHp: Math.max(0, attacker.hp),
       defenderMaxHp: defender.maxHp,
-      defenderFinalHp: Math.max(0, defender.hp)
+      defenderFinalHp: Math.max(0, defender.hp),
+      enemy: { name: defender.name, level: defender.level || null },
+      map: defMap ? defMap.name : null
     };
   }
 
@@ -520,6 +530,7 @@ class CombatService {
         id: `monster_${Date.now()}`,
         name: monsterData.name,
         level: Math.floor(Math.random() * (monsterData.level_range[1] - monsterData.level_range[0] + 1)) + monsterData.level_range[0],
+        map_id: monsterData.map_id != null ? monsterData.map_id : null,   // 轮105：剧情钩子靠它反查地图名
         hp: stats.hp || 50,
         maxHp: stats.hp || 50,
         attack: stats.attack || 5,
@@ -541,6 +552,7 @@ class CombatService {
         id: `monster_${Date.now()}`,
         name: monsterData.name,
         level,
+        map_id: monsterData.map_id != null ? monsterData.map_id : mapId,   // 轮105：剧情钩子靠它反查地图名
         hp: Math.floor((stats.hp || 50) * levelScale),
         maxHp: Math.floor((stats.hp || 50) * levelScale),
         attack: Math.floor((stats.attack || 5) * levelScale),

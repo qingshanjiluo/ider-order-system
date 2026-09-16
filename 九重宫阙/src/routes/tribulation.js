@@ -253,6 +253,8 @@ router.post('/endure', auth, async (req, res) => {
       // 必须在 resolveTribulationVictory 之后：只有真的续上命才算渡过来，v.success 为假时上面已经 return 掉了。
       opportunity.record(character, opportunity.KEYS.TRIBULATION_SURVIVED, { realm: character.realm || null });
       saveDatabase(db);
+      // 轮105 剧情钩子：渡劫成功推进 tribulation 目标（此前该类型全库无进度源）
+      try { require('./quests').updateQuestProgress(character.id, 'tribulation', 1, { realm: character.realm }); } catch (e) { /* 委托不抢渡劫主流程的锅 */ }
       return res.json({
         success: true, won: true,
         renewYears: v.gainedYears,

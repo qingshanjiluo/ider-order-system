@@ -193,13 +193,41 @@ t('不变量：objectives 与 stages[stageIndex].objectives 必须同引用（�
   const inst = Q.instantiate(q, 1, 1);
   assert.ok(inst.objectives === inst.stages[0].objectives, 'instantiate 未同引用');
   // 推进到阶段 1 后，引用必须跟过去
-  Q.applyProgress(inst, 'kill', 99);
+  Q.applyProgress(inst, 'kill', 99, { map: '妖兽森林' });
   assert.strictEqual(inst.stageIndex, 1);
   assert.ok(inst.objectives === inst.stages[1].objectives,
     'advance 后 objectives 没跟着换引用 —— 前端会一直显示上一节的目标');
   // 通过 objectives 改 required，必须影响推进判定
   inst.objectives[0].required = 1;
   assert.ok(inst.stages[1].objectives[0].required === 1, '两处不同步');
+});
+
+t('目标匹配：通配 vs 具名（讨伐灵兔不许被别的怪刷满）', () => {
+  const Q2 = Q;
+  // 具名目标：只有 context 命中才算
+  const named = { type: 'kill', target: '灵兔', current: 0, required: 3 };
+  assert.ok(Q2.objectiveMatches(named, 'kill', { monster: '灵兔' }), '命中的怪名未算');
+  assert.ok(!Q2.objectiveMatches(named, 'kill', { monster: '旱魃幼体' }), '别的怪把灵兔委托刷了');
+  assert.ok(!Q2.objectiveMatches(named, 'kill', {}), '无 context 时不该猜');
+  assert.ok(!Q2.objectiveMatches(named, 'kill', undefined), '无 context 时不该猜');
+  // 类型不同不算
+  assert.ok(!Q2.objectiveMatches(named, 'battle', { monster: '灵兔' }), '类型不同却命中');
+  // 通配目标：任何该类型都算
+  for (const tg of ['', 'monster', 'battle', 'any']) {
+    assert.ok(Q2.objectiveMatches({ type: 'kill', target: tg, required: 1 }, 'kill', undefined),
+      `通配写法「${tg}」未命中`);
+  }
+  // 数组 context（一次击杀可能同时算多张图/多件物品）
+  assert.ok(Q2.objectiveMatches(named, 'kill', { monster: ['土拨鼠妖', '灵兔'] }), '数组 context 未匹配');
+});
+
+t('具名目标：杀错怪不推进，杀对怪才推进', () => {
+  const q = Q.questById('v1_01_first_breath');   // 阶段0：讨伐 灵兔 ×3
+  const inst = Q.instantiate(q, 1, 1);
+  Q.applyProgress(inst, 'kill', 5, { monster: '土拨鼠妖' });
+  assert.strictEqual(inst.stages[0].objectives[0].current, 0, '杀错怪却推进了灵兔委托');
+  Q.applyProgress(inst, 'kill', 5, { monster: '灵兔' });
+  assert.strictEqual(inst.stages[0].objectives[0].current, 3, '杀对怪没推进/未封顶');
 });
 
 t('日常差事的 objectives 与 stages[0].objectives 同引用（接任务落库路径）', () => {
@@ -213,8 +241,8 @@ t('日常差事的 objectives 与 stages[0].objectives 同引用（接任务落�
 t('applyProgress 只推进当前阶段（不许跨阶段提前刷满）', () => {
   const q = Q.questById('v1_02_sect_gate');
   const inst = Q.instantiate(q, 1, 1);
-  // 阶段 0 要 kill 8 次；一次性推 100 次也只该完成阶段 0 并前进到阶段 1
-  const r1 = Q.applyProgress(inst, 'kill', 100);
+  // 阶段 0 要"清妖兽森林 8 只"；一次性推 100 只也只该完成阶段 0 并前进到阶段 1
+  const r1 = Q.applyProgress(inst, 'kill', 100, { map: '妖兽森林' });
   assert.strictEqual(r1.stageIndex, 1, `推进后应停在阶段 1，实际 ${r1.stageIndex}`);
   assert.strictEqual(inst.stages[1].objectives[0].current, 0,
     '阶段 1（副本目标）不该被 kill 进度影响 —— 说明跨阶段刷满了');
@@ -224,8 +252,8 @@ t('applyProgress 只推进当前阶段（不许跨阶段提前刷满）', () => 
 t('applyProgress 按阶段顺序走完才算完成', () => {
   const q = Q.questById('v1_02_sect_gate');
   const inst = Q.instantiate(q, 1, 1);
-  Q.applyProgress(inst, 'kill', 8);
-  Q.applyProgress(inst, 'dungeon', 1);
+  Q.applyProgress(inst, 'kill', 8, { map: '妖兽森林' });
+  Q.applyProgress(inst, 'dungeon', 1, { dungeon: '妖兽洞穴' });
   const r = Q.applyProgress(inst, 'level', 10);
   assert.strictEqual(r.finished, true, '三阶段都满足后仍未判完成');
 });

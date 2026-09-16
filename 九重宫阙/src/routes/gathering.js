@@ -128,7 +128,16 @@ router.post('/gather', auth, (req, res) => {
     // 阶段3：采集熟练度
     const gProf = proficiencyService.addExp(character, 'gathering', 2 + (map.difficulty || 1));
     const { updateQuestProgress } = require('./quests');
-    updateQuestProgress(character.id, 'gather', 1);
+    // 轮105：带上**地图名 + 采到的物品名**。剧情委托写的是「在药王谷采 6 次」「凑齐镜心砂 3 件」，
+    // 不带名字就分不开在哪采的、采到了什么。collect 同源：采到即算"凑齐"。
+    const gatherCtx = {
+      map: map && map.name ? map.name : undefined,
+      item: Array.isArray(gatheredItems) && gatheredItems.length
+        ? gatheredItems.map((g) => (g && (g.name || (g.item && g.item.name))) || null).filter(Boolean)
+        : undefined
+    };
+    updateQuestProgress(character.id, 'gather', 1, gatherCtx);
+    if (gatherCtx.item) for (const nm of gatherCtx.item) updateQuestProgress(character.id, 'collect', 1, { item: nm });
 
     saveDatabase(db);
 

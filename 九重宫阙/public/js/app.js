@@ -3680,6 +3680,9 @@ async function loadQuestSub(sub, btn) {
             ${sub === 'active' ? `
               <button class="btn small" style="margin-top:8px;opacity:.7;" onclick="handleAbandonQuest('${q.id}', '${esc(q.name)}')">放下</button>
             ` : ''}
+            ${sub === 'active' && !allDone && (q.objectives || []).some(o => o.type === 'talk') ? `
+              <button class="btn small" style="margin-top:8px;" onclick="handleRevisitQuest('${q.id}')">前去回访</button>
+            ` : ''}
             ${sub === 'completed' && q.epilogue ? `
               <div style="font-size:10px;color:var(--text2);line-height:1.6;margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);">
                 后记：${esc(q.epilogue)}
@@ -3776,6 +3779,16 @@ async function handleCompleteQuest(questId) {
       loadQuestSub('completed');
     } catch (error) { ui.showToast(error.message); }
   });
+}
+
+/** 回访委托人（推进 talk 目标；剧情里"回来把所见告诉鬼差"就是这一步） */
+async function handleRevisitQuest(questId) {
+  try {
+    const r = await api.request('POST', '/quests/revisit', { questId });
+    ui.showToast(r.message || '话已带到');
+    if (r.advanced) ui.showToast('下一节已开。');
+    loadQuestSub('active');
+  } catch (error) { ui.showToast(error.message); }
 }
 
 /** 放下委托（放弃；进度作废，可再承接） */

@@ -57,8 +57,18 @@ router.post('/battle', auth, async (req, res) => {
         if (oppKey) opportunity.record(character, oppKey, { hp_left: result.attackerFinalHp, hp_max: result.attackerMaxHp });
         character.spirit_stone = (character.spirit_stone || 0) + (result.rewards?.spiritStone || 0);
         const { updateQuestProgress } = require('./quests');
-        const completed = updateQuestProgress(character.id, 'kill', 1);
-        updateQuestProgress(character.id, 'battle', 1);
+        // 轮105：带上 **怪名 + 地图名** 作为 context —— 剧情委托的目标是具体的
+        // （「讨伐 灵兔 3 头」「清妖兽森林 8 只」），不带名字就分不开是哪只怪、哪张图，
+        // 玩家杀别的怪也能把灵兔委托刷满。
+        const killCtx = {
+          monster: result.enemy && result.enemy.name ? result.enemy.name : undefined,
+          map: result.map || undefined
+        };
+        const completed = updateQuestProgress(character.id, 'kill', 1, killCtx);
+        updateQuestProgress(character.id, 'battle', 1, killCtx);
+        // 「探明某地」靠在此地打过一场来推（没有独立的"进入地图"端点，
+        // 战斗即踏足，这是本游戏里"到此一游"的唯一真实信号）
+        if (killCtx.map) updateQuestProgress(character.id, 'explore', 1, { map: killCtx.map });
       } else {
         character.win_streak = 0;
       }

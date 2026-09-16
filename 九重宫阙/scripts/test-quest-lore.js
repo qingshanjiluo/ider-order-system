@@ -166,6 +166,115 @@ t('loreHooks 引用的宗门 / 境界在 world-lore 里有对应条目', () => {
   assert.deepStrictEqual(broken, [], broken.join(' | '));
 });
 
+t('战斗结果必须带地图名（怪物三条构造路径都要）', () => {
+  // 病因（轮105 自查 + 轮107 独立审计补刀）：怪有**三条**构造路径，
+  //   ① buildMonsterFromTemplate —— defenderType='monster' 且 id 命中模板（主路径）
+  //   ② generateMonster 里按 map 取模板
+  //   ③ generateMonster 里兜底合成 `${map.name}妖兽`
+  // 第一版只给 ② 加了 map_id；轮105 补了 ① 而漏了 ③。任何一条漏掉，
+  // 该路径的战斗 result.map 就是 null，「探明某地」这类目标永远刷不满。
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'services', 'battle', 'combat.js'), 'utf8');
+  const tplFn = src.slice(src.indexOf('buildMonsterFromTemplate(tpl)'));
+  assert.ok(/map_id:/.test(tplFn.slice(0, 1200)), 'buildMonsterFromTemplate 没带 map_id');
+  // generateMonster 里应出现 **两处以上** map_id 赋值。
+  // ⚠ 起点必须用**定义**（`generateMonster(mapId`）而不是 `indexOf('generateMonster(')` ——
+  //   后者会先匹配到 `this.generateMonster(id, db)` 这个**调用点**，窗口就落到函数外面去了
+  //   （第一版就这么写的，于是恒报"只有 1 处"）。
+  const defIdx = src.indexOf('generateMonster(mapId');
+  assert.ok(defIdx > 0, '找不到 generateMonster 的定义');
+  const genFn = src.slice(defIdx, defIdx + 6000);
+  const genHits = (genFn.match(/map_id:\s/g) || []).length;
+  assert.ok(genHits >= 2, `generateMonster 只带了 ${genHits} 处 map_id（需要 ≥2：按图取模板 + 兜底合成）`);
+  assert.ok(/const defMap = defender\.map_id/.test(src), 'startBattle 未从 defender.map_id 反查地图');
+  // 存档里的怪必须都带 map_id，否则上面几处补了也没用
+  const noMap = (db.monsters || []).filter((m) => m.map_id == null).map((m) => m.name);
+  assert.deepStrictEqual(noMap, [], `这些怪没有 map_id：${noMap.join('、')}`);
+});
+
+t('一次上报：同一目标不翻倍、通配不搭具名的便车、并行的具名目标都该推进', () => {
+  const mk = (objs) => { const i = Q.instantiate(Q.questById('v1_01_first_breath'), 1, 1); i.stages[0].objectives = objs; i.objectives = objs; return i; };
+
+  // ① 同一目标（同引用）只推一次 —— 轮107 修：此前会翻倍
+  const dup = { type: 'kill', target: '灵兔', current: 0, required: 3 };
+  const a = mk([dup, dup]);
+  Q.applyProgress(a, 'kill', 1, { monster: '灵兔' });
+  assert.strictEqual(a.stages[0].objectives[0].current, 1, '同一目标被推进了多次（重复计数）');
+
+  // ② 同阶段两个 target 相同、required 不同 → 也按 target 去重
+  const b = mk([{ type: 'kill', target: '灵兔', current: 0, required: 3 },
+    { type: 'kill', target: '灵兔', current: 0, required: 5 }]);
+  const rb = Q.applyProgress(b, 'kill', 1, { monster: '灵兔' });
+  assert.strictEqual(rb.gained, 1, '同 target 的两个目标被各推一次（应按 target 去重）');
+
+  // ③ 通配不许搭具名的便车（具名命中在场时只推具名）
+  const c = mk([{ type: 'kill', target: 'monster', current: 0, required: 99 },
+    { type: 'kill', target: '灵兔', current: 0, required: 3 }]);
+  Q.applyProgress(c, 'kill', 1, { monster: '灵兔' });
+  assert.strictEqual(c.stages[0].objectives[0].current, 0, '通配目标搭了具名目标的便车');
+  assert.strictEqual(c.stages[0].objectives[1].current, 1, '具名目标没被推进');
+
+  // ④ 无具名命中时，通配正常工作（"随便打一场就推 battle"这类语义要保住）
+  const d = mk([{ type: 'kill', target: 'monster', current: 0, required: 99 },
+    { type: 'kill', target: 'kill', current: 0, required: 99 }]);
+  const rd = Q.applyProgress(d, 'kill', 1, { monster: '灵兔' });
+  assert.strictEqual(rd.gained, 2, '全是通配时应该都推进');
+
+  // ⑤ 一次行为同时满足两个**不同**具名条件时，两个都该推进（这不是重复计数）
+  const e = mk([{ type: 'kill', target: '妖兽森林', current: 0, required: 8 },
+    { type: 'kill', target: '灵兔', current: 0, required: 3 }]);
+  const re = Q.applyProgress(e, 'kill', 1, { monster: '灵兔', map: '妖兽森林' });
+  assert.strictEqual(re.gained, 2, '一次在妖兽森林杀灵兔应同时推进"清地图"与"讨伐该怪"两个目标');
+});
+
+t('allStagesDone 对无 stages / 空 stages 的任务必须返回 false（不许谎报完成）', () => {
+  // 旧存档的任务只有平铺 objectives、没有 stages。原实现 `if (!quest.stages) return true`
+  // 会把这种任务判成"已完成"，玩家能空手交差。空数组同理（[].every(...) === true）。
+  assert.strictEqual(Q.allStagesDone({ objectives: [] }), false, '无 stages 的任务被谎报为已完成');
+  assert.strictEqual(Q.allStagesDone({ stages: [], objectives: [] }), false, '空 stages 被谎报为已完成');
+  // 注意「有阶段但该阶段没有目标」与上面两种**语义不同**：
+  //   前者是"这个阶段没有要做的事"→ 算过了（合理的）；
+  //   后者是"这份任务数据缺了阶段"→ 绝不算过（否则旧档任务能空手交差）。
+  // 所以这里只锁"数据缺失"，不锁"空阶段"。
+  assert.strictEqual(Q.allStagesDone({ stages: [{ objectives: [] }] }), true, '无目标的阶段应当算已过');
+  // 正常完成仍要判 true
+  const inst = Q.instantiate(Q.questById('v1_01_first_breath'), 1, 1);
+  for (const st of inst.stages) for (const o of st.objectives) o.current = o.required;
+  assert.strictEqual(Q.allStagesDone(inst), true, '真正做完了却判未完成');
+});
+
+t('剧情里不存在"target 值钩子送不出来"的具名目标（值域对账）', () => {
+  // 轮107 独立审计抓到的盲区：可完成性审计只查"类型有没有钩子"，
+  // 于是 `collect target='赤霞洞'`（地图名）被判「可推」，实测采 40 次推进 0。
+  // 这条锁把值域对账也钉进测试（审计脚本 --gate 里同样有一道）。
+  const db = loadDatabase();
+  const setOf = (t) => new Set((db[t] || []).map((x) => x.name));
+  const DOMAIN = {
+    kill: [setOf('monsters'), setOf('maps')],
+    battle: [setOf('monsters'), setOf('maps')],
+    gather: [setOf('maps'), setOf('items')],
+    collect: [setOf('items')],
+    explore: [setOf('maps')],
+    dungeon: [setOf('dungeons')],
+    alchemy: [setOf('items')],
+    forge: [setOf('items')],
+    craft: [setOf('items')],
+    talk: [new Set(Q.allQuests().map((q) => q.giver.name))]
+  };
+  const bad = [];
+  for (const q of Q.allQuests()) {
+    for (const st of q.stages) {
+      for (const o of st.objectives) {
+        const tg = o.target;
+        if (!tg || Q.WILDCARD_TARGETS.has(tg) || tg === o.type) continue;
+        const sets = DOMAIN[o.type];
+        if (!sets) continue;                       // level/checkin/guild 不送实体名，且剧情未用
+        if (!sets.some((s) => s.has(tg))) bad.push(`${q.id} 的 ${o.type}「${tg}」`);
+      }
+    }
+  }
+  assert.deepStrictEqual(bad, [], '这些具名目标的 target 值钩子送不出来（接了永远刷不满）：' + bad.join('、'));
+});
+
 t('qiver 的所在处必须是真实地图（委托人站在存在的地方）', () => {
   const broken = [];
   for (const q of Q.allQuests()) {

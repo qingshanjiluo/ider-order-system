@@ -422,6 +422,10 @@ class CombatService {
       templateId: tpl.id,
       name: tpl.name,
       level,
+      // 轮105：模板怪同样要带 map_id —— startBattle 靠它反查地图名喂给剧情钩子
+      // （「探明 无相幻境」这类目标需要知道玩家在哪张图打）。模板路径是 defenderType='monster'
+      // 且 id 命中模板时的**主路径**，漏了这里会出现"某些战斗推不动探索目标"的鬼故事。
+      map_id: tpl.map_id != null ? tpl.map_id : null,
       hp,
       maxHp: hp,
       attack: Math.floor((Number(s.attack) || 8) * scale),
@@ -574,6 +578,10 @@ class CombatService {
       id: `monster_${Date.now()}`,
       name: `${map.name}妖兽`,
       level,
+      // 轮107：兜底合成分支同样要带 map_id —— 这是**第三条**怪物构造路径，前两条
+      // （buildMonsterFromTemplate / 按图取模板）都已带。漏了它，该路径的战斗 result.map 为 null，
+      // 「探明某地」这类剧情目标就永远推不动（独立审计指出前两条修完仍漏这条）。
+      map_id: map.id != null ? map.id : null,
       hp: Math.floor(50 + level * 5 * difficulty),
       maxHp: Math.floor(50 + level * 5 * difficulty),
       attack: Math.floor(5 + level * 1.5 * difficulty),

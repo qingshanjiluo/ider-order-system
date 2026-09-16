@@ -228,7 +228,9 @@ const QUESTS = [
     stages: [
       { text: '货从妖兽森林出，先看看林子里出了什么事。', objectives: [{ type: 'kill', target: '妖兽森林', current: 0, required: 15 }] },
       { text: '沿商路把三处货栈都走一遍，记下实数。', objectives: [{ type: 'explore', target: '妖兽森林', current: 0, required: 3 }] },
-      { text: '凑齐对账所需的册子与证物。', objectives: [{ type: 'collect', target: '妖兽森林', current: 0, required: 10 }] }
+      // 轮107：此处原为 collect（只送 {item}），target 却写地图名 → 永远推不动（审计抓到的死目标）。
+      // 文案是"在林子里采/捡够 10 次"，语义本就是 gather（送 {map}），改成 gather 即通。
+      { text: '在林子里采够对账所需的册子与证物。', objectives: [{ type: 'gather', target: '妖兽森林', current: 0, required: 10 }] }
     ],
     closing: '老麦把账合上：「是内部人做的。我不报官——散修盟没有官。我把他的盟石收了，让他自己走。」',
     epilogue: '坊市的秤重新校了一遍。老麦在门口挂了块木牌：散修盟，不欺散修。',
@@ -355,7 +357,9 @@ const QUESTS = [
     giver: { name: '丹霞谷谷主 苏未晞', title: '丹霞谷第三代谷主', place: '药王谷' },
     brief: '苏九的孙女把一封信放在你面前：「祖父坐化前留的。他说，若有一日谷中火要灭了，就请当年从寒潭底上来的人，替丹霞谷开最后一炉。」她抬头，「我不瞒你——这一炉未必成。」',
     stages: [
-      { text: '炉材还缺三味，去赤霞洞与玄武寒潭各取一次。', objectives: [{ type: 'collect', target: '赤霞洞', current: 0, required: 12 }] },
+      // 轮107：原为 collect（只送 {item}），target 却写地图名"赤霞洞" → 死目标。
+      // 文案是"去赤霞洞取炉材"，是采集动作 → gather（送 {map}）。
+      { text: '炉材还缺三味，去赤霞洞采足十二份。', objectives: [{ type: 'gather', target: '赤霞洞', current: 0, required: 12 }] },
       { text: '开炉。丹霞谷的火候，全靠这一手。', objectives: [{ type: 'alchemy', target: 'alchemy', current: 0, required: 8 }] },
       { text: '丹成之后，去苏九的旧位前说一声结果。', objectives: [{ type: 'talk', target: '丹霞谷谷主 苏未晞', current: 0, required: 1 }] }
     ],
@@ -593,10 +597,21 @@ function stageDone(quest) {
   return st.objectives.every((o) => o.current >= o.required);
 }
 
-/** 全部阶段是否已完成 */
+/**
+ * 全部阶段是否已完成。
+ *
+ * ⚠ 无 stages 时**必须返回 false**（轮107 修）。原实现是 `if (!quest.stages) return true;` ——
+ * 这是"谎报完成"：旧存档的任务只有平铺 `objectives`、没有 `stages`，一旦这种任务被送进
+ * `applyProgress`（或任何依赖本函数判完成的地方），它会立刻被判定为"已完成"，
+ * 于是玩家能空手交差、跳过全部流程。空数组同理（`[].every(...)` 也是 true）。
+ *
+ * 判据：**必须有至少一个阶段，且每个阶段的目标都满**才算完成。
+ * 兼容旧档的正确做法是在调用方把平铺 objectives 包成单阶段（见 routes/quests.js 的平铺分支），
+ * 而不是让本函数对"没有阶段"的任务放行。
+ */
 function allStagesDone(quest) {
-  if (!quest.stages) return true;
-  return quest.stages.every((st) => st.objectives.every((o) => o.current >= o.required));
+  if (!Array.isArray(quest.stages) || quest.stages.length === 0) return false;
+  return quest.stages.every((st) => Array.isArray(st.objectives) && st.objectives.every((o) => o.current >= o.required));
 }
 
 /** 通配 target：这些写法表示"任何该类型的行为都算" */
@@ -636,6 +651,21 @@ function objectiveMatches(obj, objectiveType, context) {
  * 上报进度 —— 只推进**当前阶段**（防止玩家一路推图时把后续阶段的计数也提前刷满），
  * 且只推进与 context 匹配的目标（防止"讨伐灵兔"被别的怪刷满）。
  *
+ * ## 一次上报命中多个目标时怎么算（轮107 修）
+ *
+ * 独立审计抓到一个真缺陷：同阶段放 `{kill,'妖兽森林',8}` 与 `{kill,'灵兔',3}` 两个目标时，
+ * 一次「在妖兽森林杀灵兔」的上报会把**两个都 +1**（gained=2）。当前 70 个目标恰好没有
+ * 这种组合，所以线上打不出来 —— 但那是数据巧合，不是机制保证，谁往同阶段加一对就会双倍计数。
+ *
+ * 修法是**分层匹配**而不是"只推第一个"：
+ *   · 具名目标（target 是具体实体名）优先级高于通配目标（target ∈ WILDCARD_TARGETS）
+ *   · 先算本轮所有匹配目标；若其中存在**具名**命中，则只推具名的那些
+ *   · 全是通配命中时才推通配（保留"随便打一场就推 battle"这类语义）
+ *
+ * 为什么不是"只推第一个"：同阶段允许出现**两个都该被同一次上报推进**的正当情形
+ * （例如「在妖兽森林杀 8 只」与「讨伐林中任意妖兽 5 只」并存时，两者都该动）。
+ * 分层只排除"通配搭便车"，不误伤并行的具名目标。
+ *
  * @returns {{advanced:boolean, finished:boolean, stageIndex:number, gained:number}}
  */
 function applyProgress(quest, objectiveType, increment, context) {
@@ -646,9 +676,21 @@ function applyProgress(quest, objectiveType, increment, context) {
   while (guard++ < 20) {
     const st = quest.stages && quest.stages[quest.stageIndex];
     if (!st) break;
-    for (const o of st.objectives) {
-      if (o.current >= o.required) continue;
-      if (!objectiveMatches(o, objectiveType, context)) continue;
+    const matched = st.objectives.filter((o) => o.current < o.required && objectiveMatches(o, objectiveType, context));
+    // 去重：同一个目标对象在一次上报里只能被推进一次。
+    // 现实里不会有人把同一引用写两遍，但"同阶段两个 target 相同、required 不同"的目标
+    // （例如 `{kill,'灵兔',3}` 与 `{kill,'灵兔',5}`）会等价地翻倍 —— 按 target+type 去重堵住它。
+    const seenKey = new Set();
+    const matchedUnique = matched.filter((o) => {
+      const k = o.type + '\u0000' + (o.target || '');
+      if (seenKey.has(k)) return false;
+      seenKey.add(k);
+      return true;
+    });
+    // 具名优先：有具体实体名的命中在场时，通配目标不许搭便车
+    const named = matchedUnique.filter((o) => o.target && !WILDCARD_TARGETS.has(o.target) && o.target !== o.type);
+    const winners = named.length ? named : matchedUnique;
+    for (const o of winners) {
       const add = Math.min(o.current + increment, o.required) - o.current;
       if (add > 0) { o.current += add; gained += add; }
     }

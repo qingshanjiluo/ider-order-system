@@ -1,0 +1,31 @@
+# 行尾纪律（轮107 补）
+#
+# 为什么需要这个文件：
+#   本仓库 core.autocrlf=true 且此前**没有 .gitattributes**，于是 checkout 会把仓库里的 LF
+#   转成工作区 CRLF。九重宫阙的"逐字新鲜"门禁（P5 验收清单新鲜度）拿
+#   gen-acceptance.js 现场生成的**纯 LF** 文本与磁盘上的文件逐行严格比较 ——
+#   一旦工作区被转成 CRLF，比较就**每行都不等**，而报错打印时 \r 不可见，
+#   于是显示成"现文与应为完全相同却报不一致"这种极难排查的假红。
+#   实测：cd1b47a 那次提交的清单在 checkout 后是 CRLF，门禁假红。
+#
+# 处置：对**生成物与校验敏感的文本**强制 LF（eol=lf 让 git 不做转换）。
+# 不写 `* text=auto` —— 那会波及 原版/、工单系统/、私服/ 三个兄弟项目的工作区行尾，
+# 超出本次修复的范围，也可能打乱它们各自的工具链假设。
+#
+# 新增"机器逐字比对"的生成物时，记得在这里登记一行。
+
+# 九重宫阙：门禁逐字比对的生成物
+九重宫阙/上线验收清单.md text eol=lf
+九重宫阙/前端可见性与覆盖率测量.md text eol=lf
+九重宫阙/经济守恒表.md text eol=lf
+九重宫阙/数值追赶校验.md text eol=lf
+
+# 九重宫阙：源码与脚本（跨平台一致，避免 git diff 出现整文件差异）
+九重宫阙/src/** text eol=lf
+九重宫阙/scripts/** text eol=lf
+九重宫阙/public/** text eol=lf
+
+# 九重宫阙：数据库与二进制产物一律不碰
+九重宫阙/data/*.db binary
+九重宫阙/data/*.db-wal binary
+九重宫阙/data/*.db-shm binary

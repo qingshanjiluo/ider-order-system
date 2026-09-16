@@ -56,6 +56,8 @@ const SUITES = [
   ['E10 真浏览器渲染', 'scripts/test-e10-browser.js'],
   // 轮61：容器恢复演练把存档弄丢后新增（WAL 下裸拷贝备份会丢未 checkpoint 的已提交事务）
   ['S5 存档快照与恢复', 'scripts/test-db-snapshot.js'],
+  // 轮101 P7：美术资产完整性（磁盘↔界面↔manifest 三向对账 + 体积/尺寸/接线锁）
+  ['P7 美术资产', 'scripts/test-assets.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

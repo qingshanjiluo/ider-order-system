@@ -1,0 +1,315 @@
+{
+  "generatedAt": "2026-09-16T16:09:08.798Z",
+  "source": "game-assets/_inbox（用户提供 14 张原始素材）",
+  "policy": {
+    "maxAssetBytes": 409600,
+    "maxBgBytes": 716800,
+    "quality": 88
+  },
+  "totalBytes": 5035569,
+  "count": 36,
+  "assets": [
+    {
+      "src": "入仙门图.png",
+      "out": "assets/bg/login.jpg",
+      "use": "登录页背景",
+      "dim": "1600x900",
+      "bytes": 341470,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "战斗图.png",
+      "out": "assets/bg/battle.jpg",
+      "use": "刷怪历练背景",
+      "dim": "1600x901",
+      "bytes": 497851,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "渡劫图.png",
+      "out": "assets/bg/tribulation.jpg",
+      "use": "渡劫/天劫背景",
+      "dim": "1600x901",
+      "bytes": 399946,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "仙盟会议.png",
+      "out": "assets/bg/guild.jpg",
+      "use": "仙盟事务背景",
+      "dim": "1600x902",
+      "bytes": 415600,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "仙逝转世.png",
+      "out": "assets/bg/reincarnate.jpg",
+      "use": "坐化转世背景",
+      "dim": "1600x901",
+      "bytes": 437968,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "时间轮转.png",
+      "out": "assets/bg/time.jpg",
+      "use": "结算/挂机背景",
+      "dim": "1600x901",
+      "bytes": 424202,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "正魔对立.png",
+      "out": "assets/bg/faction.jpg",
+      "use": "阵营/赛季背景",
+      "dim": "1600x901",
+      "bytes": 422428,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "横版标题.png",
+      "out": "assets/ui/title.png",
+      "use": "横版游戏标题",
+      "dim": "560x315",
+      "bytes": 211248,
+      "format": "png",
+      "crop": null
+    },
+    {
+      "src": "2x2名字标题.png",
+      "out": "assets/ui/title-square.jpg",
+      "use": "方形标题（启动页）",
+      "dim": "800x800",
+      "bytes": 119923,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "海报.png",
+      "out": "assets/ui/poster.jpg",
+      "use": "竖版海报（分享/公告）",
+      "dim": "720x1080",
+      "bytes": 263575,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "立绘.png",
+      "out": "assets/char/portrait.jpg",
+      "use": "角色立绘",
+      "dim": "800x800",
+      "bytes": 124800,
+      "format": "jpg",
+      "crop": null
+    },
+    {
+      "src": "q版立绘.png",
+      "out": "assets/char/chibi.jpg",
+      "use": "Q版立绘（导航/空状态）",
+      "dim": "1200x675",
+      "bytes": 138378,
+      "format": "jpg",
+      "crop": null
+    }
+  ],
+  "icons": [
+    {
+      "sheet": "icons",
+      "slot": "nav-map",
+      "out": "assets/icons/nav-map.png",
+      "cell": "0,0,384,256",
+      "dim": "128x128",
+      "bytes": 15750
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-trade",
+      "out": "assets/icons/nav-trade.png",
+      "cell": "384,0,384,256",
+      "dim": "128x128",
+      "bytes": 17865
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-craft",
+      "out": "assets/icons/nav-craft.png",
+      "cell": "768,0,384,256",
+      "dim": "128x128",
+      "bytes": 17654
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-sect",
+      "out": "assets/icons/nav-sect.png",
+      "cell": "1152,0,384,256",
+      "dim": "128x128",
+      "bytes": 14685
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-guild",
+      "out": "assets/icons/nav-guild.png",
+      "cell": "0,256,384,256",
+      "dim": "128x128",
+      "bytes": 15158
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-battle",
+      "out": "assets/icons/nav-battle.png",
+      "cell": "384,256,384,256",
+      "dim": "128x128",
+      "bytes": 16669
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-char",
+      "out": "assets/icons/nav-char.png",
+      "cell": "768,256,384,256",
+      "dim": "128x128",
+      "bytes": 16342
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-cave",
+      "out": "assets/icons/nav-cave.png",
+      "cell": "1152,256,384,256",
+      "dim": "128x128",
+      "bytes": 14520
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-skill",
+      "out": "assets/icons/nav-skill.png",
+      "cell": "0,512,384,256",
+      "dim": "128x128",
+      "bytes": 15491
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-gongfa",
+      "out": "assets/icons/nav-gongfa.png",
+      "cell": "384,512,384,256",
+      "dim": "128x128",
+      "bytes": 19093
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-bag",
+      "out": "assets/icons/nav-bag.png",
+      "cell": "768,512,384,256",
+      "dim": "128x128",
+      "bytes": 18481
+    },
+    {
+      "sheet": "icons",
+      "slot": "nav-achieve",
+      "out": "assets/icons/nav-achieve.png",
+      "cell": "1152,512,384,256",
+      "dim": "128x128",
+      "bytes": 17839
+    },
+    {
+      "sheet": "icons",
+      "slot": "stat-hp",
+      "out": "assets/icons/stat-hp.png",
+      "cell": "0,768,384,256",
+      "dim": "128x128",
+      "bytes": 15753
+    },
+    {
+      "sheet": "icons",
+      "slot": "stat-mp",
+      "out": "assets/icons/stat-mp.png",
+      "cell": "384,768,384,256",
+      "dim": "128x128",
+      "bytes": 16545
+    },
+    {
+      "sheet": "icons",
+      "slot": "stat-exp",
+      "out": "assets/icons/stat-exp.png",
+      "cell": "768,768,384,256",
+      "dim": "128x128",
+      "bytes": 15215
+    },
+    {
+      "sheet": "icons",
+      "slot": "stat-stone",
+      "out": "assets/icons/stat-stone.png",
+      "cell": "1152,768,384,256",
+      "dim": "128x128",
+      "bytes": 15491
+    },
+    {
+      "sheet": "appicon",
+      "slot": "alt-tl",
+      "out": "assets/app/alt-tl.png",
+      "cell": "0,0,627,627",
+      "dim": "256x256",
+      "bytes": 105235
+    },
+    {
+      "sheet": "appicon",
+      "slot": "main",
+      "out": "assets/app/main.png",
+      "cell": "627,0,627,627",
+      "dim": "256x256",
+      "bytes": 109927
+    },
+    {
+      "sheet": "appicon",
+      "slot": "alt-bl",
+      "out": "assets/app/alt-bl.png",
+      "cell": "0,627,627,627",
+      "dim": "256x256",
+      "bytes": 115102
+    },
+    {
+      "sheet": "appicon",
+      "slot": "alt-br",
+      "out": "assets/app/alt-br.png",
+      "cell": "627,627,627,627",
+      "dim": "256x256",
+      "bytes": 121030
+    },
+    {
+      "sheet": "appicon",
+      "slot": "favicon-32",
+      "out": "assets/favicon-32.png",
+      "cell": "main",
+      "dim": "32x32",
+      "bytes": 2646
+    },
+    {
+      "sheet": "appicon",
+      "slot": "apple-touch-icon",
+      "out": "assets/apple-touch-icon.png",
+      "cell": "main",
+      "dim": "180x180",
+      "bytes": 59933
+    },
+    {
+      "sheet": "appicon",
+      "slot": "icon-192",
+      "out": "assets/icon-192.png",
+      "cell": "main",
+      "dim": "192x192",
+      "bytes": 67444
+    },
+    {
+      "sheet": "appicon",
+      "slot": "icon-512",
+      "out": "assets/icon-512.png",
+      "cell": "main",
+      "dim": "512x512",
+      "bytes": 394312
+    }
+  ]
+}

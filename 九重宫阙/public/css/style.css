@@ -43,23 +43,50 @@ body {
 .hidden { display: none !important; }
 
 /* ===== Login ===== */
+/* P7：登录页背景用「入仙门图」，卡片半透明浮于其上 */
+.login-bg {
+  position: fixed;
+  inset: 0;
+  background: url('../assets/bg/login.jpg') center/cover no-repeat;
+  z-index: 0;
+  filter: saturate(0.9) brightness(1.02);
+  animation: bgDrift 40s ease-in-out infinite alternate;
+}
+
+/* 极慢的呼吸位移：让静态背景有生气，同时不干扰阅读（reduced-motion 下自动关闭） */
+@keyframes bgDrift {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.09) translate3d(-1.2%, -1%, 0); }
+}
+
 .login-card {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M30 0 Q45 15 30 30 Q15 15 30 0Z' fill='%23f5f0e8' opacity='0.15'/%3E%3C/svg%3E") repeat, rgba(245,240,232,0.98);
+  position: relative;
+  z-index: 1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M30 0 Q45 15 30 30 Q15 15 30 0Z' fill='%23f5f0e8' opacity='0.15'/%3E%3C/svg%3E") repeat, rgba(245,240,232,0.94);
+  backdrop-filter: blur(3px);
   border: 1px solid var(--border);
-  padding: 40px 32px;
+  padding: 32px 32px 28px;
   max-width: 380px;
   margin: 0 auto;
   text-align: center;
   box-shadow: var(--shadow-lg);
   border-radius: var(--radius-lg);
   align-self: center;
-  margin-top: 10vh;
-  position: relative;
+  margin-top: 8vh;
   overflow: hidden;
 }
 
+.game-title-img {
+  display: block;
+  width: 240px;
+  max-width: 80%;
+  height: auto;
+  margin: 0 auto 2px;
+  filter: drop-shadow(0 2px 6px rgba(58,50,40,0.25));
+}
+
 .login-view { display: none; }
-.login-view.active { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+.login-view.active { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); position: relative; }
 
 .game-title {
   font-family: 'Ma Shan Zheng', cursive;
@@ -261,7 +288,28 @@ select.input-field {
   background: var(--bg3);
   border-radius: var(--radius);
   flex-shrink: 0;
+  overflow: hidden;
 }
+
+/* P7：美术图标（挂载成功时替换文字图标） */
+.nav-icon-img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  display: block;
+  filter: saturate(0.95);
+  transition: transform var(--transition-fast), filter var(--transition-fast);
+}
+
+.nav-item:hover .nav-icon-img { transform: scale(1.08); filter: saturate(1.1); }
+
+.nav-item.active .nav-icon {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(196,30,58,0.25);
+}
+
+.nav-item.active .nav-icon-img { filter: brightness(1.12) saturate(1.15); }
 
 .nav-item.active .nav-icon {
   background: var(--red);
@@ -269,14 +317,46 @@ select.input-field {
 }
 
 /* ===== Main Content ===== */
+/* P7：内容区铺在场景背景之上，面板保持可读（半透明纸感） */
 .content-area {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background: var(--bg);
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+/* 场景背景层：全局 fixed 贴右，透明度低——只做氛围，绝不抢文字 */
+.scene-bg {
+  position: fixed;
+  top: var(--header-height);
+  right: 0;
+  bottom: 0;
+  left: var(--sidebar-width);
+  background-image: var(--scene-bg, none);
+  background-size: cover;
+  background-position: center right;
+  opacity: 0.16;
+  z-index: 0;
+  pointer-events: none;
+  transition: background-image 0.5s ease, opacity 0.5s ease;
+  mix-blend-mode: luminosity;   /* 与纸质底色相融，避免彩色背景让文字发飘 */
+}
+
+.scene-bg.visible { opacity: 0.22; }
+
+/* 左侧导航折叠时背景跟着让位 */
+.sidebar-nav.collapsed ~ .scene-bg { left: var(--sidebar-collapsed-width); }
+
+@media (max-width: 768px) {
+  .scene-bg { left: 0; opacity: 0.10; }
 }
 
 .content-area > .char-panel:first-child { margin-top: 0; }
+
+/* 面板在场景背景上保持不透明（可读性优先于氛围） */
+.content-area .char-panel { background: #faf6f0; }
 
 /* ===== Character Panel ===== */
 .char-panel {
@@ -667,19 +747,47 @@ select.input-field {
   color: var(--text2);
 }
 
-.empty-state .icon {
-  font-size: 40px;
-  margin-bottom: 12px;
-  opacity: 0.3;
-  background: var(--bg2);
+/* P7：空状态插画（Q版立绘角标 + 汉字符 + 呼吸动画） */
+.empty-illus {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 16px;
   border-radius: 50%;
-  width: 80px;
-  height: 80px;
+  background: var(--bg2);
+  border: 2px dashed var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
-  border: 2px dashed var(--border);
+  overflow: hidden;
+  animation: emptyBreathe 4s ease-in-out infinite;
+}
+
+.empty-illus .empty-chibi {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+  filter: saturate(0.7) brightness(1.06);
+}
+
+.empty-illus .empty-glyph {
+  position: relative;
+  z-index: 1;
+  font-family: 'Ma Shan Zheng', cursive;
+  font-size: 34px;
+  color: var(--text);
+  opacity: 0.72;
+  text-shadow: 0 1px 3px rgba(245,240,232,0.9);
+}
+
+.empty-illus.no-img .empty-glyph { opacity: 0.5; }
+
+@keyframes emptyBreathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.02); }
 }
 
 .empty-state .title {

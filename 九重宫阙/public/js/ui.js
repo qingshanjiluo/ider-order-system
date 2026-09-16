@@ -124,7 +124,7 @@ const ui = {
     const el = document.getElementById('inventory-list');
     if (!el) return;
     if (!inventory || inventory.length === 0) {
-      el.innerHTML = '<div class="empty-state"><span class="icon">📦</span><div class="title">背包为空</div><div class="desc">去冒险收集物品吧</div></div>';
+      el.innerHTML = this.emptyState('bag');
       return;
     }
     
@@ -344,6 +344,34 @@ const ui = {
 
   hideSkeleton(container) {
     if (container) container.classList.remove('skeleton-loading');
+  },
+
+  // ===== P7 空状态插画（统一出口，替换散落的纯文字空态）=====
+  // kind: 'bag' | 'list' | 'friend' | 'search' | 'error' | 'default'
+  emptyState(kind = 'default', title = '', desc = '') {
+    const GLYPH = {
+      bag: '囊', list: '卷', friend: '友', search: '寻', error: '异', default: '空'
+    };
+    const TEXT = {
+      bag: ['囊中空空', '去刷怪历练或坊市寻些物件吧'],
+      list: ['此处暂无所得', '换个场景或过些时日再来'],
+      friend: ['尚无道友往来', '在道友往来里搜道号，结个善缘'],
+      search: ['未寻得匹配之物', '换个词、放宽条件试试'],
+      error: ['此处灵气紊乱', '稍后重试，或回报宗门执事'],
+      default: ['此处尚无内容', '再往别处看看']
+    };
+    const t = title || (TEXT[kind] || TEXT.default)[0];
+    const d = desc || (TEXT[kind] || TEXT.default)[1];
+    return `
+      <div class="empty-state empty-${kind}">
+        <div class="empty-illus" aria-hidden="true">
+          <img class="empty-chibi" src="assets/char/chibi.jpg" alt="" loading="lazy"
+               onerror="this.style.display='none';this.parentNode.classList.add('no-img')">
+          <span class="empty-glyph">${GLYPH[kind] || GLYPH.default}</span>
+        </div>
+        <div class="title">${t}</div>
+        <div class="desc">${d}</div>
+      </div>`;
   },
 
   // ===== 全局 Loading 遮罩 =====

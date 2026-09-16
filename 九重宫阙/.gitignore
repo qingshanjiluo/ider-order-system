@@ -1,2 +1,7 @@
 _*.txt
 _*.log
+
+# P7 美术资产：原图只在本地作切分源（32MB），web 产出在 public/assets/ 入库
+game-assets/_inbox/
+game-assets/_tmp/
+

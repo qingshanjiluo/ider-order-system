@@ -97,6 +97,9 @@ async function init() {
     item.onclick = () => switchTab(item.dataset.tab);
   });
 
+  // P7：把美术图标挂进导航（图缺失时自动回退文字）
+  mountNavIcons();
+
   // 阶段10：12 主导航分组折叠
   document.querySelectorAll('.nav-group-title').forEach(title => {
     title.onclick = () => title.closest('.nav-group').classList.toggle('open');
@@ -198,6 +201,7 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  applySceneBg(tab);   // P7：切场景背景（图缺失时静默，不影响功能）
   loadTabContent(tab);
 }
 
@@ -4097,3 +4101,91 @@ async function loadGameEnhanced() {
 }
 
 init();
+
+
+// ===== P7 美术图标映射（由 scripts/build-assets.js 产出，勿手改映射键名）=====
+// 图标语义分组：32 个 tab 复用 16 张图（同组共享，避免为一次性入口单画一张）
+const NAV_ICON_MAP = {
+  // 地图组
+  battle: 'nav-battle', dungeon: 'nav-battle', gathering: 'nav-map', afk: 'nav-map',
+  // 交易组
+  shop: 'nav-trade', market: 'nav-trade', economy: 'stat-stone',
+  // 炼制组
+  forge: 'nav-craft', alchemist: 'nav-craft', talismans: 'nav-craft', formations: 'nav-craft',
+  // 宗门/仙盟
+  sect: 'nav-sect', guild: 'nav-guild',
+  // 角色组
+  character: 'nav-char', cultivation: 'nav-skill', chronicle: 'nav-gongfa',
+  // 洞府
+  cave: 'nav-cave', pet: 'nav-cave',
+  // 技能/功法
+  skill: 'nav-skill', gongfa: 'nav-gongfa',
+  // 背包
+  'wеароn​s': 'nav-bag', pills: 'nav-bag',
+  // 战斗
+  arena: 'nav-battle', season: 'nav-achieve', chat: 'nav-guild', friend: 'nav-char',
+  // 系统
+  settings: 'nav-char', vip: 'stat-stone', invite: 'nav-char',
+  quests: 'nav-achieve', achievement: 'nav-achieve', admin: 'nav-achieve'
+};
+
+// 启动时把图标塞进导航（渐进增强：图缺失就保留原文字图标，不留空白）
+function mountNavIcons() {
+  const items = document.querySelectorAll('.nav-item[data-tab]');
+  let mounted = 0;
+  items.forEach((el) => {
+    const icon = NAV_ICON_MAP[el.dataset.tab];
+    if (!icon) return;
+    const holder = el.querySelector('.nav-icon');
+    if (!holder || holder.dataset.p7 === '1') return;
+    const label = holder.textContent.trim();
+    holder.dataset.p7 = '1';
+    holder.dataset.label = label;
+    holder.textContent = '';
+    const img = document.createElement('img');
+    img.src = 'assets/icons/' + icon + '.png';
+    img.alt = label;
+    img.className = 'nav-icon-img';
+    img.loading = 'lazy';
+    img.onerror = () => { holder.textContent = label; };  // 图标缺失回退文字
+    holder.appendChild(img);
+    mounted++;
+  });
+  return mounted;
+}
+// ===== P7 图标映射结束 =====
+
+
+// ===== P7 场景背景映射 =====
+// 场景背景语义分组：把 tab 映射到 7 张场景图（战斗/渡劫/仙盟/转世/时间/阵营/登录）
+const SCENE_BG_MAP = {
+  battle: 'bg/battle.jpg', arena: 'bg/battle.jpg', dungeon: 'bg/battle.jpg', afk: 'bg/battle.jpg',
+  guild: 'bg/guild.jpg', chat: 'bg/guild.jpg', sect: 'bg/guild.jpg', friend: 'bg/guild.jpg',
+  cultivation: 'bg/tribulation.jpg', skill: 'bg/tribulation.jpg', gongfa: 'bg/tribulation.jpg',
+  character: 'bg/reincarnate.jpg', cave: 'bg/reincarnate.jpg', pet: 'bg/reincarnate.jpg',
+  chronicle: 'bg/time.jpg', season: 'bg/time.jpg', achievement: 'bg/time.jpg', quests: 'bg/time.jpg',
+  vip: 'bg/faction.jpg', economy: 'bg/faction.jpg', market: 'bg/faction.jpg',
+  shop: 'bg/faction.jpg', forge: 'bg/faction.jpg', alchemist: 'bg/faction.jpg',
+  talismans: 'bg/faction.jpg', formations: 'bg/faction.jpg',
+  gathering: 'bg/time.jpg', settings: 'bg/reincarnate.jpg', invite: 'bg/faction.jpg'
+};
+
+let _sceneCache = {};
+function applySceneBg(tab) {
+  const el = document.getElementById('scene-bg');
+  if (!el) return;
+  const rel = SCENE_BG_MAP[tab];
+  if (!rel) { el.style.removeProperty('--scene-bg'); el.classList.remove('visible'); return; }
+  const url = 'assets/' + rel;
+  if (!_sceneCache[url]) {
+    // 首次用到才探测可用性，避免 33 个 tab 切一遍就打 33 个 404
+    const probe = new Image();
+    probe.onload = () => { _sceneCache[url] = true; if (currentTab === tab) applySceneBg(tab); };
+    probe.onerror = () => { _sceneCache[url] = false; };
+    probe.src = url;
+  }
+  if (_sceneCache[url] === false) { el.classList.remove('visible'); return; }
+  el.style.setProperty('--scene-bg', 'url("' + url + '")');
+  el.classList.toggle('visible', _sceneCache[url] === true);
+}
+// ===== P7 场景背景映射结束 =====

@@ -4,6 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>九重宫阙</title>
+  <!-- P7 美术资产：favicon / PWA / 首屏预加载（登录背景最关键，优先拉） -->
+  <link rel="icon" type="image/png" href="assets/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#c41e3a">
+  <meta name="description" content="九重宫阙 · 水墨修仙，一念成仙。刷怪历练、副本挑战、炼器炼丹、宗门仙盟、渡劫飞升。">
+  <meta property="og:title" content="九重宫阙">
+  <meta property="og:description" content="水墨修仙 一念成仙">
+  <meta property="og:image" content="assets/ui/poster.jpg">
+  <link rel="preload" as="image" href="assets/bg/login.jpg">
+  <link rel="preload" as="image" href="assets/ui/title.png">
   <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
@@ -11,8 +22,9 @@
 <body>
 
   <div id="login-view" class="view login-view active">
+    <div class="login-bg" aria-hidden="true"></div>
     <div class="login-card">
-      <div class="game-title">九重宫阙</div>
+      <img class="game-title-img" src="assets/ui/title.png" alt="九重宫阙" width="280" height="158">
       <div class="game-subtitle">水墨修仙 一念成仙</div>
       <form id="login-form">
         <input type="text" id="login-username" class="input-field" placeholder="用户名" autocomplete="username">
@@ -152,6 +164,8 @@
       <div class="content-area" id="tab-content">
         <!-- Dynamic content loaded here -->
       </div>
+      <!-- P7：场景背景层（按 tab 切换，JS 设 --scene-bg 变量） -->
+      <div class="scene-bg" id="scene-bg" aria-hidden="true"></div>
     </div>
 
     <div class="tab-nav" id="mobile-tab-nav" style="display:none;">

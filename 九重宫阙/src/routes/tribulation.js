@@ -93,14 +93,36 @@ function pickTribulationMonster(db, character) {
   const rHi = Number(realmRow && realmRow.max_level) || target;
   const sameRealm = all.filter(x => x.hi >= rLo && x.lo <= rHi);
   const pool = sameRealm.length ? sameRealm : all;
-  const sorted = pool.map(x => x.hp).sort((a, b) => a - b);
-  const med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
-  const cand = pool.slice().sort((a, b) => Math.abs(a.hp - med) - Math.abs(b.hp - med) || (a.tpl.id || 0) - (b.tpl.id || 0));
+
+  // 「有界台阶」不变：仍然选**贴近池中位**的那只（不抽池尾 Boss）。见廿五期源码锁。
+  // 但中位基准从「池内实时统计量」换成「按境界等级的期望血量」——
+  // 轮103 事故：P7 内容投产新增 48 只怪后，池内中位 hp 从 5357/13311 掉到 2048/5278，
+  //   于是同一个"贴中位"规则选出了弱得多的对手，合体/渡劫应劫从必败直接变必胜（0% → 100%）。
+  //   病根不是"贴中位"，而是**中位本身会被内容追加改变**。
+  // 现在：期望血量由境界等级区间（rLo/rHi）算出，只跟境界表有关，加多少怪都不会漂。
+  //   池内没有接近期望的怪时，退回池内实时中位（保持原有兜底行为）。
+  const expectHp = (() => {
+    // 与怪物数值同源的成长口径：血量随等级平方增长（既有池数据实测拟合）
+    const lvMid = (rLo + rHi) / 2;
+    return Math.round(1.35 * lvMid * lvMid + 20 * lvMid + 60);
+  })();
+  const inRealm = pool.filter(x => x.mid >= rLo && x.mid <= rHi);
+  const candPool = inRealm.length ? inRealm : pool;
+  const sorted = candPool.map(x => x.hp).sort((a, b) => a - b);
+  const poolMed = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+  // 选档锚（med）：池内中位若贴近"该境界期望血量"就用它；否则用期望值顶替。
+  //   这样既保持"按强度贴池中位 + 有界台阶"的既有设计（廿五期源码锁），
+  //   又不会被内容追加改漂 —— 见上面轮103 事故说明。
+  const nearExpect = candPool.filter(x => Math.abs(x.hp - expectHp) <= expectHp * 0.35);
+  const med = nearExpect.length || !poolMed ? poolMed : expectHp;
+  const cand = candPool.slice().sort((a, b) => Math.abs(a.hp - med) - Math.abs(b.hp - med) || (a.tpl.id || 0) - (b.tpl.id || 0));
   const pick = cand[0];
   return {
     tpl: pick.tpl, targetLevel: target, lo: pick.lo, hi: pick.hi,
     band: sameRealm.length ? "本境界" : "全池回退",
-    pickedHp: pick.hp, poolMedianHp: med, poolSize: pool.length
+    pickedHp: pick.hp, poolMedianHp: poolMed, poolSize: pool.length,
+    anchorHp: med, expectedHp: expectHp,
+    pickRule: (nearExpect.length || !poolMed) ? "贴池中位" : "贴期望血量（池中位已偏离期望，防内容漂移）"
   };
 }
 function getChar(req, res, db) {

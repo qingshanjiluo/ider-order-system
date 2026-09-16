@@ -60,6 +60,8 @@ const SUITES = [
   ['P7 美术资产', 'scripts/test-assets.js'],
   // 轮102 P7：世界观锚点（纪元/九境风物/宗门史/世界事件 + 传记确定性 + 前端接线）
   ['P7 世界观锚点', 'scripts/test-world-lore.js'],
+  // 轮103 P7：玩法闭环（地图有怪/等级对齐/材料无死物/物品无重名/配方引用有效）
+  ['P7 玩法闭环', 'scripts/test-gameplay-loop.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

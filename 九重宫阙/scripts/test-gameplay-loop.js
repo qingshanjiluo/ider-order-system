@@ -179,12 +179,12 @@ t('配方产出必须是真实物品（炼出来不存在的 id 会凭空丢货�
 });
 
 t('产出工具自带可复现审计与修复脚本（断点能被下一个 AI 复跑）', () => {
-  for (const s of ['audit-gameplay.js', 'seed-content.js', 'align-monsters.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js', 'rebalance-pool.js', 'run-content-pipeline.js', 'sim-battle-lib.js', 'calibrate-bands.js']) {
+  for (const s of ['audit-gameplay.js', 'seed-content.js', 'align-monsters.js', 'align-monster-attack.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js', 'rebalance-pool.js', 'run-content-pipeline.js', 'sim-battle-lib.js', 'calibrate-bands.js']) {
     assert.ok(fs.existsSync(path.join(ROOT, 'scripts', s)), `缺脚本 scripts/${s}`);
   }
   const audit = fs.readFileSync(path.join(ROOT, 'scripts', 'audit-gameplay.js'), 'utf8');
   assert.ok(/ITEM_FK/.test(audit), '审计脚本丢了语义外键白名单（会退回按数字误报）');
-  for (const s of ['seed-content.js', 'align-monsters.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js', 'rebalance-pool.js']) {
+  for (const s of ['seed-content.js', 'align-monsters.js', 'align-monster-attack.js', 'dedupe-items.js', 'fix-recipes.js', 'fix-dangling-refs.js', 'rebalance-pool.js']) {
     const body = fs.readFileSync(path.join(ROOT, 'scripts', s), 'utf8');
     assert.ok(/--dry/.test(body), `${s} 必须支持 --dry 演练`);
   }
@@ -342,7 +342,7 @@ t('战斗四段胜率的已知偏差必须被显式登记（不许"门禁绿 = �
     const seg4 = Number(m[1]);
     assert.ok(seg4 > 0 && seg4 <= 100, `段4 实测值解析异常：${m[1]}`);
   } else {
-    assert.ok(/已配平|全部落区间/.test(charter),
+    assert.ok(/R13/.test(charter) && /已解决/.test(charter),
       'sim-battle 已全绿，但章程 R13 仍把它登记为未解决 —— 请更新制度，别让旧结论留在册子上');
   }
 });

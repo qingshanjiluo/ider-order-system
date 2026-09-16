@@ -70,7 +70,21 @@ class CombatService {
     const timedOut = attacker.hp > 0 && defender.hp > 0;
     return {
       battleLog, round, timedOut,
-      winner: attacker.hp > 0 ? 'attacker' : (defender.hp > 0 ? 'defender' : 'draw')
+      // 轮103 修正：超时（双方都还活着）不再判攻方胜，改判平局。
+      //
+      // 病因：原实现 `attacker.hp > 0 ? 'attacker' : ...` 让"50 回合磨不死怪"被记成玩家赢，
+      //   于是怪的血量越高 → 越容易打满 50 回合 → 玩家"白赢"越多。
+      //   实测：给大乘/渡劫的怪加 50% 血，玩家胜率反而从 55.7% 升到 63.9% —— 血量这个旋钮
+      //   在高端段位方向是反的，导致"四段胜率带"与"TTK 窗口"两条验收锁无法同时满足（章程 R13）。
+      //   修掉超时白胜后，血量恢复成正常的"越厚越难赢"，两个约束才可能同时成立。
+      //
+      // 影响面：只在 round 达到上限（默认 50）且双方均存活时改变结论。
+      //   · survive 口径（大限劫）走的是另一条分支（第 60 行，命中即判玩家扛过），不受影响；
+      //   · 倒计时/挂机结算看 winner === 'attacker'，超时局原本也是"玩家没打死怪"，
+      //     判平后仍不会发击杀奖励，行为更符合直觉。
+      winner: attacker.hp <= 0
+        ? (defender.hp <= 0 ? 'draw' : 'defender')
+        : (defender.hp <= 0 ? 'attacker' : 'draw')
     };
   }
 

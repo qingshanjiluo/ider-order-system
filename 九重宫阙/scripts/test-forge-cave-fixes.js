@@ -181,6 +181,16 @@ const t = async (name, fn) => {
   await t('formations：实例行 id 激活的就是那一行阵法（旧代码拿行 id 找定义，错位或"未知的阵法"）', async () => {
     const db = loadDatabase();
     if (!db.formations) db.formations = [];
+    // 轮111：阵法布置**开始收成本**了（旧版零成本白嫖，已修）。本测试验的是 id 解析，
+    // 与成本无关 —— 先把成本备齐，判据（实例行 id 精确命中）原样保留、不削弱。
+    const ch = db.characters.find((c) => Number(c.id) === A.id);
+    ch.spirit_stone = 100000;
+    for (const [name, qty] of [['玄铁矿', 3], ['朱砂', 3]]) {
+      const it = (db.items || []).find((i) => i.name === name);
+      if (it) db.inventory.push({ id: getNextId('inventory'), character_id: A.id, item_id: it.id, quantity: qty });
+    }
+    saveDatabase(db);
+
     // 先走正常目录激活一个定义（id=1），拿到实例行；再手工插一个"行 id 撞上别的定义号"的实例做锐利反证
     const act1 = await call('POST', '/api/formations/activate', { formationId: 1 }, A.token);
     assert.strictEqual(act1.code, 200, '定义 id 激活（目录路径）失败：' + act1.raw);
@@ -449,7 +459,10 @@ const t = async (name, fn) => {
     const atk1 = cs.getEntity(A.id, 'character').attack;
     const delta = atk1 - atk0;
     assert.ok(delta > 0, `实例词条没有并进战斗攻击（combat.js 轮92 断线）：atk0=${atk0} atk1=${atk1}`);
-    assert.ok(delta <= 10, `词条 attack=10 却让面板涨了 ${delta}（凭空放大，算式有问题）`);
+    // 上限给 1 的取整余量：面板是 Math.floor((...) × 诸乘数)，乘数非整数时
+    // floor(a+m) - floor(a) 可能比 m 大 1（也可能小），所以判"同一量级"而非"恰好等于"。
+    // 真正的反证在下面（拿掉词条必须精确回落），那条才是硬判据。
+    assert.ok(delta <= 10 + 1, `词条 attack=10 却让面板涨了 ${delta}（超出取整余量，算式有问题）`);
     // 反证：拿掉同一词条，面板必须回到 atk0
     const db4 = loadDatabase();
     const eq4 = db4.equipments.find((e) => Number(e.id) === 888001);

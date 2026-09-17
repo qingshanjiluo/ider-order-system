@@ -78,6 +78,8 @@ const SUITES = [
   ['P8 内容可达性', 'scripts/audit-content-reachability.js', ['--gate']],
   // 轮110：技能境界分布可用性（表格要 >500 门，但真正的缺陷是分布断层 —— 金丹可触达曾只有 3 门）
   ['P8 技能分布', 'scripts/test-skill-distribution.js'],
+  // 轮111：符箓端到端（成本端"随便吃一件材料" + 效果端写进无人消费的死字段，两个真缺陷）
+  ['G15 符箓端到端', 'scripts/test-talisman-e2e.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

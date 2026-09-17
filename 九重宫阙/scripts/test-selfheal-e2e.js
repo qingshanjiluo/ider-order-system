@@ -151,6 +151,60 @@ t('补齐后战斗可用（maxHp > 0，不因真源缺失而算成 0）', () => 
   assert.ok(Number(e.hp) <= Number(e.maxHp), `战斗 hp ${e.hp} 超过 maxHp ${e.maxHp}`);
 });
 
+t('残留 camelCase 上限被清理（maxHp/maxMp 在角色行上是历史残留）', () => {
+  // 存档实测：角色 1/2 的行上同时有 `maxHp=120`（两个角色都是 120）、
+  // `max_hp=100/110`、`hp=100/110` —— 同一个概念三个值，而 `maxHp=120`
+  // 既不等于真源上限也不等于当前血量。
+  //
+  // 删它的三条前提（都已核实）：
+  //   ① 同集合所有行都用 snake_case 真源
+  //   ② 前端 app.js 读的 `char.maxHp` 是**本地归一化副本**
+  //      （`Object.assign({}, raw, { maxHp: pick(raw.max_hp, raw.maxHp, 0) })`），
+  //      `raw.maxHp` 只是 `pick` 的兜底之一，删掉后仍拿 `raw.max_hp`
+  //   ③ 真源存在，删了不会让角色失去上限
+  seedLegacyChar({ maxHp: 120, maxMp: 60 });
+  assert.strictEqual(get().maxHp, 120, '前提：造的残留字段应当存在');
+  store.healCharacterFields(loadDatabase());
+  const c = get();
+  assert.strictEqual(c.maxHp, undefined, 'maxHp 残留应被清理，实际还是 ' + c.maxHp);
+  assert.strictEqual(c.maxMp, undefined, 'maxMp 残留应被清理，实际还是 ' + c.maxMp);
+  assert.strictEqual(c.max_hp, EXPECT_HP, '清理残留不该动真源 max_hp');
+});
+
+t('残留清理是幂等的（第二次没有可清的了）', () => {
+  seedLegacyChar({ maxHp: 120, maxMp: 60 });
+  store.healCharacterFields(loadDatabase());
+  const snap = JSON.stringify(get());
+  const healed2 = store.healCharacterFields(loadDatabase());
+  assert.strictEqual(healed2, 0, '第二次应补 0 个');
+  assert.strictEqual(JSON.stringify(get()), snap, '第二次自愈改变了值');
+  assert.strictEqual(get().maxHp, undefined, 'maxHp 又回来了');
+});
+
+t('真源缺失时不删残留（避免把"数值不一致"变成"数值为空"）', () => {
+  // 这是清理的**安全边界**：如果 `max_hp` 本身缺失且算不出来，
+  // 删掉 `maxHp` 会让角色彻底没有上限 —— 那比留着一个错值更糟。
+  const db = loadDatabase();
+  db.characters = (db.characters || []).filter((c) => Number(c.id) !== LEGACY_ID);
+  db.characters.push({
+    id: LEGACY_ID, user_id: LEGACY_ID, name: '无真源角色', faction: 'martial',
+    realm: '不存在的境界', level: 1, exp: 0, hp: 100, mp: 50,
+    maxHp: 120, maxMp: 60
+    // 既不给 max_hp，realm 也非法 ⇒ calculate* 返回的值不可用
+  });
+  saveDatabase(db);
+  store.healCharacterFields(loadDatabase());
+  const c = get();
+  if (c.max_hp == null) {
+    assert.strictEqual(c.maxHp, 120,
+      'max_hp 补不出来时，绝不该删掉唯一的 maxHp 兜底');
+  }
+  // 若 realm 恰好能算出值，则清理是安全的，此时断言真源已存在
+  if (c.maxHp === undefined) {
+    assert.ok(Number(c.max_hp) > 0, '删了残留就必须有真源');
+  }
+});
+
 t('健康角色的字段不被触碰（只有缺失的才补）', () => {
   const db = loadDatabase();
   db.characters = (db.characters || []).filter((c) => Number(c.id) !== LEGACY_ID);

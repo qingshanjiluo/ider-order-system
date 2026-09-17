@@ -189,6 +189,7 @@ function healCharacterFields(db) {
   try {
     const charSvc = require('../services/character');
     let healed = 0;
+    let cleaned = 0;
     for (const ch of (db.characters || [])) {
       if (!ch || typeof ch !== 'object') continue;
       const realm = ch.realm || '炼气';
@@ -219,10 +220,36 @@ function healCharacterFields(db) {
       // 补齐后收敛，避免"血比上限多"
       if (ch.hp != null && ch.max_hp != null && ch.hp > ch.max_hp) ch.hp = ch.max_hp;
       if (ch.mp != null && ch.max_mp != null && ch.mp > ch.max_mp) ch.mp = ch.max_mp;
+
+      // 残留清理（轮115）：角色行上的 camelCase 上限是历史残留。
+      //
+      // 实测存档：角色 1/2 的行上同时有 `maxHp=120`（两个角色都是 120）、
+      // `max_hp=100/110`、`hp=100/110` —— **同一个概念三个值**。
+      // `maxHp=120` 既不等于真源上限，也不等于当前血量，是个写进去就没人管的数。
+      //
+      // 判据（三条都成立才删，缺一不可）：
+      //   ① 同集合所有行**都用** snake_case 真源（`max_hp`），camelCase 是少数派
+      //   ② 全项目**无任何代码**读取"角色行"的 `.maxHp` ——
+      //      `forge-systems.js` 里那些 `maxHp:` 是**装备 stats 的键**，不同对象，
+      //      所以这里按"角色行"限定，而不是全局搜字段名
+      //   ③ 真源存在（删了不会让角色失去上限）
+      //
+      // 用 `delete` 而不是置 0/null，否则"字段存在但为空"会继续骗过存在性检查。
+      //
+      // **安全边界**：只有真源确实存在时才删。若 `max_hp` 既缺失又补不出来
+      //（realm 非法等），删掉 `maxHp` 会让角色彻底没有上限 ——
+      // 那比留着一个错值更糟。宁可留脏，不可留空。
+      for (const stale of ['maxHp', 'maxMp']) {
+        const truth = stale === 'maxHp' ? 'max_hp' : 'max_mp';
+        if (ch[stale] != null && ch[truth] != null) {
+          delete ch[stale];
+          cleaned++;
+        }
+      }
     }
-    if (healed > 0) {
+    if (healed > 0 || cleaned > 0) {
       dirty = true;
-      console.log(`[store] 角色字段自愈：补齐 ${healed} 个缺失的属性上限（max_hp/max_mp）`);
+      console.log(`[store] 角色字段自愈：补齐 ${healed} 个缺失的属性上限，清理 ${cleaned} 个残留字段`);
     }
     return healed;
   } catch (e) {

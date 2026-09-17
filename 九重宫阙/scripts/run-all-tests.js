@@ -88,6 +88,8 @@ const SUITES = [
   ['G18 心情端到端', 'scripts/test-mood-e2e.js'],
   // 轮114：老存档字段自愈（缺 max_hp/max_mp/exp_to_next 的老角色无路径补齐，旧字段成了唯一上限来源）
   ['G19 老存档自愈', 'scripts/test-selfheal-e2e.js'],
+  // 轮115：同一行同义字段共现（判据演进第三代：变量名→字段名→同一行共现，前两代均有误报）
+  ['G20 同义字段共现', 'scripts/test-field-alias-scan.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

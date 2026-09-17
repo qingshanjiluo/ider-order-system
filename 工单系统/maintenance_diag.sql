@@ -1,24 +1,25 @@
--- 诊断：为什么真删没删掉 completed 账号
-SELECT 'JUNK_MATCH=' || COUNT(*) AS j, '
-BY_HEALTH:' AS x
-FROM game_accounts
-WHERE health_status='cleaned' OR status='deleted';
+-- 诊断（单行拼接，便于日志直接阅读）
+SELECT 'DIAG|total=' || (SELECT COUNT(*) FROM game_accounts)
+  || '|junk_match=' || (SELECT COUNT(*) FROM game_accounts WHERE health_status='cleaned' OR status='deleted')
+  || '|clean193=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193)
+  || '|clean193_health_cleaned=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193 AND health_status='cleaned')
+  || '|clean193_status_completed=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193 AND status='completed')
+  || '|clean193_deleted=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193 AND status='deleted')
+  AS report1;
 
-SELECT 'BY_STATUS|' || status || '|' || COUNT(*) AS r
-FROM game_accounts
-WHERE order_id IN (193,262,292,293)
-GROUP BY status;
+SELECT 'BY_COMBO_193: ' || GROUP_CONCAT(
+  '[' || status || '|' || COALESCE(health_status,'NULL') || ']:' || cnt, ' '
+) AS r
+FROM (
+  SELECT status, health_status, COUNT(*) AS cnt
+  FROM game_accounts WHERE order_id = 193
+  GROUP BY status, health_status
+  ORDER BY 1,2
+);
 
-SELECT 'BY_HEALTH|' || COALESCE(health_status,'NULL') || '|' || COUNT(*) AS h
-FROM game_accounts
-WHERE order_id IN (193,262,292,293)
-GROUP BY health_status;
-
-SELECT 'BY_COMBO|' || status || '+' || COALESCE(health_status,'NULL') || '|' || COUNT(*) AS c
-FROM game_accounts
-WHERE order_id IN (193,262,292,293)
-GROUP BY status, health_status
-ORDER BY 1;
-
-SELECT 'TOTAL_ACCOUNTS=' || COUNT(*) AS t FROM game_accounts;
-SELECT 'TOTAL_JUNK=' || COUNT(*) AS tj FROM game_accounts WHERE health_status='cleaned' OR status='deleted';
+SELECT 'JUNK_BY_ORDER: ' || GROUP_CONCAT(order_id || ':' || cnt, ' ') AS r
+FROM (
+  SELECT order_id, COUNT(*) AS cnt FROM game_accounts
+  WHERE health_status='cleaned' OR status='deleted'
+  GROUP BY order_id ORDER BY order_id
+);

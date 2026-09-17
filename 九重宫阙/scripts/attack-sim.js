@@ -19,6 +19,12 @@ const jwt = require('jsonwebtoken');
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-attack-'));
 process.env.DSH_DATA_DIR = TMP;
+
+// 轮108 boot 平价（scripts/lib/boot-parity.js）：空档只跑 materials.ensureAll 是**兜底回填**，
+// 它假设 db.items 已有基础数据 —— 实测跑完只有 327 件物品，而正式档 634 件。带着瘦档跑
+// 测试会得出不可信的结论（可能假绿）。这里先按台账播种并自检规模。
+// 位置要求：必须在任何 require('../src/database') 之前 —— store.js 的 DATA_DIR 在模块加载时固化。
+require('./lib/boot-parity').bootParity({ quiet: true });
 // 轮63 看门狗：子进程句柄未关时 spawnSync 的 timeout 也可能拖不住，宁可判红不要假死
 setTimeout(() => { console.log("  ❌ attack-sim 看门狗：300s 未退出，判红并强杀"); process.exit(1); }, 300000);
 // 注意：这个夹具本身必须**通过**生产强度断言 —— 第一版我写成 'attack-sim-secret-…'，

@@ -19,6 +19,12 @@ const path = require('path');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-gongfa-e2e-'));
 process.env.DSH_DATA_DIR = TMP;
 
+
+// 轮108 boot 平价（scripts/lib/boot-parity.js）：空档只跑 materials.ensureAll 是**兜底回填**，
+// 它假设 db.items 已有基础数据 —— 实测跑完只有 327 件物品，而正式档 634 件。带着瘦档跑
+// 测试会得出不可信的结论（可能假绿）。这里先按台账播种并自检规模。
+// 位置要求：必须在任何 require('../src/database') 之前 —— store.js 的 DATA_DIR 在模块加载时固化。
+require('./lib/boot-parity').bootParity({ quiet: true });
 const LIVE_DB = path.join(__dirname, '..', 'data', 'game.db');
 const liveBefore = fs.existsSync(LIVE_DB) ? fs.statSync(LIVE_DB) : null;
 
@@ -207,24 +213,36 @@ const t = async (name, fn) => {
 
   await t('指向不存在功法的功法书必须被拒（不许随机生成糊弄）', async () => {
     const db = loadDatabase();
-    const book = db.items.find((i) => i.type === '功法书');
-    assert.ok(book, '临时档里没有功法书定义（SHOP_CATALOG 未落库）');
-    let row = db.shop.find((s) => Number(s.item_id) === Number(book.id));
-    assert.ok(row, '功法书没有坊市货架');
-    const b = await call('POST', '/api/shop/buy', { itemId: Number(row.id), quantity: 1 }, store.token);
-    assert.ok(b.code === 200, '买功法书失败：' + b.raw);
-    const st = await call('POST', '/api/gongfa/study', { itemId: Number(book.id) }, store.token);
+    // 轮108 修：这条断言原先写的是"随便找一本功法书"，靠**临时档里功法恰好不存在**成立。
+    // 但临时档跑 materials.ensureAll 只有 327 件物品（正式档 634），而正式档里
+    // id=14 是真实存在的「基础剑诀」—— 于是同一段代码在正式档会"研读成功"。
+    // 也就是说这条产品性质（指向虚空的书必须被拒）**从未被真正构造过**，是假绿。
+    // 现在显式造一本两个键都指向虚空的功法书，任何档里都成立。
+    const bookId = db.items.reduce((m, i) => Math.max(m, Number(i.id) || 0), 0) + 1;
+    const GHOST_ID = 987654;
+    assert.ok(!db.items.some((i) => Number(i.id) === GHOST_ID), '夹具 id 撞上了真实物品');
+    db.items.push({
+      id: bookId, name: '残破的无名经卷', type: '功法书', quality: '黄阶',
+      stats: JSON.stringify({ gongfa_id: GHOST_ID, gongfa: '并不存在的虚空功法', sell_price: 10 }),
+      description: '夹具：id 与名字都指向不存在的功法'
+    });
+    db.inventory.push({ id: 900000 + bookId, character_id: store.charId, item_id: bookId, quantity: 1 });
+    saveDatabase(db);
+
+    const st = await call('POST', '/api/gongfa/study', { itemId: bookId }, store.token);
     assert.strictEqual(st.code, 400, '目标功法不存在竟然研读成功：' + st.raw);
     assert.ok(/不是功法|功法不存在/.test(st.raw), '拒绝理由不对：' + st.raw);
-    store.bookId = Number(book.id);
+    store.bookId = bookId;
+    store.ghostBookName = '残破的无名经卷';
   });
 
   await t('补齐目标功法后研读成功：消耗一本书、发放对应功法、重复研读被拒', async () => {
     const db = loadDatabase();
     const book = db.items.find((i) => Number(i.id) === store.bookId);
     const st = JSON.parse(book.stats || '{}');
-    const target = { id: db.items.reduce((m, i) => Math.max(m, Number(i.id) || 0), 0) + 1, name: st.gongfa, type: '功法', quality: '黄阶', realm: '炼气', stats: '{}', description: '夹具：模拟正式档里 init-db 播下的目标功法' };
-    db.items.push(target);                 // 夹具：正式档有这一行（id=14），临时档没有，此处补上以走通成功分支
+    // 夹具：补一条真的功法物品，名字与书上写的一致（正式档里由 init-db 播下）
+    const target = { id: Number(st.gongfa_id), name: st.gongfa, type: '功法', quality: '黄阶', realm: '炼气', stats: '{}', description: '夹具：模拟正式档里播下的目标功法' };
+    if (!db.items.some((i) => Number(i.id) === target.id)) db.items.push(target);
     saveDatabase(db);
     const ok = await call('POST', '/api/gongfa/study', { itemId: store.bookId }, store.token);
     assert.ok(ok.code === 200 && ok.body && ok.body.success, '研读失败：' + ok.code + ' ' + ok.raw);

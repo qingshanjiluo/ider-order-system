@@ -17,6 +17,12 @@ const path = require('path');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-g5-fixes-'));
 process.env.DSH_DATA_DIR = TMP;
 
+
+// 轮108 boot 平价（scripts/lib/boot-parity.js）：空档只跑 materials.ensureAll 是**兜底回填**，
+// 它假设 db.items 已有基础数据 —— 实测跑完只有 327 件物品，而正式档 634 件。带着瘦档跑
+// 测试会得出不可信的结论（可能假绿）。这里先按台账播种并自检规模。
+// 位置要求：必须在任何 require('../src/database') 之前 —— store.js 的 DATA_DIR 在模块加载时固化。
+require('./lib/boot-parity').bootParity({ quiet: true });
 const LIVE_DB = path.join(__dirname, '..', 'data', 'game.db');
 const liveBefore = fs.existsSync(LIVE_DB) ? fs.statSync(LIVE_DB) : null;
 
@@ -411,11 +417,37 @@ const t = async (name, fn) => {
     assert.strictEqual(eq.enchants.length, 1, '词条没落装备行');
     assert.strictEqual(db2.items.find((i) => i.id === 777001).stats, '{"attack":10}', '污染回潮：词条又写回共享字典行了');
     // 轮92 实例语义闭环：词条进战斗面板数（getEntity 合并）
+    //
+    // 轮108 修：这条断言原先写 `Δ === 10` —— 隐含假设"词条 +10 攻击 ⇒ 面板 +10"。
+    // 那个假设只在**最终乘数恰好为 1** 时成立，而 getEntity 的面板公式是
+    //   attack = floor((baseAttack + equipAttack + petAttack) × realmMultiplier
+    //                  × tempAttackBonus × moodAttack × injuryDebuff × (1+sectCombat))
+    // 临时档瘦的时候伤势/宗门/心境诸项为默认值、乘数=1，于是 Δ=10 侥幸成立；
+    // 内容等价化后这些项非默认，实测 Δ=8（floor 取整 + 非 1 乘数）。
+    //
+    // 这条断言真正要锁的是**「实例词条确实并进了面板计算」**，所以改成：
+    //   ① 拆掉该词条后面板必须回落（证明它真的在算式里，而非巧合）
+    //   ② 差值必须为正且不超过词条面值（乘法折损可以，凭空放大不行）
     const cs = require('../src/services/battle/combat');
     const atk0 = cs.getEntity(A.id, 'character').attack;
-    eq.enchants.push({ name: '烈焰', stats: { attack: 10 }, timestamp: Date.now() });
+    const ench = { name: '烈焰', stats: { attack: 10 }, timestamp: Date.now() };
+    eq.enchants.push(ench);
     saveDatabase(db2);
-    assert.strictEqual(cs.getEntity(A.id, 'character').attack - atk0, 10, '实例词条未合并进战斗攻击（combat.js 轮92 断线）');
+    const atk1 = cs.getEntity(A.id, 'character').attack;
+    const delta = atk1 - atk0;
+    assert.ok(delta > 0, `实例词条没有并进战斗攻击（combat.js 轮92 断线）：atk0=${atk0} atk1=${atk1}`);
+    assert.ok(delta <= 10, `词条 attack=10 却让面板涨了 ${delta}（凭空放大，算式有问题）`);
+    // 反证：拿掉同一词条，面板必须回到 atk0
+    const db4 = loadDatabase();
+    const eq4 = db4.equipments.find((e) => Number(e.id) === 888001);
+    eq4.enchants = eq4.enchants.filter((x) => x.name !== '烈焰');
+    saveDatabase(db4);
+    assert.strictEqual(cs.getEntity(A.id, 'character').attack, atk0,
+      '拿掉「烈焰」后面板没回到原值 —— 说明该词条并非真的参与计算（差值来自别处）');
+    // 复原，后面的断言还要用
+    const db5 = loadDatabase();
+    db5.equipments.find((e) => Number(e.id) === 888001).enchants.push(ench);
+    saveDatabase(db5);
     const db3 = loadDatabase();
     db3.characters.find((c) => Number(c.id) === A.id).spirit_stone = 100;
     saveDatabase(db3);

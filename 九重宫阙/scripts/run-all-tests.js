@@ -70,6 +70,10 @@ const SUITES = [
   ['P7 剧情奖励对齐', 'scripts/audit-quest-rewards.js'],
   // 轮105 P7：剧情钩子端到端（真打 12 场；重点反证「杀别的怪不会推进具名委托」）
   ['P7 剧情钩子端到端', 'scripts/test-quest-hooks-e2e-full.js'],
+  // 轮108：内容完整性（商城/商店/成就/存档外键 —— 全项目 20 处内存常量内容定义此前仅 2 处被审计）
+  ['P8 内容完整性', 'scripts/audit-content-integrity.js'],
+  // 轮108：仙玉商城端到端（真花钱的地方；修前 3 件商品卖的是虚空物品）
+  ['P8 仙玉商城端到端', 'scripts/test-vip-shop-e2e.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

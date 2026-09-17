@@ -29,6 +29,12 @@ const path = require('path');
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-g12-quest-'));
 process.env.DSH_DATA_DIR = TMP;
 
+
+// 轮108 boot 平价（scripts/lib/boot-parity.js）：空档只跑 materials.ensureAll 是**兜底回填**，
+// 它假设 db.items 已有基础数据 —— 实测跑完只有 327 件物品，而正式档 634 件。带着瘦档跑
+// 测试会得出不可信的结论（可能假绿）。这里先按台账播种并自检规模。
+// 位置要求：必须在任何 require('../src/database') 之前 —— store.js 的 DATA_DIR 在模块加载时固化。
+require('./lib/boot-parity').bootParity({ quiet: true });
 const LIVE_DB = path.join(__dirname, '..', 'data', 'game.db');
 const liveBefore = fs.existsSync(LIVE_DB) ? fs.readFileSync(LIVE_DB) : null;
 

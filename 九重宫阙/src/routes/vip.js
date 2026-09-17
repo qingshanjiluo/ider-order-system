@@ -26,20 +26,57 @@ const RECHARGE_PACKAGES = [
   { id: 6, name: '大佬', price: 648, jade: 6480, bonusJade: 1888, badge: '壕' }
 ];
 
+/**
+ * 仙玉商城。
+ *
+ * ## 为什么用 itemName 而不是 itemId（轮108 修）
+ *
+ * 这里原本写的是硬编码数字 id（`itemId: 50` 配 `name: '回城符x5'`）。物品表的 id
+ * **不连续**（1~1670 区间里有 1036 个缺号，是历轮增删内容的自然结果），于是硬编码必然错位。
+ * 实测三处已坏：
+ *   · j3 回城符 → itemId 50（缺号，**不存在**）→ 玩家花 30 玉买到一件查不到定义的空物品
+ *   · j4 传音符 → itemId 49（缺号，**不存在**）→ 同上
+ *   · j12 复活令 → itemId 56 = **回城符** → 花 500 玉买"复活令"到手是"回城符"
+ * 而且"复活令"这个物品在表里**根本不存在**（道具类只有 传音符/回城符/随机传送符 三件）。
+ *
+ * 按名字存则与 id 分配彻底解耦：物品表怎么重编都不会错位。
+ * `resolveItem()` 在启动时把名字解析成 id，解析不到就**直接抛错**（宁可启动失败，
+ * 也不要静默卖给玩家一件虚空物品）。这条由 scripts/audit-content-integrity.js 锁住。
+ */
 const JADE_SHOP = [
   { id: 'j1', name: '灵石x1000', cost: 50, type: 'spirit_stone', value: 1000, desc: '1000灵石' },
   { id: 'j2', name: '灵石x5000', cost: 200, type: 'spirit_stone', value: 5000, desc: '5000灵石' },
-  { id: 'j3', name: '回城符x5', cost: 30, type: 'item', itemId: 50, quantity: 5, desc: '传送回城' },
-  { id: 'j4', name: '传音符x3', cost: 80, type: 'item', itemId: 49, quantity: 3, desc: '全服传音' },
-  { id: 'j5', name: '随机传送符x5', cost: 40, type: 'item', itemId: 57, quantity: 5, desc: '随机传送' },
-  { id: 'j6', name: '灵宠口粮x10', cost: 60, type: 'item', itemId: 150, quantity: 10, desc: '喂养灵宠' },
-  { id: 'j7', name: '灵宠美食x5', cost: 150, type: 'item', itemId: 152, quantity: 5, desc: '高级灵宠粮' },
-  { id: 'j8', name: '精铁x10', cost: 100, type: 'item', itemId: 64, quantity: 10, desc: '炼器材料' },
-  { id: 'j9', name: '寒铁x5', cost: 200, type: 'item', itemId: 65, quantity: 5, desc: '高级炼器' },
-  { id: 'j10', name: '九转还魂草x10', cost: 80, type: 'item', itemId: 38, quantity: 10, desc: '珍贵药材' },
-  { id: 'j11', name: '紫金x5', cost: 250, type: 'item', itemId: 40, quantity: 5, desc: '高级材料' },
-  { id: 'j12', name: '复活令x1', cost: 500, type: 'item', itemId: 56, quantity: 1, desc: '原地复活' }
+  { id: 'j3', name: '回城符x5', cost: 30, type: 'item', itemName: '回城符', quantity: 5, desc: '传送回城' },
+  { id: 'j4', name: '传音符x3', cost: 80, type: 'item', itemName: '传音符', quantity: 3, desc: '全服传音' },
+  { id: 'j5', name: '随机传送符x5', cost: 40, type: 'item', itemName: '随机传送符', quantity: 5, desc: '随机传送' },
+  { id: 'j6', name: '灵宠口粮x10', cost: 60, type: 'item', itemName: '灵宠口粮', quantity: 10, desc: '喂养灵宠' },
+  { id: 'j7', name: '灵宠美食x5', cost: 150, type: 'item', itemName: '灵宠美食', quantity: 5, desc: '高级灵宠粮' },
+  { id: 'j8', name: '精铁x10', cost: 100, type: 'item', itemName: '精铁', quantity: 10, desc: '炼器材料' },
+  { id: 'j9', name: '寒铁x5', cost: 200, type: 'item', itemName: '寒铁', quantity: 5, desc: '高级炼器' },
+  { id: 'j10', name: '九转还魂草x10', cost: 80, type: 'item', itemName: '九转还魂草', quantity: 10, desc: '珍贵药材' },
+  { id: 'j11', name: '紫金x5', cost: 250, type: 'item', itemName: '紫金', quantity: 5, desc: '高级材料' },
+  // j12 原为「复活令」（物品表里不存在，且 itemId 56 指向回城符）。
+  // 改为三件真道具里最贵的随机传送符，并让大份更划算（j5 是 5 件 40 玉 = 8 玉/件，
+  // 这里 20 件 140 玉 = 7 玉/件）。初版定 260 玉被新审计的"定价单调"锁抓到（13 玉/件，买多反而亏）。
+  { id: 'j12', name: '随机传送符x20', cost: 140, type: 'item', itemName: '随机传送符', quantity: 20, desc: '大量随机传送' }
 ];
+
+/**
+ * 把 JADE_SHOP 里的 itemName 解析成实际 id。
+ * 解析不到 → 抛错（不让商城带着虚空商品上线）。
+ * @returns {Array} 每项带 `itemId` 的商城副本
+ */
+function resolveJadeShop(db) {
+  const byName = new Map((db.items || []).map((i) => [i.name, i.id]));
+  return JADE_SHOP.map((it) => {
+    if (it.type !== 'item') return { ...it };
+    const id = byName.get(it.itemName);
+    if (id == null) {
+      throw new Error(`仙玉商城商品「${it.name}」引用的物品「${it.itemName}」在物品表里不存在`);
+    }
+    return { ...it, itemId: id };
+  });
+}
 
 router.get('/info', auth, (req, res) => {
   try {
@@ -158,7 +195,8 @@ router.get('/jade-shop', auth, (req, res) => {
     const db = loadDatabase();
     const character = db.characters.find(c => c.user_id === req.userId);
     if (!character) return res.status(404).json({ error: '角色不存在' });
-    res.json({ items: JADE_SHOP, jade: character.jade || 0 });
+    // 解析 itemName → itemId；解析不到会抛错（宁可 500 也不要让前端显示一件买不到的东西）
+    res.json({ items: resolveJadeShop(db), jade: character.jade || 0 });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -171,7 +209,7 @@ router.post('/jade-buy', auth, (req, res) => {
     const character = db.characters.find(c => c.user_id === req.userId);
     if (!character) return res.status(404).json({ error: '角色不存在' });
 
-    const shopItem = JADE_SHOP.find(i => i.id === itemId);
+    const shopItem = resolveJadeShop(db).find(i => i.id === itemId);
     if (!shopItem) return res.status(400).json({ error: '商品不存在' });
     if ((character.jade || 0) < shopItem.cost) return res.status(400).json({ error: '仙玉不足', need: shopItem.cost, owned: character.jade || 0 });
 
@@ -206,3 +244,6 @@ router.get('/recharge-history', auth, (req, res) => {
 });
 
 module.exports = router;
+// 供审计脚本在运行时校验商城内容（不靠正则匹配源码文本 —— 那种做法改个写法就假绿）
+module.exports._resolveJadeShop = resolveJadeShop;
+module.exports._JADE_SHOP = JADE_SHOP;

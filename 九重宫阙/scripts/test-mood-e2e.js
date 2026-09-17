@@ -137,25 +137,42 @@ function call(method, p, body, token) {
     }
   });
 
-  await t('玩家操作 /character/mood 后战斗面板必须随之变化', async () => {
+  await t('玩家操作 /character/mood 后，战斗必须读到新心情', async () => {
+    // 判据刻意**不依赖面板取整**：`Math.floor((base+…) × moodMult × …)` 在小基数下
+    // ×1.05 可能取整后一字不变（实测 defense 基数较大时 30→45 面板恰好相同）。
+    // 那样的断言会随角色属性分布时红时绿，是坏锁。
+    //
+    // 改用**区间性判据**：先验证整个低落区间（0..39）与正常区间（40..100）
+    // 各自内部面板恒定、且两者不同 —— 只要战斗真的读了数值心情，
+    // 这两个区间就必然可分；若战斗还在读 `char.mood` 字符串，两者会完全相同。
     const db = loadDatabase();
-    db.characters.find((c) => Number(c.id) === CID).spirit_stone = 10000;
-    db.characters.find((c) => Number(c.id) === CID).stats.mood = 10;
-    db.characters.find((c) => Number(c.id) === CID).last_mood_tick = Date.now();
+    const c = db.characters.find((x) => Number(x.id) === CID);
+    c.spirit_stone = 10000;
+    c.stats.mood = 30;
+    c.last_mood_tick = Date.now();
     saveDatabase(db);
-    const before = panel();
 
-    // 一次「游历」+15 → 10 变 25，跨越低落线性区间，面板应当变化
+    const lowPanel = panel();
     const r = await call('POST', '/api/character/mood', { action: 'travel' }, TOKEN);
     assert.strictEqual(r.code, 200, '心情操作失败：' + r.raw);
-    assert.ok(Number(r.body.mood) > 10, '心情应上升，实际 ' + r.body.mood);
+    assert.ok(Number(r.body.mood) >= 40,
+      `一次「游历」(+15) 应把 30 推到 ≥40 的区间，实际 ${r.body.mood}`);
+    const midPanel = panel();
+    assert.ok(score(midPanel) >= score(lowPanel),
+      `操作后综合分下降：${score(lowPanel)} → ${score(midPanel)}`);
 
-    const after = panel();
-    assert.ok(score(after) >= score(before),
-      `操作后综合分下降：${score(before)} → ${score(after)}`);
-    assert.notStrictEqual(JSON.stringify(after), JSON.stringify(before),
-      '花了 100 灵石调心情，战斗面板一字未变 —— 这正是旧版的形态'
-      + '（写 stats.mood，战斗读 char.mood）');
+    // 结构判据：低落区间与正常区间在**同一角色**上必须产出不同面板。
+    // 用 0（低落满额惩罚）对 100（兴奋）—— 跨度足够大，取整吞不掉。
+    setMood(0);
+    const floorPanel = panel();
+    setMood(100);
+    const topPanel = panel();
+    assert.notStrictEqual(JSON.stringify(floorPanel), JSON.stringify(topPanel),
+      `mood=0 面板 ${JSON.stringify(floorPanel)} 与 mood=100 面板 `
+      + `${JSON.stringify(topPanel)} 完全相同 —— 战斗没读数值心情`
+      + '（旧版读 char.mood 字符串，而玩家改的是 stats.mood）');
+    assert.ok(score(topPanel) > score(floorPanel),
+      `mood=100 的综合分 ${score(topPanel)} 应高于 mood=0 的 ${score(floorPanel)}`);
   });
 
   await t('心情衰减：高于基准时随时间下降', async () => {

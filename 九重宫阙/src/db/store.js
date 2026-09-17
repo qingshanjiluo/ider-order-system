@@ -92,6 +92,23 @@ function boot() {
     }
   }
 
+  // 角色字段自愈（轮114）。
+  //
+  // 起因：存档实测角色 2「最中幻想」**缺 `max_hp`/`max_mp`/`exp_to_next`** ——
+  // 它是更早期版本创建的角色，而 `auth.js` 的新建路径与 `services/character.js`
+  // 的升级路径都只在"升了一级"时才算这些值，**没有任何路径会给 level 1 的老角色补齐**。
+  //
+  // 后果不是崩溃，而是**同一个概念在三个地方给出三个值**：
+  //     存档 hp=120 · 战斗 getEntity 算出 maxHp=144 · calculateHpMax(1,炼气)=110
+  // 各处靠各自的兜底（`character.max_hp || 100`）苟活，玩家看到的血条上限
+  // 取决于哪段代码先说话。旧字段 `hp_max`/`mp_max` 也正是因此不能删 ——
+  // 它们是那 1/32 角色的唯一上限来源。
+  //
+  // 实现在 boot 里（而非 loadDatabase，后者有 330 个调用点），靠 boot 的
+  // `if (sqlite) return` 保证每进程只跑一次。数值取自与服务层**同一个函数**
+  // （`services/character` 的 calculate*），不另写一套公式 —— 否则又会造出第四个上限。
+  healCharacterFields(mirror);
+
   // 一次性迁移：库为空且存在 legacy JSON
   if (tables.length === 0 && fs.existsSync(LEGACY_JSON)) {
     const legacy = JSON.parse(fs.readFileSync(LEGACY_JSON, 'utf8'));
@@ -151,6 +168,67 @@ function flushAll() {
 function loadDatabase() {
   boot();
   return mirror;
+}
+
+/**
+ * 角色字段自愈（轮114）。
+ *
+ * 补的是**只该由代码计算、不该由客户端提供**的真源字段。
+ * 判据很简单：这些字段在 `auth.js` 新建路径里是必填的，
+ * 所以任何一个角色缺它们，都只可能是"老版本建的档"，不是合法状态。
+ *
+ * 三条不变量：
+ *   ① **幂等**：只在字段为 `null`/`undefined` 时写，已有值一律不动。
+ *   ② **同源**：数值来自 `services/character` 的 calculate*，与服务层共用公式。
+ *   ③ **收敛**：补齐后 hp/mp 不得超过新上限（老档可能带着超上限的值）。
+ *
+ * 自愈失败不阻断启动 —— 与 `boot()` 里的"空库自愈"保持同样的容错姿态。
+ * 这里返回补了几个字段，供测试直接断言，不依赖读日志。
+ */
+function healCharacterFields(db) {
+  try {
+    const charSvc = require('../services/character');
+    let healed = 0;
+    for (const ch of (db.characters || [])) {
+      if (!ch || typeof ch !== 'object') continue;
+      const realm = ch.realm || '炼气';
+      const level = Number(ch.level) || 1;
+
+      if (ch.max_hp == null) {
+        const v = charSvc.calculateHpMax(level, realm);
+        if (Number.isFinite(v) && v > 0) { ch.max_hp = v; healed++; }
+      }
+      if (ch.max_mp == null) {
+        const v = charSvc.calculateMpMax(level, realm);
+        if (Number.isFinite(v) && v > 0) { ch.max_mp = v; healed++; }
+      }
+
+      // 注意：**不在这里补 `exp_to_next`**。
+      //
+      // 第一版补了，被 `G3 经验真源` 锁抓红 —— `test-exp-curve-e2e.js` 要求
+      // `exp_to_next` 的赋值点只出现在真源文件内（character.js / exp-curve.js /
+      // auth.js / gameTime.js / realm.js）。那条锁是对的：
+      // 经验曲线一旦有第二个写入点，就会出现"两处算出不同升级需求"的分叉，
+      // 正是 `exp_to_next` 这一族 bug 的成因。
+      //
+      // 所以这里只补**纯属性上限**（max_hp/max_mp 没有第二真源的问题）；
+      // `exp_to_next` 的缺失由走 `characterService.addExp` 的路径自然补齐
+      // （升级时重算），不在此处越权。这也是本轮"自愈要走服务层同源"原则的
+      // 一个边界：**同源不只是数值同源，写入权也要同源**。
+
+      // 补齐后收敛，避免"血比上限多"
+      if (ch.hp != null && ch.max_hp != null && ch.hp > ch.max_hp) ch.hp = ch.max_hp;
+      if (ch.mp != null && ch.max_mp != null && ch.mp > ch.max_mp) ch.mp = ch.max_mp;
+    }
+    if (healed > 0) {
+      dirty = true;
+      console.log(`[store] 角色字段自愈：补齐 ${healed} 个缺失的属性上限（max_hp/max_mp）`);
+    }
+    return healed;
+  } catch (e) {
+    console.error('[store] 角色字段自愈失败（不影响启动）:', e.message);
+    return 0;
+  }
 }
 
 /**
@@ -292,4 +370,4 @@ function close() {
   }
 }
 
-module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, updateRelWhere, deleteRel, incrementRel, snapshotTo };
+module.exports = { boot, loadDatabase, saveDatabase, getNextId, flushAll, invalidateCache, isDirty, close, insertRel, queryRel, updateRel, updateRelWhere, deleteRel, incrementRel, snapshotTo, healCharacterFields };

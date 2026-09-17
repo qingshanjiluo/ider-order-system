@@ -86,6 +86,8 @@ const SUITES = [
   ['G17 丹药端到端', 'scripts/test-pill-e2e.js'],
   // 轮113：心情端到端（战斗读字符串 mood 而玩家改数值 stats.mood + last_mood_tick 写了一半）
   ['G18 心情端到端', 'scripts/test-mood-e2e.js'],
+  // 轮114：老存档字段自愈（缺 max_hp/max_mp/exp_to_next 的老角色无路径补齐，旧字段成了唯一上限来源）
+  ['G19 老存档自愈', 'scripts/test-selfheal-e2e.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

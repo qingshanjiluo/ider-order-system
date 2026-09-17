@@ -341,8 +341,61 @@ class CombatService {
       const tempDefenseBonus = buffService.getBuffMultiplier(char.id, 'defense');
       const tempSpeedBonus = buffService.getBuffMultiplier(char.id, 'speed');
 
-      const mood = char.mood || '平静';
+      // 轮113：心情加成的**数值 → 心境**桥接。
+      //
+      // 修前：这里读 `char.mood`（字符串 '愤怒'/'悲伤'…），但**玩家操作改的是
+      // `character.stats.mood`（数值 0-100）** —— `/character/mood` 的冥想/饮酒/游历
+      // 全部只动数值那个字段。存档实测：**0/32 个角色有 char.mood**，15/32 有
+      // `stats.mood`。也就是说这五个分支从来只命中默认值 `'平静'`，玩家花灵石调心情，
+      // 战斗**完全不受影响**（永远只吃 防御×1.05）。
+      //
+      // 现在双轨兼容并优先读数值：
+      //   · `stats.mood`（数值，玩家能操作）→ 按档位映射成心境
+      //   · 没有数值时退回旧的 `char.mood` 字符串（老存档/别处写入仍生效）
+      //
+      // 档位与 /character/mood 的单次变动量（+5~+15，上限 100）相称。
+      //
+      // 边界经过两轮修正，判据是**综合收益必须随心情单调不降**：
+      //
+      //   v1: 50~69 定「悲伤」→ 玩家花灵石加心情反而变弱（50→65 面板不升），反直觉。
+      //   v2: 55~79 定「愤怒」(atk×1.1, spd×1.05)、80~94 定「平静」(仅 def×1.05)
+      //       → **综合分从 75 的 205 掉到 85 的 183**。愤怒比平静强，
+      //         玩家会学会"刻意停在 75"，这是设计缺陷而非策略深度。
+      //
+      //   v3: 负向只保留极低谷、中段中性、高档正向 —— 但 40~54 的「悲伤」
+      //       (def×0.95, spd×0.95) 仍造成一处非单调：mood=45 的综合分 193
+      //       **低于 mood=25 的 198**，玩家从 25 提到 45 反而变弱。
+      //
+      //   v5（现在）：问题不在档位边界，而在**档位制本身** ——
+      //       「悲伤」(def×0.95, spd×0.95) 双降，反而比只降防御的「恐惧」(def×0.9)
+      //       更弱。只要惩罚是几组离散乘数，就总能构造出"心情更高却更弱"的相邻档。
+      //
+      //       改成：**< 40 时按数值线性缩放惩罚**，40 以上用稳定正收益档。
+      //       这样任意数值增加都单调不降（惩罚连续趋近 1），且保留了
+      //       "长期不打理会变弱"的机制意图。
+      const numericMood = char.stats ? Number(char.stats.mood) : NaN;
       let moodAttack = 1, moodDefense = 1, moodSpeed = 1;
+
+      if (Number.isFinite(numericMood)) {
+        if (numericMood >= 95) {
+          // 极佳：攻速双增（保留原有「兴奋」语义）
+          moodAttack = 1.05; moodSpeed = 1.1;
+        } else if (numericMood >= 40) {
+          // 正常区间：稳定小幅防御加成（保留原有「平静」语义）
+          moodDefense = 1.05;
+        } else {
+          // 低落区间：线性惩罚，40 分时惩罚为 0，0 分时达到满额
+          // （防御 -10%、速度 -5%，与原有「恐惧」同量级）
+          const t = 1 - numericMood / 40;          // 0 → 1
+          moodDefense = 1 - 0.10 * t;
+          moodSpeed = 1 - 0.05 * t;
+        }
+      }
+
+      // 老存档/别处写入的字符串 mood 仍走原有离散分支（保持向后兼容）
+      const mood = Number.isFinite(numericMood)
+        ? 'by-value'
+        : (char.mood || '平静');
       if (mood === '愤怒') { moodAttack = 1.1; moodSpeed = 1.05; }
       else if (mood === '悲伤') { moodDefense = 0.95; moodSpeed = 0.95; }
       else if (mood === '恐惧') { moodDefense = 0.9; }

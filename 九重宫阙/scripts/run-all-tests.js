@@ -84,6 +84,8 @@ const SUITES = [
   ['G16 阵法端到端', 'scripts/test-formation-e2e.js'],
   // 轮112：丹药端到端（属性加成写死字段 + type=消耗品 的丹用不了 + 跨行库存只认第一行）
   ['G17 丹药端到端', 'scripts/test-pill-e2e.js'],
+  // 轮113：心情端到端（战斗读字符串 mood 而玩家改数值 stats.mood + last_mood_tick 写了一半）
+  ['G18 心情端到端', 'scripts/test-mood-e2e.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

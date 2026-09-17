@@ -21,6 +21,38 @@ router.get('/', auth, (req, res) => {
       : 0;
     character.last_recover_tick_at = nowTick;
     const recovered = injuryService.meditateRecover(character, elapsedHours, Boolean(character.in_cave));
+
+    // 轮113：心情自然衰减。
+    //
+    // `last_mood_tick` 这个字段**在存档里已有 15/32 个角色持有**，但全项目
+    // **0 处引用** —— 是写了一半就停下的机制（字段存了、衰减没实现）。
+    // 后果：玩家用 /character/mood 把心情加到 99 之后，它**永远不会回落**，
+    // 「冥想/饮酒/游历」变成一次性买断的永久加成。
+    //
+    // 这里按 `last_recover_tick_at` 的同一模式补上：按离开时长向基准值缓慢回归。
+    // 速率取 **每小时 1 点**（低于单次操作的 +5~+15，不至于让操作白花钱；
+    // 又能在挂机一天后明显回落）。回归目标是 60（中位基准），
+    // 高于目标就降、低于就升 —— 与"心情会随时间平复"的直觉一致。
+    const MOOD_BASELINE = 60;
+    const MOOD_DECAY_PER_HOUR = 1;
+    let moodDrift = 0;
+    if (character.stats && character.stats.mood != null) {
+      const moodHours = character.last_mood_tick
+        ? (nowTick - Number(character.last_mood_tick)) / 3600000
+        : 0;
+      if (moodHours > 0) {
+        const current = Number(character.stats.mood) || MOOD_BASELINE;
+        const maxDrift = moodHours * MOOD_DECAY_PER_HOUR;
+        const towardBaseline = MOOD_BASELINE - current;
+        const applied = Math.sign(towardBaseline) * Math.min(Math.abs(towardBaseline), maxDrift);
+        character.stats.mood = Math.round(
+          Math.min(100, Math.max(0, current + applied))
+        );
+        moodDrift = Math.round(applied * 10) / 10;
+      }
+    }
+    character.last_mood_tick = nowTick;
+
     let reincarnated = null;
     if (gameTime.shouldPassAway(character)) {
       reincarnated = gameTime.passAway(character, db);

@@ -1,37 +1,47 @@
--- 迁移 v21：真删历史垃圾账号行，给 D1 瘦身
+-- 迁移 v21b：真删历史垃圾账号行，给 D1 瘦身（无 TEMP TABLE 版）
 --
--- 背景：前几轮把超额账号"软清理"了（status=completed, health_status=cleaned），
--- 但行仍留在表里，D1 占用 59.86MB，且每次账号遍历仍要扫描这些行。
--- 本迁移把已 cleaned / deleted 的账号行**永久删除**（含关联日志），
--- 直接降低表体积与读放大。
+-- 修复：v21 版用 CREATE TEMP TABLE，但 D1（Serverless SQLite）不支持临时表，
+-- 执行时报 SQLITE_AUTH。本版改为子查询内联 + LIMIT 分批删除，
+-- 由工作流循环执行本文件直到 JUNK_REMAINING=0。
 --
--- ⚠️ 不可恢复。执行前请先导出备份：
---   npx wrangler d1 export ider-orders --remote --output=backup_before_v21.sql
+-- ⚠️ 不可恢复。删除范围仅：
+--   health_status='cleaned' 或 status='deleted' 的账号（及其 account_logs /
+--   checkin_logs 关联记录）。有效账号（farming/active/completed 且未 cleaned）
+--   一律保留。
 --
--- 删除范围（谨慎限定，避免误删有效账号）：
---   1) health_status = 'cleaned' 的账号（软清理标记的垃圾号）
---   2) status = 'deleted' 的账号（历史删号残留）
---   保留：status 为 farming/active/completed 且 health_status != 'cleaned' 的账号。
---
--- 关联表（避免外键约束阻塞）：
---   account_logs.account_id  -> game_accounts.id
---   checkin_logs.game_account_id -> game_accounts.id
---
--- 分批执行：D1 对单条语句有时间限制，每条 DELETE 限定 LIMIT 范围内，
--- 由工作流循环多次执行本文件直到清空。
+-- 顺序：先删日志再删账号，避免孤儿；三条 DELETE 的 IN 子查询条件一致，
+-- SQLite 顺序执行时 game_accounts 尚未删除，故三条作用于同一批 id。
 
--- 待删除账号 id 集合（分批 2000 条，避免单语句超时）
-CREATE TEMP TABLE IF NOT EXISTS _junk_ids AS
-SELECT id FROM game_accounts
-WHERE health_status = 'cleaned' OR status = 'deleted'
-LIMIT 2000;
+-- 0) 待删数量（预检 + 循环判停）
+SELECT 'JUNK_COUNT=' || COUNT(*) AS report
+FROM game_accounts
+WHERE health_status = 'cleaned' OR status = 'deleted';
 
-SELECT 'JUNK_REMAINING=' || (SELECT COUNT(*) FROM game_accounts WHERE health_status='cleaned' OR status='deleted') AS report1;
-SELECT 'BATCH_SIZE=' || (SELECT COUNT(*) FROM _junk_ids) AS report2;
+-- 1) 删日志（每批 1000）
+DELETE FROM account_logs
+WHERE account_id IN (
+  SELECT id FROM game_accounts
+  WHERE health_status = 'cleaned' OR status = 'deleted'
+  LIMIT 1000
+);
 
-DELETE FROM account_logs WHERE account_id IN (SELECT id FROM _junk_ids);
-DELETE FROM checkin_logs WHERE game_account_id IN (SELECT id FROM _junk_ids);
-DELETE FROM game_accounts WHERE id IN (SELECT id FROM _junk_ids);
-DROP TABLE IF EXISTS _junk_ids;
+-- 2) 删签到（每批 1000）
+DELETE FROM checkin_logs
+WHERE game_account_id IN (
+  SELECT id FROM game_accounts
+  WHERE health_status = 'cleaned' OR status = 'deleted'
+  LIMIT 1000
+);
 
-SELECT 'ACCOUNTS_LEFT=' || (SELECT COUNT(*) FROM game_accounts) AS report3;
+-- 3) 删账号（每批 1000）
+DELETE FROM game_accounts
+WHERE id IN (
+  SELECT id FROM game_accounts
+  WHERE health_status = 'cleaned' OR status = 'deleted'
+  LIMIT 1000
+);
+
+-- 4) 剩余数量（循环判停用）
+SELECT 'JUNK_REMAINING=' || COUNT(*) AS report2
+FROM game_accounts
+WHERE health_status = 'cleaned' OR status = 'deleted';

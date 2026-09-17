@@ -126,6 +126,10 @@ const SKILLS_DATA = [
 SKILLS_DATA.push(...require('../data/skill-expansion').buildSkills());
 // P1 技能差口（轮47）：214 -> 320，全部押在化神期以上的空洞境界（详见该文件头部的可达性口径）
 SKILLS_DATA.push(...require('../data/skill-highrealm').buildSkills());
+// 轮110 中段空洞：金丹期(11条/可触达3) 与 元婴期(10条/可触达5) 是两个扩展段之间的缝 ——
+// skill-expansion 做炼气+筑基，skill-highrealm 做化神以上，中间两个大境界（Lv21~40）
+// 只有主文件里的天阶/仙阶隐藏技，普通玩家几乎无技可学。详见该文件头部。
+SKILLS_DATA.push(...require('../data/skill-midrealm').buildSkills());
 
 // 基础手调 10 技能（新手起手套件，数值逐个手调：低耗/稳定/覆盖七系与辅助）
 const BASE_SKILL_IDS = new Set([

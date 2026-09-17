@@ -190,9 +190,16 @@ router.post('/duel/challenge', auth, async (req, res) => {
 
     const totalBet = (betAmount || 0) * 2;
     if (totalBet > 0) {
+      // 轮110 修：旧写法只给"挑战者赢"这一侧发钱 ——
+      //   character -= bet; target -= bet; if (won) character += totalBet;
+      // 挑战者**输**时双方各扣 bet、400 灵石凭空销毁，赢家（target）拿不到钱。
+      // G5 的"注金零和"断言写成 a+b===2000，赢的时候恰好成立、输的时候是 800/800，
+      // 于是它单跑绿、门禁红 —— 是**真缺陷 + 概率性假绿**，不是测试问题。
+      // 正解：注金从双方各收 bet，全部发给胜方（零和）。
       character.spirit_stone = (character.spirit_stone || 0) - (betAmount || 0);
       target.spirit_stone = (target.spirit_stone || 0) - (betAmount || 0);
       if (won) character.spirit_stone += totalBet;
+      else target.spirit_stone += totalBet;
     }
 
     character.total_battles = (character.total_battles || 0) + 1;

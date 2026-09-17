@@ -74,6 +74,10 @@ const SUITES = [
   ['P8 内容完整性', 'scripts/audit-content-integrity.js'],
   // 轮108：仙玉商城端到端（真花钱的地方；修前 3 件商品卖的是虚空物品）
   ['P8 仙玉商城端到端', 'scripts/test-vip-shop-e2e.js'],
+  // 轮110：内容可达性（表格要把材料扩到 >2000 件，扩产前必须有"玩家拿得到吗"的机器判据）
+  ['P8 内容可达性', 'scripts/audit-content-reachability.js', ['--gate']],
+  // 轮110：技能境界分布可用性（表格要 >500 门，但真正的缺陷是分布断层 —— 金丹可触达曾只有 3 门）
+  ['P8 技能分布', 'scripts/test-skill-distribution.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

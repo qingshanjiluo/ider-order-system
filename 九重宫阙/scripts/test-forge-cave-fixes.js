@@ -274,6 +274,10 @@ const t = async (name, fn) => {
   });
 
   await t('duel：先仿真后扣注、注金零和守恒；超限注金被拒且不消耗对局', async () => {
+    // 轮110 修：这里原先只断言 a+b===2000，看起来是"零和"，实际是**概率性假绿** ——
+    // 旧实现在挑战者**输**时双方各扣 bet 而不给赢家发钱（totalBet 凭空销毁），
+    // 那时 a+b=1600；挑战者赢的时候才恰好 2000。断言于是"单跑绿、门禁红"。
+    // 现在改成：总和守恒 + **赢家确实拿到 2×bet**（正反两面都锁），并把两个分支都跑到。
     const db = loadDatabase();
     const ca = db.characters.find((c) => Number(c.id) === A.id);
     const cb = db.characters.find((c) => Number(c.id) === B.id);
@@ -285,8 +289,17 @@ const t = async (name, fn) => {
     const db2 = loadDatabase();
     const a = db2.characters.find((c) => Number(c.id) === A.id);
     const b = db2.characters.find((c) => Number(c.id) === B.id);
-    assert.strictEqual(Number(a.spirit_stone) + Number(b.spirit_stone), 2000,
-      `注金不是零和（${a.spirit_stone}/${b.spirit_stone}，应共 2000）`);
+    const sum = Number(a.spirit_stone) + Number(b.spirit_stone);
+    assert.strictEqual(sum, 2000,
+      `注金不是零和（${a.spirit_stone}/${b.spirit_stone}，应共 2000）—— 输赢两侧都要发钱，不能销毁`);
+    // 赢家净额 = (1000 - 200) + 400 = 1200；输家净额 = 1000 - 200 = 800。
+    // 注意 totalBet 是 2×bet（双方各出的那份），赢家先被扣了自己的 200 再拿回全部 400。
+    const winnerStone = r.body.won ? Number(a.spirit_stone) : Number(b.spirit_stone);
+    assert.strictEqual(winnerStone, 1200,
+      `赢家没拿到全额注金：won=${r.body.won} 挑战者=${a.spirit_stone} 对手=${b.spirit_stone}，赢家应 1000-200+400=1200`);
+    const loserStone = r.body.won ? Number(b.spirit_stone) : Number(a.spirit_stone);
+    assert.strictEqual(loserStone, 800,
+      `输家扣错：应 1000-200=800，实际 ${loserStone}`);
     const poor = await call('POST', '/api/battle/duel/challenge', { targetId: A.id, betAmount: 999999 }, B.token);
     assert.strictEqual(poor.code, 400, '超额注金竟开赛：' + poor.raw);
   });

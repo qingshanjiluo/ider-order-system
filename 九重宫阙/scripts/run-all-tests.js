@@ -82,6 +82,8 @@ const SUITES = [
   ['G15 符箓端到端', 'scripts/test-talisman-e2e.js'],
   // 轮111：阵法端到端（零成本白嫖 + 效果无人消费 + 换阵不撤旧 buff + 两套 id 空间歧义）
   ['G16 阵法端到端', 'scripts/test-formation-e2e.js'],
+  // 轮112：丹药端到端（属性加成写死字段 + type=消耗品 的丹用不了 + 跨行库存只认第一行）
+  ['G17 丹药端到端', 'scripts/test-pill-e2e.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

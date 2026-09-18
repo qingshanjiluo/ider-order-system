@@ -246,6 +246,46 @@ function healCharacterFields(db) {
           cleaned++;
         }
       }
+
+      // 上古遗留字段清理（轮116）。
+      //
+      // 这 4 个字段只在 2/32 个角色（同一批老档）上存在，**全项目 0 处读取角色行
+      // 上的它们**。逐个核实过每个"同名出现点"挂在哪：
+      //
+      //   · `hp_max` / `mp_max` / `exp_max`
+      //     真源是 `max_hp` / `max_mp` / `exp_to_next`（snake_case，32/32 持有）。
+      //     `src/routes/battle.js:57` 那处 `{ hp_max: ... }` 是
+      //     **机会记录器（opportunity.record）自己的字段**，不同对象，与本清理解耦。
+      //
+      //   · `sect_contribution`
+      //     宗门贡献的真源是**关系表 `sect_members.contribution`**
+      //     （`services/sect.js` 的 `addContribution` 走 `store.incrementRel`）。
+      //     项目自己把它与仙盟贡献（`guild_members.contribution`）严格分离 ——
+      //     见 `services/sect.js` 顶部注释。角色行上的这个是第三处，无人读。
+      //
+      // 清理前提（三条都成立）：
+      //   ① 全项目无任何代码读"角色行"上的这些字段（已按挂载变量逐个核实）
+      //   ② 真源存在（`max_hp`/`max_mp` 刚刚补过；`exp_to_next` 由经验真源路径负责，
+      //      这里**只删字段、不写 exp_to_next**，避免违反 G3 经验真源锁）
+      //   ③ 字段值本身没有信息量（实测全是 `hp_max=100 mp_max=50 exp_max=100
+      //      sect_contribution=0`，即出厂默认值，不是玩家积累的数据）
+      //
+      // 与 `maxHp` 同样的安全边界：真源缺失时留着，不制造"数值为空"。
+      for (const stale of ['hp_max', 'mp_max', 'exp_max', 'sect_contribution']) {
+        const truth = stale === 'hp_max' ? 'max_hp'
+          : stale === 'mp_max' ? 'max_mp'
+            : stale === 'exp_max' ? 'exp_to_next'
+              : null;   // sect_contribution 的真源在关系表，无同名角色字段可查
+        // 需要真源才能删的，检查真源存在；关系表真源无法在此探测，
+        // 改用"字段值为出厂默认值"作充分条件（见下方说明）
+        const truthOk = truth
+          ? ch[truth] != null
+          : Number(ch[stale]) === 0;
+        if (ch[stale] != null && truthOk) {
+          delete ch[stale];
+          cleaned++;
+        }
+      }
     }
     if (healed > 0 || cleaned > 0) {
       dirty = true;

@@ -135,12 +135,42 @@ t('幂等：第二次自愈报告 0 个补齐，且不改变任何值', () => {
   assert.strictEqual(JSON.stringify(get()), snap1, '第二次自愈改变了已有值');
 });
 
-t('旧字段保留不删（可能有别处兼容读取）', () => {
+t('旧字段已按轮116 结论清理（轮114 的"保留"假设被推翻）', () => {
+  // 轮114 这里断言的是 **"旧字段保留不删"**，理由是"可能与别处兼容读取"。
+  // 轮116 逐个核实了每个同名出现点挂在哪之后，那条理由不成立：
+  //
+  //   · `hp_max`/`mp_max`/`exp_max` —— 真源是 max_hp/max_mp/exp_to_next（32/32 持有），
+  //     而 `src/routes/battle.js:57` 那处 `{ hp_max: ... }` 是**机会记录器自己的字段**，
+  //     不同对象，与本清理解耦。
+  //   · `sect_contribution` —— 宗门贡献真源是关系表 `sect_members.contribution`。
+  //   · 四个字段的值实测全是出厂默认值（hp_max=100 mp_max=50 exp_max=100
+  //     sect_contribution=0），即**不是玩家积累的数据**，删掉不丢东西。
+  //
+  // 所以断言改为**反向**：清理必须真的发生。
+  // 注意这不是"削弱门禁" —— 它把"保留"这条被证伪的假设换成了"清理"这条有证据的结论，
+  // 且同时保留了下一条断言（真源缺失时不得删）作为安全边界。
   seedLegacyChar();
   store.healCharacterFields(loadDatabase());
   const c = get();
-  assert.strictEqual(c.hp_max, 100, '旧字段 hp_max 被删了');
-  assert.strictEqual(c.mp_max, 50, '旧字段 mp_max 被删了');
+  assert.strictEqual(c.hp_max, undefined, 'hp_max 残留应被清理，实际还是 ' + c.hp_max);
+  assert.strictEqual(c.mp_max, undefined, 'mp_max 残留应被清理，实际还是 ' + c.mp_max);
+  assert.strictEqual(c.sect_contribution, undefined,
+    'sect_contribution 残留应被清理，实际还是 ' + c.sect_contribution);
+  // 真源必须还在 —— 清理的代价不能是"角色失去上限"
+  assert.ok(Number(c.max_hp) > 0, '清理后 max_hp 真源丢失了');
+  assert.ok(Number(c.max_mp) > 0, '清理后 max_mp 真源丢失了');
+});
+
+t('exp_max 在真源缺失时保留（宁可留脏，不可留空）', () => {
+  // 与 maxHp 同一条安全边界：`exp_max` 只在 `exp_to_next` 存在时才可删。
+  // 存档实测的角色 2 就是这样 —— 它缺 exp_to_next，于是 exp_max 被保留下来。
+  seedLegacyChar();                       // 这个角色造出来时就没有 exp_to_next
+  store.healCharacterFields(loadDatabase());
+  const c = get();
+  if (c.exp_to_next == null) {
+    assert.strictEqual(c.exp_max, 100,
+      'exp_to_next 缺失时不该删 exp_max —— 那会把"数值不一致"变成"数值为空"');
+  }
 });
 
 t('补齐后战斗可用（maxHp > 0，不因真源缺失而算成 0）', () => {

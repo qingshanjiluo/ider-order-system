@@ -51,8 +51,23 @@ class CharacterService {
     const realmRow = (db.realms || []).find(r => r.name === character.realm);
     const capLevel = RLC.enforce && realmRow ? (Number(realmRow.max_level) || 0) : 0;
 
-    while ((!capLevel || (character.level || 1) < capLevel) && character.exp >= (character.exp_to_next || 100)) {
-      character.exp -= (character.exp_to_next || 100);
+    // 轮116：`exp_to_next` 缺失时就地取真源，**不再用 `|| 100` 兜底**。
+    //
+    // 兜底值 100 与真曲线差三个数量级（炼气 1 级真实需求 130994），
+    // 于是"字段没被初始化"直接变成"升级快 1310 倍"。
+    // 实测：角色 2「最中幻想」缺 exp_to_next，喂 100 修为即从 1 级升到 2 级；
+    // 正常玩家要攒 13 万。**一个缺失字段 = 一条越级捷径。**
+    //
+    // 真源一直就在同一个文件里（`calculateExpForLevel`，下面第 57 行也在用它），
+    // 所以正确做法是缺失时现算，而不是编一个数兜底。
+    if (character.exp_to_next == null) {
+      const need = this.calculateExpForLevel(character.level || 1, character.realm);
+      if (Number.isFinite(need) && need > 0) character.exp_to_next = need;
+    }
+
+    while ((!capLevel || (character.level || 1) < capLevel)
+      && character.exp >= (character.exp_to_next || Infinity)) {
+      character.exp -= (character.exp_to_next || 0);
       character.level = (character.level || 1) + 1;
       character.exp_to_next = this.calculateExpForLevel(character.level, character.realm);
       character.max_hp = this.calculateHpMax(character.level, character.realm);

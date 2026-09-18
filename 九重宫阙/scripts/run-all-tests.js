@@ -90,6 +90,8 @@ const SUITES = [
   ['G19 老存档自愈', 'scripts/test-selfheal-e2e.js'],
   // 轮115：同一行同义字段共现（判据演进第三代：变量名→字段名→同一行共现，前两代均有误报）
   ['G20 同义字段共现', 'scripts/test-field-alias-scan.js'],
+  // 轮116：缺失字段不得变成捷径（缺 exp_to_next → `|| 100` 兜底 → 喂 100 修为越一级）
+  ['G21 缺失字段捷径', 'scripts/test-missing-field-shortcut.js'],
   ['P5 验收清单新鲜度', 'scripts/test-acceptance-fresh.js']
 ];
 

@@ -1,8 +1,9 @@
 # 真删超额游戏账号（B 方案，用户确认：游戏账号可删，平台用户数据保留）
 #
-# 循环执行 maintenance_trim_excess_accounts.sql（每轮分批 1000），
-# 通过 REMAIN= 数值判断收敛（连续两轮不变即停），最终输出各表计数核对。
-# 只删 game_accounts/account_logs/checkin_logs，不触碰 users/orders。
+# 循环执行 maintenance_trim_excess_accounts.sql（每轮各 DELETE 至多 1000 个
+# 账号 id + 关联日志），以每轮 "changes"（实际写入/删除行数）为收敛信号：
+# 低于 50 即视为已清完。只删 game_accounts/account_logs/checkin_logs，
+# 不触碰 users/orders。最终核对步骤始终执行。
 name: 真删超额游戏账号
 
 on:
@@ -25,30 +26,27 @@ jobs:
         run: npm install -g wrangler@4.114.0
 
       - name: 分批真删
+        continue-on-error: true
         working-directory: 工单系统
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          strip() { sed -r 's/\x1B\[[0-9;]*[mGKHF]//g'; }
-          PREV=-1
-          for i in $(seq 1 40); do
+          for i in $(seq 1 15); do
             echo "──── 第 $i 轮 ────"
-            # --json：wrangler 默认不打印 SELECT 结果，必须 --json 才能看到 REMAIN
-            OUT=$(wrangler d1 execute ider-orders --file=maintenance_trim_excess_accounts.sql --remote --json 2>&1 | strip) || { echo "$OUT"; exit 1; }
-            echo "$OUT" | grep -oE '"rows_written": *[0-9]+|REMAIN=[0-9]+' | head -8
-            CUR=$(echo "$OUT" | grep -oE 'REMAIN=[0-9]+' | tail -1 | cut -d= -f2)
-            if [ -z "$CUR" ]; then echo "未取到 REMAIN，中止"; echo "$OUT" | tail -20; exit 1; fi
-            echo "本轮后 game_accounts 剩余: $CUR"
-            if [ "$CUR" = "$PREV" ]; then echo "✅ 已收敛，停止"; break; fi
-            PREV=$CUR
+            OUT=$(wrangler d1 execute ider-orders --file=maintenance_trim_excess_accounts.sql --remote 2>&1) || { echo "$OUT"; exit 1; }
+            CH=$(echo "$OUT" | sed -r 's/\x1B\[[0-9;]*[mGKHF]//g' | grep -oE '"changes": *[0-9]+' | tail -1 | grep -oE '[0-9]+')
+            RW=$(echo "$OUT" | sed -r 's/\x1B\[[0-9;]*[mGKHF]//g' | grep -oE '"size_after": *[0-9]+' | tail -1 | grep -oE '[0-9]+')
+            echo "本轮删除/写入: ${CH:-?} 行；DB 当前大小: $(( ${RW:-0} / 1048576 )) MB"
+            if [ -z "$CH" ]; then echo "未取到 changes，停止循环"; break; fi
+            if [ "$CH" -lt 50 ]; then echo "✅ 已收敛，停止"; break; fi
           done
 
-      - name: 最终核对（只读，计数输出到日志）
+      - name: 最终核对（各表计数）
         working-directory: 工单系统
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          wrangler d1 execute ider-orders --remote --json --command "SELECT 'FINAL|total=' || (SELECT COUNT(*) FROM game_accounts) || '|o193=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193) || '|o262=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=262) || '|o292=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=292) || '|o293=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=293) || '|junk=' || (SELECT COUNT(*) FROM game_accounts WHERE health_status='cleaned' OR status='deleted') || '|users=' || (SELECT COUNT(*) FROM users) || '|orders=' || (SELECT COUNT(*) FROM orders)" 2>&1 \
-            | sed -r 's/\x1B\[[0-9;]*[mGKHF]//g' | grep -oE 'FINAL\|[^"]*' || true
+          wrangler d1 execute ider-orders --remote --json --command "SELECT 'FINAL total=' || (SELECT COUNT(*) FROM game_accounts) || ' o193=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193) || ' o262=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=262) || ' o292=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=292) || ' o293=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=293) || ' junk=' || (SELECT COUNT(*) FROM game_accounts WHERE health_status='cleaned' OR status='deleted') || ' users=' || (SELECT COUNT(*) FROM users) || ' orders=' || (SELECT COUNT(*) FROM orders) || ' logs=' || (SELECT COUNT(*) FROM account_logs)" 2>&1 \
+            | sed -r 's/\x1B\[[0-9;]*[mGKHF]//g'

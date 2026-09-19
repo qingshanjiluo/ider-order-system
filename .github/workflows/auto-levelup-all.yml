@@ -10,8 +10,8 @@ name: ⬆️ 全账号自动升级
 # 注意：不再传 WORKER_URL —— 该 secret 指向端点不全的遗留 Worker，
 #       脚本内部已固定使用 Pages API（可用 ORDER_API_URL 覆盖）。
 on:
-  # schedule: (暂停中)
-    # - cron: '0 */2 * * *'
+  schedule:
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
 jobs:

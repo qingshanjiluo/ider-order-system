@@ -116,5 +116,20 @@ DELETE FROM game_accounts WHERE id IN (
   LIMIT 1000
 );
 
--- ══ 6) 本轮剩余（工作流据此判停）══
+-- ══ 6) 孤儿日志：指向已删除账号的 account_logs / checkin_logs ══
+-- 注：account_id=0 是订单级日志（report-log 写入），必须保留，故限定 account_id>0。
+-- 实测 D1 单语句 2.3 万行删除仅 ~300ms，故孤儿段每批放大到 20000。
+DELETE FROM account_logs WHERE id IN (
+  SELECT id FROM account_logs
+  WHERE account_id > 0
+    AND account_id NOT IN (SELECT id FROM game_accounts)
+  LIMIT 20000
+);
+DELETE FROM checkin_logs WHERE id IN (
+  SELECT id FROM checkin_logs
+  WHERE game_account_id NOT IN (SELECT id FROM game_accounts)
+  LIMIT 20000
+);
+
+-- ══ 7) 本轮剩余（工作流据此判停）══
 SELECT 'REMAIN=' || COUNT(*) AS r FROM game_accounts;

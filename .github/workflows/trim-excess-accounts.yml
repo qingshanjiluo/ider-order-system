@@ -34,8 +34,9 @@ jobs:
           PREV=-1
           for i in $(seq 1 40); do
             echo "──── 第 $i 轮 ────"
-            OUT=$(wrangler d1 execute ider-orders --file=maintenance_trim_excess_accounts.sql --remote 2>&1 | strip) || { echo "$OUT"; exit 1; }
-            echo "$OUT" | grep -oE '"rows_written": [0-9]+|REMAIN=[0-9]+' | head -8
+            # --json：wrangler 默认不打印 SELECT 结果，必须 --json 才能看到 REMAIN
+            OUT=$(wrangler d1 execute ider-orders --file=maintenance_trim_excess_accounts.sql --remote --json 2>&1 | strip) || { echo "$OUT"; exit 1; }
+            echo "$OUT" | grep -oE '"rows_written": *[0-9]+|REMAIN=[0-9]+' | head -8
             CUR=$(echo "$OUT" | grep -oE 'REMAIN=[0-9]+' | tail -1 | cut -d= -f2)
             if [ -z "$CUR" ]; then echo "未取到 REMAIN，中止"; echo "$OUT" | tail -20; exit 1; fi
             echo "本轮后 game_accounts 剩余: $CUR"
@@ -49,5 +50,5 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          wrangler d1 execute ider-orders --remote --command "SELECT 'FINAL|total=' || (SELECT COUNT(*) FROM game_accounts) || '|o193=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193) || '|o262=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=262) || '|o292=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=292) || '|o293=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=293) || '|junk=' || (SELECT COUNT(*) FROM game_accounts WHERE health_status='cleaned' OR status='deleted') || '|users=' || (SELECT COUNT(*) FROM users) || '|orders=' || (SELECT COUNT(*) FROM orders)" 2>&1 \
-            | sed -r 's/\x1B\[[0-9;]*[mGKHF]//g' | grep -E 'FINAL' || true
+          wrangler d1 execute ider-orders --remote --json --command "SELECT 'FINAL|total=' || (SELECT COUNT(*) FROM game_accounts) || '|o193=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=193) || '|o262=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=262) || '|o292=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=292) || '|o293=' || (SELECT COUNT(*) FROM game_accounts WHERE order_id=293) || '|junk=' || (SELECT COUNT(*) FROM game_accounts WHERE health_status='cleaned' OR status='deleted') || '|users=' || (SELECT COUNT(*) FROM users) || '|orders=' || (SELECT COUNT(*) FROM orders)" 2>&1 \
+            | sed -r 's/\x1B\[[0-9;]*[mGKHF]//g' | grep -oE 'FINAL\|[^"]*' || true
